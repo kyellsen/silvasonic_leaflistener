@@ -29,6 +29,7 @@ dev = [
     "numpy",
     "sqlalchemy",
     "watchdog",
+    "soundfile",
 ]
 
 [tool.uv]

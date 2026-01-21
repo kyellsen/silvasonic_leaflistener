@@ -1,10 +1,12 @@
    Building silvasonic-leaflistener @ file:///mnt/data/dev/packages/silvasonic_leaflistener
+Downloading soundfile (1.3MiB)
+ Downloaded soundfile
       Built silvasonic-leaflistener @ file:///mnt/data/dev/packages/silvasonic_leaflistener
-Uninstalled 1 package in 0.33ms
+Uninstalled 1 package in 0.37ms
 warning: Failed to hardlink files; falling back to full copy. This may lead to degraded performance.
          If the cache and target directories are on different filesystems, hardlinking may not be supported.
          If this is intentional, set `export UV_LINK_MODE=copy` or use `--link-mode=copy` to suppress this warning.
-Installed 2 packages in 18ms
+Installed 4 packages in 21ms
 ============================= test session starts ==============================
 platform linux -- Python 3.13.11, pytest-9.0.2, pluggy-1.6.0
 rootdir: /mnt/data/dev/packages/silvasonic_leaflistener
@@ -46,4 +48,4 @@ containers/birdnet/tests/test_database.py::test_detection_model
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!! KeyboardInterrupt !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 /usr/lib64/python3.13/unittest/mock.py:1232: KeyboardInterrupt
 (to show a full traceback on KeyboardInterrupt use --full-trace)
-======================== 17 passed, 9 warnings in 0.38s ========================
+======================== 17 passed, 9 warnings in 0.31s ========================

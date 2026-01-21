@@ -1302,6 +1302,7 @@ dev = [
     { name = "numpy" },
     { name = "pytest" },
     { name = "ruff" },
+    { name = "soundfile" },
     { name = "sqlalchemy" },
     { name = "watchdog" },
 ]
@@ -1315,6 +1316,7 @@ dev = [
     { name = "numpy" },
     { name = "pytest", specifier = ">=8.0" },
     { name = "ruff", specifier = ">=0.1.0" },
+    { name = "soundfile" },
     { name = "sqlalchemy" },
     { name = "watchdog" },
 ]
