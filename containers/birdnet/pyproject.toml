@@ -24,6 +24,9 @@ test = [
 requires = ["hatchling"]
 build-backend = "hatchling.build"
 
+[tool.hatch.metadata]
+allow-direct-references = true
+
 [tool.pytest.ini_options]
 addopts = "--cov=src --cov-report=term-missing"
 testpaths = ["tests"]

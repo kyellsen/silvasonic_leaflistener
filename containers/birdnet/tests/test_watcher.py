@@ -1,43 +1,70 @@
 import pytest
+import time
 from unittest.mock import MagicMock, patch
 from src.watcher import AudioFileHandler, WatcherService
 
-def test_audio_file_handler():
-    mock_analyzer = MagicMock()
-    handler = AudioFileHandler(mock_analyzer)
-    
-    # Test ignored events
-    event_dir = MagicMock(is_directory=True)
-    handler.on_closed(event_dir)
-    mock_analyzer.process_file.assert_not_called()
-    
-    event_txt = MagicMock(is_directory=False, src_path="test.txt")
-    handler.on_closed(event_txt)
-    mock_analyzer.process_file.assert_not_called()
-    
-    # Test valid event
-    event_wav = MagicMock(is_directory=False, src_path="/data/test.wav")
-    
-    with patch("time.sleep"): # Skip sleep
-        handler.on_closed(event_wav)
-        mock_analyzer.process_file.assert_called_with("/data/test.wav")
+class TestAudioFileHandler:
+    @pytest.fixture
+    def handler(self):
+        self.mock_analyzer = MagicMock()
+        return AudioFileHandler(self.mock_analyzer)
 
-@patch("src.watcher.Observer")
-@patch("src.watcher.BirdNETAnalyzer")
-@patch("src.watcher.config")
-def test_watcher_service_run(mock_config, mock_analyzer_cls, mock_observer_cls):
-    # Mock config
-    mock_config.INPUT_DIR = MagicMock()
-    mock_config.INPUT_DIR.exists.return_value = True
-    
-    service = WatcherService()
-    
-    # Mock loop to break immediately
-    with patch("src.watcher.time.sleep", side_effect=KeyboardInterrupt):
-        service.run()
+    def test_ignore_directories(self, handler):
+        event = MagicMock(is_directory=True)
+        handler.on_closed(event)
+        handler.analyzer.process_file.assert_not_called()
+
+    def test_ignore_non_audio(self, handler):
+        event = MagicMock(is_directory=False, src_path="test.txt")
+        handler.on_closed(event)
+        handler.analyzer.process_file.assert_not_called()
+
+    def test_process_valid_file(self, handler):
+        event = MagicMock(is_directory=False, src_path="/data/test.wav")
+        # Mock time.sleep to run instantly
+        with patch("time.sleep"):
+            handler.on_closed(event)
+        handler.analyzer.process_file.assert_called_with("/data/test.wav")
+
+class TestWatcherService:
+    @patch("src.watcher.Observer")
+    @patch("src.watcher.BirdNETAnalyzer")
+    @patch("src.watcher.config")
+    def test_service_lifecycle(self, mock_config, mock_analyzer_cls, mock_observer_cls):
+        # Setup mocks
+        mock_config.INPUT_DIR = "/data/input"
+        mock_config.RECURSIVE_WATCH = False
         
-    # Verify observer started and scheduled
-    mock_observer_instance = mock_observer_cls.return_value
-    assert mock_observer_instance.start.called
-    assert mock_observer_instance.schedule.called
-    assert mock_observer_instance.stop.called
+        # Mock observer instance
+        mock_observer = mock_observer_cls.return_value
+        
+        service = WatcherService()
+        
+        # Test successful start and interrupt
+        with patch("src.watcher.time.sleep", side_effect=[None, KeyboardInterrupt]):
+            service.run()
+            
+        mock_observer.schedule.assert_called()
+        # Verify args to schedule
+        args, kwargs = mock_observer.schedule.call_args
+        # args[0] is handler, args[1] is path
+        assert args[1] == "/data/input"
+        assert kwargs['recursive'] is False
+        
+        assert mock_observer.start.called
+        assert mock_observer.stop.called
+        assert mock_observer.join.called
+
+    @patch("src.watcher.Observer")
+    @patch("src.watcher.config")
+    def test_service_recursive_config(self, mock_config, mock_observer_cls):
+        mock_config.RECURSIVE_WATCH = True
+        service = WatcherService()
+        
+        # Use simple mock to just check schedule call
+        with patch("src.watcher.time.sleep", side_effect=KeyboardInterrupt):
+            service.run()
+            
+        _, kwargs = mock_observer_cls.return_value.schedule.call_args
+        assert kwargs['recursive'] is True
+

@@ -19,7 +19,8 @@ COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
 COPY pyproject.toml .
 # We install numpy first to avoid build isolation issues with some audio libs if they occur
 RUN uv pip install --system --no-cache numpy
-RUN uv pip install --system --no-cache .
+RUN uv pip compile pyproject.toml -o requirements.txt && \
+    uv pip install --system --no-cache -r requirements.txt
 
 # Copy source code
 COPY src/ src/

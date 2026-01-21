@@ -1,6 +1,7 @@
-from src.database import Detection, init_db, SessionLocal
+from src.database import Detection, init_db, SessionLocal, Base
 from datetime import datetime
 import os
+from unittest.mock import patch, MagicMock
 
 def test_detection_model(db_session):
     det = Detection(
@@ -20,24 +21,29 @@ def test_detection_model(db_session):
     assert saved.common_name == "Blackbird"
     assert saved.confidence == 0.95
 
-def test_init_db_creates_file(tmp_path, monkeypatch):
-    # Test that init_db creates directory and file
-    db_file = tmp_path / "subdir" / "test.sqlite"
+def test_init_db_creates_directory(monkeypatch):
+    mock_makedirs = MagicMock()
+    # Mock os.makedirs
+    monkeypatch.setattr("os.makedirs", mock_makedirs)
     
-    # We need to patch config to point to this new path
-    monkeypatch.setattr("src.config.config.DB_PATH", str(db_file))
+    # Mock config path
+    with patch("src.database.config") as mock_conf:
+        mock_conf.DB_PATH = "/tmp/newdir/db.sqlite"
+        
+        # Test directory creation
+        init_db()
+        
+        mock_makedirs.assert_called_with("/tmp/newdir", exist_ok=True)
+
+def test_init_db_error_handling(monkeypatch):
+    mock_makedirs = MagicMock(side_effect=OSError("Permission denied"))
+    monkeypatch.setattr("os.makedirs", mock_makedirs)
     
-    # Mock create_engine only if we want to avoid real connection, 
-    # but for this test we want to see file creation helper logic.
-    # src.database.init_db() does os.makedirs
-    
-    # We need to force reload or just call init_db again? 
-    # init_db() relies on config.DB_PATH.
-    
-    # We can't easily re-run init_db globally without side effects, 
-    # but we can call it and ignore the returned sessionmaker.
-    
-    session_maker = init_db()
-    
-    assert db_file.parent.exists()
-    assert db_file.exists()
+    with patch("src.database.config") as mock_conf:
+        mock_conf.DB_PATH = "/root/db.sqlite"
+        
+        # Should raise OSError as it's not caught in init_db (or should check if it is)
+        # Assuming current impl doesn't catch it
+        import pytest
+        with pytest.raises(OSError):
+            init_db()

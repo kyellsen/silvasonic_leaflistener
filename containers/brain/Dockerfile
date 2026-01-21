@@ -15,7 +15,8 @@ COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
 # Install Python dependencies
 # Install Python dependencies
 COPY pyproject.toml .
-RUN uv pip install --system --no-cache .
+RUN uv pip compile pyproject.toml -o requirements.txt && \
+    uv pip install --system --no-cache -r requirements.txt
 
 # Copy source code
 COPY src/ /app/src/

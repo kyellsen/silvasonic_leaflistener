@@ -1,31 +1,48 @@
 import os
-from src.config import Config
+import pytest
+import importlib
+from unittest.mock import patch
+import src.config
 
 def test_config_defaults():
-    # Unset env vars to test defaults
-    # Note: We need to reload the module or instantiate Config directly if possible
-    # modifying os.environ before Config init is tricky if it's a global instance.
-    # However, Config class creates instance at import time.
-    # We can test the class definitions if we re-instantiate.
-    
-    # Let's check the imported config object values (which might have picked up real env vars if set, or defaults)
-    # Ideally, we should check what's currently in there vs what we expect.
-    
-    # Better approach: Instantiate a new Config object after clearing env vars
-    # create a fresh instance
-    # We need to hack os.environ effectively.
-    pass
+    """Test that config loads with expected defaults when no env vars are set."""
+    # We need to ensure we are testing a clean state. 
+    # Since config is a module-level instance, we must reload it with a clean environment.
+    with patch.dict(os.environ, {}, clear=True):
+        importlib.reload(src.config)
+        assert src.config.config.DB_PATH == "/data/storage/birdnet.sqlite"
+        assert src.config.config.INPUT_DIR == "/data/input"
+        assert src.config.config.LATITUDE == 52.52
+        assert src.config.config.LONGITUDE == 13.405
+        assert src.config.config.MIN_CONFIDENCE == 0.7
+        assert src.config.config.SIG_OVERLAP == 0.0
+        assert src.config.config.SIG_LENGTH == 3.0
+        assert src.config.config.THREADS == 1
+        assert not src.config.config.RECURSIVE_WATCH 
 
-def test_config_overrides(monkeypatch):
-    monkeypatch.setenv("LATITUDE", "10.0")
-    monkeypatch.setenv("LONGITUDE", "20.0")
-    monkeypatch.setenv("MIN_CONFIDENCE", "0.5")
+def test_config_overrides():
+    """Test that environment variables correctly override defaults."""
+    env_vars = {
+        "DB_PATH": "/tmp/custom.sqlite",
+        "INPUT_DIR": "/tmp/custom_input",
+        "LATITUDE": "10.0",
+        "LONGITUDE": "20.0",
+        "MIN_CONFIDENCE": "0.5",
+        "SIG_OVERLAP": "1.5",
+        "SIG_LENGTH": "5.0",
+        "THREADS": "4",
+        "RECURSIVE_WATCH": "true"
+    }
     
-    # Re-import to trigger re-evaluation of class attributes
-    import importlib
-    import src.config
-    importlib.reload(src.config)
-    
-    assert src.config.config.LATITUDE == 10.0
-    assert src.config.config.LONGITUDE == 20.0
-    assert src.config.config.MIN_CONFIDENCE == 0.5
+    with patch.dict(os.environ, env_vars, clear=True):
+        importlib.reload(src.config)
+        assert src.config.config.DB_PATH == "/tmp/custom.sqlite"
+        assert src.config.config.INPUT_DIR == "/tmp/custom_input"
+        assert src.config.config.LATITUDE == 10.0
+        assert src.config.config.LONGITUDE == 20.0
+        assert src.config.config.MIN_CONFIDENCE == 0.5
+        assert src.config.config.SIG_OVERLAP == 1.5
+        assert src.config.config.SIG_LENGTH == 5.0
+        assert src.config.config.THREADS == 4
+        assert src.config.config.RECURSIVE_WATCH is True
+
