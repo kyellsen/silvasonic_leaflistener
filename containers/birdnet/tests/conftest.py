@@ -3,10 +3,18 @@ import os
 import sys
 from pathlib import Path
 
+# Set test environment defaults BEFORE importing app modules
+os.environ["DB_PATH"] = "/tmp/test_birdnet.sqlite"
+os.environ["INPUT_DIR"] = "/tmp/test_input"
+os.environ["LATITUDE"] = "52.0"
+os.environ["LONGITUDE"] = "13.0"
+os.environ["MIN_CONFIDENCE"] = "0.8"
+
 # Add src to pythonpath
 sys.path.append(str(Path(__file__).parent.parent))
 
 from src.database import Base, Detection
+from src.config import config # ensure config is loaded with these envs
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 

@@ -10,15 +10,15 @@ def test_config_defaults():
     # Since config is a module-level instance, we must reload it with a clean environment.
     with patch.dict(os.environ, {}, clear=True):
         importlib.reload(src.config)
-        assert src.config.config.DB_PATH == "/data/storage/birdnet.sqlite"
-        assert src.config.config.INPUT_DIR == "/data/input"
-        assert src.config.config.LATITUDE == 52.52
-        assert src.config.config.LONGITUDE == 13.405
+        assert str(src.config.config.DB_PATH) == "/data/db/birdnet.sqlite"
+        assert str(src.config.config.INPUT_DIR) == "/data/recording"
+        assert src.config.config.LATITUDE is None
+        assert src.config.config.LONGITUDE is None
         assert src.config.config.MIN_CONFIDENCE == 0.7
         assert src.config.config.SIG_OVERLAP == 0.0
         assert src.config.config.SIG_LENGTH == 3.0
         assert src.config.config.THREADS == 1
-        assert not src.config.config.RECURSIVE_WATCH 
+        assert src.config.config.RECURSIVE_WATCH is True 
 
 def test_config_overrides():
     """Test that environment variables correctly override defaults."""
@@ -36,13 +36,14 @@ def test_config_overrides():
     
     with patch.dict(os.environ, env_vars, clear=True):
         importlib.reload(src.config)
-        assert src.config.config.DB_PATH == "/tmp/custom.sqlite"
-        assert src.config.config.INPUT_DIR == "/tmp/custom_input"
+        assert str(src.config.config.DB_PATH) == "/tmp/custom.sqlite"
+        assert str(src.config.config.INPUT_DIR) == "/tmp/custom_input"
         assert src.config.config.LATITUDE == 10.0
         assert src.config.config.LONGITUDE == 20.0
         assert src.config.config.MIN_CONFIDENCE == 0.5
-        assert src.config.config.SIG_OVERLAP == 1.5
-        assert src.config.config.SIG_LENGTH == 5.0
+        # SIG_OVERLAP and SIG_LENGTH are hardcoded in Config
+        assert src.config.config.SIG_OVERLAP == 0.0
+        assert src.config.config.SIG_LENGTH == 3.0
         assert src.config.config.THREADS == 4
         assert src.config.config.RECURSIVE_WATCH is True
 

@@ -1,0 +1,368 @@
+============================= test session starts ==============================
+platform linux -- Python 3.14.2, pytest-9.0.2, pluggy-1.6.0 -- /mnt/data/dev/packages/silvasonic_leaflistener/containers/birdnet/.venv/bin/python3
+cachedir: .pytest_cache
+rootdir: /mnt/data/dev/packages/silvasonic_leaflistener/containers/birdnet
+configfile: pyproject.toml
+testpaths: tests
+plugins: mock-3.15.1, cov-7.0.0
+collecting ... collected 19 items
+
+tests/test_analyzer.py::TestTimestampParsing::test_parse_timestamp_valid_standard PASSED [  5%]
+tests/test_analyzer.py::TestTimestampParsing::test_parse_timestamp_valid_compact PASSED [ 10%]
+tests/test_analyzer.py::TestTimestampParsing::test_parse_timestamp_invalid PASSED [ 15%]
+tests/test_analyzer.py::TestProcessFile::test_process_file_success PASSED [ 21%]
+tests/test_analyzer.py::TestProcessFile::test_process_file_not_found PASSED [ 26%]
+tests/test_analyzer.py::TestProcessFile::test_process_file_exception_handling PASSED [ 31%]
+tests/test_analyzer.py::TestProcessFile::test_process_file_save_error FAILED [ 36%]
+tests/test_analyzer.py::TestProcessFile::test_save_detections_various_formats PASSED [ 42%]
+tests/test_config.py::test_config_defaults FAILED                        [ 47%]
+tests/test_config.py::test_config_overrides FAILED                       [ 52%]
+tests/test_database.py::test_detection_model PASSED                      [ 57%]
+tests/test_database.py::test_init_db_creates_directory FAILED            [ 63%]
+tests/test_database.py::test_init_db_error_handling PASSED               [ 68%]
+tests/test_main.py::test_main_execution PASSED                           [ 73%]
+tests/test_watcher.py::TestAudioFileHandler::test_ignore_directories PASSED [ 78%]
+tests/test_watcher.py::TestAudioFileHandler::test_ignore_non_audio PASSED [ 84%]
+tests/test_watcher.py::TestAudioFileHandler::test_process_valid_file PASSED [ 89%]
+tests/test_watcher.py::TestWatcherService::test_service_lifecycle FAILED [ 94%]
+tests/test_watcher.py::TestWatcherService::test_service_recursive_config PASSED [100%]
+
+=================================== FAILURES ===================================
+_________________ TestProcessFile.test_process_file_save_error _________________
+
+self = <tests.test_analyzer.TestProcessFile object at 0x7f36187cfce0>
+mock_mkdir = <MagicMock name='mkdir' id='139869611739184'>
+mock_exists = <MagicMock name='exists' id='139869611739520'>
+mock_symlink = <MagicMock name='symlink' id='139869611739856'>
+mock_bn_analyze = <MagicMock name='bn_analyze' id='139869611740192'>
+analyzer = <src.analyzer.BirdNETAnalyzer object at 0x7f35ee9b1150>
+
+    @patch("src.analyzer.bn_analyze")
+    @patch("src.analyzer.os.symlink")
+    @patch("src.analyzer.Path.exists")
+    @patch("src.analyzer.Path.mkdir")
+    def test_process_file_save_error(self, mock_mkdir, mock_exists, mock_symlink, mock_bn_analyze, analyzer):
+        mock_exists.return_value = True
+        mock_bn_analyze.return_value = {}
+    
+        # Simulate DB error
+        mock_session = MagicMock()
+        mock_session.commit.side_effect = Exception("DB Error")
+    
+        with patch("src.analyzer.SessionLocal", return_value=mock_session):
+            analyzer.process_file("/data/input/test.wav")
+            # Should fallback to rollback
+>           assert mock_session.rollback.called
+E           AssertionError: assert False
+E            +  where False = <MagicMock name='mock.rollback' id='139869611742544'>.called
+E            +    where <MagicMock name='mock.rollback' id='139869611742544'> = <MagicMock id='139869611740528'>.rollback
+
+tests/test_analyzer.py:87: AssertionError
+------------------------------ Captured log call -------------------------------
+WARNING  Analyzer:analyzer.py:37 Could not parse timestamp from test.wav, using current time as fallback.
+ERROR    Analyzer:analyzer.py:75 Error during analysis of test.wav: [Errno 2] No such file or directory: '/tmp/birdnet_processing/test.wav'
+Traceback (most recent call last):
+  File "/mnt/data/dev/packages/silvasonic_leaflistener/containers/birdnet/src/analyzer.py", line 53, in process_file
+    temp_path.unlink()
+    ~~~~~~~~~~~~~~~~^^
+  File "/usr/lib64/python3.14/pathlib/__init__.py", line 1042, in unlink
+    os.unlink(self)
+    ~~~~~~~~~^^^^^^
+FileNotFoundError: [Errno 2] No such file or directory: '/tmp/birdnet_processing/test.wav'
+_____________________________ test_config_defaults _____________________________
+
+    def test_config_defaults():
+        """Test that config loads with expected defaults when no env vars are set."""
+        # We need to ensure we are testing a clean state.
+        # Since config is a module-level instance, we must reload it with a clean environment.
+        with patch.dict(os.environ, {}, clear=True):
+            importlib.reload(src.config)
+>           assert src.config.config.DB_PATH == "/data/storage/birdnet.sqlite"
+E           AssertionError: assert PosixPath('/data/db/birdnet.sqlite') == '/data/storage/birdnet.sqlite'
+E            +  where PosixPath('/data/db/birdnet.sqlite') = <src.config.Config object at 0x7f35ee85e660>.DB_PATH
+E            +    where <src.config.Config object at 0x7f35ee85e660> = <module 'src.config' from '/mnt/data/dev/packages/silvasonic_leaflistener/containers/birdnet/src/config.py'>.config
+E            +      where <module 'src.config' from '/mnt/data/dev/packages/silvasonic_leaflistener/containers/birdnet/src/config.py'> = src.config
+
+tests/test_config.py:13: AssertionError
+____________________________ test_config_overrides _____________________________
+
+    def test_config_overrides():
+        """Test that environment variables correctly override defaults."""
+        env_vars = {
+            "DB_PATH": "/tmp/custom.sqlite",
+            "INPUT_DIR": "/tmp/custom_input",
+            "LATITUDE": "10.0",
+            "LONGITUDE": "20.0",
+            "MIN_CONFIDENCE": "0.5",
+            "SIG_OVERLAP": "1.5",
+            "SIG_LENGTH": "5.0",
+            "THREADS": "4",
+            "RECURSIVE_WATCH": "true"
+        }
+    
+        with patch.dict(os.environ, env_vars, clear=True):
+            importlib.reload(src.config)
+>           assert src.config.config.DB_PATH == "/tmp/custom.sqlite"
+E           AssertionError: assert PosixPath('/tmp/custom.sqlite') == '/tmp/custom.sqlite'
+E            +  where PosixPath('/tmp/custom.sqlite') = <src.config.Config object at 0x7f35ee85e7b0>.DB_PATH
+E            +    where <src.config.Config object at 0x7f35ee85e7b0> = <module 'src.config' from '/mnt/data/dev/packages/silvasonic_leaflistener/containers/birdnet/src/config.py'>.config
+E            +      where <module 'src.config' from '/mnt/data/dev/packages/silvasonic_leaflistener/containers/birdnet/src/config.py'> = src.config
+
+tests/test_config.py:39: AssertionError
+________________________ test_init_db_creates_directory ________________________
+
+self = <sqlalchemy.engine.base.Connection object at 0x7f35ee7b8410>
+engine = Engine(sqlite:////tmp/newdir/db.sqlite), connection = None
+_has_events = None, _allow_revalidate = True, _allow_autobegin = True
+
+    def __init__(
+        self,
+        engine: Engine,
+        connection: Optional[PoolProxiedConnection] = None,
+        _has_events: Optional[bool] = None,
+        _allow_revalidate: bool = True,
+        _allow_autobegin: bool = True,
+    ):
+        """Construct a new Connection."""
+        self.engine = engine
+        self.dialect = dialect = engine.dialect
+    
+        if connection is None:
+            try:
+>               self._dbapi_connection = engine.raw_connection()
+                                         ^^^^^^^^^^^^^^^^^^^^^^^
+
+.venv/lib64/python3.14/site-packages/sqlalchemy/engine/base.py:143: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+.venv/lib64/python3.14/site-packages/sqlalchemy/engine/base.py:3309: in raw_connection
+    return self.pool.connect()
+           ^^^^^^^^^^^^^^^^^^^
+.venv/lib64/python3.14/site-packages/sqlalchemy/pool/base.py:447: in connect
+    return _ConnectionFairy._checkout(self)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib64/python3.14/site-packages/sqlalchemy/pool/base.py:1264: in _checkout
+    fairy = _ConnectionRecord.checkout(pool)
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib64/python3.14/site-packages/sqlalchemy/pool/base.py:711: in checkout
+    rec = pool._do_get()
+          ^^^^^^^^^^^^^^
+.venv/lib64/python3.14/site-packages/sqlalchemy/pool/impl.py:177: in _do_get
+    with util.safe_reraise():
+         ^^^^^^^^^^^^^^^^^^^
+.venv/lib64/python3.14/site-packages/sqlalchemy/util/langhelpers.py:224: in __exit__
+    raise exc_value.with_traceback(exc_tb)
+.venv/lib64/python3.14/site-packages/sqlalchemy/pool/impl.py:175: in _do_get
+    return self._create_connection()
+           ^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib64/python3.14/site-packages/sqlalchemy/pool/base.py:388: in _create_connection
+    return _ConnectionRecord(self)
+           ^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib64/python3.14/site-packages/sqlalchemy/pool/base.py:673: in __init__
+    self.__connect()
+.venv/lib64/python3.14/site-packages/sqlalchemy/pool/base.py:899: in __connect
+    with util.safe_reraise():
+         ^^^^^^^^^^^^^^^^^^^
+.venv/lib64/python3.14/site-packages/sqlalchemy/util/langhelpers.py:224: in __exit__
+    raise exc_value.with_traceback(exc_tb)
+.venv/lib64/python3.14/site-packages/sqlalchemy/pool/base.py:895: in __connect
+    self.dbapi_connection = connection = pool._invoke_creator(self)
+                                         ^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib64/python3.14/site-packages/sqlalchemy/engine/create.py:661: in connect
+    return dialect.connect(*cargs, **cparams)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <sqlalchemy.dialects.sqlite.pysqlite.SQLiteDialect_pysqlite object at 0x7f35ee789bd0>
+cargs = ('/tmp/newdir/db.sqlite',), cparams = {'check_same_thread': False}
+
+    def connect(self, *cargs: Any, **cparams: Any) -> DBAPIConnection:
+        # inherits the docstring from interfaces.Dialect.connect
+>       return self.loaded_dbapi.connect(*cargs, **cparams)  # type: ignore[no-any-return]  # NOQA: E501
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       sqlite3.OperationalError: unable to open database file
+
+.venv/lib64/python3.14/site-packages/sqlalchemy/engine/default.py:630: OperationalError
+
+The above exception was the direct cause of the following exception:
+
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x7f35ee79cb00>
+
+    def test_init_db_creates_directory(monkeypatch):
+        mock_makedirs = MagicMock()
+        # Mock os.makedirs
+        monkeypatch.setattr("os.makedirs", mock_makedirs)
+    
+        # Mock config path
+        with patch("src.database.config") as mock_conf:
+            mock_conf.DB_PATH = "/tmp/newdir/db.sqlite"
+    
+            # Test directory creation
+>           init_db()
+
+tests/test_database.py:34: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+src/database.py:35: in init_db
+    Base.metadata.create_all(engine)
+.venv/lib64/python3.14/site-packages/sqlalchemy/sql/schema.py:5928: in create_all
+    bind._run_ddl_visitor(
+.venv/lib64/python3.14/site-packages/sqlalchemy/engine/base.py:3259: in _run_ddl_visitor
+    with self.begin() as conn:
+         ^^^^^^^^^^^^
+/usr/lib64/python3.14/contextlib.py:141: in __enter__
+    return next(self.gen)
+           ^^^^^^^^^^^^^^
+.venv/lib64/python3.14/site-packages/sqlalchemy/engine/base.py:3249: in begin
+    with self.connect() as conn:
+         ^^^^^^^^^^^^^^
+.venv/lib64/python3.14/site-packages/sqlalchemy/engine/base.py:3285: in connect
+    return self._connection_cls(self)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib64/python3.14/site-packages/sqlalchemy/engine/base.py:145: in __init__
+    Connection._handle_dbapi_exception_noconnection(
+.venv/lib64/python3.14/site-packages/sqlalchemy/engine/base.py:2448: in _handle_dbapi_exception_noconnection
+    raise sqlalchemy_exception.with_traceback(exc_info[2]) from e
+.venv/lib64/python3.14/site-packages/sqlalchemy/engine/base.py:143: in __init__
+    self._dbapi_connection = engine.raw_connection()
+                             ^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib64/python3.14/site-packages/sqlalchemy/engine/base.py:3309: in raw_connection
+    return self.pool.connect()
+           ^^^^^^^^^^^^^^^^^^^
+.venv/lib64/python3.14/site-packages/sqlalchemy/pool/base.py:447: in connect
+    return _ConnectionFairy._checkout(self)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib64/python3.14/site-packages/sqlalchemy/pool/base.py:1264: in _checkout
+    fairy = _ConnectionRecord.checkout(pool)
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib64/python3.14/site-packages/sqlalchemy/pool/base.py:711: in checkout
+    rec = pool._do_get()
+          ^^^^^^^^^^^^^^
+.venv/lib64/python3.14/site-packages/sqlalchemy/pool/impl.py:177: in _do_get
+    with util.safe_reraise():
+         ^^^^^^^^^^^^^^^^^^^
+.venv/lib64/python3.14/site-packages/sqlalchemy/util/langhelpers.py:224: in __exit__
+    raise exc_value.with_traceback(exc_tb)
+.venv/lib64/python3.14/site-packages/sqlalchemy/pool/impl.py:175: in _do_get
+    return self._create_connection()
+           ^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib64/python3.14/site-packages/sqlalchemy/pool/base.py:388: in _create_connection
+    return _ConnectionRecord(self)
+           ^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib64/python3.14/site-packages/sqlalchemy/pool/base.py:673: in __init__
+    self.__connect()
+.venv/lib64/python3.14/site-packages/sqlalchemy/pool/base.py:899: in __connect
+    with util.safe_reraise():
+         ^^^^^^^^^^^^^^^^^^^
+.venv/lib64/python3.14/site-packages/sqlalchemy/util/langhelpers.py:224: in __exit__
+    raise exc_value.with_traceback(exc_tb)
+.venv/lib64/python3.14/site-packages/sqlalchemy/pool/base.py:895: in __connect
+    self.dbapi_connection = connection = pool._invoke_creator(self)
+                                         ^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib64/python3.14/site-packages/sqlalchemy/engine/create.py:661: in connect
+    return dialect.connect(*cargs, **cparams)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <sqlalchemy.dialects.sqlite.pysqlite.SQLiteDialect_pysqlite object at 0x7f35ee789bd0>
+cargs = ('/tmp/newdir/db.sqlite',), cparams = {'check_same_thread': False}
+
+    def connect(self, *cargs: Any, **cparams: Any) -> DBAPIConnection:
+        # inherits the docstring from interfaces.Dialect.connect
+>       return self.loaded_dbapi.connect(*cargs, **cparams)  # type: ignore[no-any-return]  # NOQA: E501
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       sqlalchemy.exc.OperationalError: (sqlite3.OperationalError) unable to open database file
+E       (Background on this error at: https://sqlalche.me/e/20/e3q8)
+
+.venv/lib64/python3.14/site-packages/sqlalchemy/engine/default.py:630: OperationalError
+__________________ TestWatcherService.test_service_lifecycle ___________________
+
+self = <tests.test_watcher.TestWatcherService object at 0x7f35ee984190>
+mock_config = <MagicMock name='config' id='139869648101328'>
+mock_analyzer_cls = <MagicMock name='BirdNETAnalyzer' id='139869611749600'>
+mock_observer_cls = <MagicMock name='Observer' id='139869611750272'>
+
+    @patch("src.watcher.Observer")
+    @patch("src.watcher.BirdNETAnalyzer")
+    @patch("src.watcher.config")
+    def test_service_lifecycle(self, mock_config, mock_analyzer_cls, mock_observer_cls):
+        # Setup mocks
+        mock_config.INPUT_DIR = "/data/input"
+        mock_config.RECURSIVE_WATCH = False
+    
+        # Mock observer instance
+        mock_observer = mock_observer_cls.return_value
+    
+        service = WatcherService()
+    
+        # Test successful start and interrupt
+        with patch("src.watcher.time.sleep", side_effect=[None, KeyboardInterrupt]):
+>           service.run()
+
+tests/test_watcher.py:45: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+src/watcher.py:38: in run
+    self.scan_existing()
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <src.watcher.WatcherService object at 0x7f35ee85e660>
+
+    def scan_existing(self):
+>       if not config.INPUT_DIR.exists():
+               ^^^^^^^^^^^^^^^^^^^^^^^
+E       AttributeError: 'str' object has no attribute 'exists'
+
+src/watcher.py:60: AttributeError
+=============================== warnings summary ===============================
+tests/test_analyzer.py::TestProcessFile::test_process_file_success
+tests/test_analyzer.py::TestProcessFile::test_save_detections_various_formats
+tests/test_analyzer.py::TestProcessFile::test_save_detections_various_formats
+tests/test_database.py::test_detection_model
+  /mnt/data/dev/packages/silvasonic_leaflistener/containers/birdnet/.venv/lib64/python3.14/site-packages/sqlalchemy/sql/schema.py:3624: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    return util.wrap_callable(lambda ctx: fn(), fn)  # type: ignore
+
+tests/test_analyzer.py::TestProcessFile::test_process_file_exception_handling
+tests/test_analyzer.py::TestProcessFile::test_process_file_save_error
+  /mnt/data/dev/packages/silvasonic_leaflistener/containers/birdnet/src/analyzer.py:38: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    recording_dt = datetime.datetime.utcnow()
+
+tests/test_analyzer.py::TestProcessFile::test_save_detections_various_formats
+  /mnt/data/dev/packages/silvasonic_leaflistener/containers/birdnet/tests/test_analyzer.py:97: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    analyzer._save_detections(detections_dict, "file.wav", datetime.datetime.utcnow())
+
+tests/test_analyzer.py::TestProcessFile::test_save_detections_various_formats
+  /mnt/data/dev/packages/silvasonic_leaflistener/containers/birdnet/tests/test_analyzer.py:106: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    analyzer._save_detections(detections_tuple, "file.wav", datetime.datetime.utcnow())
+
+tests/test_database.py::test_detection_model
+  /mnt/data/dev/packages/silvasonic_leaflistener/containers/birdnet/tests/test_database.py:8: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    recording_timestamp=datetime.utcnow(),
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+================================ tests coverage ================================
+_______________ coverage: platform linux, python 3.14.2-final-0 ________________
+
+Name              Stmts   Miss  Cover   Missing
+-----------------------------------------------
+src/__init__.py       0      0   100%
+src/analyzer.py     104      8    92%   69, 139-140, 161-163, 198-199
+src/config.py        15      0   100%
+src/database.py      25      0   100%
+src/main.py          15      1    93%   30
+src/watcher.py       42      3    93%   45-46, 61
+-----------------------------------------------
+TOTAL               201     12    94%
+=========================== short test summary info ============================
+FAILED tests/test_analyzer.py::TestProcessFile::test_process_file_save_error - AssertionError: assert False
+ +  where False = <MagicMock name='mock.rollback' id='139869611742544'>.called
+ +    where <MagicMock name='mock.rollback' id='139869611742544'> = <MagicMock id='139869611740528'>.rollback
+FAILED tests/test_config.py::test_config_defaults - AssertionError: assert PosixPath('/data/db/birdnet.sqlite') == '/data/storage/birdnet.sqlite'
+ +  where PosixPath('/data/db/birdnet.sqlite') = <src.config.Config object at 0x7f35ee85e660>.DB_PATH
+ +    where <src.config.Config object at 0x7f35ee85e660> = <module 'src.config' from '/mnt/data/dev/packages/silvasonic_leaflistener/containers/birdnet/src/config.py'>.config
+ +      where <module 'src.config' from '/mnt/data/dev/packages/silvasonic_leaflistener/containers/birdnet/src/config.py'> = src.config
+FAILED tests/test_config.py::test_config_overrides - AssertionError: assert PosixPath('/tmp/custom.sqlite') == '/tmp/custom.sqlite'
+ +  where PosixPath('/tmp/custom.sqlite') = <src.config.Config object at 0x7f35ee85e7b0>.DB_PATH
+ +    where <src.config.Config object at 0x7f35ee85e7b0> = <module 'src.config' from '/mnt/data/dev/packages/silvasonic_leaflistener/containers/birdnet/src/config.py'>.config
+ +      where <module 'src.config' from '/mnt/data/dev/packages/silvasonic_leaflistener/containers/birdnet/src/config.py'> = src.config
+FAILED tests/test_database.py::test_init_db_creates_directory - sqlalchemy.exc.OperationalError: (sqlite3.OperationalError) unable to open database file
+(Background on this error at: https://sqlalche.me/e/20/e3q8)
+FAILED tests/test_watcher.py::TestWatcherService::test_service_lifecycle - AttributeError: 'str' object has no attribute 'exists'
+=================== 5 failed, 14 passed, 9 warnings in 0.26s ===================

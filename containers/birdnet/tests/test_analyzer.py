@@ -73,7 +73,8 @@ class TestProcessFile:
     @patch("src.analyzer.os.symlink")
     @patch("src.analyzer.Path.exists")
     @patch("src.analyzer.Path.mkdir")
-    def test_process_file_save_error(self, mock_mkdir, mock_exists, mock_symlink, mock_bn_analyze, analyzer):
+    @patch("src.analyzer.Path.unlink")
+    def test_process_file_save_error(self, mock_unlink, mock_mkdir, mock_exists, mock_symlink, mock_bn_analyze, analyzer):
         mock_exists.return_value = True
         mock_bn_analyze.return_value = {}
         

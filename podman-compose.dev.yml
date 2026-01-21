@@ -3,7 +3,7 @@ version: "3.8"
 services:
   ear:
     build:
-      context: containers/sensor/recorder
+      context: containers/recorder
     image: silvasonic-ear:dev
     container_name: silvasonic_ear_dev
     environment:

@@ -8,7 +8,7 @@ import numpy as np
 try:
     import birdnet_analyzer.analyze as bn_analyze
 except ImportError:
-    pass
+    bn_analyze = None
 
 from src.config import config
 from src.database import SessionLocal, Detection

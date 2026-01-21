@@ -1,5 +1,6 @@
 import pytest
 import time
+from pathlib import Path
 from unittest.mock import MagicMock, patch
 from src.watcher import AudioFileHandler, WatcherService
 
@@ -32,7 +33,7 @@ class TestWatcherService:
     @patch("src.watcher.config")
     def test_service_lifecycle(self, mock_config, mock_analyzer_cls, mock_observer_cls):
         # Setup mocks
-        mock_config.INPUT_DIR = "/data/input"
+        mock_config.INPUT_DIR = Path("/data/input")
         mock_config.RECURSIVE_WATCH = False
         
         # Mock observer instance

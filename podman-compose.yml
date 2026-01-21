@@ -19,7 +19,7 @@ services:
   # Recordings go to: /mnt/data/services/silvasonic/recordings/
   ear:
     build:
-      context: containers/sensor/recorder
+      context: containers/recorder
     image: silvasonic-ear:latest
     container_name: silvasonic_ear
 

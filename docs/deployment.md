@@ -152,7 +152,7 @@ sudo chcon -Rt container_file_t /mnt/data/storage/leaflistener/
 
 To add support for a new microphone:
 
-1. Create a YAML file in `containers/sensor/recorder/microphones/`
+1. Create a YAML file in `containers/recorder/src/silvasonic_ear/microphones/`
 2. Follow the template in `dodotronic_ultramic384k.yml`
 3. Test with your hardware
 4. Submit a Pull Request
@@ -172,4 +172,4 @@ recording:
   chunk_duration_seconds: 60
 ```
 
-See `containers/sensor/recorder/microphones/` for examples.
+See `containers/recorder/src/silvasonic_ear/microphones/` for examples.
