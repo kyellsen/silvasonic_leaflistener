@@ -7,6 +7,10 @@ import numpy as np
 
 # BirdNET-Analyzer imports
 try:
+import subprocess
+
+# BirdNET-Analyzer imports
+try:
     import birdnet_analyzer.analyze as bn_analyze
 except ImportError:
     bn_analyze = None
@@ -52,20 +56,31 @@ class BirdNETAnalyzer:
         # Our input dir is Read-Only. We symlink the file to /tmp and analyze it there.
         temp_dir = Path("/tmp/birdnet_processing")
         temp_dir.mkdir(parents=True, exist_ok=True)
-        temp_path = temp_dir / path.name
+        
+        # Use a resampled file for analysis
+        temp_resampled_path = temp_dir / f"{path.stem}_48k.wav"
         
         try:
-            # Create symlink
-            if temp_path.exists():
-                temp_path.unlink()
-            os.symlink(path.absolute(), temp_path)
+            # Explicitly resample to 48kHz using ffmpeg
+            # This avoids issues where BirdNET/Librosa might choke on 384k files or create artifacts
+            cmd = [
+                "ffmpeg", "-y", 
+                "-i", str(path.absolute()), 
+                "-ar", "48000", 
+                "-ac", "1", 
+                str(temp_resampled_path)
+            ]
+            # Suppress ffmpeg output unless error
+            subprocess.run(cmd, check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            
+            logger.info(f"Resampled to 48kHz: {temp_resampled_path}")
 
             # bn_analyze is the function imported from birdnet_analyzer.analyze
             # We use a lower min_conf here to see what the model sees, then filter later
-            logger.info(f"Running BirdNET with Lat={config.LATITUDE}, Lon={config.LONGITUDE}, Week={week}, Overlap={config.SIG_OVERLAP}, MinConf=0.1 (Debug Mode)")
+            logger.info(f"Running BirdNET with Lat={config.LATITUDE}, Lon={config.LONGITUDE}, Week={week}, Overlap={config.SIG_OVERLAP}, MinConf=0.1 (Debug Mode) on 48kHz input")
             
             raw_detections = bn_analyze(
-                audio_input=str(temp_path), # Use temp path
+                audio_input=str(temp_resampled_path), # Use RESAMPLED path
                 min_conf=0.1, # LOW THRESHOLD FOR DEBUGGING
                 lat=config.LATITUDE,
                 lon=config.LONGITUDE,
@@ -115,10 +130,10 @@ class BirdNETAnalyzer:
         except Exception as e:
             logger.error(f"Error during analysis of {path.name}: {e}", exc_info=True)
         finally:
-            # Cleanup symlink and potential param file
-            if temp_path.exists():
+            # Cleanup resampled file
+            if temp_resampled_path.exists():
                 try:
-                    temp_path.unlink()
+                    temp_resampled_path.unlink()
                 except:
                     pass
             # Cleanup param file if it exists in temp dir
