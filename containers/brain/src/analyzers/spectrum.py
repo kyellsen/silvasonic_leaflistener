@@ -13,7 +13,7 @@ class SpectrogramAnalyzer(BaseAnalyzer):
         return "spectrum"
 
     def analyze(self, filepath: str):
-        y, sr = librosa.load(filepath, sr=None)
+        y, sr = librosa.load(filepath, sr=48000)
         
         # Compute Spectrogram
         D = librosa.amplitude_to_db(np.abs(librosa.stft(y)), ref=np.max)

@@ -9,7 +9,7 @@ class LoudnessAnalyzer(BaseAnalyzer):
 
     def analyze(self, filepath: str):
         # Load audio (mono)
-        y, _ = librosa.load(filepath, sr=None, mono=True)
+        y, _ = librosa.load(filepath, sr=48000, mono=True)
         
         # Calculate RMS
         rms = librosa.feature.rms(y=y)[0]

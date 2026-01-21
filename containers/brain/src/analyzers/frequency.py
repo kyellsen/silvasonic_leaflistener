@@ -8,7 +8,7 @@ class FrequencyAnalyzer(BaseAnalyzer):
         return "frequency"
 
     def analyze(self, filepath: str):
-        y, sr = librosa.load(filepath, sr=None)
+        y, sr = librosa.load(filepath, sr=48000)
         
         # FFT
         fft = np.fft.fft(y)
