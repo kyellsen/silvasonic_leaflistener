@@ -65,6 +65,35 @@ services:
       - "21027:21027/udp" # Discovery
 
   # ---------------------------------------------------------------------------
+  # The Ornithologist - BirdNET Analysis
+  # ---------------------------------------------------------------------------
+  # Dedicated container for bird species identification using BirdNET-Analyzer.
+  # Optimized for Central Europe.
+  birdnet:
+    build:
+      context: containers/birdnet
+    image: silvasonic-birdnet:latest
+    container_name: silvasonic_birdnet
+
+    environment:
+      - PYTHONUNBUFFERED=1
+      - INPUT_DIR=/data/recording
+      - DB_PATH=/data/db/birdnet.sqlite
+      # Central Europe (Center of Germany)
+      - LATITUDE=51.1657
+      - LONGITUDE=10.4515
+      - MIN_CONFIDENCE=0.7
+      - RECURSIVE_WATCH=true
+
+    volumes:
+      # Read-only access to recordings (Same source as Brain/Ear)
+      - /mnt/data/services/silvasonic/recordings:/data/recording:ro
+      # Independent Database storage
+      - /mnt/data/services/silvasonic/birdnet:/data/db:z
+
+    restart: always
+
+  # ---------------------------------------------------------------------------
   # The Brain - Edge Analysis & Metadata
   # ---------------------------------------------------------------------------
   # Monitors recordings and generates metadata, statistics, and basic spectrograms.

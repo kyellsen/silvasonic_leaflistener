@@ -1,0 +1,8 @@
+sqlalchemy
+watchdog
+numpy
+librosa
+soundfile
+resampy
+# Install BirdNET-Analyzer directly from the official repo
+git+https://github.com/birdnet-team/BirdNET-Analyzer.git
