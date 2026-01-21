@@ -132,13 +132,12 @@ class BirdNETAnalyzer:
             # Fix: bn_analyze is the function itself (due to package structure), not the module.
             raw_detections = bn_analyze(
                 audio_input=str(temp_resampled_path),
-                min_conf=0.01, # Keep gathering raw, we filter later
+                min_conf=0.1, # Use a reasonable threshold for raw results
                 lat=use_lat,
                 lon=use_lon,
                 week=week,
                 overlap=config.SIG_OVERLAP,
                 threads=config.THREADS,
-                species_list=species_list, # Pass the generated list
                 output=None
             )
             
@@ -186,6 +185,9 @@ class BirdNETAnalyzer:
                     else:
                         conf = p[1] # Tuple (label, conf)
                     
+                    if species_list and label not in species_list:
+                         continue
+
                     if conf >= effective_min_conf:
                         valid_preds.append(p)
                 
