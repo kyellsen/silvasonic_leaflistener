@@ -129,8 +129,8 @@ class BirdNETAnalyzer:
 
             logger.info(f"Running BirdNET with Filter={config.LOCATION_FILTER_ENABLED}, Sensitivity={config.SENSITIVITY}, Lat={use_lat}, Lon={use_lon}, Week={week}")
             
-            # Fix: Call bn_analyze.analyze instead of bn_analyze
-            raw_detections = bn_analyze.analyze(
+            # Fix: bn_analyze is the function itself (due to package structure), not the module.
+            raw_detections = bn_analyze(
                 audio_input=str(temp_resampled_path),
                 min_conf=0.01, # Keep gathering raw, we filter later
                 lat=use_lat,
