@@ -5,8 +5,6 @@ import soundfile as sf
 import logging
 import numpy as np
 
-# BirdNET-Analyzer imports
-try:
 import subprocess
 
 # BirdNET-Analyzer imports
