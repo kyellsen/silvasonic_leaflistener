@@ -60,11 +60,12 @@ class BirdNETAnalyzer:
 
             
             # Debug inspection
-            logger.info(f"Inspecting bn_analyze: {type(bn_analyze)}")
-            try:
-                logger.info(f"Dir(bn_analyze): {dir(bn_analyze)}")
-            except:
-                pass
+            import birdnet_analyzer
+            logger.info(f"Dir(birdnet_analyzer): {dir(birdnet_analyzer)}")
+            logger.info(f"Inspecting bn_analyze function args: {bn_analyze.__code__.co_varnames}")
+            
+            # Temporary safety break to allow logs to flush
+            # raise Exception("Stopping for debug inspection")
 
             detections = bn_analyze.analyze_file(
                 str(path),
