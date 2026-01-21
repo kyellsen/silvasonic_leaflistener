@@ -5,13 +5,9 @@ import logging
 import numpy as np
 
 # BirdNET-Analyzer imports
-# Depending on the installed structure, these might vary. 
-# We assume the standard structure exposed by the package installation.
 try:
-    from birdnet_analyzer import analyze
+    import birdnet_analyzer.analyze as bn_analyze
 except ImportError:
-    # Fallback or specific import if the package structure is different
-    # For now, we wrap in try/except to allow non-breaking linting if env is missing it
     pass
 
 from src.config import config
@@ -22,17 +18,10 @@ logger = logging.getLogger("Analyzer")
 class BirdNETAnalyzer:
     def __init__(self):
         logger.info("Initializing BirdNET Analyzer...")
-        # In a persistent container, we might want to load model once if possible.
-        # However, the current BirdNET-Analyzer python API often loads internally per call 
-        # or we need to manage the model object.
-        # For simplicity in this MVP, we will use the high-level `analyze` functions 
-        # or command line wrapper equivalents if the python API is too internal.
-        
-        # Let's verify what we can do. The official repo recommends using their `analyze.py` script.
-        # But as a library, we should use the `analyze` module.
         pass
 
     def process_file(self, file_path: str):
+
         """
         Analyze a single audio file and save detections to DB.
         """
@@ -68,12 +57,9 @@ class BirdNETAnalyzer:
             # we will call the library functions.
             
             # Using specific parameters for Central Europe
-            from birdnet_analyzer import analyze
+
             
-            # We can pass a date/loc to filter the species list automatically?
-            # The library usually supports `lat`, `lon`, `week`.
-            
-            detections = analyze.analyze_file(
+            detections = bn_analyze.analyze_file(
                 str(path),
                 lat=config.LATITUDE,
                 lon=config.LONGITUDE,
