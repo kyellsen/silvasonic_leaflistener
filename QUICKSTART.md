@@ -91,7 +91,7 @@ sudo ./setup/bootstrap/prepare_stick.sh
 >
 > ```bash
 > ssh-keygen -R silvasonic.local
-> # Oder falls du IP nutzt: ssh-keygen -R 192.168.x.x
+> # Oder falls du IP nutzt: ssh-keygen -R 192.168.188.129
 > ```
 
 ---

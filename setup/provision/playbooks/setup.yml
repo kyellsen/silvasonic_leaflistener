@@ -81,13 +81,11 @@
         mode: "0755"
       loop:
         - /mnt/data/dev
-        - /mnt/data/dev_workspaces
         - /mnt/data/containers
         - /mnt/data/services/silvasonic/recordings
         - /mnt/data/services/silvasonic/logs
         - /mnt/data/services/silvasonic/config
         - /mnt/data/backups
-        - "/mnt/data/{{ user }}"
 
     # Storage-Link Fix for Podman (User-Level)
     - name: Link Podman Storage to SSD (for User)
