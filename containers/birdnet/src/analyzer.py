@@ -59,6 +59,13 @@ class BirdNETAnalyzer:
             # Using specific parameters for Central Europe
 
             
+            # Debug inspection
+            logger.info(f"Inspecting bn_analyze: {type(bn_analyze)}")
+            try:
+                logger.info(f"Dir(bn_analyze): {dir(bn_analyze)}")
+            except:
+                pass
+
             detections = bn_analyze.analyze_file(
                 str(path),
                 lat=config.LATITUDE,
