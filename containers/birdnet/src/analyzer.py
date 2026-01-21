@@ -51,7 +51,8 @@ class BirdNETAnalyzer:
                 week=week,
                 overlap=config.SIG_OVERLAP,
                 threads=config.THREADS,
-                output=None
+                threads=config.THREADS,
+                output="/tmp" # Write temp files to /tmp instead of read-only input dir
             )
             
             self._save_detections(detections, path.name, recording_dt)
