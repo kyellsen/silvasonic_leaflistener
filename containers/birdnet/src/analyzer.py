@@ -1,6 +1,7 @@
 import os
 import datetime
 from pathlib import Path
+import soundfile as sf
 import logging
 import numpy as np
 
@@ -29,7 +30,13 @@ class BirdNETAnalyzer:
             logger.error(f"File not found: {file_path}")
             return
 
-        logger.info(f"Analyzing {path.name}...")
+        try:
+            info = sf.info(str(path))
+            logger.info(f"Analyzing {path.name} | SR={info.samplerate}, Ch={info.channels}, Dur={info.duration:.2f}s, Format={info.format}")
+        except Exception as e:
+            logger.warning(f"Could not read audio info for {path.name}: {e}")
+            # Continue anyway, let BirdNET try
+            logger.info(f"Analyzing {path.name}...")
         
         # 1. Extract Timestamp
         recording_dt = self._parse_timestamp(path.name)
@@ -54,22 +61,56 @@ class BirdNETAnalyzer:
             os.symlink(path.absolute(), temp_path)
 
             # bn_analyze is the function imported from birdnet_analyzer.analyze
-            detections = bn_analyze(
+            # We use a lower min_conf here to see what the model sees, then filter later
+            logger.info(f"Running BirdNET with Lat={config.LATITUDE}, Lon={config.LONGITUDE}, Week={week}, Overlap={config.SIG_OVERLAP}, MinConf=0.1 (Debug Mode)")
+            
+            raw_detections = bn_analyze(
                 audio_input=str(temp_path), # Use temp path
-                min_conf=config.MIN_CONFIDENCE,
+                min_conf=0.1, # LOW THRESHOLD FOR DEBUGGING
                 lat=config.LATITUDE,
                 lon=config.LONGITUDE,
                 week=week,
                 overlap=config.SIG_OVERLAP,
                 threads=config.THREADS,
-                output=None # Return results, don't write to file output
+                output=None # Return results
             )
             
-            if detections is None:
-                detections = {}
+            if raw_detections is None:
+                raw_detections = {}
 
-            self._save_detections(detections, path.name, recording_dt)
-            logger.info(f"Analysis complete for {path.name}. Found {len(detections)} potential segments.")
+            # Debug Logging: Show what we found
+            logger.info(f"Raw analysis returned {len(raw_detections)} segments with > 0.1 confidence.")
+            for timestamp, preds in raw_detections.items():
+                # entry is usually list of dicts or list of tuples
+                # Log the top prediction for this segment
+                if preds:
+                    top_pred = preds[0] # Assumes sorted or we just grab first
+                    # Format for log
+                    if isinstance(top_pred, dict):
+                        lbl = f"{top_pred.get('common_name')} ({top_pred.get('confidence'):.2f})"
+                    else:
+                        lbl = str(top_pred)
+                    logger.info(f"Segment {timestamp}: Top hit -> {lbl}")
+
+            # Filter for Database using the REAL config
+            final_detections = {}
+            for timestamp, preds in raw_detections.items():
+                valid_preds = []
+                for p in preds:
+                    conf = 0.0
+                    if isinstance(p, dict):
+                        conf = p.get('confidence', 0.0)
+                    else:
+                        conf = p[1] # Tuple (label, conf)
+                    
+                    if conf >= config.MIN_CONFIDENCE:
+                        valid_preds.append(p)
+                
+                if valid_preds:
+                    final_detections[timestamp] = valid_preds
+
+            self._save_detections(final_detections, path.name, recording_dt)
+            logger.info(f"Analysis complete for {path.name}. Found {len(final_detections)} segments passing threshold {config.MIN_CONFIDENCE}.")
             
         except Exception as e:
             logger.error(f"Error during analysis of {path.name}: {e}", exc_info=True)
