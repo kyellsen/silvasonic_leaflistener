@@ -10,11 +10,14 @@ import subprocess
 # BirdNET-Analyzer imports
 try:
     import birdnet_analyzer.analyze as bn_analyze
+    import birdnet_analyzer.species as bn_species
 except ImportError:
     bn_analyze = None
+    bn_species = None
 
 from src.config import config
 from src.database import SessionLocal, Detection
+from src.verify_audio import analyze_audio_quality
 
 logger = logging.getLogger("Analyzer")
 
@@ -74,31 +77,69 @@ class BirdNETAnalyzer:
             logger.info(f"Resampled to 48kHz: {temp_resampled_path}")
 
             # Load resampled file to check signal
-            s_data, s_rate = sf.read(str(temp_resampled_path))
-            rms = np.sqrt(np.mean(s_data**2))
-            if rms < 0.001:
-                logger.warning(f"File {path.name} (resampled) appears silent or very quiet! RMS={rms:.6f}")
+            # Use the robust verifier
+            quality_report = analyze_audio_quality(temp_resampled_path)
+            
+            logger.info(f"Signal Quality Check ({path.name} -> 48k):")
+            logger.info(f"  RMS: {quality_report['rms']:.6f}")
+            logger.info(f"  Max Amp: {quality_report['max_amp']:.6f}")
+            if quality_report['warnings']:
+                logger.warning(f"  WARNINGS: {'; '.join(quality_report['warnings'])}")
+            
+            if not quality_report['valid'] or quality_report['rms'] < 0.0001:
+                 logger.warning(f"Audio appears invalid or dead silent. Skipping analysis to save resources.")
+                 # We could return here, but maybe we let it run anyway just in case? 
+                 # User said "birdnet py finds 0 segments", so let's run it BUT log heavily.
             else:
-                logger.info(f"Signal check for {path.name}: RMS={rms:.6f}, MaxAmp={np.max(np.abs(s_data)):.6f}")
+                 logger.info("  Signal looks valid for analysis.")
 
             # bn_analyze is the module, we need to call the analyze function inside it.
             # We use a very low min_conf here (0.01) to see EVERYTHING the model considers
             # Determine coordinates based on filter setting
             use_lat = config.LATITUDE if config.LOCATION_FILTER_ENABLED else None
             use_lon = config.LONGITUDE if config.LOCATION_FILTER_ENABLED else None
-
-            logger.info(f"Running BirdNET with Filter={config.LOCATION_FILTER_ENABLED}, Lat={use_lat}, Lon={use_lon}, Week={week}, Overlap={config.SIG_OVERLAP}, MinConf=0.01 (Raw) on 48kHz input")
             
-            # Fix: bn_analyze is the function itself
-            raw_detections = bn_analyze(
-                audio_input=str(temp_resampled_path), # Use RESAMPLED path
-                min_conf=0.01, # EXTREMELY LOW THRESHOLD FOR DEBUGGING
+            # Generate Species List
+            species_list = None
+            if config.CUSTOM_SPECIES_LIST_PATH and Path(config.CUSTOM_SPECIES_LIST_PATH).exists():
+                logger.info(f"Using custom species list from {config.CUSTOM_SPECIES_LIST_PATH}")
+                # Assuming simple text file with one species per line or similar structure
+                # For now, just logging it (implementation detail depends on format)
+                # If it's a list argument for analyze(), passing the path might not work directly unless supported.
+                # BirdNET-Analyzer 'analyze' usually takes a LIST of strings, not a path.
+                try:
+                    with open(config.CUSTOM_SPECIES_LIST_PATH, 'r') as f:
+                        species_list = [line.strip() for line in f if line.strip()]
+                except Exception as e:
+                    logger.error(f"Failed to load custom species list: {e}")
+                    
+            elif config.LOCATION_FILTER_ENABLED and bn_species:
+                try:
+                    logger.info(f"Generating dynamic species list for Lat={use_lat}, Lon={use_lon}, Week={week}, Threshold={config.SPECIES_PRESENCE_THRESHOLD}")
+                    species_list = bn_species.get_species_list(
+                        lat=use_lat, 
+                        lon=use_lon, 
+                        week=week, 
+                        threshold=config.SPECIES_PRESENCE_THRESHOLD
+                    )
+                    logger.info(f"Generated species list contains {len(species_list)} species.")
+                except Exception as e:
+                    logger.error(f"Failed to generate species list: {e}")
+                    species_list = None 
+
+            logger.info(f"Running BirdNET with Filter={config.LOCATION_FILTER_ENABLED}, Sensitivity={config.SENSITIVITY}, Lat={use_lat}, Lon={use_lon}, Week={week}")
+            
+            # Fix: Call bn_analyze.analyze instead of bn_analyze
+            raw_detections = bn_analyze.analyze(
+                audio_input=str(temp_resampled_path),
+                min_conf=0.01, # Keep gathering raw, we filter later
                 lat=use_lat,
                 lon=use_lon,
                 week=week,
                 overlap=config.SIG_OVERLAP,
                 threads=config.THREADS,
-                output=None # We want the results returned to us, we will save files manually if needed
+                species_list=species_list, # Pass the generated list
+                output=None
             )
             
             if raw_detections is None:
@@ -126,7 +167,15 @@ class BirdNETAnalyzer:
                              log_msg += f"\n  - {p[0]}: {p[1]:.4f}"
                     logger.info(log_msg)
 
-            # Filter for Database using the REAL config
+            # Filter for Database using the REAL config and SENSITIVITY
+            # Effective Threshold = Base Config / Sensitivity
+            # e.g. 0.7 / 1.0 = 0.7
+            # e.g. 0.7 / 1.25 = 0.56 (More sensitive, allows lower confidence)
+            effective_min_conf = max(0.01, config.MIN_CONFIDENCE / config.SENSITIVITY)
+            effective_min_conf = min(0.99, effective_min_conf) # Clamp
+            
+            logger.info(f"Filtering with Effective Min Confidence={effective_min_conf:.4f} (Base={config.MIN_CONFIDENCE}, Sensitivity={config.SENSITIVITY})")
+
             final_detections = {}
             for timestamp, preds in raw_detections.items():
                 valid_preds = []
@@ -137,14 +186,14 @@ class BirdNETAnalyzer:
                     else:
                         conf = p[1] # Tuple (label, conf)
                     
-                    if conf >= config.MIN_CONFIDENCE:
+                    if conf >= effective_min_conf:
                         valid_preds.append(p)
                 
                 if valid_preds:
                     final_detections[timestamp] = valid_preds
 
             self._save_detections(final_detections, path.name, recording_dt)
-            logger.info(f"Analysis complete for {path.name}. Found {len(final_detections)} segments passing threshold {config.MIN_CONFIDENCE}.")
+            logger.info(f"Analysis complete for {path.name}. Found {len(final_detections)} segments passing threshold {effective_min_conf:.4f}.")
             
         except Exception as e:
             logger.error(f"Error during analysis of {path.name}: {e}", exc_info=True)

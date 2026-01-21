@@ -24,6 +24,20 @@ class Config:
     # Minimum confidence to store a detection (0.0 - 1.0)
     MIN_CONFIDENCE = float(os.getenv("MIN_CONFIDENCE", "0.7"))
     
+    # Robustness Settings (BirdNET-Pi style)
+    # Sensitivity: Multiplier for detection threshold (0.5 - 1.5). 
+    # Higher = More sensitive (lower effective threshold).
+    SENSITIVITY = float(os.getenv("SENSITIVITY", "1.0"))
+    
+    # Species Occurrence Threshold: 
+    # Minimum probability (0.01 - 0.99) for a species to be included in the local list.
+    # Lower = More rare birds included.
+    SPECIES_PRESENCE_THRESHOLD = float(os.getenv("SPECIES_PRESENCE_THRESHOLD", "0.05"))
+    
+    # Custom Species List Path (Optional)
+    # If set, we use this list instead of generating one based on location.
+    CUSTOM_SPECIES_LIST_PATH = os.getenv("CUSTOM_SPECIES_LIST_PATH", None)
+    
     # Analysis chunks
     SIG_LENGTH = 3.0  # BirdNET standard is 3 seconds
     SIG_OVERLAP = 0.25 # Overlap for better coverage (BirdNET default)
