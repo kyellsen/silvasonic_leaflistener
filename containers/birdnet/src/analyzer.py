@@ -73,37 +73,58 @@ class BirdNETAnalyzer:
             
             logger.info(f"Resampled to 48kHz: {temp_resampled_path}")
 
-            # bn_analyze is the function imported from birdnet_analyzer.analyze
-            # We use a lower min_conf here to see what the model sees, then filter later
-            logger.info(f"Running BirdNET with Lat={config.LATITUDE}, Lon={config.LONGITUDE}, Week={week}, Overlap={config.SIG_OVERLAP}, MinConf=0.1 (Debug Mode) on 48kHz input")
+            # Load resampled file to check signal
+            s_data, s_rate = sf.read(str(temp_resampled_path))
+            rms = np.sqrt(np.mean(s_data**2))
+            if rms < 0.001:
+                logger.warning(f"File {path.name} (resampled) appears silent or very quiet! RMS={rms:.6f}")
+            else:
+                logger.info(f"Signal check for {path.name}: RMS={rms:.6f}, MaxAmp={np.max(np.abs(s_data)):.6f}")
+
+            # bn_analyze is the module, we need to call the analyze function inside it.
+            # We use a very low min_conf here (0.01) to see EVERYTHING the model considers
+            # Determine coordinates based on filter setting
+            use_lat = config.LATITUDE if config.LOCATION_FILTER_ENABLED else None
+            use_lon = config.LONGITUDE if config.LOCATION_FILTER_ENABLED else None
+
+            logger.info(f"Running BirdNET with Filter={config.LOCATION_FILTER_ENABLED}, Lat={use_lat}, Lon={use_lon}, Week={week}, Overlap={config.SIG_OVERLAP}, MinConf=0.01 (Raw) on 48kHz input")
             
-            raw_detections = bn_analyze(
+            # Fix: Call bn_analyze.analyze instead of bn_analyze
+            raw_detections = bn_analyze.analyze(
                 audio_input=str(temp_resampled_path), # Use RESAMPLED path
-                min_conf=0.1, # LOW THRESHOLD FOR DEBUGGING
-                lat=config.LATITUDE,
-                lon=config.LONGITUDE,
+                min_conf=0.01, # EXTREMELY LOW THRESHOLD FOR DEBUGGING
+                lat=use_lat,
+                lon=use_lon,
                 week=week,
                 overlap=config.SIG_OVERLAP,
                 threads=config.THREADS,
-                output=None # Return results
+                output=None # We want the results returned to us, we will save files manually if needed
             )
             
             if raw_detections is None:
                 raw_detections = {}
 
             # Debug Logging: Show what we found
-            logger.info(f"Raw analysis returned {len(raw_detections)} segments with > 0.1 confidence.")
+            logger.info(f"Raw analysis returned {len(raw_detections)} segments with > 0.01 confidence.")
+            
+            # Export raw results to CSV for inspection
+            self._export_to_csv(raw_detections, path.name)
+
             for timestamp, preds in raw_detections.items():
                 # entry is usually list of dicts or list of tuples
-                # Log the top prediction for this segment
+                # Log the top 3 predictions for this segment
                 if preds:
-                    top_pred = preds[0] # Assumes sorted or we just grab first
-                    # Format for log
-                    if isinstance(top_pred, dict):
-                        lbl = f"{top_pred.get('common_name')} ({top_pred.get('confidence'):.2f})"
-                    else:
-                        lbl = str(top_pred)
-                    logger.info(f"Segment {timestamp}: Top hit -> {lbl}")
+                    # Sort by confidence just in case
+                    sorted_preds = sorted(preds, key=lambda x: x.get('confidence', 0) if isinstance(x, dict) else x[1], reverse=True)
+                    
+                    top_n = sorted_preds[:5] # Log top 5
+                    log_msg = f"Segment {timestamp}: Found {len(preds)} candidates. Top 5:"
+                    for p in top_n:
+                         if isinstance(p, dict):
+                             log_msg += f"\n  - {p.get('common_name')} ({p.get('scientific_name')}): {p.get('confidence'):.4f}"
+                         else:
+                             log_msg += f"\n  - {p[0]}: {p[1]:.4f}"
+                    logger.info(log_msg)
 
             # Filter for Database using the REAL config
             final_detections = {}
@@ -141,6 +162,48 @@ class BirdNETAnalyzer:
                     param_file.unlink()
                  except:
                     pass
+
+    def _export_to_csv(self, detections, original_filename):
+        """
+        Manually export detections to a CSV file for easy inspection.
+        """
+        try:
+            # Output directory mapped to host
+            output_dir = Path("/data/db/results")
+            output_dir.mkdir(parents=True, exist_ok=True)
+            
+            csv_path = output_dir / f"{original_filename}.BirdNET.csv"
+            
+            with open(csv_path, 'w') as f:
+                # Header
+                f.write("Start (s),End (s),Label,Confidence,Common Name,Scientific Name\n")
+                
+                # Sort by time
+                sorted_times = sorted(detections.keys())
+                for timestamp in sorted_times:
+                    start = timestamp[0]
+                    end = timestamp[1]
+                    preds = detections[timestamp]
+                    
+                    for p in preds:
+                        if isinstance(p, dict):
+                            label = p.get('label', '')
+                            conf = p.get('confidence', 0)
+                            com = p.get('common_name', '')
+                            sci = p.get('scientific_name', '')
+                        else:
+                            # Tuple fallback
+                            label = p[0]
+                            conf = p[1]
+                            com = label
+                            sci = label
+                            
+                        f.write(f"{start},{end},\"{label}\",{conf:.4f},\"{com}\",\"{sci}\"\n")
+            
+            logger.info(f"Exported raw results to {csv_path}")
+        except Exception as e:
+            logger.error(f"Failed to export CSV: {e}")
+
 
     def _save_detections(self, detections, filename, recording_dt):
         """

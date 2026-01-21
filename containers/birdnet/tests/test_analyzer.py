@@ -1,6 +1,15 @@
+import sys
+from unittest.mock import MagicMock
+
+# Mock dependencies that might be missing in the test env
+sys.modules["soundfile"] = MagicMock()
+sys.modules["birdnet_analyzer"] = MagicMock()
+sys.modules["birdnet_analyzer.analyze"] = MagicMock()
+
 import pytest
 import os
 import datetime
+import numpy as np
 from unittest.mock import MagicMock, patch, ANY
 from pathlib import Path
 from src.analyzer import BirdNETAnalyzer
@@ -24,30 +33,31 @@ class TestTimestampParsing:
 
 class TestProcessFile:
     @patch("src.analyzer.bn_analyze")
-    @patch("src.analyzer.os.symlink")
+    @patch("src.analyzer.subprocess.run")
     @patch("src.analyzer.Path.exists")
     @patch("src.analyzer.Path.mkdir")
     @patch("src.analyzer.Path.unlink")
-    def test_process_file_success(self, mock_unlink, mock_mkdir, mock_exists, mock_symlink, mock_bn_analyze, analyzer, db_session):
+    @patch("src.analyzer.sf.read")
+    @patch("src.analyzer.sf.info")
+    def test_process_file_success(self, mock_sf_info, mock_sf_read, mock_unlink, mock_mkdir, mock_exists, mock_run, mock_bn_analyze, analyzer, db_session):
         # Setup mocks
-        # Path.exists is called for:
-        # 1. input file check (True)
-        # 2. symlink target check (False initially)
-        # 3. cleanup symlink check (True)
-        # 4. cleanup param file check (False)
-        mock_exists.side_effect = [True, False, True, False]
+        mock_exists.return_value = True
+        mock_sf_read.return_value = (np.zeros(48000), 48000) # data, rate
+        mock_sf_info.return_value = MagicMock(samplerate=48000, channels=1, duration=10.0, format='WAV')
         
-        # Mock BN return
-        mock_bn_analyze.return_value = {
+        # Mock BN return - NOW it's a function on the module
+        mock_bn_analyze.analyze.return_value = {
             (0.0, 3.0): [
                 {'common_name': 'Blackbird', 'scientific_name': 'Turdus merula', 'confidence': 0.95, 'label': 'Blackbird (Turdus)'},
                 {'common_name': 'Robin', 'scientific_name': 'Erithacus rubecula', 'confidence': 0.1} # low conf, should be ignored
             ]
         }
-        
-        with patch("src.analyzer.SessionLocal", return_value=db_session):
-            analyzer.process_file("/data/input/silvasonic_2024-01-21_12-00-00.flac")
+    
+        with patch("src.analyzer.SessionLocal", return_value=db_session), \
+             patch.object(analyzer, '_export_to_csv') as mock_export:
             
+            analyzer.process_file("/data/input/silvasonic_2024-01-21_12-00-00.flac")
+    
             # Verify DB interactions
             det = db_session.query(Detection).first()
             assert det is not None
@@ -55,8 +65,12 @@ class TestProcessFile:
             assert det.confidence == 0.95
             assert db_session.query(Detection).count() == 1
             
-            # Verify cleanups
+            # Verify cleanups and export
             assert mock_unlink.called
+            assert mock_run.called
+            assert mock_export.called # Verify CSV was exported
+            # Verify API called correctly
+            mock_bn_analyze.analyze.assert_called_once()
 
     def test_process_file_not_found(self, analyzer):
         with patch("src.analyzer.Path.exists", return_value=False):
@@ -65,24 +79,31 @@ class TestProcessFile:
 
     def test_process_file_exception_handling(self, analyzer):
         with patch("src.analyzer.Path.exists", return_value=True):
-             with patch("src.analyzer.os.symlink", side_effect=Exception("Symlink error")):
+             with patch("src.analyzer.subprocess.run", side_effect=Exception("FFmpeg error")):
                  # Should log error and not crash
                  analyzer.process_file("/data/broken.wav")
 
     @patch("src.analyzer.bn_analyze")
-    @patch("src.analyzer.os.symlink")
+    @patch("src.analyzer.subprocess.run")
     @patch("src.analyzer.Path.exists")
     @patch("src.analyzer.Path.mkdir")
     @patch("src.analyzer.Path.unlink")
-    def test_process_file_save_error(self, mock_unlink, mock_mkdir, mock_exists, mock_symlink, mock_bn_analyze, analyzer):
+    @patch("src.analyzer.sf.read")
+    @patch("src.analyzer.sf.info")
+    def test_process_file_save_error(self, mock_sf_info, mock_sf_read, mock_unlink, mock_mkdir, mock_exists, mock_run, mock_bn_analyze, analyzer):
         mock_exists.return_value = True
-        mock_bn_analyze.return_value = {}
+        mock_sf_read.return_value = (np.zeros(48000), 48000)
+        mock_sf_info.return_value = MagicMock(samplerate=48000, channels=1, duration=10.0, format='WAV')
+
+        mock_bn_analyze.analyze.return_value = {}
         
         # Simulate DB error
         mock_session = MagicMock()
         mock_session.commit.side_effect = Exception("DB Error")
         
-        with patch("src.analyzer.SessionLocal", return_value=mock_session):
+        with patch("src.analyzer.SessionLocal", return_value=mock_session), \
+             patch.object(analyzer, '_export_to_csv'):
+            
             analyzer.process_file("/data/input/test.wav")
             # Should fallback to rollback
             assert mock_session.rollback.called

@@ -11,6 +11,9 @@ class Config:
     
     # BirdNET Settings
     # Location for species prediction (optional)
+    # If False, we do not filter species by location, giving us "raw" BirdNET power.
+    LOCATION_FILTER_ENABLED = os.getenv("LOCATION_FILTER_ENABLED", "false").lower() == "true"
+    
     # If None, no location filter is applied (= global species list)
     _lat = os.getenv("LATITUDE")
     LATITUDE = float(_lat) if _lat else None
@@ -23,7 +26,7 @@ class Config:
     
     # Analysis chunks
     SIG_LENGTH = 3.0  # BirdNET standard is 3 seconds
-    SIG_OVERLAP = 0.0 # No overlap for raw speed, can be increased if needed
+    SIG_OVERLAP = 0.25 # Overlap for better coverage (BirdNET default)
     
     # Threads - BirdNET Analyzer can use multi-threading
     THREADS = int(os.getenv("THREADS", "1"))
