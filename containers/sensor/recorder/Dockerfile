@@ -10,9 +10,12 @@ RUN apt-get update && apt-get install -y \
 
 WORKDIR /app
 
+# Install uv
+COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
+
 # Copy requirements and install
 COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+RUN uv pip install --system --no-cache -r requirements.txt
 
 # Copy microphone profiles
 COPY microphones/ ./microphones/
