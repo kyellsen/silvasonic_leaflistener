@@ -1,6 +1,0 @@
-sqlalchemy
-watchdog
-numpy
-pytest
-pytest-cov
-pytest-mock

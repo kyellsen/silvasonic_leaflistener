@@ -1,0 +1,29 @@
+[project]
+name = "birdnet-container"
+version = "0.1.0"
+description = "Silvasonic BirdNET Container"
+requires-python = "==3.11.*"
+dependencies = [
+    "sqlalchemy",
+    "watchdog",
+    "numpy",
+    "librosa",
+    "soundfile",
+    "resampy",
+    "birdnet-analyzer @ git+https://github.com/birdnet-team/BirdNET-Analyzer.git"
+]
+
+[project.optional-dependencies]
+test = [
+    "pytest",
+    "pytest-cov",
+    "pytest-mock"
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.pytest.ini_options]
+addopts = "--cov=src --cov-report=term-missing"
+testpaths = ["tests"]
