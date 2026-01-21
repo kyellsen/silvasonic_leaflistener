@@ -1,0 +1,20 @@
+version: "3.8"
+
+services:
+  ear:
+    build:
+      context: containers/sensor/recorder
+    image: silvasonic-ear:latest
+    container_name: silvasonic_ear
+    environment:
+      - MOCK_HARDWARE=false
+      - AUDIO_SAMPLERATE=384000
+      - AUDIO_CHANNELS=1
+      - AUDIO_DEVICE_NAME=Ultramic
+      - PYTHONUNBUFFERED=1
+    devices:
+      - /dev/snd:/dev/snd
+    privileged: true # Required for RT priority and hardware access
+    volumes:
+      - /mnt/data/storage/leaflistener/raw:/data/recording:z
+    restart: always

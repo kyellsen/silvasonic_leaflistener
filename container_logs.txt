@@ -1,0 +1,6 @@
+2026-01-21 14:50:44,437 [INFO] Starting 'The Ear'...
+2026-01-21 14:50:44,437 [INFO] Config: Rate=48000, Ch=2, Device='Ultramic'
+2026-01-21 14:50:44,437 [INFO] Storage: /data/recording
+2026-01-21 14:50:44,437 [WARNING] !!! MOCK MODE ENABLED !!! Generating white noise.
+2026-01-21 14:50:44,437 [INFO] Writer thread started.
+2026-01-21 14:50:44,437 [INFO] Starting new recording: /data/recording/2026-01-21_14-50-44.flac

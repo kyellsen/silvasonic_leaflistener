@@ -1,0 +1,33 @@
+- name: Enable WiFi on Raspberry Pi
+  hosts: all
+  become: true
+
+  tasks:
+    - name: Set WiFi regulatory domain (kernel-official way)
+      command: raspi-config nonint do_wifi_country {{ wifi_country }}
+      changed_when: false
+
+    - name: Enable WiFi radio
+      command: nmcli radio wifi on
+
+    - name: Ensure WiFi connection exists
+      command: >
+        nmcli con add type wifi ifname wlan0
+        con-name {{ wifi_ssid }}
+        ssid {{ wifi_ssid }}
+      args:
+        creates: /etc/NetworkManager/system-connections/{{ wifi_ssid }}.nmconnection
+      when: wifi_ssid | length > 0
+
+    - name: Configure WiFi connection
+      command: >
+        nmcli con modify {{ wifi_ssid }}
+        wifi-sec.key-mgmt wpa-psk
+        wifi-sec.psk {{ wifi_psk }}
+        connection.autoconnect yes
+      when: wifi_ssid | length > 0
+
+    - name: Bring WiFi up
+      command: nmcli con up {{ wifi_ssid }}
+      ignore_errors: yes
+      when: wifi_ssid | length > 0

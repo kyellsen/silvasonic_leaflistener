@@ -1,0 +1,17 @@
+version: "3.8"
+
+services:
+  ear:
+    build:
+      context: containers/sensor/recorder
+    image: silvasonic-ear:dev
+    container_name: silvasonic_ear_dev
+    environment:
+      - MOCK_HARDWARE=true
+      - AUDIO_SAMPLERATE=48000 # Lower for faster testing / standard dev machines
+      - AUDIO_CHANNELS=2
+      - PYTHONUNBUFFERED=1
+    volumes:
+      - ./tmp_rec:/data/recording:z # :z for SELinux checks
+    working_dir: /app
+    restart: unless-stopped

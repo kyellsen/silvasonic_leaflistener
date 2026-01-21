@@ -1,0 +1,12 @@
+test_audio_callback (test_recorder.TestRecorder.test_audio_callback) ... ok
+test_device_selection_failure (test_recorder.TestRecorder.test_device_selection_failure) ... ok
+test_device_selection_success (test_recorder.TestRecorder.test_device_selection_success) ... ok
+test_file_writer (test_recorder.TestRecorder.test_file_writer) ... 2026-01-21 14:56:44,005 [INFO] Writer thread started.
+2026-01-21 14:56:44,005 [INFO] Starting new recording: /data/recording/2026-01-21_14-56-44.flac
+2026-01-21 14:56:45,006 [INFO] Finished writing: /data/recording/2026-01-21_14-56-44.flac
+ok
+
+----------------------------------------------------------------------
+Ran 4 tests in 1.010s
+
+OK

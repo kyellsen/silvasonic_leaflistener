@@ -1,0 +1,56 @@
+# Python bytecode / artifacts
+_pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.so
+*.dylib
+
+# Packaging / build
+*.egg
+*.egg-info/
+.eggs/
+build/
+dist/
+pip-wheel-metadata/
+*.whl
+
+# Virtual envs
+.venv/
+venv/
+.env
+.env.*
+
+# Caches / logs
+.cache/
+.mypy_cache/
+.pytest_cache/
+.ruff_cache/
+pip-log.txt
+pip-delete-this-directory.txt
+
+# Test / coverage
+.coverage*
+coverage.xml
+.tox/
+.nox/
+.hypothesis/
+.benchmarks/
+
+# Editors / IDE
+.idea/
+*.iml
+.python-version
+
+# OS
+.DS_Store
+Thumbs.db
+
+
+# Notebooks / plots (vorsicht, ggf. anpassen)
+*.ipynb_checkpoints/
+
+setup/bootstrap/2025-12-04-raspios-trixie-arm64-lite.img.xz
+
+tmp_rec
+setup/config/config.env

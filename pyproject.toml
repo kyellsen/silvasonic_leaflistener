@@ -1,0 +1,51 @@
+[project]
+name = "silvasonic-leaflistener"
+version = "0.1.0"
+description = "Bioacoustic recording station for Raspberry Pi 5"
+readme = "README.md"
+requires-python = ">=3.13"
+dependencies = [
+    "pydantic>=2.0",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[dependency-groups]
+dev = [
+    "mypy>=1.0",
+    "pytest>=8.0",
+    "ruff>=0.1.0",
+]
+
+[tool.uv]
+default-groups = ["dev"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py313"
+
+[tool.ruff.lint]
+select = [
+    "E",    # pycodestyle errors
+    "W",    # pycodestyle warnings
+    "F",    # pyflakes
+    "I",    # isort
+    "B",    # flake8-bugbear
+    "UP",   # pyupgrade
+    "N",    # pep8-naming
+    "D",    # pydocstyle (Google style)
+]
+ignore = [
+    "D100", # Missing docstring in public module
+    "D104", # Missing docstring in public package
+]
+
+[tool.ruff.lint.pydocstyle]
+convention = "google"
+
+[tool.mypy]
+python_version = "3.13"
+strict = true
+ignore_missing_imports = true

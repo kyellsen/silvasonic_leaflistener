@@ -1,0 +1,127 @@
+---
+- name: Silvasonic Base Setup
+  hosts: all
+  become: true
+  vars:
+    # Packages list
+    packages:
+      - tree
+      - git
+      - btop
+      - rsync
+      - fzf
+      - ripgrep
+      - nano
+      - syncthing
+      - ncdu
+      - tmux
+      - usbutils
+      - pciutils
+      - sox
+      - ffmpeg
+      - stress
+      - timg
+      - podman
+      - podman-compose
+      - cockpit
+      - cockpit-podman
+      - python3-venv
+      - python3-pip
+
+  tasks:
+    # --- 1. SYSTEM UPDATE ---
+    - name: System Update & Upgrade
+      apt:
+        update_cache: yes
+        upgrade: dist
+        autoremove: yes
+
+    - name: Enable PCIe Gen 3 in config.txt
+      lineinfile:
+        path: /boot/firmware/config.txt
+        regexp: "^dtparam=pciex1_gen=3"
+        line: "dtparam=pciex1_gen=3"
+        state: present
+      notify: Reboot Required
+
+    # --- 2. TOOLS INSTALLATION ---
+    - name: Install Base Packages
+      apt:
+        name: "{{ packages }}"
+        state: present
+
+    - name: Install 'uv' (Python Tool)
+      shell: "curl -LsSf https://astral.sh/uv/install.sh | sh"
+      args:
+        creates: "/root/.cargo/bin/uv"
+
+    # --- 3. INFRASTRUCTURE & COCKPIT ---
+    - name: Enable Cockpit Socket
+      systemd:
+        name: cockpit.socket
+        state: started
+        enabled: yes
+
+    - name: Add User to 'audio' and 'docker'/'podman' related groups if needed
+      user:
+        name: "{{ user }}"
+        groups: audio
+        append: yes
+
+    # --- 4. SSD STRUCTURE ---
+    - name: Create Directories on /mnt/data
+      file:
+        path: "{{ item }}"
+        state: directory
+        owner: "{{ user }}"
+        group: "{{ user }}"
+        mode: "0755"
+      loop:
+        - /mnt/data/containers/stacks
+        - /mnt/data/containers/volumes
+        - /mnt/data/containers/storage
+        - /mnt/data/dev
+        - /mnt/data/dev_workspaces
+        - /mnt/data/storage/silvasonic
+        - /mnt/data/storage/leaflistener/raw
+        - /mnt/data/storage/leaflistener/processed
+        - /mnt/data/storage/leaflistener/results
+        - /mnt/data/backups
+        - "/mnt/data/{{ user }}"
+
+    # Storage-Link Fix for Podman (User-Level)
+    - name: Link Podman Storage to SSD (for User)
+      become: true
+      become_user: "{{ user }}"
+      shell: |
+        podman system migrate 2>/dev/null || true
+        rm -rf ~/.local/share/containers
+        mkdir -p ~/.local/share
+        ln -s /mnt/data/containers/storage ~/.local/share/containers
+      args:
+        creates: "/home/{{ user }}/.local/share/containers/storage"
+
+    # --- 5. HEALTH CHECK SCRIPTS ---
+    # We reference files relative to this playbook: ../../../scripts/
+    - name: Copy Health Check Script
+      copy:
+        src: ../../../scripts/check.sh
+        dest: "/home/{{ user }}/check.sh"
+        owner: "{{ user }}"
+        group: "{{ user }}"
+        mode: "0755"
+      tags: [tools, health]
+
+    - name: Copy Sound-Lab Script
+      copy:
+        src: ../../../scripts/sound_check.sh
+        dest: "/home/{{ user }}/sound_check.sh"
+        owner: "{{ user }}"
+        group: "{{ user }}"
+        mode: "0755"
+      tags: [tools, audio]
+
+  handlers:
+    - name: Reboot Required
+      debug:
+        msg: "A reboot is required (e.g. for PCIe Gen3 Config or Kernel updates)."
