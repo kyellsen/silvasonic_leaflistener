@@ -1,0 +1,55 @@
+# Dodotronic Ultramic 384K EVO
+# High-frequency ultrasonic microphone for bat and insect detection
+# https://www.dodotronic.com/ultramic-384k-evo/
+
+name: "Dodotronic Ultramic 384K EVO"
+manufacturer: "Dodotronic"
+model: "Ultramic 384K EVO"
+
+# Device detection patterns (case-insensitive substring match)
+# Multiple patterns increase detection probability
+device_patterns:
+  - "UltraMic"
+  - "Ultramic384K"
+  - "Dodotronic"
+  - "384K_EVO"
+
+# Audio configuration
+audio:
+  sample_rate: 384000 # Hz - native rate, do not change
+  channels: 1 # Mono microphone
+  bit_depth: 16 # 16-bit audio
+  format: "S16_LE" # ALSA format string
+
+# Recording settings
+recording:
+  chunk_duration_seconds: 60 # File rotation interval
+  output_format: "flac" # Output codec (flac recommended)
+  compression_level: 5 # FLAC compression (0-8, 5 is balanced)
+
+# Device capabilities
+capabilities:
+  ultrasound: true
+  frequency_range_hz: [1, 192000] # Nyquist limit at 384kHz
+  use_cases:
+    - "Bat detection"
+    - "Insect monitoring"
+    - "Ultrasonic analysis"
+
+# Notes for users
+notes: |
+  This is a high-frequency ultrasonic microphone capable of recording
+  up to 192 kHz (Nyquist frequency at 384 kHz sample rate).
+
+  Ideal for:
+  - Bat echolocation calls (20-120 kHz)
+  - Insect sounds
+  - Ultrasonic environmental monitoring
+
+  For bird detection with BirdNET, audio will be downsampled to 48 kHz
+  during analysis. The high sample rate preserves ultrasonic content
+  that may be useful for other analysis pipelines.
+
+  USB Requirements:
+  - USB 2.0 or higher for full 384 kHz bandwidth
+  - Avoid USB hubs if possible for stable streaming

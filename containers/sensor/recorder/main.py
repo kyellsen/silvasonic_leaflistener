@@ -1,3 +1,11 @@
+"""
+The Ear - Audio Recorder for Silvasonic
+
+Records audio from USB microphones, auto-detecting device configuration
+from microphone profiles. Outputs FLAC files in configurable chunks.
+
+Each microphone records to its own subfolder based on the profile slug.
+"""
 
 import os
 import sys
@@ -6,108 +14,90 @@ import time
 import datetime
 import signal
 import logging
-import re
-
-# --- Configuration ---
-RAW_DIR = "/data/recording"
-SAMPLE_RATE = int(os.getenv("AUDIO_SAMPLERATE", "384000"))
-CHANNELS = int(os.getenv("AUDIO_CHANNELS", "1"))
-BIT_DEPTH = int(os.getenv("AUDIO_BIT_DEPTH", "16"))
-DEVICE_PATTERNS = os.getenv("AUDIO_DEVICE_PATTERNS", "UltraMic,Dodotronic,384K").split(",")
-CHUNK_DURATION = int(os.getenv("AUDIO_CHUNK_SECONDS", "60"))
-MOCK_HARDWARE = os.getenv("MOCK_HARDWARE", "false").lower() == "true"
+import numpy as np
 
 # --- Logging ---
-logging.basicConfig(level=logging.INFO, format='%(asctime)s [%(levelname)s] %(message)s')
+logging.basicConfig(
+    level=logging.INFO, 
+    format='%(asctime)s [%(levelname)s] %(message)s'
+)
 logger = logging.getLogger("recorder")
+
+# --- Configuration ---
+BASE_OUTPUT_DIR = os.getenv("AUDIO_OUTPUT_DIR", "/data/recording")
 
 # --- Global State ---
 running = True
 
-def get_filename():
+
+def get_output_dir(profile_slug: str) -> str:
+    """Get output directory for a specific microphone profile."""
+    return os.path.join(BASE_OUTPUT_DIR, profile_slug)
+
+
+def get_filename(output_dir: str, output_format: str = "flac") -> str:
     """Generates a timestamped filename."""
     timestamp = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-    return os.path.join(RAW_DIR, f"{timestamp}.flac")
+    return os.path.join(output_dir, f"{timestamp}.{output_format}")
 
-def find_audio_device():
-    """Find audio device using arecord -l, matching against patterns."""
-    try:
-        result = subprocess.run(["arecord", "-l"], capture_output=True, text=True)
-        lines = result.stdout + result.stderr
-        
-        logger.info("Scanning for audio devices...")
-        logger.debug(f"arecord -l output:\n{lines}")
-        
-        for line in lines.split('\n'):
-            for pattern in DEVICE_PATTERNS:
-                if pattern.lower() in line.lower():
-                    # Extract card number
-                    match = re.search(r'card (\d+)', line)
-                    if match:
-                        card_id = match.group(1)
-                        logger.info(f"Found device matching '{pattern}': {line.strip()}")
-                        logger.info(f"Using hw:{card_id},0")
-                        return f"hw:{card_id},0"
-        
-        logger.error("No matching audio device found!")
-        logger.info("Available devices:")
-        logger.info(lines)
-        return None
-        
-    except Exception as e:
-        logger.error(f"Error scanning devices: {e}")
-        return None
 
-def record_chunk(device, filename, duration):
-    """Record a chunk using arecord piped to ffmpeg for FLAC encoding."""
-    
-    # arecord -> raw PCM, pipe to ffmpeg for FLAC
+def record_chunk(device_hw: str, filename: str, duration: int,
+                 sample_rate: int, channels: int, bit_depth: int,
+                 compression_level: int = 5) -> bool:
+    """
+    Record a chunk using arecord piped to ffmpeg for FLAC encoding.
+    """
     arecord_cmd = [
         "arecord",
-        "-D", device,
-        "-f", f"S{BIT_DEPTH}_LE",  # Signed, Little Endian
-        "-r", str(SAMPLE_RATE),
-        "-c", str(CHANNELS),
+        "-D", device_hw,
+        "-f", f"S{bit_depth}_LE",
+        "-r", str(sample_rate),
+        "-c", str(channels),
         "-d", str(duration),
-        "-t", "raw",  # Output raw PCM
-        "-q",  # Quiet
-        "-"  # Output to stdout
+        "-t", "raw",
+        "-q",
+        "-"
     ]
     
     ffmpeg_cmd = [
         "ffmpeg",
-        "-f", f"s{BIT_DEPTH}le",  # Input format
-        "-ar", str(SAMPLE_RATE),
-        "-ac", str(CHANNELS),
-        "-i", "pipe:0",  # Read from stdin
-        "-y",  # Overwrite
+        "-f", f"s{bit_depth}le",
+        "-ar", str(sample_rate),
+        "-ac", str(channels),
+        "-i", "pipe:0",
+        "-y",
         "-c:a", "flac",
-        "-compression_level", "5",
+        "-compression_level", str(compression_level),
+        "-loglevel", "warning",
         filename
     ]
     
-    logger.info(f"Recording {duration}s to {filename}")
+    logger.info(f"Recording {duration}s -> {os.path.basename(filename)}")
     
     try:
-        # Pipe arecord output to ffmpeg
-        arecord_proc = subprocess.Popen(arecord_cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-        ffmpeg_proc = subprocess.Popen(ffmpeg_cmd, stdin=arecord_proc.stdout, 
-                                        stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        arecord_proc = subprocess.Popen(
+            arecord_cmd, 
+            stdout=subprocess.PIPE, 
+            stderr=subprocess.PIPE
+        )
+        ffmpeg_proc = subprocess.Popen(
+            ffmpeg_cmd, 
+            stdin=arecord_proc.stdout,
+            stdout=subprocess.PIPE, 
+            stderr=subprocess.PIPE
+        )
         
-        # Allow arecord to receive SIGPIPE if ffmpeg exits
         arecord_proc.stdout.close()
         
-        # Wait for completion
         ffmpeg_proc.wait()
         arecord_proc.wait()
         
         if ffmpeg_proc.returncode == 0:
-            # Get file size
             try:
-                size = os.path.getsize(filename)
-                logger.info(f"Saved: {filename} ({size / 1024 / 1024:.2f} MB)")
+                size_mb = os.path.getsize(filename) / 1024 / 1024
+                logger.info(f"Saved: {os.path.basename(filename)} ({size_mb:.2f} MB)")
             except:
-                logger.info(f"Saved: {filename}")
+                logger.info(f"Saved: {os.path.basename(filename)}")
             return True
         else:
             stderr = ffmpeg_proc.stderr.read().decode()
@@ -118,32 +108,71 @@ def record_chunk(device, filename, duration):
         logger.error(f"Recording error: {e}")
         return False
 
-def generate_mock_audio(filename, duration):
-    """Generate white noise for testing without hardware."""
-    import numpy as np
-    import soundfile as sf
-    
-    logger.info(f"[MOCK] Generating {duration}s noise to {filename}")
-    
-    samples = int(SAMPLE_RATE * duration)
-    noise = np.random.uniform(-0.5, 0.5, (samples, CHANNELS)).astype('float32')
-    
-    sf.write(filename, noise, SAMPLE_RATE, subtype='PCM_16')
-    logger.info(f"[MOCK] Saved: {filename}")
+
+def generate_mock_audio(filename: str, duration: int, 
+                        sample_rate: int, channels: int) -> bool:
+    """Generate synthetic audio for testing."""
+    try:
+        import soundfile as sf
+        
+        logger.info(f"[MOCK] Generating {duration}s -> {os.path.basename(filename)}")
+        
+        samples = int(sample_rate * duration)
+        noise = np.random.uniform(-0.3, 0.3, (samples, channels)).astype('float32')
+        
+        # Add a faint test tone
+        t = np.linspace(0, duration, samples)
+        tone = 0.05 * np.sin(2 * np.pi * 440 * t)
+        noise[:, 0] += tone.astype('float32')
+        
+        sf.write(filename, noise, sample_rate, subtype='PCM_16')
+        
+        size_mb = os.path.getsize(filename) / 1024 / 1024
+        logger.info(f"[MOCK] Saved: {os.path.basename(filename)} ({size_mb:.2f} MB)")
+        return True
+        
+    except Exception as e:
+        logger.error(f"Mock generation error: {e}")
+        return False
+
 
 def main():
     global running
     
-    logger.info("=" * 50)
-    logger.info("Starting 'The Ear' (ALSA Backend)")
-    logger.info("=" * 50)
-    logger.info(f"Config: Rate={SAMPLE_RATE}, Ch={CHANNELS}, Bit={BIT_DEPTH}")
-    logger.info(f"Device patterns: {DEVICE_PATTERNS}")
-    logger.info(f"Chunk duration: {CHUNK_DURATION}s")
-    logger.info(f"Storage: {RAW_DIR}")
-    logger.info(f"Mock mode: {MOCK_HARDWARE}")
+    # Import profile loader
+    from mic_profiles import get_active_profile
     
-    # Handle Signals
+    profile, device = get_active_profile()
+    
+    if profile is None:
+        logger.critical("No microphone profile available. Exiting.")
+        sys.exit(1)
+    
+    # Determine output directory based on profile
+    output_dir = get_output_dir(profile.slug)
+    
+    # Print configuration
+    logger.info("=" * 60)
+    logger.info("🎤 THE EAR - Silvasonic Audio Recorder")
+    logger.info("=" * 60)
+    logger.info(f"Profile: {profile.name}")
+    logger.info(f"  Slug: {profile.slug}")
+    logger.info(f"  Manufacturer: {profile.manufacturer}")
+    logger.info(f"  Sample Rate: {profile.audio.sample_rate} Hz")
+    logger.info(f"  Channels: {profile.audio.channels}")
+    logger.info(f"  Bit Depth: {profile.audio.bit_depth}")
+    logger.info(f"  Chunk Duration: {profile.recording.chunk_duration_seconds}s")
+    logger.info(f"  Output Format: {profile.recording.output_format}")
+    logger.info(f"  Output Directory: {output_dir}")
+    
+    if device:
+        logger.info(f"  Device: {device.hw_address}")
+        logger.info(f"  Description: {device.description}")
+    
+    logger.info(f"  Mock Mode: {profile.is_mock}")
+    logger.info("=" * 60)
+    
+    # Signal handlers
     def signal_handler(sig, frame):
         global running
         logger.info("Signal received, stopping after current chunk...")
@@ -153,32 +182,46 @@ def main():
     signal.signal(signal.SIGTERM, signal_handler)
     
     # Ensure output directory exists
-    os.makedirs(RAW_DIR, exist_ok=True)
+    os.makedirs(output_dir, exist_ok=True)
+    logger.info(f"Output directory ready: {output_dir}")
     
-    if MOCK_HARDWARE:
-        logger.warning("!!! MOCK MODE ENABLED !!!")
+    # Recording loop
+    if profile.is_mock:
+        logger.warning("🔧 MOCK MODE ENABLED - No real audio capture")
         while running:
-            filename = get_filename()
-            generate_mock_audio(filename, CHUNK_DURATION)
-            time.sleep(1)  # Small pause between chunks
+            filename = get_filename(output_dir, profile.recording.output_format)
+            generate_mock_audio(
+                filename,
+                profile.recording.chunk_duration_seconds,
+                profile.audio.sample_rate,
+                profile.audio.channels
+            )
+            time.sleep(1)
     else:
-        # Find device
-        device = find_audio_device()
         if not device:
-            logger.critical("Cannot continue without audio device. Exiting.")
+            logger.critical("No audio device found. Exiting.")
             sys.exit(1)
         
-        logger.info("Recording started. Press Ctrl+C to stop.")
+        logger.info("🎙️ Recording started. Press Ctrl+C to stop.")
         
         while running:
-            filename = get_filename()
-            success = record_chunk(device, filename, CHUNK_DURATION)
+            filename = get_filename(output_dir, profile.recording.output_format)
+            success = record_chunk(
+                device_hw=device.hw_address,
+                filename=filename,
+                duration=profile.recording.chunk_duration_seconds,
+                sample_rate=profile.audio.sample_rate,
+                channels=profile.audio.channels,
+                bit_depth=profile.audio.bit_depth,
+                compression_level=profile.recording.compression_level,
+            )
             
             if not success and running:
                 logger.warning("Recording failed, retrying in 5s...")
                 time.sleep(5)
     
-    logger.info("Shutdown complete.")
+    logger.info("👋 Shutdown complete.")
+
 
 if __name__ == "__main__":
     main()

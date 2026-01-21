@@ -1,22 +1,93 @@
 version: "3.8"
 
+# =============================================================================
+# Silvasonic Sensor Stack
+# =============================================================================
+# Each sensor runs in its own container for isolation and independent restarts.
+# Add new sensors by copying and modifying a service block.
+#
+# Usage:
+#   sudo podman-compose -f podman-compose.yml up --build -d
+#   sudo podman-compose -f podman-compose.yml logs -f
+# =============================================================================
+
 services:
+  # ---------------------------------------------------------------------------
+  # The Ear - Primary Microphone (Ultramic 384K)
+  # ---------------------------------------------------------------------------
+  # Auto-detects the Dodotronic Ultramic and applies optimal settings.
+  # Recordings go to: /mnt/data/storage/leaflistener/raw/dodotronic_ultramic384k/
   ear:
     build:
       context: containers/sensor/recorder
     image: silvasonic-ear:latest
     container_name: silvasonic_ear
+
     environment:
-      - MOCK_HARDWARE=false
-      - AUDIO_SAMPLERATE=384000
-      - AUDIO_CHANNELS=1
-      - AUDIO_BIT_DEPTH=16
-      - AUDIO_DEVICE_PATTERNS=UltraMic,Dodotronic,384K
-      - AUDIO_CHUNK_SECONDS=60
       - PYTHONUNBUFFERED=1
+      # Profile is auto-detected, but can be forced:
+      # - AUDIO_PROFILE=dodotronic_ultramic384k
+
     devices:
       - /dev/snd:/dev/snd
-    privileged: true # Required for RT priority and hardware access
+    privileged: true
+
     volumes:
       - /mnt/data/storage/leaflistener/raw:/data/recording:z
+
     restart: always
+
+  # ---------------------------------------------------------------------------
+  # Example: Second Microphone (uncomment to enable)
+  # ---------------------------------------------------------------------------
+  # If you have multiple microphones, add another service:
+  #
+  # ear_secondary:
+  #   build:
+  #     context: containers/sensor/recorder
+  #   image: silvasonic-ear:latest
+  #   container_name: silvasonic_ear_secondary
+  #
+  #   environment:
+  #     - PYTHONUNBUFFERED=1
+  #     - AUDIO_PROFILE=generic_usb  # Force specific profile
+  #
+  #   devices:
+  #     - /dev/snd:/dev/snd
+  #   privileged: true
+  #
+  #   volumes:
+  #     - /mnt/data/storage/leaflistener/raw:/data/recording:z
+  #
+  #   restart: always
+
+  # ---------------------------------------------------------------------------
+  # Example: Mock Microphone for Development
+  # ---------------------------------------------------------------------------
+  # ear_mock:
+  #   build:
+  #     context: containers/sensor/recorder
+  #   image: silvasonic-ear:latest
+  #   container_name: silvasonic_ear_mock
+  #
+  #   environment:
+  #     - PYTHONUNBUFFERED=1
+  #     - MOCK_HARDWARE=true
+  #
+  #   volumes:
+  #     - /mnt/data/storage/leaflistener/raw:/data/recording:z
+  #
+  #   restart: unless-stopped
+
+  # ---------------------------------------------------------------------------
+  # Future Sensors (examples)
+  # ---------------------------------------------------------------------------
+  # temperature:
+  #   build:
+  #     context: containers/sensor/temperature
+  #   ...
+  #
+  # humidity:
+  #   build:
+  #     context: containers/sensor/humidity
+  #   ...

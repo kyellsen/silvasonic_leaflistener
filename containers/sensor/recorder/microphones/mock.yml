@@ -1,0 +1,48 @@
+# Mock Audio Device (Development/Testing)
+# Generates synthetic audio for testing without real hardware
+
+name: "Mock Audio Device"
+manufacturer: "Silvasonic"
+model: "Virtual Microphone"
+
+device_patterns:
+  - "MOCK"
+  - "Virtual"
+  - "Dummy"
+
+audio:
+  sample_rate: 48000
+  channels: 1
+  bit_depth: 16
+  format: "S16_LE"
+
+recording:
+  chunk_duration_seconds: 10 # Short chunks for faster testing
+  output_format: "flac"
+  compression_level: 1 # Fast compression for dev
+
+capabilities:
+  ultrasound: false
+  frequency_range_hz: [20, 24000]
+  use_cases:
+    - "Development"
+    - "Testing"
+    - "CI/CD pipelines"
+
+# Mock-specific settings
+mock:
+  enabled: true
+  noise_amplitude: 0.1 # White noise amplitude (0.0-1.0)
+  sine_frequency: 440 # Optional test tone (Hz), 0 to disable
+  sine_amplitude: 0.05
+
+notes: |
+  This profile generates synthetic audio for development and testing.
+
+  Enable by setting MOCK_HARDWARE=true or AUDIO_PROFILE=mock
+
+  Generates white noise with optional test tones.
+  Useful for:
+  - Testing the recording pipeline without hardware
+  - CI/CD environments
+  - Development on machines without microphones

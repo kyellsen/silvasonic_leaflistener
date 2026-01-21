@@ -1,0 +1,43 @@
+# Generic USB Microphone (Fallback)
+# Used when no specific profile matches the detected hardware
+
+name: "Generic USB Microphone"
+manufacturer: "Unknown"
+model: "USB Audio Device"
+
+# Very broad patterns to catch any USB audio
+device_patterns:
+  - "USB Audio"
+  - "USB"
+  - "Microphone"
+
+# Conservative audio settings
+audio:
+  sample_rate: 48000 # Standard sample rate
+  channels: 1 # Mono
+  bit_depth: 16 # 16-bit
+  format: "S16_LE"
+
+recording:
+  chunk_duration_seconds: 60
+  output_format: "flac"
+  compression_level: 5
+
+capabilities:
+  ultrasound: false
+  frequency_range_hz: [20, 24000]
+  use_cases:
+    - "General audio recording"
+    - "Bird detection (BirdNET)"
+    - "Environmental monitoring"
+
+# Priority: lower number = higher priority
+# Generic fallback should have low priority
+priority: 100
+
+notes: |
+  This is a fallback profile for unrecognized USB audio devices.
+  Uses conservative settings (48 kHz, 16-bit) that work with most hardware.
+
+  If you have a specific microphone, consider creating a dedicated profile
+  with optimized settings. See CONTRIBUTING.md for details.

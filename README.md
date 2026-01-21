@@ -9,10 +9,21 @@ Silvasonic Leaflistener is a robust, autonomous bioacoustic monitoring device bu
 > The current development phase focuses strictly on:
 >
 > 1.  **Infrastructure**: Automated setup & OS hardening.
-> 2.  **The Ear**: Reliable, uninterrupted audio capture.
+> 2.  **The Ear**: Reliable, uninterrupted audio capture with auto-detecting microphone profiles.
 > 3.  **The Carrier**: Resilient data synchronization.
 >
 > _Advanced analysis, on-device ML, and complex dashboards are explicitly OUT OF SCOPE for this phase._
+
+## Supported Microphones
+
+The recorder auto-detects USB microphones via YAML profiles:
+
+| Microphone                   | Sample Rate | Best For       |
+| ---------------------------- | ----------- | -------------- |
+| Dodotronic Ultramic 384K EVO | 384 kHz     | Bats, Insects  |
+| Generic USB                  | 48 kHz      | Birds, General |
+
+Adding new microphone support is as simple as creating a YAML file! [See Deployment Guide](docs/deployment.md#contributing-microphone-profiles)
 
 ## Requirements
 

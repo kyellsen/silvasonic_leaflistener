@@ -1,4 +1,4 @@
-
-sounddevice
-soundfile
+# Core dependencies for The Ear recorder
 numpy
+soundfile
+pyyaml
