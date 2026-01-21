@@ -41,24 +41,52 @@ class BirdNETAnalyzer:
         week = recording_dt.isocalendar()[1]
         
         # 3. Run Analysis
+        # WORKAROUND: BirdNET tries to write 'BirdNET_analysis_params.csv' to the input dir.
+        # Our input dir is Read-Only. We symlink the file to /tmp and analyze it there.
+        temp_dir = Path("/tmp/birdnet_processing")
+        temp_dir.mkdir(parents=True, exist_ok=True)
+        temp_path = temp_dir / path.name
+        
         try:
+            # Create symlink
+            if temp_path.exists():
+                temp_path.unlink()
+            os.symlink(path.absolute(), temp_path)
+
             # bn_analyze is the function imported from birdnet_analyzer.analyze
             detections = bn_analyze(
-                audio_input=str(path),
+                audio_input=str(temp_path), # Use temp path
                 min_conf=config.MIN_CONFIDENCE,
                 lat=config.LATITUDE,
                 lon=config.LONGITUDE,
                 week=week,
                 overlap=config.SIG_OVERLAP,
                 threads=config.THREADS,
-                output="/tmp" # Write temp files to /tmp instead of read-only input dir
+                output=None # Return results, don't write to file output
             )
             
+            if detections is None:
+                detections = {}
+
             self._save_detections(detections, path.name, recording_dt)
             logger.info(f"Analysis complete for {path.name}. Found {len(detections)} potential segments.")
             
         except Exception as e:
             logger.error(f"Error during analysis of {path.name}: {e}", exc_info=True)
+        finally:
+            # Cleanup symlink and potential param file
+            if temp_path.exists():
+                try:
+                    temp_path.unlink()
+                except:
+                    pass
+            # Cleanup param file if it exists in temp dir
+            param_file = temp_dir / "BirdNET_analysis_params.csv"
+            if param_file.exists():
+                 try:
+                    param_file.unlink()
+                 except:
+                    pass
 
     def _save_detections(self, detections, filename, recording_dt):
         """
