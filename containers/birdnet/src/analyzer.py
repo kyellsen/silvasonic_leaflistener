@@ -59,23 +59,31 @@ class BirdNETAnalyzer:
             # Using specific parameters for Central Europe
 
             
-            # Debug inspection
-            import birdnet_analyzer
-            logger.info(f"Dir(birdnet_analyzer): {dir(birdnet_analyzer)}")
-            logger.info(f"Inspecting bn_analyze function args: {bn_analyze.__code__.co_varnames}")
-            
-            # Temporary safety break to allow logs to flush
-            # raise Exception("Stopping for debug inspection")
-
-            detections = bn_analyze.analyze_file(
-                str(path),
+            # Call the analyze function directly (it was imported as bn_analyze)
+            detections = bn_analyze(
+                audio_input=str(path),
+                min_conf=config.MIN_CONFIDENCE,
                 lat=config.LATITUDE,
                 lon=config.LONGITUDE,
                 week=week,
-                min_conf=config.MIN_CONFIDENCE,
                 overlap=config.SIG_OVERLAP,
-                threads=config.THREADS
+                threads=config.THREADS,
+                output=None
             )
+            
+            # Debug: Log the structure of detections to ensure we parse it correctly in _save_detections
+            logger.info(f"Analysis return type: {type(detections)}")
+            if isinstance(detections, dict):
+                 # Log first key to see structure
+                 keys = list(detections.keys())
+                 if keys:
+                     logger.info(f"First detection key: {keys[0]} (Type: {type(keys[0])})")
+                     logger.info(f"First detection val: {detections[keys[0]]}")
+            elif isinstance(detections, list):
+                 if detections:
+                     logger.info(f"First detection item: {detections[0]}")
+            
+            self._save_detections(detections, path.name, recording_dt)
             
             # detections structure usually: { 'start_end_tuple': [('Common', 'Scientific', conf), ...] }
             # Or list of dicts. Let's handle the standard return.
