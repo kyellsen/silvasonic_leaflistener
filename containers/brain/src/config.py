@@ -7,8 +7,8 @@ class Config:
     RECURSIVE_WATCH = os.getenv("RECURSIVE_WATCH", "true").lower() == "true"
     
     # Storage
-    DB_PATH = os.getenv("DB_PATH", "/data/db/brain.duckdb")
-    DB_URL = f"duckdb:///{DB_PATH}"
+    DB_PATH = os.getenv("DB_PATH", "/data/db/brain.sqlite")
+    DB_URL = f"sqlite:///{DB_PATH}"
     
     # Processing
     ARTIFACTS_DIR = Path(os.getenv("ARTIFACTS_DIR", "/data/processed/artifacts"))

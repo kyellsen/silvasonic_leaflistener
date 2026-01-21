@@ -77,7 +77,7 @@ services:
     environment:
       - PYTHONUNBUFFERED=1
       - INPUT_DIR=/data/recording
-      - DB_PATH=/data/db/brain.duckdb
+      - DB_PATH=/data/db/brain.sqlite
       - RECURSIVE_WATCH=true
 
     volumes:

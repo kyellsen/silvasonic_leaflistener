@@ -53,8 +53,18 @@ class Artifact(Base):
     audio_file = relationship("AudioFile", back_populates="artifacts")
 
 # Engine Setup
+# Engine Setup
 engine = create_engine(config.DB_URL)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+
+# Enable WAL mode for SQLite
+from sqlalchemy import event
+
+@event.listens_for(engine, "connect")
+def set_sqlite_pragma(dbapi_connection, connection_record):
+    cursor = dbapi_connection.cursor()
+    cursor.execute("PRAGMA journal_mode=WAL")
+    cursor.close()
 
 def init_db():
     config.ensure_dirs()
