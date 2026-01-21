@@ -51,11 +51,15 @@ Silvasonic uses a containerized "Mirror Infrastructure" ensuring that audio capt
 [View Container Strategy](docs/containers.md)
 [View Data Flow & Storage](docs/data_flow.md)
 
-## Setup & Installation
+## 🚀 Quick Start
 
-The setup process is fully automated.
+**New Raspberry Pi → Running Leaflistener in 30 minutes:**
 
-[Go to Setup Guide](setup/README.md)
+[📖 QUICKSTART Guide](QUICKSTART.md)
+
+For detailed setup options:
+
+[Setup Guide (detailed)](setup/README.md)
 
 ## Contributing & Agents
 

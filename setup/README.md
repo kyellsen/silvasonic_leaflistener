@@ -1,140 +1,214 @@
 # Silvasonic Setup Guide
 
-> [!IMPORTANT]
-> **Context**: All commands in this guide assume you are running them from the **root directory** of this repository (e.g., `~/silvasonic_leaflistener/`).
-
-This repository contains scripts and Ansible playbooks to fully automate the setup of a Raspberry Pi 5 (Silvasonic).
-
-## Prerequisites
-
-- Raspberry Pi 5 (or 4, though NVMe optimizations are for 5)
-- NVMe SSD installed
-- Micro-SD Card (as temporary boot medium for flashing the SSD)
-- PC/Mac for preparing the SD card
-- OS Image: Download the desired image (e.g., Raspberry Pi OS Lite 64-bit) and ideally place it in the root directory of this repo or into `setup/bootstrap/`.
-
-## Structure
-
-- `setup/config.example.env`: Template for all settings (User, WiFi, passwords).
-- `setup/bootstrap/`: Scripts for the initial boot stick and SSD flashing.
-- `setup/provision/`: Ansible Playbooks for the final setup.
-- `scripts/`: Useful scripts for ongoing operation (`check.sh`, `sound_check.sh`).
+> **Clear 2+1 Workflow**: Boot Stick erstellen → SSD flashen → Ansible provisionieren
 
 ---
 
-## A) Create Bootstick (First Boot)
+## Übersicht
 
-Goal: Create a bootable USB stick/SD card containing the installation script and the target image.
+```
+┌─────────────────────────────────────────────────────────────────────────┐
+│  WORKSTATION                                                            │
+│  ├── 1. prepare_stick.sh  → Boot-USB erstellen                          │
+│  └── 3. install.sh        → Ansible via SSH ausführen                   │
+└─────────────────────────────────────────────────────────────────────────┘
+                                    │
+                                    ▼
+┌─────────────────────────────────────────────────────────────────────────┐
+│  RASPBERRY PI                                                           │
+│  └── 2. flash_ssd.sh      → NVMe flashen (läuft auf dem Pi, von Stick)  │
+└─────────────────────────────────────────────────────────────────────────┘
+```
 
-### 1. Prepare Configuration
+| Script             | Läuft auf         | Zweck                                         |
+| ------------------ | ----------------- | --------------------------------------------- |
+| `prepare_stick.sh` | Workstation       | Boot-Stick mit OS-Image + Bootstrap erstellen |
+| `flash_ssd.sh`     | Pi (vom Stick)    | NVMe flashen, SSD-Boot vorbereiten            |
+| `install.sh`       | Workstation → SSH | Ansible-Provisioning (WiFi, Pakete, Storage)  |
 
-1.  Copy `setup/config.example.env` to `setup/config/config.env`.
-    ```bash
-    cp setup/config.example.env setup/config/config.env
-    ```
-2.  **EDIT** `setup/config/config.env` and set your passwords, SSH keys, and WiFi details.
+> [!IMPORTANT]
+> **Das Repo kommt IMMER von GitHub!**  
+> Der USB-Stick enthält nur Bootstrap-Scripts + OS-Image.
 
-### 2. Flash SD Card
+---
 
-1.  Use **Raspberry Pi Imager**.
-2.  Select OS: `Raspberry Pi OS Lite (64-bit)`.
-3.  Select SD Card.
-4.  **IMPORTANT**: You can skip "OS Customisation" in the Imager, as our script automatically creates `userconf.txt` and `ssh`.
-5.  Click "WRITE".
+## Voraussetzungen
 
-### 3. Copy Setup Files to Stick
+- Raspberry Pi 5 (oder 4)
+- NVMe SSD + HAT
+- SD-Karte oder USB-Stick (temporär für Bootstrap)
+- Workstation (Linux/Mac) mit `ansible` installiert
 
-After flashing, briefly remove and re-insert the SD card so that the partitions (`bootfs` and `rootfs`) are recognized/mounted by your PC.
+---
 
-Use the helper script `prepare_stick.sh`. It is interactive and automatically detects your stick (and adjusts the size).
+## Phase A: Boot-Stick erstellen (Workstation)
+
+### A.1) Konfiguration vorbereiten
 
 ```bash
-# Interactive Mode (Recommended):
+cd ~/dev/silvasonic_leaflistener
+mkdir -p setup/config
+cp setup/config.example.env setup/config/config.env
+nano setup/config/config.env
+```
+
+**Wichtige Werte:**
+
+```bash
+# Passwort-Hash generieren
+echo 'dein_passwort' | openssl passwd -6 -stdin
+```
+
+### A.2) OS-Image auf SD schreiben
+
+**Option 1: Raspberry Pi Imager**
+
+1. Raspberry Pi Imager öffnen
+2. OS: `Raspberry Pi OS Lite (64-bit)`
+3. SD-Karte auswählen → **Schreiben**
+
+**Option 2: Beliebiger Imager**
+
+- Normales Raspi OS Lite auf SD schreiben
+
+### A.3) Bootstrap-Dateien hinzufügen
+
+```bash
+# SD-Karte neu einstecken
 sudo ./setup/bootstrap/prepare_stick.sh
 ```
 
-**What this script does:**
+Das Script:
 
-1.  Lists **only** removable media (USB/SD) (Security filter).
-2.  You select your stick.
-3.  Automatically expands the partition (to make room for the image).
-4.  Creates `ssh` and `userconf.txt` (Login on the stick: User **`pi`**, Password = your Admin Password from the config).
-5.  Enables PCIe Gen 3.
-6.  Copies the repo (`setup/`, `scripts/`), the config, and the OS image into the home directory on the stick (`/home/pi/setup_files/`).
+- Erweitert die Partition auf volle Größe
+- Kopiert `flash_ssd.sh` + OS-Image + Config auf den Stick
+- Aktiviert SSH
+
+**SD-Karte auswerfen → fertig!**
 
 ---
 
-## B) Installation on NVMe SSD
+## Phase B: NVMe flashen (auf dem Pi)
 
-### 1. Boot from Stick
+### B.1) Von SD booten
 
-1.  Insert SD card into the Raspberry Pi.
-2.  Power on the Pi.
-3.  Connect via SSH (or local keyboard/screen).
-    ```bash
-    ssh pi@silvasonic.local
-    # Password is the one you generated the hash for in the config (Default: admin)
-    ```
+```bash
+# Pi einschalten mit SD-Karte
+ssh pi@silvasonic.local
+# Passwort: aus deiner config.env
+```
 
-### 2. Flash SSD
-
-Run the flash script on the Pi (located in the home directory, thanks to step A):
+### B.2) SSD flashen
 
 ```bash
 cd ~/setup_files
 sudo ./flash_ssd.sh
-```
-
-- The script writes the image to the NVMe.
-- Creates partitions.
-- Pre-configures User, SSH, and Hostname on the SSD.
-
-After completion:
-
-```bash
 sudo poweroff
 ```
 
-Remove the SD Card!
+### B.3) SD-Karte entfernen → Von NVMe booten
+
+Pi startet jetzt von der SSD.
 
 ---
 
-## C) Final Provisioning (Ansible)
+## Phase C: Ansible Provisioning (Workstation → SSH)
 
-Restart the Pi (**without SD card**; it will now boot from the NVMe).
-
-### 1. Connect
+### C.1) Verbindung testen
 
 ```bash
 ssh admin@silvasonic.local
+# Passwort: aus deiner config.env
+exit
 ```
 
-### 2. Start Setup
+### C.2) Install-Script ausführen
 
-Since `flash_ssd.sh` (from Step B) has already copied all setup files to the SSD, you can start immediately:
+> [!IMPORTANT]
+> Das Script läuft auf deiner **Workstation** und verbindet sich via SSH!
 
 ```bash
-cd ~/silvasonic_leaflistener
-
-# Run the install script
-sudo ./setup/install.sh
+cd ~/dev/silvasonic_leaflistener
+./setup/install.sh
 ```
 
-_(If you skipped Step B, you must clone the repo first: `git clone ...`)_
+**Was passiert:**
 
-The `install.sh` script:
+1. Verbindet sich via SSH zum Pi
+2. Führt Ansible-Playbooks aus:
+   - WiFi konfigurieren
+   - Pakete installieren (Podman, Git, etc.)
+   - Storage-Struktur auf `/mnt/data` anlegen
+   - Podman für SSD optimieren
 
-1.  Reads your `setup/config/config.env`.
-2.  Installs Ansible.
-3.  Configures WiFi, Packages, Podman, Audio, and Storage structure via Ansible.
-
-### 3. Checks
-
-Run the health check:
+### C.3) Pi neustarten (optional)
 
 ```bash
-~/check.sh
-~/sound_check.sh
+ssh admin@silvasonic.local 'sudo reboot'
 ```
 
-Done!
+---
+
+## Phase D: Repo klonen & Container starten
+
+### D.1) Repo von GitHub
+
+```bash
+ssh admin@silvasonic.local
+cd /mnt/data/dev
+git clone https://github.com/kyellsen/silvasonic_leaflistener.git
+cd silvasonic_leaflistener
+```
+
+### D.2) Container starten
+
+```bash
+sudo mkdir -p /mnt/data/storage/leaflistener/raw
+sudo podman-compose -f podman-compose.yml up --build -d
+sudo podman logs -f silvasonic_ear
+```
+
+Mehr Details: [docs/deployment.md](../docs/deployment.md)
+
+---
+
+## Updates
+
+```bash
+cd /mnt/data/dev/silvasonic_leaflistener
+git pull
+sudo podman-compose -f podman-compose.yml down
+sudo podman-compose -f podman-compose.yml up --build -d
+```
+
+---
+
+## Troubleshooting
+
+### SSH funktioniert nicht
+
+```bash
+# Hostname auflösen
+ping silvasonic.local
+
+# Falls nicht gefunden, IP direkt nutzen
+ssh admin@<IP_ADRESSE>
+```
+
+### Ansible schlägt fehl
+
+```bash
+# Manuell mit Verbose ausführen
+ansible-playbook -i setup/provision/inventory.yml \
+    setup/provision/main.yml -vvv
+```
+
+### Git clone fehlgeschlagen
+
+```bash
+# Netzwerk prüfen
+ping github.com
+
+# WiFi verbinden (falls noch nicht)
+sudo nmcli device wifi connect "SSID" password "PSK"
+```

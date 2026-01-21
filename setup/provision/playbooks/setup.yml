@@ -27,6 +27,9 @@
       - cockpit-podman
       - python3-venv
       - python3-pip
+    # Repository settings
+    repo_url: "https://github.com/kyellsen/silvasonic_leaflistener.git"
+    repo_dest: "/mnt/data/dev/silvasonic_leaflistener"
 
   tasks:
     # --- 1. SYSTEM UPDATE ---
@@ -101,24 +104,36 @@
       args:
         creates: "/home/{{ user }}/.local/share/containers/storage"
 
-    # --- 5. HEALTH CHECK SCRIPTS ---
-    # We reference files relative to this playbook: ../../../scripts/
+    # --- 5. CLONE REPOSITORY FROM GITHUB ---
+    - name: Clone Silvasonic Leaflistener Repository
+      become: true
+      become_user: "{{ user }}"
+      git:
+        repo: "{{ repo_url }}"
+        dest: "{{ repo_dest }}"
+        version: main
+        update: yes
+      tags: [repo]
+
+    # --- 6. COPY HELPER SCRIPTS ---
     - name: Copy Health Check Script
       copy:
-        src: ../../../scripts/check.sh
+        src: "{{ repo_dest }}/scripts/check.sh"
         dest: "/home/{{ user }}/check.sh"
         owner: "{{ user }}"
         group: "{{ user }}"
         mode: "0755"
+        remote_src: yes
       tags: [tools, health]
 
     - name: Copy Sound-Lab Script
       copy:
-        src: ../../../scripts/sound_check.sh
+        src: "{{ repo_dest }}/scripts/sound_check.sh"
         dest: "/home/{{ user }}/sound_check.sh"
         owner: "{{ user }}"
         group: "{{ user }}"
         mode: "0755"
+        remote_src: yes
       tags: [tools, audio]
 
   handlers:
