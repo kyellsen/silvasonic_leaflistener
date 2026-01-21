@@ -13,7 +13,12 @@ class SpectrogramAnalyzer(BaseAnalyzer):
         return "spectrum"
 
     def analyze(self, filepath: str):
-        y, sr = librosa.load(filepath, sr=48000)
+        # Limit to 60 seconds to avoid massive memory usage / huge images for long files
+        try:
+            y, sr = librosa.load(filepath, sr=48000, duration=60)
+        except Exception:
+            # Fallback for weird files?
+            y, sr = librosa.load(filepath, sr=48000)
         
         # Compute Spectrogram
         D = librosa.amplitude_to_db(np.abs(librosa.stft(y)), ref=np.max)
