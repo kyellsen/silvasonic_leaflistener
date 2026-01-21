@@ -13,8 +13,9 @@ WORKDIR /app
 COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
 
 # Install Python dependencies
-COPY requirements.txt .
-RUN uv pip install --system --no-cache -r requirements.txt
+# Install Python dependencies
+COPY pyproject.toml .
+RUN uv pip install --system --no-cache .
 
 # Copy source code
 COPY src/ /app/src/

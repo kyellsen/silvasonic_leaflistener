@@ -1,0 +1,14 @@
+[project]
+name = "silvasonic-ear"
+version = "0.1.0"
+description = "Silvasonic Ear - Audio Recording Service"
+requires-python = "==3.13.*"
+dependencies = [
+    "numpy",
+    "soundfile",
+    "pyyaml"
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"

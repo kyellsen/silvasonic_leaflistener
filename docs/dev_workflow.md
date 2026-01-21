@@ -31,7 +31,13 @@ Isolates dependencies from your Fedora system.
 
 ## 2. Toolchain Standard
 
-We enforce strict quality gates using `uv`, `ruff`, and `mypy`.
+We enforce strict quality gates and modern dependency management.
+
+- **Package Manager**: **`uv`** is the mandatory tool for all dependency resolution and installation (Local & Containers).
+- **Configuration**: **`pyproject.toml`** is the required format for defining dependencies. `requirements.txt` is **deprecated**.
+- **Virtual Env**: Always use `.venv` locally (managed by `uv`).
+
+### Quality Gates
 
 - **Format**: `uv run ruff format`
 - **Lint**: `uv run ruff check --fix`

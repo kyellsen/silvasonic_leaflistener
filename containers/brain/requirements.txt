@@ -1,9 +1,0 @@
-
-sqlalchemy==2.0.25
-watchdog==3.0.0
-librosa==0.10.1
-soundfile==0.12.1
-numpy<2.0.0
-matplotlib==3.8.2
-pydantic==2.5.3
-pydub==0.25.1
