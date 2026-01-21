@@ -38,6 +38,59 @@ services:
     restart: always
 
   # ---------------------------------------------------------------------------
+  # The Carrier - Data Sync (Syncthing)
+  # ---------------------------------------------------------------------------
+  # Syncs recordings to the central server.
+  # Mounts recordings as Read-Only to prevent accidental deletion.
+  carrier:
+    image: syncthing/syncthing:latest
+    container_name: silvasonic_carrier
+    hostname: silvasonic-carrier
+    restart: always
+
+    environment:
+      - PUID=1000
+      - PGID=1000
+
+    volumes:
+      # Read-only access to raw recordings
+      - /mnt/data/services/silvasonic/recordings:/var/syncthing/data/raw:ro
+      # Persistent config
+      - /mnt/data/containers/carrier/config:/var/syncthing/config:z
+
+    ports:
+      - "8384:8384" # Web GUI (Localhost only recommended for prod, but handy for setup)
+      - "22000:22000/tcp" # Sync TCP
+      - "22000:22000/udp" # Sync UDP
+      - "21027:21027/udp" # Discovery
+
+  # ---------------------------------------------------------------------------
+  # The Brain - Edge Analysis & Metadata
+  # ---------------------------------------------------------------------------
+  # Monitors recordings and generates metadata, statistics, and basic spectrograms.
+  brain:
+    build:
+      context: containers/brain
+    image: silvasonic-brain:latest
+    container_name: silvasonic_brain
+
+    environment:
+      - PYTHONUNBUFFERED=1
+      - INPUT_DIR=/data/recording
+      - DB_PATH=/data/db/brain.duckdb
+      - RECURSIVE_WATCH=true
+
+    volumes:
+      # Read-only access to recordings
+      - /mnt/data/services/silvasonic/recordings:/data/recording:ro
+      # Database storage
+      - /mnt/data/services/silvasonic/brain:/data/db:z
+      # Artifacts (Spectrograms etc)
+      - /mnt/data/services/silvasonic/brain/artifacts:/data/processed/artifacts:z
+
+    restart: always
+
+  # ---------------------------------------------------------------------------
   # Example: Second Microphone (uncomment to enable)
   # ---------------------------------------------------------------------------
   # If you have multiple microphones, add another service:
