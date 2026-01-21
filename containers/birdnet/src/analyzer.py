@@ -89,8 +89,8 @@ class BirdNETAnalyzer:
 
             logger.info(f"Running BirdNET with Filter={config.LOCATION_FILTER_ENABLED}, Lat={use_lat}, Lon={use_lon}, Week={week}, Overlap={config.SIG_OVERLAP}, MinConf=0.01 (Raw) on 48kHz input")
             
-            # Fix: Call bn_analyze.analyze instead of bn_analyze
-            raw_detections = bn_analyze.analyze(
+            # Fix: bn_analyze is the function itself
+            raw_detections = bn_analyze(
                 audio_input=str(temp_resampled_path), # Use RESAMPLED path
                 min_conf=0.01, # EXTREMELY LOW THRESHOLD FOR DEBUGGING
                 lat=use_lat,
