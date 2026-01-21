@@ -15,6 +15,18 @@ except ImportError:
     bn_analyze = None
     bn_species = None
 
+# DEBUG: Inspect bn_analyze at module load time
+import inspect
+if bn_analyze is not None:
+    _bn_type = type(bn_analyze)
+    _bn_is_module = inspect.ismodule(bn_analyze)
+    _bn_has_analyze = hasattr(bn_analyze, 'analyze') if _bn_is_module else callable(bn_analyze)
+    print(f"[DEBUG bn_analyze] Type: {_bn_type}, IsModule: {_bn_is_module}, HasAnalyze: {_bn_has_analyze}")
+    if _bn_is_module and hasattr(bn_analyze, 'analyze'):
+        print(f"[DEBUG bn_analyze.analyze] Signature: {inspect.signature(bn_analyze.analyze)}")
+    elif callable(bn_analyze):
+        print(f"[DEBUG bn_analyze (callable)] Signature: {inspect.signature(bn_analyze)}")
+
 from src.config import config
 from src.database import SessionLocal, Detection
 from src.verify_audio import analyze_audio_quality
@@ -145,6 +157,15 @@ class BirdNETAnalyzer:
             if raw_detections is None:
                 raw_detections = {}
 
+            # DEBUG: Deep inspection of raw_detections
+            logger.info(f"[DEBUG] raw_detections type: {type(raw_detections)}")
+            logger.info(f"[DEBUG] raw_detections repr (first 500 chars): {repr(raw_detections)[:500]}")
+            if isinstance(raw_detections, dict) and raw_detections:
+                first_key = next(iter(raw_detections))
+                first_val = raw_detections[first_key]
+                logger.info(f"[DEBUG] First key type: {type(first_key)}, value: {first_key}")
+                logger.info(f"[DEBUG] First value type: {type(first_val)}, value: {repr(first_val)[:300]}")
+
             # Debug Logging: Show what we found
             logger.info(f"Raw analysis returned {len(raw_detections)} segments with > 0.01 confidence.")
             
@@ -201,12 +222,14 @@ class BirdNETAnalyzer:
         except Exception as e:
             logger.error(f"Error during analysis of {path.name}: {e}", exc_info=True)
         finally:
-            # Cleanup resampled file
-            if temp_resampled_path.exists():
-                try:
-                    temp_resampled_path.unlink()
-                except:
-                    pass
+            # DEBUG: Keep resampled file for manual inspection
+            logger.info(f"[DEBUG] Keeping temp file for inspection: {temp_resampled_path}")
+            # Cleanup resampled file - DISABLED FOR DEBUG
+            # if temp_resampled_path.exists():
+            #     try:
+            #         temp_resampled_path.unlink()
+            #     except:
+            #         pass
             # Cleanup param file if it exists in temp dir
             param_file = temp_dir / "BirdNET_analysis_params.csv"
             if param_file.exists():
