@@ -17,7 +17,9 @@ packages = ["scripts"]
 
 [tool.uv.workspace]
 members = [
-    "containers/*",
+    "containers/birdnet",
+    "containers/brain",
+    "containers/recorder",
 ]
 
 [dependency-groups]

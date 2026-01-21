@@ -1,0 +1,5 @@
+error: Found conflicting Python requirements:
+- birdnet-container: >=3.11
+- silvasonic-brain: ==3.11.*
+- silvasonic-ear: ==3.13.*
+- silvasonic-leaflistener: >=3.13
