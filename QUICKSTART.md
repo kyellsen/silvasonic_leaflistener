@@ -82,6 +82,18 @@ sudo ./setup/bootstrap/prepare_stick.sh
 2. Pi einschalten.
 3. Er bootet nun von der schnellen NVMe SSD.
 
+> [!WARNING]
+> **SSH Host Key Fehler (REMOTE HOST IDENTIFICATION HAS CHANGED)**
+> Da wir das Betriebssystem gewechselt haben (SD → SSD), hat der Pi einen neuen "Fingerabdruck". Dein PC wird warnen:
+> `Host key verification failed.`
+>
+> **Lösung:** Lösche den alten Key von deinem PC:
+>
+> ```bash
+> ssh-keygen -R silvasonic.local
+> # Oder falls du IP nutzt: ssh-keygen -R 192.168.x.x
+> ```
+
 ---
 
 ### Schritt 5: Installation & Repo (Workstation)

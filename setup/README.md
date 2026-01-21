@@ -183,6 +183,18 @@ ping silvasonic.local
 ssh admin@<IP>
 ```
 
+### SSH Fehler: "Remote Host Identification Has Changed"
+
+Wenn du von der SD-Karte auf die SSD wechselst, ändert sich der "Fingerabdruck" des Servers. Dein PC blockiert die Verbindung aus Sicherheit.
+
+**Lösung:** Alten Key entfernen:
+
+```bash
+ssh-keygen -R silvasonic.local
+# bzw.
+ssh-keygen -R <IP-ADRESSE>
+```
+
 ### Ansible findet Pi nicht
 
 ```bash
