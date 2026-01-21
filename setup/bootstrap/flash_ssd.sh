@@ -14,10 +14,14 @@ if [[ ! -f "$CONFIG_FILE" ]]; then
     # On stick, we have setup_files/setup/config...
     if [[ -f "$SCRIPT_DIR/setup/config/config.env" ]]; then
         CONFIG_FILE="$SCRIPT_DIR/setup/config/config.env"
+    elif [[ -f "$SCRIPT_DIR/config.env" ]]; then
+        # Flattened structure: config.env next to flash_ssd.sh
+        CONFIG_FILE="$SCRIPT_DIR/config.env"
     else
         log "ERROR: Config file not found."
         log "Checked: $SCRIPT_DIR/../config/config.env"
         log "Checked: $SCRIPT_DIR/setup/config/config.env"
+        log "Checked: $SCRIPT_DIR/config.env"
         exit 1
     fi
 fi
@@ -104,50 +108,21 @@ sudo chmod 700 "$SSH_DIR"
 sudo chmod 600 "$SSH_DIR/authorized_keys"
 sudo chown -R 1000:1000 "$MNT_ROOT/home/${USER_NAME}"
 
-sudo chown -R 1000:1000 "$MNT_ROOT/home/${USER_NAME}"
-
-# --- Copy Setup Files to SSD ---
-log "Copying setup context to NVMe host"
-TARGET_HOME="$MNT_ROOT/home/${USER_NAME}"
-# Create a folder for the setup
-DEST_DIR="$TARGET_HOME/silvasonic_leaflistener"
-sudo mkdir -p "$DEST_DIR"
-
-# We try to copy 'setup' and 'tools' directories.
-# Determine REPO_ROOT context
-if [[ -d "$SCRIPT_DIR/setup" ]]; then
-    # We are on the stick (flattened root with setup/ child)
-    REPO_ROOT="$SCRIPT_DIR"
-else
-    # We are in setup/bootstrap/, so repo root is ../..
-    REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
-fi
-
-if [[ -d "$REPO_ROOT/setup" ]]; then
-    log "Copying setup/..."
-    sudo cp -r "$REPO_ROOT/setup" "$DEST_DIR/"
-fi
-if [[ -d "$REPO_ROOT/scripts" ]]; then
-    log "Copying scripts/..."
-    sudo cp -r "$REPO_ROOT/scripts" "$DEST_DIR/"
-fi
-
-# Ensure config is there (if it was separate or in config/)
-if [[ -f "$CONFIG_FILE" ]]; then
-    # Ensure it's in the right place in the destination
-    sudo mkdir -p "$DEST_DIR/setup/config"
-    sudo cp "$CONFIG_FILE" "$DEST_DIR/setup/config/config.env"
-fi
-
-sudo chown -R 1000:1000 "$DEST_DIR"
+# --- NOTE: NO REPO COPYING ---
+# The repository is cloned via Ansible (install.sh) from GitHub.
+# This keeps the SD/USB stick minimal and ensures the Pi always gets the latest code.
 
 log "Base image provisioning complete"
 
 echo
 echo "================================================="
-echo "DONE"
-echo "sudo poweroff"
-echo "→ Remove Boot Stick (SD/USB)"
-echo "→ Boot from NVMe"
-echo "→ Connect via Ethernet or configure WiFi via Ansible"
+echo "DONE - NVMe is ready for boot!"
+echo "================================================="
+echo ""
+echo "Next steps:"
+echo "  1. sudo poweroff"
+echo "  2. Remove Boot Stick (SD/USB)"
+echo "  3. Boot from NVMe"
+echo "  4. From WORKSTATION, run: ./setup/install.sh"
+echo "     (This will clone the repo from GitHub + provision the Pi)"
 echo "================================================="

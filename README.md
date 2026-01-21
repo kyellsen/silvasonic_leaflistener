@@ -14,6 +14,18 @@ Silvasonic Leaflistener is a robust, autonomous bioacoustic monitoring device bu
 >
 > _Advanced analysis, on-device ML, and complex dashboards are explicitly OUT OF SCOPE for this phase._
 
+## 🚀 Inbetriebnahme
+
+**Du hast einen neuen Raspberry Pi und willst starten?**
+
+Hier ist die einzige Anleitung, die du brauchst:
+
+👉 **[QUICKSTART.md](QUICKSTART.md)** 👈
+
+_(Führt dich Schritt für Schritt vom leeren Stick bis zum laufenden System)_
+
+---
+
 ## Supported Microphones
 
 The recorder auto-detects USB microphones via YAML profiles:
@@ -50,16 +62,6 @@ Silvasonic uses a containerized "Mirror Infrastructure" ensuring that audio capt
 
 [View Container Strategy](docs/containers.md)
 [View Data Flow & Storage](docs/data_flow.md)
-
-## 🚀 Quick Start
-
-**New Raspberry Pi → Running Leaflistener in 30 minutes:**
-
-[📖 QUICKSTART Guide](QUICKSTART.md)
-
-For detailed setup options:
-
-[Setup Guide (detailed)](setup/README.md)
 
 ## Contributing & Agents
 

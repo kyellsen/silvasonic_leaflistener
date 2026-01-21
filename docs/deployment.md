@@ -20,7 +20,16 @@ The recorder auto-detects microphones via profiles. Currently supported:
 
 To add support for new microphones, see [Contributing Microphone Profiles](#contributing-microphone-profiles).
 
-## 1. Clone Repository
+## 1. Access Repository
+
+> **Note**: If you ran `setup/install.sh`, the repository is already cloned at `/mnt/data/dev/silvasonic_leaflistener`.
+
+```bash
+cd /mnt/data/dev/silvasonic_leaflistener
+git pull
+```
+
+**Manual Clone (if needed):**
 
 ```bash
 cd /mnt/data/dev

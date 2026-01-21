@@ -16,7 +16,7 @@ services:
   # The Ear - Primary Microphone (Ultramic 384K)
   # ---------------------------------------------------------------------------
   # Auto-detects the Dodotronic Ultramic and applies optimal settings.
-  # Recordings go to: /mnt/data/storage/leaflistener/raw/dodotronic_ultramic384k/
+  # Recordings go to: /mnt/data/services/silvasonic/recordings/
   ear:
     build:
       context: containers/sensor/recorder
@@ -33,7 +33,7 @@ services:
     privileged: true
 
     volumes:
-      - /mnt/data/storage/leaflistener/raw:/data/recording:z
+      - /mnt/data/services/silvasonic/recordings:/data/recording:z
 
     restart: always
 
@@ -57,7 +57,7 @@ services:
   #   privileged: true
   #
   #   volumes:
-  #     - /mnt/data/storage/leaflistener/raw:/data/recording:z
+  #     - /mnt/data/services/silvasonic/recordings:/data/recording:z
   #
   #   restart: always
 
@@ -75,7 +75,7 @@ services:
   #     - MOCK_HARDWARE=true
   #
   #   volumes:
-  #     - /mnt/data/storage/leaflistener/raw:/data/recording:z
+  #     - /mnt/data/services/silvasonic/recordings:/data/recording:z
   #
   #   restart: unless-stopped
 

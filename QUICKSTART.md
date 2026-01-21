@@ -1,77 +1,116 @@
 # 🚀 QUICKSTART
 
-> **Neuer Raspberry Pi → Laufender Leaflistener in 30 Minuten**
+> **Neuer Raspberry Pi → Laufender Leaflistener in wenigen Schritten**
 
 ---
 
-## Der 2+1 Workflow
+## Der "Zero-to-Hero" Ablauf
 
-```
-WORKSTATION                           RASPBERRY PI
-───────────────────────────────────────────────────────────────────
-1. prepare_stick.sh  ──► USB-Stick ──►  2. flash_ssd.sh
-                                              │
-3. install.sh  ────────── SSH ───────────────►
-                                              │
-                                        4. Container starten
-```
+Dies ist der **vollständige, eigenständige Weg**, um ein komplett leeres System aufzusetzen.
 
-| Script             | Wo                | Was                  |
-| ------------------ | ----------------- | -------------------- |
-| `prepare_stick.sh` | Workstation       | Boot-Stick erstellen |
-| `flash_ssd.sh`     | Pi (vom Stick)    | NVMe flashen         |
-| `install.sh`       | Workstation → SSH | Ansible provisioning |
+### Voraussetzungen
+
+- **Workstation** (Linux/Mac)
+- **Raspberry Pi 5** + NVMe SSD
+- **SD-Karte** (leer, für Bootstrap)
+- **OS-Image**: Lade `Raspberry Pi OS Lite (64-bit)` herunter.
 
 ---
 
-## Kurzversion (für Erfahrene)
+### Schritt 1: Config auf Workstation vorbereiten
+
+Einmalig auf deinem Rechner ausführen, um Passwörter und SSH-Keys festzulegen.
 
 ```bash
-# ═══════════════════════════════════════════════════════════════
-# 1. WORKSTATION: Boot-Stick erstellen
-# ═══════════════════════════════════════════════════════════════
 cd ~/dev/silvasonic_leaflistener
+
+# 1. Config anlegen
+mkdir -p setup/config
 cp setup/config.example.env setup/config/config.env
-nano setup/config/config.env                      # Werte anpassen!
-# SD-Karte mit Raspi OS Lite flashen (Pi Imager)
-sudo ./setup/bootstrap/prepare_stick.sh           # Bootstrap hinzufügen
 
-# ═══════════════════════════════════════════════════════════════
-# 2. PI: NVMe flashen (von SD gebootet)
-# ═══════════════════════════════════════════════════════════════
-ssh pi@silvasonic.local
-cd ~/setup_files && sudo ./flash_ssd.sh
-sudo poweroff                                     # SD entfernen!
+# 2. Config bearbeiten (WICHTIG!)
+# Setze USER_PASSWORD_HASH und SSH_PUB_KEY
+nano setup/config/config.env
+```
 
-# ═══════════════════════════════════════════════════════════════
-# 3. WORKSTATION: Ansible via SSH
-# ═══════════════════════════════════════════════════════════════
-./setup/install.sh                                # Verbindet zu Pi
+> 💡 **Passwort-Hash generieren:**
+> `echo 'dein_passwort' | openssl passwd -6 -stdin`
 
-# ═══════════════════════════════════════════════════════════════
-# 4. PI: Repo klonen & Container starten
-# ═══════════════════════════════════════════════════════════════
-ssh admin@silvasonic.local
-cd /mnt/data/dev
-git clone https://github.com/kyellsen/silvasonic_leaflistener.git
-cd silvasonic_leaflistener
-sudo mkdir -p /mnt/data/storage/leaflistener/raw
-sudo podman-compose -f podman-compose.yml up --build -d
-sudo podman logs -f silvasonic_ear
+---
+
+### Schritt 2: Master-Stick erstellen (Workstation)
+
+Wir erstellen eine SD-Karte, die nur zum einmaligen Flashen der NVMe dient.
+
+1. **SD-Karte flashen**:
+   - Nutze den **Raspberry Pi Imager**.
+   - Wähle OS: `Raspberry Pi OS Lite (64-bit)`.
+   - Wähle SD-Karte → **Schreiben**.
+   - (Keine Customization nötig).
+
+2. **Bootstrap-Dateien hinzufügen**:
+   - SD-Karte einmal rausziehen und neu einstecken.
+   - Script ausführen:
+
+```bash
+sudo ./setup/bootstrap/prepare_stick.sh
 ```
 
 ---
 
-## Detaillierte Anleitung
+### Schritt 3: NVMe Flashen (auf dem Pi)
 
-Siehe [setup/README.md](setup/README.md) für die vollständige Schritt-für-Schritt-Anleitung.
+1. Stecke die SD-Karte in den Pi.
+2. Schalte den Pi ein.
+3. Verbinde dich per SSH (Passwort 'raspberry' oder wie im Imager gesetzt):
+   ```bash
+   ssh pi@silvasonic.local
+   ```
+4. Führe den Flash-Vorgang aus:
+   ```bash
+   cd ~/setup_files
+   sudo ./flash_ssd.sh
+   # Warten bis fertig...
+   sudo poweroff
+   ```
 
 ---
 
-## Container & Mikrofone
+### Schritt 4: Reboot von NVMe
 
-Siehe [docs/deployment.md](docs/deployment.md) für:
+1. ⚠️ **SD-Karte entfernen!**
+2. Pi einschalten.
+3. Er bootet nun von der schnellen NVMe SSD.
 
-- Mikrofon-Profile
-- Troubleshooting
-- Container-Konfiguration
+---
+
+### Schritt 5: Installation & Repo (Workstation)
+
+Zurück auf deinem Rechner. Dieses Script verbindet sich per SSH, **klont das Repo** und richtet alles ein.
+
+```bash
+cd ~/dev/silvasonic_leaflistener
+./setup/install.sh
+```
+
+_Das Script installiert Podman, richtet Verzeichnisse ein und klont den Code nach `/mnt/data/dev/silvasonic_leaflistener`._
+
+---
+
+### 🏁 Fertig! Container starten
+
+Dein Silvasonic ist bereit.
+
+```bash
+# 1. Auf den Pi verbinden
+ssh admin@silvasonic.local
+
+# 2. In das geklonte Repo wechseln
+cd /mnt/data/dev/silvasonic_leaflistener
+
+# 3. Starten
+sudo podman-compose -f podman-compose.yml up --build -d
+
+# 4. Logs prüfen
+sudo podman logs -f silvasonic_ear
+```

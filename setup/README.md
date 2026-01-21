@@ -1,6 +1,6 @@
 # Silvasonic Setup Guide
 
-> **Clear 2+1 Workflow**: Boot Stick erstellen → SSD flashen → Ansible provisionieren
+> **Minimal SD + GitHub Clone**: Der Stick enthält nur Bootstrap-Skripte, das Repo kommt immer frisch von GitHub.
 
 ---
 
@@ -8,27 +8,28 @@
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────┐
-│  WORKSTATION                                                            │
-│  ├── 1. prepare_stick.sh  → Boot-USB erstellen                          │
-│  └── 3. install.sh        → Ansible via SSH ausführen                   │
+│  SD-KARTE / USB-STICK (Minimal Bootstrap)                               │
+│  Enthält NUR:                                                           │
+│    • flash_ssd.sh   (NVMe Installer)                                    │
+│    • config.env     (Credentials)                                       │
+│    • OS-Image       (Raspi OS)                                          │
+│  Enthält NICHT: Das Repository!                                         │
 └─────────────────────────────────────────────────────────────────────────┘
                                     │
                                     ▼
 ┌─────────────────────────────────────────────────────────────────────────┐
-│  RASPBERRY PI                                                           │
-│  └── 2. flash_ssd.sh      → NVMe flashen (läuft auf dem Pi, von Stick)  │
+│  ANSIBLE (install.sh von Workstation)                                   │
+│    • Klont Repo von GitHub                                              │
+│    • Installiert Pakete                                                 │
+│    • Konfiguriert Storage                                               │
 └─────────────────────────────────────────────────────────────────────────┘
 ```
 
-| Script             | Läuft auf         | Zweck                                         |
-| ------------------ | ----------------- | --------------------------------------------- |
-| `prepare_stick.sh` | Workstation       | Boot-Stick mit OS-Image + Bootstrap erstellen |
-| `flash_ssd.sh`     | Pi (vom Stick)    | NVMe flashen, SSD-Boot vorbereiten            |
-| `install.sh`       | Workstation → SSH | Ansible-Provisioning (WiFi, Pakete, Storage)  |
-
-> [!IMPORTANT]
-> **Das Repo kommt IMMER von GitHub!**  
-> Der USB-Stick enthält nur Bootstrap-Scripts + OS-Image.
+| Phase | Script             | Läuft auf         | Was passiert                            |
+| ----- | ------------------ | ----------------- | --------------------------------------- |
+| 1     | `prepare_stick.sh` | Workstation       | Minimalen Boot-Stick erstellen          |
+| 2     | `flash_ssd.sh`     | Pi (vom Stick)    | NVMe flashen, User/SSH einrichten       |
+| 3     | `install.sh`       | Workstation → SSH | **Repo klonen** + System provisionieren |
 
 ---
 
@@ -36,14 +37,14 @@
 
 - Raspberry Pi 5 (oder 4)
 - NVMe SSD + HAT
-- SD-Karte oder USB-Stick (temporär für Bootstrap)
-- Workstation (Linux/Mac) mit `ansible` installiert
+- SD-Karte oder USB-Stick (temporär)
+- Workstation mit `ansible` installiert
 
 ---
 
-## Phase A: Boot-Stick erstellen (Workstation)
+## Phase 1: Boot-Stick erstellen (Workstation)
 
-### A.1) Konfiguration vorbereiten
+### 1.1) Konfiguration vorbereiten
 
 ```bash
 cd ~/dev/silvasonic_leaflistener
@@ -52,53 +53,44 @@ cp setup/config.example.env setup/config/config.env
 nano setup/config/config.env
 ```
 
-**Wichtige Werte:**
+**Passwort-Hash generieren:**
 
 ```bash
-# Passwort-Hash generieren
 echo 'dein_passwort' | openssl passwd -6 -stdin
 ```
 
-### A.2) OS-Image auf SD schreiben
+### 1.2) OS-Image auf SD schreiben
 
-**Option 1: Raspberry Pi Imager**
+Mit Raspberry Pi Imager oder beliebigem Tool:
 
-1. Raspberry Pi Imager öffnen
-2. OS: `Raspberry Pi OS Lite (64-bit)`
-3. SD-Karte auswählen → **Schreiben**
+- OS: `Raspberry Pi OS Lite (64-bit)`
+- Keine OS-Customisation nötig
 
-**Option 2: Beliebiger Imager**
-
-- Normales Raspi OS Lite auf SD schreiben
-
-### A.3) Bootstrap-Dateien hinzufügen
+### 1.3) Bootstrap-Dateien hinzufügen
 
 ```bash
-# SD-Karte neu einstecken
 sudo ./setup/bootstrap/prepare_stick.sh
 ```
 
-Das Script:
+**Das kopiert nur:**
 
-- Erweitert die Partition auf volle Größe
-- Kopiert `flash_ssd.sh` + OS-Image + Config auf den Stick
-- Aktiviert SSH
-
-**SD-Karte auswerfen → fertig!**
+- ✅ `flash_ssd.sh`
+- ✅ `config.env`
+- ✅ OS-Image
+- ❌ KEIN Repository!
 
 ---
 
-## Phase B: NVMe flashen (auf dem Pi)
+## Phase 2: NVMe flashen (auf dem Pi)
 
-### B.1) Von SD booten
+### 2.1) Von SD booten
 
 ```bash
-# Pi einschalten mit SD-Karte
 ssh pi@silvasonic.local
-# Passwort: aus deiner config.env
+# Passwort: aus config.env (USER_PASSWORD_HASH)
 ```
 
-### B.2) SSD flashen
+### 2.2) SSD flashen
 
 ```bash
 cd ~/setup_files
@@ -106,26 +98,20 @@ sudo ./flash_ssd.sh
 sudo poweroff
 ```
 
-### B.3) SD-Karte entfernen → Von NVMe booten
-
-Pi startet jetzt von der SSD.
+**SD-Karte entfernen → Von NVMe booten**
 
 ---
 
-## Phase C: Ansible Provisioning (Workstation → SSH)
-
-### C.1) Verbindung testen
-
-```bash
-ssh admin@silvasonic.local
-# Passwort: aus deiner config.env
-exit
-```
-
-### C.2) Install-Script ausführen
+## Phase 3: Provisioning (Workstation → SSH)
 
 > [!IMPORTANT]
-> Das Script läuft auf deiner **Workstation** und verbindet sich via SSH!
+> Dieses Script läuft auf deiner **Workstation** und:
+>
+> 1. Verbindet sich via SSH zum Pi
+> 2. **Klont das Repo von GitHub**
+> 3. Installiert alle Pakete und konfiguriert das System
+
+### 3.1) Install-Script ausführen
 
 ```bash
 cd ~/dev/silvasonic_leaflistener
@@ -134,14 +120,13 @@ cd ~/dev/silvasonic_leaflistener
 
 **Was passiert:**
 
-1. Verbindet sich via SSH zum Pi
-2. Führt Ansible-Playbooks aus:
-   - WiFi konfigurieren
-   - Pakete installieren (Podman, Git, etc.)
-   - Storage-Struktur auf `/mnt/data` anlegen
-   - Podman für SSD optimieren
+- System-Update
+- Pakete installieren (Podman, Git, etc.)
+- **Repo klonen nach `/mnt/data/dev/silvasonic_leaflistener`**
+- Storage-Struktur anlegen
+- WiFi konfigurieren (falls in config.env gesetzt)
 
-### C.3) Pi neustarten (optional)
+### 3.2) Pi neustarten
 
 ```bash
 ssh admin@silvasonic.local 'sudo reboot'
@@ -149,21 +134,11 @@ ssh admin@silvasonic.local 'sudo reboot'
 
 ---
 
-## Phase D: Repo klonen & Container starten
-
-### D.1) Repo von GitHub
+## Phase 4: Container starten
 
 ```bash
 ssh admin@silvasonic.local
-cd /mnt/data/dev
-git clone https://github.com/kyellsen/silvasonic_leaflistener.git
-cd silvasonic_leaflistener
-```
-
-### D.2) Container starten
-
-```bash
-sudo mkdir -p /mnt/data/storage/leaflistener/raw
+cd /mnt/data/dev/silvasonic_leaflistener
 sudo podman-compose -f podman-compose.yml up --build -d
 sudo podman logs -f silvasonic_ear
 ```
@@ -174,12 +149,27 @@ Mehr Details: [docs/deployment.md](../docs/deployment.md)
 
 ## Updates
 
+Da das Repo von GitHub geklont wurde:
+
 ```bash
 cd /mnt/data/dev/silvasonic_leaflistener
 git pull
-sudo podman-compose -f podman-compose.yml down
-sudo podman-compose -f podman-compose.yml up --build -d
+sudo podman-compose down
+sudo podman-compose up --build -d
 ```
+
+---
+
+## Re-Provisioning
+
+Bei Änderungen an der Infrastruktur:
+
+```bash
+# Von der Workstation
+./setup/install.sh
+```
+
+Ansible ist idempotent – es werden nur Änderungen angewendet.
 
 ---
 
@@ -188,27 +178,25 @@ sudo podman-compose -f podman-compose.yml up --build -d
 ### SSH funktioniert nicht
 
 ```bash
-# Hostname auflösen
 ping silvasonic.local
-
-# Falls nicht gefunden, IP direkt nutzen
-ssh admin@<IP_ADRESSE>
+# Falls nicht: IP direkt nutzen
+ssh admin@<IP>
 ```
 
-### Ansible schlägt fehl
+### Ansible findet Pi nicht
 
 ```bash
-# Manuell mit Verbose ausführen
-ansible-playbook -i setup/provision/inventory.yml \
-    setup/provision/main.yml -vvv
+# SSH-Alias prüfen
+ssh $SSH_TARGET
+# Manuell testen
+ansible all -i setup/provision/inventory.yml -m ping
 ```
 
-### Git clone fehlgeschlagen
+### Git clone schlägt fehl
 
 ```bash
-# Netzwerk prüfen
+# Auf dem Pi: Netzwerk prüfen
 ping github.com
-
-# WiFi verbinden (falls noch nicht)
+# Falls kein Internet: WiFi verbinden
 sudo nmcli device wifi connect "SSID" password "PSK"
 ```

@@ -20,9 +20,9 @@ source "$CONFIG_FILE"
 STICK_PASSWORD_HASH="$USER_PASSWORD_HASH"
 
 # Dependencies
-for cmd in parted resize2fs rsync lsblk; do
+for cmd in parted resize2fs lsblk; do
     if ! command -v $cmd &> /dev/null; then
-        echo "ERROR: Missing command '$cmd'. Please install (e.g. sudo apt install parted rsync)."
+        echo "ERROR: Missing command '$cmd'. Please install (e.g. sudo apt install parted)."
         exit 1
     fi
 done
@@ -213,7 +213,7 @@ if [[ ! -d "$BOOT_MNT" ]] || [[ ! -d "$ROOT_MNT" ]]; then
     error "Mount points invalid: $BOOT_MNT / $ROOT_MNT"
 fi
 
-# ===================== PROVISIONING =====================
+# ===================== PROVISIONING (MINIMAL) =====================
 TARGET_USER_HOME="$ROOT_MNT/home/$STICK_USER"
 
 # 1. SSH & Userconf
@@ -229,7 +229,7 @@ if ! grep -q "dtparam=pciex1_gen=3" "$BOOT_MNT/config.txt"; then
     echo "dtparam=pciex1_gen=3" | sudo tee -a "$BOOT_MNT/config.txt" >/dev/null
 fi
 
-# 3. Copy Setup Files
+# 3. Create setup_files directory with ONLY essential files
 if [[ ! -d "$TARGET_USER_HOME" ]]; then
     log "Creating home dir $TARGET_USER_HOME..."
     sudo mkdir -p "$TARGET_USER_HOME"
@@ -239,50 +239,33 @@ fi
 TARGET_SETUP="$TARGET_USER_HOME/setup_files"
 sudo mkdir -p "$TARGET_SETUP"
 
-# Copy Flash Script
+# Copy ONLY flash_ssd.sh
 log "Copying flash_ssd.sh..."
 sudo cp "$SCRIPT_DIR/flash_ssd.sh" "$TARGET_SETUP/"
 sudo chmod +x "$TARGET_SETUP/flash_ssd.sh"
 
-# Copy Repos (Setup + Tools)
-REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
-EXCLUDES="--exclude=*.img --exclude=*.img.xz --exclude=*.zip --exclude=*.iso"
-
-if [[ -d "$REPO_ROOT/setup" ]]; then
-    log "Syncing setup/ (code only)..."
-    sudo rsync -a $EXCLUDES "$REPO_ROOT/setup" "$TARGET_SETUP/"
-fi
-if [[ -d "$REPO_ROOT/scripts" ]]; then
-    log "Syncing scripts/..."
-    sudo rsync -a $EXCLUDES "$REPO_ROOT/scripts" "$TARGET_SETUP/"
-fi
-
-# Inject Config
-sudo mkdir -p "$TARGET_SETUP/setup/config"
-log "Injecting active config..."
-sudo cp "$CONFIG_FILE" "$TARGET_SETUP/setup/config/config.env"
+# Copy ONLY config.env (flattened, next to flash_ssd.sh)
+log "Copying config.env..."
+sudo cp "$CONFIG_FILE" "$TARGET_SETUP/config.env"
 
 # Copy Image File (With space check)
-# Since we resized, this SHOULD fit now.
 if [[ -f "$IMAGE_FILE" ]]; then
     IMAGE_SIZE=$(du -k "$IMAGE_FILE" | cut -f1)
     FREE_SPACE=$(df -k --output=avail "$TARGET_USER_HOME" | tail -n1)
     NEEDED=$((IMAGE_SIZE + 10240)) # 10MB buffer
 
     if [[ $FREE_SPACE -lt $NEEDED ]]; then
-       # Even after resize?
-       error "Not enough space ($((FREE_SPACE/1024))MB < $((NEEDED/1024))MB). Resize might have failed or stick is too small."
+       error "Not enough space ($((FREE_SPACE/1024))MB < $((NEEDED/1024))MB). Resize failed or stick too small."
     fi
 
     log "Copying Image File: $IMAGE_FILE ..."
     sudo cp "$IMAGE_FILE" "$TARGET_SETUP/"
 else
-    # Check relative
-    REL_IMG="$SCRIPT_DIR/../../$IMAGE_FILE"
+    # Check relative to bootstrap dir
+    REL_IMG="$SCRIPT_DIR/$IMAGE_FILE"
     if [[ -f "$REL_IMG" ]]; then
-         log "Copying Image File (relative)..."
+         log "Copying Image File (from bootstrap dir)..."
          sudo cp "$REL_IMG" "$TARGET_SETUP/"
-         IMAGE_FILE="$REL_IMG" # Update local var for next check?
     else
          log "WARNING: Image file not found. Boot stick will miss the image!"
     fi
@@ -290,6 +273,24 @@ fi
 
 # Permissions
 sudo chown -R 1000:1000 "$TARGET_USER_HOME/setup_files"
+
+# ===================== SUMMARY =====================
+log ""
+log "=============================================="
+log "Boot stick prepared successfully!"
+log "=============================================="
+log ""
+log "Contents of $TARGET_SETUP:"
+ls -la "$TARGET_SETUP" 2>/dev/null || sudo ls -la "$TARGET_SETUP"
+log ""
+log "This stick contains ONLY:"
+log "  • flash_ssd.sh  (NVMe installer)"
+log "  • config.env    (credentials + settings)"
+log "  • OS image      (to flash onto NVMe)"
+log ""
+log "The Silvasonic repo will be cloned from GitHub"
+log "by Ansible (install.sh) after NVMe boot."
+log "=============================================="
 
 # ===================== CLEANUP =====================
 if [[ "$AUTO_MOUNTED" == "true" ]]; then

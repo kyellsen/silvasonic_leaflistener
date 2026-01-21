@@ -80,15 +80,12 @@
         group: "{{ user }}"
         mode: "0755"
       loop:
-        - /mnt/data/containers/stacks
-        - /mnt/data/containers/volumes
-        - /mnt/data/containers/storage
         - /mnt/data/dev
         - /mnt/data/dev_workspaces
-        - /mnt/data/storage/silvasonic
-        - /mnt/data/storage/leaflistener/raw
-        - /mnt/data/storage/leaflistener/processed
-        - /mnt/data/storage/leaflistener/results
+        - /mnt/data/containers
+        - /mnt/data/services/silvasonic/recordings
+        - /mnt/data/services/silvasonic/logs
+        - /mnt/data/services/silvasonic/config
         - /mnt/data/backups
         - "/mnt/data/{{ user }}"
 
@@ -100,7 +97,7 @@
         podman system migrate 2>/dev/null || true
         rm -rf ~/.local/share/containers
         mkdir -p ~/.local/share
-        ln -s /mnt/data/containers/storage ~/.local/share/containers
+        ln -s /mnt/data/containers ~/.local/share/containers
       args:
         creates: "/home/{{ user }}/.local/share/containers/storage"
 
