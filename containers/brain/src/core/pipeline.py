@@ -1,8 +1,10 @@
 import logging
 import traceback
+import json
 from datetime import datetime
 from sqlalchemy.orm import Session
 from src.core.database import SessionLocal, AudioFile, AnalysisMetrics, Artifact, init_db
+from src.config import config
 from src.analyzers.meta import MetaAnalyzer
 from src.analyzers.loudness import LoudnessAnalyzer
 from src.analyzers.frequency import FrequencyAnalyzer
@@ -78,6 +80,38 @@ class AnalysisPipeline:
                 
             audio_file.processed_at = datetime.utcnow()
             db.commit()
+
+            # 5. Export JSON Metadata (Opt-Out)
+            if config.EXPORT_JSON_METADATA:
+                try:
+                    json_path = config.METADATA_DIR / f"{audio_file.filename}.json"
+                    
+                    # Construct JSON payload
+                    payload = {
+                        "filename": audio_file.filename,
+                        "processed_at": audio_file.processed_at.isoformat(),
+                        "meta": {
+                            "duration_sec": audio_file.duration_sec,
+                            "sample_rate": audio_file.sample_rate,
+                            "channels": audio_file.channels,
+                            "file_size_bytes": audio_file.file_size_bytes
+                        },
+                        "metrics": {
+                            "rms_loudness": metrics.rms_loudness,
+                            "peak_frequency_hz": metrics.peak_frequency_hz,
+                            "is_active": metrics.is_active
+                        },
+                        "artifacts": results.get("spectrogram_path")
+                    }
+                    
+                    with open(json_path, "w") as f:
+                        json.dump(payload, f, indent=2)
+                        
+                    logger.info(f"Exported JSON metadata to {json_path}")
+                except Exception as e:
+                    logger.error(f"Failed to export JSON metadata: {e}")
+                    # Non-blocking error, we don't rollback DB
+
             logger.info(f"Successfully processed {filepath}")
 
         except Exception as e:

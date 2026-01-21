@@ -85,6 +85,9 @@
         - /mnt/data/services/silvasonic/recordings
         - /mnt/data/services/silvasonic/logs
         - /mnt/data/services/silvasonic/config
+        - /mnt/data/services/silvasonic/brain
+        - /mnt/data/services/silvasonic/birdnet
+        - /mnt/data/services/silvasonic/carrier
         - /mnt/data/backups
 
     # Storage-Link Fix for Podman (User-Level)

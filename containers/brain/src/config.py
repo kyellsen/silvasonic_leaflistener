@@ -13,9 +13,15 @@ class Config:
     # Processing
     ARTIFACTS_DIR = Path(os.getenv("ARTIFACTS_DIR", "/data/processed/artifacts"))
     
+    # JSON Metadata Export (Opt-Out)
+    EXPORT_JSON_METADATA = os.getenv("EXPORT_JSON_METADATA", "true").lower() == "true"
+    METADATA_DIR = Path(os.getenv("METADATA_DIR", "/data/processed/metadata"))
+    
     @classmethod
     def ensure_dirs(cls):
         cls.ARTIFACTS_DIR.mkdir(parents=True, exist_ok=True)
+        if cls.EXPORT_JSON_METADATA:
+            cls.METADATA_DIR.mkdir(parents=True, exist_ok=True)
         # DB Dir is handled by engine but parent must exist
         Path(cls.DB_PATH).parent.mkdir(parents=True, exist_ok=True)
 
