@@ -79,9 +79,9 @@ services:
       - PYTHONUNBUFFERED=1
       - INPUT_DIR=/data/recording
       - DB_PATH=/data/db/birdnet.sqlite
-      # Central Europe (Center of Germany)
-      - LATITUDE=51.1657
-      - LONGITUDE=10.4515
+      # Central Europe (Center of Germany) - Commented out to enable GLOBAL species list
+      #- LATITUDE=51.1657
+      #- LONGITUDE=10.4515
       - MIN_CONFIDENCE=0.7
       - RECURSIVE_WATCH=true
 

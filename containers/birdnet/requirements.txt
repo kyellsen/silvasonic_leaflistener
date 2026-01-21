@@ -6,3 +6,8 @@ soundfile
 resampy
 # Install BirdNET-Analyzer directly from the official repo
 git+https://github.com/birdnet-team/BirdNET-Analyzer.git
+
+# Test Dependencies
+pytest
+pytest-cov
+pytest-mock

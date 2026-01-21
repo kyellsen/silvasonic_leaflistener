@@ -10,9 +10,13 @@ class Config:
     RECURSIVE_WATCH = os.getenv("RECURSIVE_WATCH", "true").lower() == "true"
     
     # BirdNET Settings
-    # Default to Central Europe (Approx Center of Germany)
-    LATITUDE = float(os.getenv("LATITUDE", "51.1657"))
-    LONGITUDE = float(os.getenv("LONGITUDE", "10.4515"))
+    # Location for species prediction (optional)
+    # If None, no location filter is applied (= global species list)
+    _lat = os.getenv("LATITUDE")
+    LATITUDE = float(_lat) if _lat else None
+    
+    _lon = os.getenv("LONGITUDE")
+    LONGITUDE = float(_lon) if _lon else None
     
     # Minimum confidence to store a detection (0.0 - 1.0)
     MIN_CONFIDENCE = float(os.getenv("MIN_CONFIDENCE", "0.7"))
