@@ -18,7 +18,6 @@ packages = ["scripts"]
 [tool.uv.workspace]
 members = [
     "containers/birdnet",
-    "containers/brain",
     "containers/recorder",
 ]
 
@@ -27,6 +26,9 @@ dev = [
     "mypy>=1.0",
     "pytest>=8.0",
     "ruff>=0.1.0",
+    "numpy",
+    "sqlalchemy",
+    "watchdog",
 ]
 
 [tool.uv]
