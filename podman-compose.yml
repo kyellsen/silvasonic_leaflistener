@@ -43,7 +43,7 @@ services:
   # Syncs recordings to the central server.
   # Mounts recordings as Read-Only to prevent accidental deletion.
   carrier:
-    image: syncthing/syncthing:latest
+    image: docker.io/syncthing/syncthing:latest
     container_name: silvasonic_carrier
     hostname: silvasonic-carrier
     restart: always
