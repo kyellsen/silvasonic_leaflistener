@@ -2,11 +2,15 @@
 FROM python:3.13-slim
 
 # Install system dependencies for audio
-# libasound2-dev and libportaudio2 are crucial for sounddevice
+# alsa-utils for arecord, sox for conversion, ffmpeg for FLAC encoding
 RUN apt-get update && apt-get install -y \
     libasound2 \
     libasound2-dev \
     libportaudio2 \
+    alsa-utils \
+    sox \
+    libsox-fmt-all \
+    ffmpeg \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app

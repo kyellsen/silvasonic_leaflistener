@@ -10,7 +10,9 @@ services:
       - MOCK_HARDWARE=false
       - AUDIO_SAMPLERATE=384000
       - AUDIO_CHANNELS=1
-      - AUDIO_DEVICE_NAME=Ultramic
+      - AUDIO_BIT_DEPTH=16
+      - AUDIO_DEVICE_PATTERNS=UltraMic,Dodotronic,384K
+      - AUDIO_CHUNK_SECONDS=60
       - PYTHONUNBUFFERED=1
     devices:
       - /dev/snd:/dev/snd

@@ -1,170 +1,184 @@
 
 import os
 import sys
-import queue
+import subprocess
 import time
-import threading
 import datetime
 import signal
 import logging
-import numpy as np
-import sounddevice as sd
-import soundfile as sf
+import re
 
 # --- Configuration ---
 RAW_DIR = "/data/recording"
 SAMPLE_RATE = int(os.getenv("AUDIO_SAMPLERATE", "384000"))
 CHANNELS = int(os.getenv("AUDIO_CHANNELS", "1"))
-DEVICE_NAME = os.getenv("AUDIO_DEVICE_NAME", "Ultramic") # Substring match
-SUBTYPE = os.getenv("AUDIO_SUBTYPE", "PCM_16") 
+BIT_DEPTH = int(os.getenv("AUDIO_BIT_DEPTH", "16"))
+DEVICE_PATTERNS = os.getenv("AUDIO_DEVICE_PATTERNS", "UltraMic,Dodotronic,384K").split(",")
+CHUNK_DURATION = int(os.getenv("AUDIO_CHUNK_SECONDS", "60"))
 MOCK_HARDWARE = os.getenv("MOCK_HARDWARE", "false").lower() == "true"
-BUFFER_SIZE_SECONDS = 5 # How much audio to buffer in RAM before potential dropouts
-BLOCK_DURATION_MS = 100 # Approx duration of each callback block
 
 # --- Logging ---
 logging.basicConfig(level=logging.INFO, format='%(asctime)s [%(levelname)s] %(message)s')
 logger = logging.getLogger("recorder")
 
 # --- Global State ---
-audio_queue = queue.Queue(maxsize=int(SAMPLE_RATE * BUFFER_SIZE_SECONDS / (SAMPLE_RATE * BLOCK_DURATION_MS / 1000))) 
 running = True
-current_filename = None
 
 def get_filename():
     """Generates a timestamped filename."""
     timestamp = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
     return os.path.join(RAW_DIR, f"{timestamp}.flac")
 
-def audio_callback(indata, frames, time_info, status):
-    """Callback function for sounddevice. Runs in a separate thread."""
-    if status:
-        logger.warning(f"Audio Callback Status: {status}")
-    
-    # Place a copy of the data in the queue
+def find_audio_device():
+    """Find audio device using arecord -l, matching against patterns."""
     try:
-        audio_queue.put_nowait(indata.copy())
-    except queue.Full:
-        logger.error("BUFFER OVERFLOW: Audio queue is full! Dropping frames.")
+        result = subprocess.run(["arecord", "-l"], capture_output=True, text=True)
+        lines = result.stdout + result.stderr
+        
+        logger.info("Scanning for audio devices...")
+        logger.debug(f"arecord -l output:\n{lines}")
+        
+        for line in lines.split('\n'):
+            for pattern in DEVICE_PATTERNS:
+                if pattern.lower() in line.lower():
+                    # Extract card number
+                    match = re.search(r'card (\d+)', line)
+                    if match:
+                        card_id = match.group(1)
+                        logger.info(f"Found device matching '{pattern}': {line.strip()}")
+                        logger.info(f"Using hw:{card_id},0")
+                        return f"hw:{card_id},0"
+        
+        logger.error("No matching audio device found!")
+        logger.info("Available devices:")
+        logger.info(lines)
+        return None
+        
+    except Exception as e:
+        logger.error(f"Error scanning devices: {e}")
+        return None
 
-def file_writer():
-    """Consumer thread that writes audio data to disk."""
-    global current_filename
+def record_chunk(device, filename, duration):
+    """Record a chunk using arecord piped to ffmpeg for FLAC encoding."""
     
-    # Ensure output directory exists
-    os.makedirs(RAW_DIR, exist_ok=True)
+    # arecord -> raw PCM, pipe to ffmpeg for FLAC
+    arecord_cmd = [
+        "arecord",
+        "-D", device,
+        "-f", f"S{BIT_DEPTH}_LE",  # Signed, Little Endian
+        "-r", str(SAMPLE_RATE),
+        "-c", str(CHANNELS),
+        "-d", str(duration),
+        "-t", "raw",  # Output raw PCM
+        "-q",  # Quiet
+        "-"  # Output to stdout
+    ]
     
-    logger.info("Writer thread started.")
+    ffmpeg_cmd = [
+        "ffmpeg",
+        "-f", f"s{BIT_DEPTH}le",  # Input format
+        "-ar", str(SAMPLE_RATE),
+        "-ac", str(CHANNELS),
+        "-i", "pipe:0",  # Read from stdin
+        "-y",  # Overwrite
+        "-c:a", "flac",
+        "-compression_level", "5",
+        filename
+    ]
     
-    while running or not audio_queue.empty():
-        try:
-            # Generate new file if needed (e.g., could implement file rotation here, 
-            # currently we just start one file and write 'forever' until restart/signal, 
-            # OR we can make a new file every X minutes. 
-            # For simplicity MVP, we'll stream to one file per session, 
-            # but usually for bioacoustics we want chunked files (e.g. 1 min or 5 min).
-            # Let's Implement basic chunking logic: New file every 1 minute for safety?
-            # User rq didn't specify, but "record logic" usually implies manageable files.
-            # Let's stick to one file per run for MVP as per plan, or maybe rotational?
-            # Re-reading: "Write FLAC files". Plural. Let's do a simple rotation every minute to be safe?
-            # Actually, continuous stream to one file is risky if crash. 
-            # Let's do 60s chunks.
+    logger.info(f"Recording {duration}s to {filename}")
+    
+    try:
+        # Pipe arecord output to ffmpeg
+        arecord_proc = subprocess.Popen(arecord_cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        ffmpeg_proc = subprocess.Popen(ffmpeg_cmd, stdin=arecord_proc.stdout, 
+                                        stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        
+        # Allow arecord to receive SIGPIPE if ffmpeg exits
+        arecord_proc.stdout.close()
+        
+        # Wait for completion
+        ffmpeg_proc.wait()
+        arecord_proc.wait()
+        
+        if ffmpeg_proc.returncode == 0:
+            # Get file size
+            try:
+                size = os.path.getsize(filename)
+                logger.info(f"Saved: {filename} ({size / 1024 / 1024:.2f} MB)")
+            except:
+                logger.info(f"Saved: {filename}")
+            return True
+        else:
+            stderr = ffmpeg_proc.stderr.read().decode()
+            logger.error(f"FFmpeg error: {stderr}")
+            return False
             
-            chunk_start_time = time.time()
-            filename = get_filename()
-            logger.info(f"Starting new recording: {filename}")
-            
-            with sf.SoundFile(filename, mode='w', samplerate=SAMPLE_RATE, channels=CHANNELS, subtype=SUBTYPE) as file:
-                while time.time() - chunk_start_time < 60 and running:
-                    try:
-                        data = audio_queue.get(timeout=1)
-                        file.write(data)
-                    except queue.Empty:
-                        continue
-            
-            logger.info(f"Finished writing: {filename}")
-            
-        except Exception as e:
-            logger.error(f"Writer Error: {e}")
-            time.sleep(1)
+    except Exception as e:
+        logger.error(f"Recording error: {e}")
+        return False
+
+def generate_mock_audio(filename, duration):
+    """Generate white noise for testing without hardware."""
+    import numpy as np
+    import soundfile as sf
+    
+    logger.info(f"[MOCK] Generating {duration}s noise to {filename}")
+    
+    samples = int(SAMPLE_RATE * duration)
+    noise = np.random.uniform(-0.5, 0.5, (samples, CHANNELS)).astype('float32')
+    
+    sf.write(filename, noise, SAMPLE_RATE, subtype='PCM_16')
+    logger.info(f"[MOCK] Saved: {filename}")
 
 def main():
     global running
     
-    logger.info("Starting 'The Ear'...")
-    logger.info(f"Config: Rate={SAMPLE_RATE}, Ch={CHANNELS}, Device='{DEVICE_NAME}'")
+    logger.info("=" * 50)
+    logger.info("Starting 'The Ear' (ALSA Backend)")
+    logger.info("=" * 50)
+    logger.info(f"Config: Rate={SAMPLE_RATE}, Ch={CHANNELS}, Bit={BIT_DEPTH}")
+    logger.info(f"Device patterns: {DEVICE_PATTERNS}")
+    logger.info(f"Chunk duration: {CHUNK_DURATION}s")
     logger.info(f"Storage: {RAW_DIR}")
+    logger.info(f"Mock mode: {MOCK_HARDWARE}")
     
     # Handle Signals
     def signal_handler(sig, frame):
         global running
-        logger.info("Signal received, stopping...")
+        logger.info("Signal received, stopping after current chunk...")
         running = False
     
     signal.signal(signal.SIGINT, signal_handler)
     signal.signal(signal.SIGTERM, signal_handler)
-
-    writer_thread = threading.Thread(target=file_writer)
-    writer_thread.start()
-
-    try:
-        if MOCK_HARDWARE:
-            logger.warning("!!! MOCK MODE ENABLED !!! Generating white noise.")
-            # Simulate streaming audio
-            while running:
-                # Generate random noise block
-                block_size = int(SAMPLE_RATE * BLOCK_DURATION_MS / 1000)
-                noise = np.random.uniform(-0.1, 0.1, (block_size, CHANNELS)).astype('float32')
-                
-                # Direct put to queue
-                try:
-                    audio_queue.put(noise, timeout=1)
-                except queue.Full:
-                     logger.error("BUFFER OVERFLOW (MOCK): Queue full")
-                
-                # Sleep to simulate real-time
-                time.sleep(BLOCK_DURATION_MS / 1000)
-                
-        else:
-            # Find Device
-            devices = sd.query_devices()
-            target_device_idx = None
-            for idx, dev in enumerate(devices):
-                if DEVICE_NAME.lower() in dev['name'].lower() and dev['max_input_channels'] >= CHANNELS:
-                    target_device_idx = idx
-                    logger.info(f"Found target device: {dev['name']} (Index {idx})")
-                    break
-            
-            if target_device_idx is None:
-                logger.error(f"Device containing '{DEVICE_NAME}' not found!")
-                logger.info("Available devices:")
-                logger.info(devices)
-                # Fallback? No, this is critical.
-                # But for dev purposes, if not found, we might want to crash loop.
-                # However, if user said "other devices", maybe default to default input?
-                # Let's stick to fail-fast if specific device required, or use default if DEVICE_NAME is empty.
-                if not DEVICE_NAME:
-                     target_device_idx = None # Use default
-                     logger.info("Using System Default Input Device")
-                else: 
-                     sys.exit(1)
-
-            with sd.InputStream(device=target_device_idx,
-                                channels=CHANNELS,
-                                samplerate=SAMPLE_RATE,
-                                callback=audio_callback,
-                                blocksize=int(SAMPLE_RATE * BLOCK_DURATION_MS / 1000)):
-                logger.info("Recording started. Press Ctrl+C to stop.")
-                while running:
-                    sd.sleep(1000)
-                    
-    except Exception as e:
-        logger.critical(f"Fatal Recorder Error: {e}")
-        running = False
     
-    finally:
-        logger.info("Waiting for writer to finish...")
-        writer_thread.join()
-        logger.info("Shutdown complete.")
+    # Ensure output directory exists
+    os.makedirs(RAW_DIR, exist_ok=True)
+    
+    if MOCK_HARDWARE:
+        logger.warning("!!! MOCK MODE ENABLED !!!")
+        while running:
+            filename = get_filename()
+            generate_mock_audio(filename, CHUNK_DURATION)
+            time.sleep(1)  # Small pause between chunks
+    else:
+        # Find device
+        device = find_audio_device()
+        if not device:
+            logger.critical("Cannot continue without audio device. Exiting.")
+            sys.exit(1)
+        
+        logger.info("Recording started. Press Ctrl+C to stop.")
+        
+        while running:
+            filename = get_filename()
+            success = record_chunk(device, filename, CHUNK_DURATION)
+            
+            if not success and running:
+                logger.warning("Recording failed, retrying in 5s...")
+                time.sleep(5)
+    
+    logger.info("Shutdown complete.")
 
 if __name__ == "__main__":
     main()
