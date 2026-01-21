@@ -21,7 +21,6 @@ class BirdNETAnalyzer:
         pass
 
     def process_file(self, file_path: str):
-
         """
         Analyze a single audio file and save detections to DB.
         """
@@ -32,34 +31,18 @@ class BirdNETAnalyzer:
 
         logger.info(f"Analyzing {path.name}...")
         
-        # 1. Extract Timestamp from Filename
-        # Expected format: "20240121_120000.flac" or "Any_Prefix_YYYYMMDD_HHMMSS.flac"
-        # We will try a few patterns or just generic extraction.
-        # Silvasonic Ear typically uses: `silvasonic_YYYY-MM-DD_HH-MM-SS.flac` 
-        # Let's match that first.
+        # 1. Extract Timestamp
         recording_dt = self._parse_timestamp(path.name)
         if not recording_dt:
             logger.warning(f"Could not parse timestamp from {path.name}, using current time as fallback.")
             recording_dt = datetime.datetime.utcnow()
             
-        # 2. Week of Year for species list
+        # 2. Week of Year
         week = recording_dt.isocalendar()[1]
         
         # 3. Run Analysis
-        # We use the birdnet_analyzer library.
-        # We need to construct the configuration for the analysis.
         try:
-            # Note: The API for BirdNET-Analyzer changes. 
-            # We will use a standard approach compatible with the `analyze` module provided by the repo.
-            # If strictly using the package, we often instantiate an Analyzer.
-            
-            # Since the Python API isn't strictly documented as stable public API, 
-            # we will call the library functions.
-            
-            # Using specific parameters for Central Europe
-
-            
-            # Call the analyze function directly (it was imported as bn_analyze)
+            # bn_analyze is the function imported from birdnet_analyzer.analyze
             detections = bn_analyze(
                 audio_input=str(path),
                 min_conf=config.MIN_CONFIDENCE,
@@ -70,23 +53,6 @@ class BirdNETAnalyzer:
                 threads=config.THREADS,
                 output=None
             )
-            
-            # Debug: Log the structure of detections to ensure we parse it correctly in _save_detections
-            logger.info(f"Analysis return type: {type(detections)}")
-            if isinstance(detections, dict):
-                 # Log first key to see structure
-                 keys = list(detections.keys())
-                 if keys:
-                     logger.info(f"First detection key: {keys[0]} (Type: {type(keys[0])})")
-                     logger.info(f"First detection val: {detections[keys[0]]}")
-            elif isinstance(detections, list):
-                 if detections:
-                     logger.info(f"First detection item: {detections[0]}")
-            
-            self._save_detections(detections, path.name, recording_dt)
-            
-            # detections structure usually: { 'start_end_tuple': [('Common', 'Scientific', conf), ...] }
-            # Or list of dicts. Let's handle the standard return.
             
             self._save_detections(detections, path.name, recording_dt)
             logger.info(f"Analysis complete for {path.name}. Found {len(detections)} potential segments.")
