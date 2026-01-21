@@ -140,7 +140,7 @@ def main():
     global running
     
     # Import profile loader
-    from .mic_profiles import get_active_profile
+    from mic_profiles import get_active_profile
     
     profile, device = get_active_profile()
     

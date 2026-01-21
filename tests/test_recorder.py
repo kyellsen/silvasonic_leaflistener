@@ -8,7 +8,7 @@ import sys
 import threading
 import numpy as np
 
-# Adjust path to import main from containers/sensor/recorder
+# Adjust path to import main from containers/recorder/src
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../containers/recorder/src')))
 
 import main

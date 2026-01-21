@@ -34,4 +34,4 @@ ENV AUDIO_OUTPUT_DIR=/data/recording
 ENV PYTHONPATH=/app/src
 
 # Run as module
-CMD ["python", "-m", "silvasonic_ear.main"]
+CMD ["python", "-m", "main"]
