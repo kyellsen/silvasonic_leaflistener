@@ -91,6 +91,55 @@
       </div>
     </div>
 
+    <!-- Location Settings -->
+    <div
+      class="glass-panel p-6 rounded-2xl border border-gray-200 dark:border-white/5"
+    >
+      <h3
+        class="font-bold text-lg text-gray-900 dark:text-white mb-4 border-b border-gray-200 dark:border-white/10 pb-2"
+      >
+        Location
+      </h3>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div>
+          <label
+            for="latitude"
+            class="block font-medium text-gray-700 dark:text-gray-300 mb-2"
+          >
+            Latitude
+          </label>
+          <input
+            type="number"
+            step="any"
+            name="latitude"
+            id="latitude"
+            value="{{ settings.location.latitude }}"
+            class="w-full bg-gray-50 dark:bg-gray-900 border border-gray-300 dark:border-gray-700 text-gray-900 dark:text-white text-sm rounded-lg focus:ring-silva-500 focus:border-silva-500 block p-2.5"
+          />
+        </div>
+        <div>
+          <label
+            for="longitude"
+            class="block font-medium text-gray-700 dark:text-gray-300 mb-2"
+          >
+            Longitude
+          </label>
+          <input
+            type="number"
+            step="any"
+            name="longitude"
+            id="longitude"
+            value="{{ settings.location.longitude }}"
+            class="w-full bg-gray-50 dark:bg-gray-900 border border-gray-300 dark:border-gray-700 text-gray-900 dark:text-white text-sm rounded-lg focus:ring-silva-500 focus:border-silva-500 block p-2.5"
+          />
+        </div>
+      </div>
+      <p class="mt-2 text-sm text-gray-500 dark:text-gray-400">
+        Used for fetching local weather data (Decimal degrees, e.g. 52.52).
+      </p>
+    </div>
+
     <!-- HealthChecker Settings -->
     <div
       class="glass-panel p-6 rounded-2xl border border-gray-200 dark:border-white/5"

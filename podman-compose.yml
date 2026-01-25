@@ -205,3 +205,21 @@ services:
       - /mnt/data/services/silvasonic/sound_analyser/artifacts:/data/processed/artifacts:z
       # System Stats (Optional, depends on host)
       # - /etc/localtime:/etc/localtime:ro
+
+  # ---------------------------------------------------------------------------
+  # Weather - Local Weather Data Collector
+  # ---------------------------------------------------------------------------
+  weather:
+    build:
+      context: containers/weather
+    image: silvasonic-weather:latest
+    container_name: silvasonic_weather
+    restart: always
+    env_file: .env
+    volumes:
+      # Shared Config (Read/Write)
+      - /mnt/data/services/silvasonic/config:/config:z
+      # Shared Logs
+      - /mnt/data/services/silvasonic/logs:/var/log/silvasonic:z
+      # Shared Status
+      - /mnt/data/services/silvasonic/status:/mnt/data/services/silvasonic/status:z

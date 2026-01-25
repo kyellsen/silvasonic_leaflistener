@@ -1,0 +1,5 @@
+wetterdienst==0.74.0
+sqlalchemy
+psycopg2-binary
+schedule
+pandas

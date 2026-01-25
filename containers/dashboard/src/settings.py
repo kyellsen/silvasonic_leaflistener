@@ -13,6 +13,10 @@ DEFAULT_SETTINGS = {
     # HealthChecker overrides (stored here, read by HealthChecker)
     "healthchecker": {
         "recipient_email": "" # Empty means use ENV fallback
+    },
+    "location": {
+        "latitude": 52.52,
+        "longitude": 13.40
     }
 }
 
@@ -35,6 +39,8 @@ class SettingsService:
                 settings["locale"].update(data["locale"])
             if "healthchecker" in data:
                 settings["healthchecker"].update(data["healthchecker"])
+            if "location" in data:
+                settings["location"].update(data["location"])
                 
             return settings
         except Exception as e:

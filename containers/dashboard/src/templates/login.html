@@ -29,8 +29,14 @@
                 500: "#10b981",
                 600: "#059669",
               },
-              dark: {
-                bg: "#020617",
+            },
+            animation: {
+              float: "float 6s ease-in-out infinite",
+            },
+            keyframes: {
+              float: {
+                "0%, 100%": { transform: "translateY(0)" },
+                "50%": { transform: "translateY(-10px)" },
               },
             },
           },
@@ -38,81 +44,114 @@
       };
     </script>
     <style>
-      .glass-panel {
-        background: rgba(30, 41, 59, 0.7);
-        backdrop-filter: blur(12px);
-        border: 1px solid rgba(255, 255, 255, 0.1);
+      .bg-custom {
+        background-image: url("/static/images/login_bg.png");
+        background-size: cover;
+        background-position: center;
+      }
+      .glass-card {
+        background: rgba(15, 23, 42, 0.65);
+        backdrop-filter: blur(16px);
+        -webkit-backdrop-filter: blur(16px);
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        box-shadow:
+          0 4px 6px -1px rgba(0, 0, 0, 0.1),
+          0 2px 4px -1px rgba(0, 0, 0, 0.06),
+          0 0 40px rgba(16, 185, 129, 0.1);
       }
     </style>
   </head>
   <body
-    class="bg-gray-900 text-gray-200 h-screen flex items-center justify-center relative overflow-hidden font-sans"
+    class="bg-gray-900 text-gray-200 h-screen w-full flex items-center justify-center relative overflow-hidden font-sans bg-custom"
   >
-    <!-- Background Gradients -->
-    <div class="absolute inset-0 pointer-events-none">
-      <div
-        class="absolute top-[-20%] left-[-10%] w-[60%] h-[60%] bg-green-500/20 blur-[100px] rounded-full"
-      ></div>
-      <div
-        class="absolute bottom-[-20%] right-[-10%] w-[60%] h-[60%] bg-blue-500/20 blur-[100px] rounded-full"
-      ></div>
-    </div>
+    <!-- Dark overlay to ensure text readability -->
+    <div class="absolute inset-0 bg-black/40"></div>
 
-    <div class="glass-panel p-10 rounded-2xl shadow-2xl w-96 relative z-10">
-      <div class="text-center mb-8">
-        <div class="text-5xl mb-4 animate-bounce">🌲</div>
+    <!-- Main Card -->
+    <div
+      class="glass-card p-12 rounded-3xl w-full max-w-md relative z-10 transform transition-all hover:scale-[1.01] duration-500"
+    >
+      <!-- Logo / Header -->
+      <div class="text-center mb-10">
+        <div
+          class="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-silva-500/20 mb-6 backdrop-blur-sm animate-float"
+        >
+          <span class="text-4xl filter drop-shadow-lg">🌲</span>
+        </div>
         <h1
-          class="text-3xl font-heading font-bold text-transparent bg-clip-text bg-gradient-to-r from-silva-400 to-blue-400"
+          class="text-4xl font-heading font-bold text-white tracking-tight mb-2"
         >
           Silvasonic
         </h1>
-        <p class="text-gray-400 text-sm tracking-wide mt-1">SECURE ACCESS</p>
+        <p
+          class="text-silva-400 text-sm font-medium tracking-widest uppercase opacity-90"
+        >
+          Bioacoustic Station
+        </p>
       </div>
 
       {% if error %}
       <div
-        class="bg-red-500/10 border border-red-500/30 text-red-200 px-4 py-3 rounded-lg mb-6 text-sm text-center backdrop-blur-sm"
+        class="animate-pulse bg-red-500/10 border border-red-500/20 text-red-200 px-4 py-3 rounded-xl mb-8 text-sm text-center backdrop-blur-md"
       >
-        {{ error }}
+        ⚠️ {{ error }}
       </div>
       {% endif %}
 
-      <form action="/auth/login" method="POST" class="space-y-5">
-        <div class="group">
+      <form action="/auth/login" method="POST" class="space-y-6">
+        <div class="space-y-2">
           <label
-            class="block text-xs font-bold text-gray-400 uppercase mb-1.5 ml-1 transition-colors group-hover:text-silva-400"
-            >Username</label
+            class="text-xs font-bold text-gray-400 uppercase tracking-wider ml-1"
+            >Identity</label
           >
-          <input
-            type="text"
-            name="username"
-            class="w-full bg-gray-950/50 border border-gray-700 rounded-lg p-3 text-white focus:border-silva-500 focus:ring-1 focus:ring-silva-500 focus:outline-none transition-all placeholder-gray-600"
-            placeholder="Identity"
-          />
+          <div class="relative group">
+            <input
+              type="text"
+              name="username"
+              required
+              class="w-full bg-gray-900/50 border border-gray-700/50 rounded-xl px-4 py-3.5 text-white placeholder-gray-500 focus:bg-gray-900/80 focus:border-silva-500/50 focus:ring-4 focus:ring-silva-500/10 focus:outline-none transition-all duration-300"
+              placeholder="Username"
+            />
+          </div>
         </div>
-        <div class="group">
+
+        <div class="space-y-2">
           <label
-            class="block text-xs font-bold text-gray-400 uppercase mb-1.5 ml-1 transition-colors group-hover:text-silva-400"
-            >Password</label
+            class="text-xs font-bold text-gray-400 uppercase tracking-wider ml-1"
+            >Access Key</label
           >
-          <input
-            type="password"
-            name="password"
-            class="w-full bg-gray-950/50 border border-gray-700 rounded-lg p-3 text-white focus:border-silva-500 focus:ring-1 focus:ring-silva-500 focus:outline-none transition-all placeholder-gray-600"
-            placeholder="Key"
-          />
+          <div class="relative group">
+            <input
+              type="password"
+              name="password"
+              required
+              class="w-full bg-gray-900/50 border border-gray-700/50 rounded-xl px-4 py-3.5 text-white placeholder-gray-500 focus:bg-gray-900/80 focus:border-silva-500/50 focus:ring-4 focus:ring-silva-500/10 focus:outline-none transition-all duration-300"
+              placeholder="••••••••"
+            />
+          </div>
         </div>
+
         <button
           type="submit"
-          class="w-full bg-gradient-to-r from-silva-600 to-silva-500 hover:from-silva-500 hover:to-silva-400 text-white font-bold py-3 rounded-lg transition-all shadow-lg hover:shadow-silva-500/20 transform hover:-translate-y-0.5"
+          class="w-full mt-4 bg-gradient-to-r from-silva-600 to-silva-400 hover:from-silva-500 hover:to-silva-300 text-white font-bold py-4 rounded-xl transition-all duration-300 shadow-lg shadow-silva-500/20 hover:shadow-silva-500/40 hover:-translate-y-0.5"
         >
-          Enter Dashboard
+          Initialize Session
         </button>
       </form>
 
-      <div class="mt-8 text-center text-xs text-gray-600">
-        v0.1.0 • Authorized Personnel Only
+      <!-- Footer -->
+      <div
+        class="mt-10 flex items-center justify-center gap-2 text-[10px] text-gray-500 uppercase tracking-widest font-medium"
+      >
+        <span>Protected System</span>
+        <span class="w-1 h-1 rounded-full bg-gray-600"></span>
+        <span>Authorized Use Only</span>
       </div>
     </div>
+
+    <!-- Decorative Bottom Gradient -->
+    <div
+      class="absolute bottom-0 left-0 right-0 h-32 bg-gradient-to-t from-black/80 to-transparent pointer-events-none"
+    ></div>
   </body>
 </html>

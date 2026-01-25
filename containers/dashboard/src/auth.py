@@ -26,4 +26,7 @@ def require_auth(request: Request):
     return True
 
 def verify_credentials(username, password):
-    return username == ADMIN_USER and password == ADMIN_PASS
+    # Constant time comparison to prevent timing attacks
+    user_ok = secrets.compare_digest(username, ADMIN_USER)
+    pass_ok = secrets.compare_digest(password, ADMIN_PASS)
+    return user_ok and pass_ok

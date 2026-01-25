@@ -60,8 +60,15 @@ def render(request: Request, template: str, context: dict):
 # We need a partial base that outputs only the blocks
 
 
-# Mount Static (if we had specific assets, for now CDN is used)
-# app.mount("/static", StaticFiles(directory="static"), name="static")
+# Mount Static
+app.mount("/static", StaticFiles(directory=os.path.join(BASE_DIR, "static")), name="static")
+
+@app.middleware("http")
+async def add_security_headers(request: Request, call_next):
+    response = await call_next(request)
+    response.headers["X-Content-Type-Options"] = "nosniff"
+    response.headers["X-Frame-Options"] = "DENY"
+    return response
 
 @app.get("/", response_class=HTMLResponse)
 async def root(request: Request):
@@ -78,10 +85,20 @@ async def login_page(request: Request):
 
 @app.post("/auth/login")
 async def login_submit(request: Request, username: str = Form(...), password: str = Form(...)):
+    import asyncio
     if verify_credentials(username, password):
         response = RedirectResponse(url="/dashboard", status_code=HTTP_302_FOUND)
-        response.set_cookie(key=COOKIE_NAME, value=SESSION_SECRET, httponly=True)
+        response.set_cookie(
+            key=COOKIE_NAME, 
+            value=SESSION_SECRET, 
+            httponly=True, 
+            samesite="lax",
+            secure=False # Set to True if running behind HTTPS proxy
+        )
         return response
+    
+    # Basic Rate Limiting / Brute Force Protection
+    await asyncio.sleep(1.0)
     return templates.TemplateResponse("login.html", {"request": request, "error": "Invalid credentials"})
 
 @app.get("/auth/logout")
@@ -144,7 +161,16 @@ async def settings_save(request: Request, auth=Depends(require_auth)):
     # Process Form
     use_german = form.get("use_german_names") == "on"
     notifier_email = form.get("notifier_email", "").strip()
+    notifier_email = form.get("notifier_email", "").strip()
     apprise_urls_raw = form.get("apprise_urls", "").strip()
+    
+    # Location
+    try:
+        latitude = float(form.get("latitude", 52.52))
+        longitude = float(form.get("longitude", 13.40))
+    except (ValueError, TypeError):
+        latitude = 52.52
+        longitude = 13.40
     
     # Parse URLs (comma separated)
     apprise_urls = [u.strip() for u in apprise_urls_raw.split(',') if u.strip()]
@@ -158,6 +184,10 @@ async def settings_save(request: Request, auth=Depends(require_auth)):
     if "healthchecker" not in settings: settings["healthchecker"] = {}
     settings["healthchecker"]["recipient_email"] = notifier_email
     settings["healthchecker"]["apprise_urls"] = apprise_urls
+
+    if "location" not in settings: settings["location"] = {}
+    settings["location"]["latitude"] = latitude
+    settings["location"]["longitude"] = longitude
     
     # Save
     if SettingsService.save_settings(settings):
