@@ -107,6 +107,8 @@ services:
     volumes:
       # Read-only access to recordings
       - /mnt/data/services/silvasonic/recorder/recordings:/data/recording:ro
+      # Configuration (Read-Only)
+      - /mnt/data/services/silvasonic/config:/config:ro
       # Isolated Results
       - /mnt/data/services/silvasonic/birdnet/results:/data/results:z
       # Shared Logs

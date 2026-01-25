@@ -53,8 +53,22 @@ def check_services_status(mailer: Mailer):
     current_time = time.time()
     system_status = {}
     
+    # Load overrides from settings.json
+    timeouts_override = {}
+    try:
+        config_path = "/config/settings.json"
+        if os.path.exists(config_path):
+            with open(config_path, 'r') as f:
+                settings = json.load(f)
+                timeouts_override = settings.get("healthchecker", {}).get("service_timeouts", {})
+    except Exception as e:
+        logger.error(f"Failed to load settings overrides: {e}")
+
     for service_id, config in SERVICES_CONFIG.items():
         status_file = f"{STATUS_DIR}/{service_id}.json"
+        
+        # Determine effective timeout
+        timeout_val = timeouts_override.get(service_id, config['timeout'])
         
         # Default State
         service_data = {
@@ -63,7 +77,7 @@ def check_services_status(mailer: Mailer):
             "status": "Down",
             "last_seen": 0,
             "message": "No heartbeat found",
-            "timeout_threshold": config['timeout']
+            "timeout_threshold": timeout_val
         }
 
         if os.path.exists(status_file):
@@ -75,13 +89,13 @@ def check_services_status(mailer: Mailer):
                 service_data["last_seen"] = last_ts
                 
                 # Check Timeout
-                if current_time - last_ts > config['timeout']:
+                if current_time - last_ts > timeout_val:
                     msg = f"Service {config['name']} is silent. No heartbeat for {int(current_time - last_ts)} seconds."
                     logger.error(msg)
                     mailer.send_alert(f"{config['name']} Down", msg)
                     
                     service_data["status"] = "Down"
-                    service_data["message"] = f"Timeout ({int(current_time - last_ts)}s > {config['timeout']}s)"
+                    service_data["message"] = f"Timeout ({int(current_time - last_ts)}s > {timeout_val}s)"
                 else:
                     service_data["status"] = "Running"
                     service_data["message"] = "Active"
