@@ -14,10 +14,10 @@ logging.basicConfig(
 logger = logging.getLogger("Carrier")
 
 # Configuration from Env
-NEXTCLOUD_URL = os.getenv("CARRIER_NEXTCLOUD_URL")
-NEXTCLOUD_USER = os.getenv("CARRIER_NEXTCLOUD_USER")
-NEXTCLOUD_PASSWORD = os.getenv("CARRIER_NEXTCLOUD_PASSWORD")
-TARGET_DIR = os.getenv("CARRIER_TARGET_DIR", "silvasonic")
+NEXTCLOUD_URL = os.getenv("UPLOADER_NEXTCLOUD_URL")
+NEXTCLOUD_USER = os.getenv("UPLOADER_NEXTCLOUD_USER")
+NEXTCLOUD_PASSWORD = os.getenv("UPLOADER_NEXTCLOUD_PASSWORD")
+TARGET_DIR = os.getenv("UPLOADER_TARGET_DIR", "silvasonic")
 SOURCE_DIR = "/data/recording"
 SYNC_INTERVAL = 3600  # 1 Hour
 

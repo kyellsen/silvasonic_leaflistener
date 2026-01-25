@@ -3,9 +3,6 @@ version: "3.8"
 # =============================================================================
 # Silvasonic Sensor Stack
 # =============================================================================
-# Each sensor runs in its own container for isolation and independent restarts.
-# Add new sensors by copying and modifying a service block.
-#
 # Usage:
 #   sudo podman-compose -f podman-compose.yml up --build -d
 #   sudo podman-compose -f podman-compose.yml logs -f
@@ -13,74 +10,59 @@ version: "3.8"
 
 services:
   # ---------------------------------------------------------------------------
-  # The Ear - Primary Microphone (Ultramic 384K)
+  # Recorder (formerly Ear) - Primary Microphone
   # ---------------------------------------------------------------------------
-  # Auto-detects the Dodotronic Ultramic and applies optimal settings.
-  # Recordings go to: /mnt/data/services/silvasonic/recordings/
-  ear:
+  # Captures audio and stores it in /data/recording
+  # ---------------------------------------------------------------------------
+  recorder:
     build:
       context: containers/recorder
-    image: silvasonic-ear:latest
-    container_name: silvasonic_ear
+    image: silvasonic-recorder:latest
+    container_name: silvasonic_recorder
 
     environment:
       - PYTHONUNBUFFERED=1
-      # Profile is auto-detected, but can be forced:
-      # - AUDIO_PROFILE=dodotronic_ultramic384k
 
     devices:
       - /dev/snd:/dev/snd
     privileged: true
 
     volumes:
-      - /mnt/data/services/silvasonic/recordings:/data/recording:z
+      # Master Audio Storage
+      - /mnt/data/services/silvasonic/recorder/recordings:/data/recording:z
 
     restart: always
 
   # ---------------------------------------------------------------------------
-  # The Carrier - Data Sync (Rclone)
+  # Uploader (formerly Carrier) - Data Sync
   # ---------------------------------------------------------------------------
-  # Syncs recordings to cloud storage (Google Drive / Nextcloud) using Rclone.
-  # Runs a sync loop every hour.
+  # Syncs recordings to cloud (Rclone)
   # ---------------------------------------------------------------------------
-  # The Carrier - Data Sync (Rclone)
-  # ---------------------------------------------------------------------------
-  # Syncs recordings to cloud storage (e.g. Nextcloud) using Rclone.
-  # Automatically configures itself using environment variables.
-  # ---------------------------------------------------------------------------
-  # The Carrier - Data Sync (Rclone + Python)
-  # ---------------------------------------------------------------------------
-  # Syncs recordings to cloud storage (e.g. Nextcloud) using Rclone.
-  # Wraps Rclone in Python for robust logging and logic.
-  carrier:
+  uploader:
     build:
-      context: containers/carrier
-    image: silvasonic-carrier:latest
-    container_name: silvasonic_carrier
-    hostname: silvasonic-carrier
+      context: containers/uploader
+    image: silvasonic-uploader:latest
+    container_name: silvasonic_uploader
+    hostname: silvasonic-uploader
     restart: always
 
     environment:
       - PUID=1000
-
       - PGID=1000
-      # Secrets must be provided via .env file or environment
-      - CARRIER_NEXTCLOUD_URL=${CARRIER_NEXTCLOUD_URL}
-      - CARRIER_NEXTCLOUD_USER=${CARRIER_NEXTCLOUD_USER}
-      - CARRIER_NEXTCLOUD_PASSWORD=${CARRIER_NEXTCLOUD_PASSWORD}
-      - CARRIER_TARGET_DIR=${CARRIER_TARGET_DIR:-silvasonic}
+      - UPLOADER_NEXTCLOUD_URL=${UPLOADER_NEXTCLOUD_URL}
+      - UPLOADER_NEXTCLOUD_USER=${UPLOADER_NEXTCLOUD_USER}
+      - UPLOADER_NEXTCLOUD_PASSWORD=${UPLOADER_NEXTCLOUD_PASSWORD}
+      - UPLOADER_TARGET_DIR=${UPLOADER_TARGET_DIR:-silvasonic}
 
     volumes:
-      # Read-only access to raw recordings
-      - /mnt/data/services/silvasonic/recordings:/data/recording:ro
-      # Config persistence (optional, but good for caching checks)
-      - /mnt/data/services/silvasonic/carrier/config:/config/rclone:z
+      # Read-only access to recordings from Recorder
+      - /mnt/data/services/silvasonic/recorder/recordings:/data/recording:ro
+      # Rclone Config Persistence
+      - /mnt/data/services/silvasonic/uploader/config:/config/rclone:z
 
   # ---------------------------------------------------------------------------
-  # The Ornithologist - BirdNET Analysis
+  # BirdNET - Species Identification
   # ---------------------------------------------------------------------------
-  # Dedicated container for bird species identification using BirdNET-Analyzer.
-  # Optimized for Central Europe.
   birdnet:
     build:
       context: containers/birdnet
@@ -91,29 +73,28 @@ services:
       - PYTHONUNBUFFERED=1
       - INPUT_DIR=/data/recording
       - DB_PATH=/data/db/birdnet.sqlite
-      # Central Europe (Center of Germany) - Commented out to enable GLOBAL species list
-      #- LATITUDE=51.1657
-      #- LONGITUDE=10.4515
+      - RESULTS_DIR=/data/results
       - MIN_CONFIDENCE=0.7
       - RECURSIVE_WATCH=true
 
     volumes:
-      # Read-only access to recordings (Same source as Brain/Ear)
-      - /mnt/data/services/silvasonic/recordings:/data/recording:ro
-      # Independent Database storage
-      - /mnt/data/services/silvasonic/birdnet:/data/db:z
+      # Read-only access to recordings
+      - /mnt/data/services/silvasonic/recorder/recordings:/data/recording:ro
+      # Isolated DB
+      - /mnt/data/services/silvasonic/birdnet/db:/data/db:z
+      # Isolated Results
+      - /mnt/data/services/silvasonic/birdnet/results:/data/results:z
 
     restart: always
 
   # ---------------------------------------------------------------------------
-  # The Brain - Edge Analysis & Metadata
+  # SoundAnalyser (formerly Brain) - Edge Analysis
   # ---------------------------------------------------------------------------
-  # Monitors recordings and generates metadata, statistics, and basic spectrograms.
-  brain:
+  sound_analyser:
     build:
-      context: containers/brain
-    image: silvasonic-brain:latest
-    container_name: silvasonic_brain
+      context: containers/sound_analyser
+    image: silvasonic-sound-analyser:latest
+    container_name: silvasonic_sound_analyser
 
     environment:
       - PYTHONUNBUFFERED=1
@@ -123,67 +104,12 @@ services:
 
     volumes:
       # Read-only access to recordings
-      - /mnt/data/services/silvasonic/recordings:/data/recording:ro
-      # Database storage
-      - /mnt/data/services/silvasonic/brain:/data/db:z
+      - /mnt/data/services/silvasonic/recorder/recordings:/data/recording:ro
+      # Isolated DB
+      - /mnt/data/services/silvasonic/sound_analyser/db:/data/db:z
       # Artifacts (Spectrograms etc)
-      - /mnt/data/services/silvasonic/brain/artifacts:/data/processed/artifacts:z
+      - /mnt/data/services/silvasonic/sound_analyser/artifacts:/data/processed/artifacts:z
       # Metadata (JSON Exports)
-      - /mnt/data/services/silvasonic/brain/metadata:/data/processed/metadata:z
+      - /mnt/data/services/silvasonic/sound_analyser/metadata:/data/processed/metadata:z
 
     restart: always
-
-  # ---------------------------------------------------------------------------
-  # Example: Second Microphone (uncomment to enable)
-  # ---------------------------------------------------------------------------
-  # If you have multiple microphones, add another service:
-  #
-  # ear_secondary:
-  #   build:
-  #     context: containers/sensor/recorder
-  #   image: silvasonic-ear:latest
-  #   container_name: silvasonic_ear_secondary
-  #
-  #   environment:
-  #     - PYTHONUNBUFFERED=1
-  #     - AUDIO_PROFILE=generic_usb  # Force specific profile
-  #
-  #   devices:
-  #     - /dev/snd:/dev/snd
-  #   privileged: true
-  #
-  #   volumes:
-  #     - /mnt/data/services/silvasonic/recordings:/data/recording:z
-  #
-  #   restart: always
-
-  # ---------------------------------------------------------------------------
-  # Example: Mock Microphone for Development
-  # ---------------------------------------------------------------------------
-  # ear_mock:
-  #   build:
-  #     context: containers/sensor/recorder
-  #   image: silvasonic-ear:latest
-  #   container_name: silvasonic_ear_mock
-  #
-  #   environment:
-  #     - PYTHONUNBUFFERED=1
-  #     - MOCK_HARDWARE=true
-  #
-  #   volumes:
-  #     - /mnt/data/services/silvasonic/recordings:/data/recording:z
-  #
-  #   restart: unless-stopped
-
-  # ---------------------------------------------------------------------------
-  # Future Sensors (examples)
-  # ---------------------------------------------------------------------------
-  # temperature:
-  #   build:
-  #     context: containers/sensor/temperature
-  #   ...
-  #
-  # humidity:
-  #   build:
-  #     context: containers/sensor/humidity
-  #   ...

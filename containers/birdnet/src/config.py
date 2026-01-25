@@ -4,7 +4,7 @@ from pathlib import Path
 class Config:
     # Paths
     INPUT_DIR = Path(os.getenv("INPUT_DIR", "/data/recording"))
-    RESULTS_DIR = Path(os.getenv("RESULTS_DIR", "/data/results"))
+    RESULTS_DIR = Path(os.getenv("RESULTS_DIR", "/data/db/results"))
     
     # Watcher
     RECURSIVE_WATCH = os.getenv("RECURSIVE_WATCH", "true").lower() == "true"
