@@ -295,15 +295,66 @@
 </script>
 {% endblock %} {% block inspector %}
 <div id="inspector-content" class="space-y-6">
-  <!-- Content injected by JS -->
-  <div class="animate-pulse flex space-x-4">
-    <div class="flex-1 space-y-4 py-1">
-      <div class="h-4 bg-gray-200 dark:bg-gray-700 rounded w-3/4"></div>
-      <div class="space-y-2">
-        <div class="h-4 bg-gray-200 dark:bg-gray-700 rounded"></div>
-        <div class="h-4 bg-gray-200 dark:bg-gray-700 rounded w-5/6"></div>
+  <!-- Default State: Storage Info -->
+  <div id="default-inspector" class="glass-panel p-6 rounded-2xl">
+    <h3
+      class="font-bold text-gray-900 dark:text-white mb-4 border-b border-gray-200 dark:border-white/10 pb-2 text-sm uppercase tracking-wide"
+    >
+      Storage Forecast
+    </h3>
+    <div class="space-y-4">
+      <div>
+        <div class="flex justify-between text-xs text-gray-500 uppercase mb-1">
+          <span>Capacity (/data)</span>
+          <span>{{ 100 - stats.disk_percent }}% Free</span>
+        </div>
+        <div
+          class="w-full bg-gray-200 dark:bg-gray-700 h-2 rounded-full overflow-hidden"
+        >
+          <div
+            class="bg-gradient-to-r from-silva-500 to-green-400 h-full rounded-full"
+            style="width: {{ stats.disk_percent }}%"
+          ></div>
+        </div>
+      </div>
+
+      <div class="grid grid-cols-2 gap-4 pt-2">
+        <div class="bg-gray-50 dark:bg-white/5 p-3 rounded-lg text-center">
+          <div class="text-[10px] text-gray-400 uppercase">Est. Remaining</div>
+          <div class="font-bold text-lg text-gray-900 dark:text-white">
+            ~14d
+          </div>
+        </div>
+        <div class="bg-gray-50 dark:bg-white/5 p-3 rounded-lg text-center">
+          <div class="text-[10px] text-gray-400 uppercase">Daily Usage</div>
+          <div class="font-bold text-lg text-gray-900 dark:text-white">
+            ~4GB
+          </div>
+        </div>
       </div>
     </div>
+
+    <div class="mt-6 pt-6 border-t border-gray-200 dark:border-white/5">
+      <h3
+        class="font-bold text-gray-900 dark:text-white mb-3 text-sm uppercase tracking-wide"
+      >
+        Active Configuration
+      </h3>
+      <div
+        id="config-summary"
+        class="text-sm text-gray-600 dark:text-gray-400 font-mono"
+      >
+        Loading...
+      </div>
+    </div>
+  </div>
+
+  <!-- Selection Placeholder (Hidden by default, shown by JS) -->
+  <div
+    id="inspector-details"
+    class="hidden glass-panel p-6 rounded-2xl animate-fade-in-up"
+  >
+    <!-- Populated by JS -->
   </div>
 </div>
 {% endblock %}

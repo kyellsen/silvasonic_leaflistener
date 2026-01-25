@@ -310,41 +310,99 @@
   });
 
 {% endblock %} {% block inspector %}
-<div class="flex flex-col h-full">
-  <div class="p-4 border-b border-gray-200 dark:border-white/10">
-    <h3
-      class="font-bold text-gray-900 dark:text-white uppercase tracking-wider text-xs"
-    >
-      Weather Details
-    </h3>
+<div class="flex flex-col h-full space-y-6">
+
+  <!-- Station Info -->
+  <div class="glass-panel p-6 rounded-2xl">
+      <h3 class="font-bold text-gray-900 dark:text-white uppercase tracking-wider text-xs mb-4 border-b border-gray-200 dark:border-white/10 pb-2">
+        Station Details
+      </h3>
+      <div class="space-y-3">
+        {% if current %}
+        <div class="flex justify-between items-center">
+            <span class="text-xs text-gray-500 uppercase">ID</span>
+            <span class="font-mono text-sm dark:text-gray-300">{{ current.station_id }}</span>
+        </div>
+        <div class="flex justify-between items-center">
+            <span class="text-xs text-gray-500 uppercase">Last Update</span>
+            <span class="font-mono text-sm dark:text-gray-300">{{ current.timestamp.strftime('%H:%M:%S') if current.timestamp else '-' }}</span>
+        </div>
+        <div class="mt-2 pt-2 border-t border-gray-200 dark:border-white/5">
+             <div class="text-xs text-gray-500 uppercase mb-1">Summary</div>
+             <div class="text-sm dark:text-gray-300 font-medium">
+                {% if current.precipitation_mm > 0 %} 
+                    🌧️ Raining ({{ current.precipitation_mm }}mm) 
+                {% elif current.cloud_cover_percent > 80 %} 
+                    ☁️ Overcast 
+                {% elif current.cloud_cover_percent > 50 %} 
+                    ⛅ Cloudy 
+                {% else %} 
+                    ☀️ Clear/Partly Cloudy 
+                {% endif %}
+             </div>
+        </div>
+        {% else %}
+        <div class="text-sm text-gray-500">No data available</div>
+        {% endif %}
+      </div>
   </div>
-  <div class="p-4 space-y-4">
-    {% if current %}
-    <div>
-      <div class="text-xs text-gray-500 uppercase">Station ID</div>
-      <div class="font-mono text-sm dark:text-gray-300">
-        {{ current.station_id }}
+
+  <!-- Sun Cycle Visualizer (Mocked/Static for now) -->
+  <div class="glass-panel p-6 rounded-2xl relative overflow-hidden">
+       <h3 class="font-bold text-gray-900 dark:text-white uppercase tracking-wider text-xs mb-4">
+        Sun Cycle
+      </h3>
+      <!-- Semicircle Arc -->
+      <div class="relative h-20 w-full flex items-end justify-center">
+           <div class="absolute w-40 h-40 rounded-full border-2 border-dashed border-gray-300 dark:border-gray-600 top-4"></div>
+           <!-- Sun Position (Calculated roughly by time of day) -->
+           {% set hour = current.timestamp.hour if current and current.timestamp else 12 %}
+           {% set pct = (hour - 6) / 12 * 100 %} <!-- 6am to 6pm -->
+           {% if pct < 0 %}{% set pct = 0 %}{% endif %}
+           {% if pct > 100 %}{% set pct = 100 %}{% endif %}
+           
+           <div class="w-full h-full relative overflow-hidden">
+                <div class="absolute bottom-0 left-0 w-full h-1 bg-gray-200 dark:bg-gray-700"></div>
+                <!-- Sun Icon -->
+                <div class="absolute bottom-0 left-0 w-6 h-6 bg-yellow-400 rounded-full shadow-[0_0_15px_rgba(250,204,21,0.6)] transform -translate-x-1/2 translate-y-1/2 transition-all duration-1000"
+                     style="left: {{ pct }}%; bottom: {{ 100 * (1 - ((pct-50)/50)**2) }}%">
+                </div>
+           </div>
       </div>
-    </div>
-    <div>
-      <div class="text-xs text-gray-500 uppercase">Last Update</div>
-      <div class="font-mono text-sm dark:text-gray-300">
-        {{ current.timestamp.strftime('%H:%M:%S') if current.timestamp else '-'
-        }}
+      <div class="flex justify-between text-[10px] text-gray-400 mt-2 font-mono">
+           <span>06:00</span>
+           <span>12:00</span>
+           <span>18:00</span>
       </div>
-    </div>
-    <div>
-      <div class="text-xs text-gray-500 uppercase">Conditions</div>
-      <div class="text-sm dark:text-gray-300">
-        {% if current.precipitation_mm > 0 %} Raining ({{
-        current.precipitation_mm }}mm) {% elif current.cloud_cover_percent > 80
-        %} Overcast {% elif current.cloud_cover_percent > 50 %} Cloudy {% else
-        %} Clear/Partly Coudy {% endif %}
-      </div>
-    </div>
-    {% else %}
-    <div class="text-sm text-gray-500">No data available</div>
-    {% endif %}
   </div>
+
+  <!-- Wind Compass -->
+  <div class="glass-panel p-6 rounded-2xl">
+      <h3 class="font-bold text-gray-900 dark:text-white uppercase tracking-wider text-xs mb-4">
+        Wind Direction
+      </h3>
+      
+      <div class="flex justify-center my-2">
+          <div class="relative w-24 h-24 rounded-full border-2 border-gray-200 dark:border-gray-700 flex items-center justify-center">
+              <span class="absolute top-1 text-[10px] font-bold text-gray-400">N</span>
+              <span class="absolute bottom-1 text-[10px] font-bold text-gray-400">S</span>
+              <span class="absolute left-1 text-[10px] font-bold text-gray-400">W</span>
+              <span class="absolute right-1 text-[10px] font-bold text-gray-400">E</span>
+              
+              <!-- Arrow -->
+              <div class="w-1 h-10 bg-blue-500 rounded-full origin-bottom transform transition-transform duration-1000 relative" style="transform: rotate({{ current.wind_direction or 0 }}deg) translateY(-50%)">
+                    <div class="absolute -top-1 -left-1 w-3 h-3 border-l-2 border-t-2 border-blue-500 transform rotate-45"></div>
+              </div>
+          </div>
+      </div>
+      <div class="text-center text-xs text-gray-500">
+           {% if current.wind_direction %}
+             {{ current.wind_direction }}°
+           {% else %}
+             Unknown
+           {% endif %}
+      </div>
+  </div>
+
 </div>
 {% endblock %}
