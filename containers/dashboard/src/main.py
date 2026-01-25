@@ -18,6 +18,7 @@ BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 TEMPLATES_DIR = os.path.join(BASE_DIR, "templates")
 AUDIO_DIR = "/data/recording"
 LOG_DIR = "/var/log/silvasonic"
+ARTIFACTS_DIR = "/data/processed/artifacts"
 
 app = FastAPI(title="Silvasonic Dashboard")
 templates = Jinja2Templates(directory=TEMPLATES_DIR)
@@ -76,7 +77,7 @@ async def logout():
 
 # --- Protected Routes ---
 
-from src.services import SystemService, BirdNetService, CarrierService, RecorderService
+from src.services import SystemService, BirdNetService, CarrierService, RecorderService, AnalyzerService
 
 @app.get("/dashboard", response_class=HTMLResponse)
 async def dashboard(request: Request, auth=Depends(require_auth)):
@@ -220,15 +221,17 @@ async def uploader_page(request: Request, auth=Depends(require_auth)):
 async def analyzer_page(request: Request, auth=Depends(require_auth)):
     if isinstance(auth, RedirectResponse): return auth
     
-    # Brain/Analyzer specific stats could go here. 
-    # For now, we reuse system stats as Brain is the main CPU user.
-    stats = SystemService.get_stats()
+    # Brain/Analyzer specific stats
+    recent_analysis = AnalyzerService.get_recent_analysis(limit=20)
+    stats = AnalyzerService.get_stats()
+    sys_stats = SystemService.get_stats()
     
     return render(request, "analyzer.html", {
         "request": request, 
         "page": "analyzer",
-        "page": "analyzer",
+        "recent": recent_analysis,
         "stats": stats,
+        "sys_stats": sys_stats,
         "status_label": "Analyzer:",
         "status_value": "Monitoring",
         "status_color": "text-purple-600 dark:text-purple-400"
@@ -279,3 +282,15 @@ async def stream_audio(filename: str, auth=Depends(require_auth)):
         raise HTTPException(404, "File not found")
         
     return FileResponse(safe_path, media_type="audio/flac")
+
+@app.get("/api/spectrogram/{filename}")
+async def stream_spectrogram(filename: str, auth=Depends(require_auth)):
+    """Stream spectrogram from artifacts dir"""
+    if isinstance(auth, RedirectResponse): raise HTTPException(401)
+    
+    safe_path = os.path.normpath(os.path.join(ARTIFACTS_DIR, filename))
+    if not safe_path.startswith(ARTIFACTS_DIR) or not os.path.exists(safe_path):
+        # Return fallback placeholder if needed, or 404
+        raise HTTPException(404, "Spectrogram not found")
+        
+    return FileResponse(safe_path, media_type="image/png")
