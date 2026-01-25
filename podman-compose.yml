@@ -78,12 +78,12 @@ services:
     env_file: .env
     volumes:
       # Shared Config (Read/Write)
-      - /mnt/data/services/silvasonic/config:/config:z
+      - ./config:/config:z
       # Shared Status & Errors (Read/Write for archiving errors and writing own status)
-      - /mnt/data/services/silvasonic/status:/mnt/data/services/silvasonic/status:z
-      - /mnt/data/services/silvasonic/errors:/mnt/data/services/silvasonic/errors:z
+      - ./status:/mnt/data/services/silvasonic/status:z
+      - ./errors:/mnt/data/services/silvasonic/errors:z
       # Notification Queue
-      - /mnt/data/services/silvasonic/notifications:/data/notifications:z
+      - ./notifications:/data/notifications:z
       # Shared Logs
       - ./logs:/var/log/silvasonic:z
 
