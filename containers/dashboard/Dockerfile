@@ -7,6 +7,8 @@ WORKDIR /app
 # curl is useful for healthchecks.
 RUN apt-get update && apt-get install -y --no-install-recommends \
     curl \
+    gcc \
+    libpq-dev \
     && rm -rf /var/lib/apt/lists/*
 
 # Install python dependencies

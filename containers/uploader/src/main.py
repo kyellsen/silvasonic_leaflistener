@@ -3,6 +3,7 @@ import time
 import logging
 import signal
 import sys
+import json
 from rclone_wrapper import RcloneWrapper
 
 # Configure Logging
@@ -27,6 +28,26 @@ NEXTCLOUD_PASSWORD = os.getenv("UPLOADER_NEXTCLOUD_PASSWORD")
 TARGET_DIR = os.getenv("UPLOADER_TARGET_DIR", "silvasonic")
 SOURCE_DIR = "/data/recording"
 SYNC_INTERVAL = int(os.getenv("UPLOADER_SYNC_INTERVAL", 60))
+STATUS_FILE = "/var/log/silvasonic/carrier_status.json"
+
+def write_status(status: str, last_upload: flt = 0, queue_size: int = -1):
+    """Write current status to JSON file for dashboard."""
+    try:
+        data = {
+            "timestamp": time.time(),
+            "status": status,
+            "last_upload": last_upload,
+            "queue_size": queue_size,
+            "pid": os.getpid()
+        }
+        # Atomic write
+        tmp_file = f"{STATUS_FILE}.tmp"
+        with open(tmp_file, 'w') as f:
+            json.dump(data, f)
+        os.rename(tmp_file, STATUS_FILE)
+    except Exception as e:
+        logger.error(f"Failed to write status: {e}") 
+
 
 def signal_handler(sig, frame):
     logger.info("Graceful shutdown received. Exiting...")
@@ -52,14 +73,30 @@ def main():
         logger.warning("Environment variables missing. Assuming config file already exists.")
 
     # 2. Main Loop
+    last_upload_success = 0
+    
     while True:
         try:
             if os.path.exists(SOURCE_DIR):
+                # Count files (rough queue size)
+                # This could be slow if too many files, so we might skip or do shallow check
+                # Simple check:
+                # queue_size = len(os.listdir(SOURCE_DIR)) # Warning: recursive? 
+                # Let's just say "Scanning..." or handle simple count
+                queue_size = -1 
+                
+                write_status("Syncing", last_upload_success, queue_size)
+                
                 wrapper.sync(SOURCE_DIR, f"remote:{TARGET_DIR}")
+                
+                last_upload_success = time.time()
+                write_status("Idle", last_upload_success, queue_size)
             else:
                 logger.error(f"Source directory {SOURCE_DIR} does not exist!")
+                write_status("Error: No Source", last_upload_success)
             
             logger.info(f"Sleeping for {SYNC_INTERVAL} seconds...")
+            write_status("Sleeping", last_upload_success)
             
             # Smart Sleep (interruptible)
             for _ in range(SYNC_INTERVAL):

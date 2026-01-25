@@ -81,8 +81,6 @@ services:
     volumes:
       # Read-only access to recordings
       - /mnt/data/services/silvasonic/recorder/recordings:/data/recording:ro
-      # Isolated DB
-      - /mnt/data/services/silvasonic/birdnet/db:/data/db:z
       # Isolated Results
       - /mnt/data/services/silvasonic/birdnet/results:/data/results:z
       # Shared Logs
@@ -164,8 +162,6 @@ services:
     volumes:
       # Read-Only Audio (Playback)
       - /mnt/data/services/silvasonic/recorder/recordings:/data/recording:ro
-      # Read-Only DB (Stats)
-      - /mnt/data/services/silvasonic/birdnet/db:/data/birdnet_db:ro
       # Shared Logs (View)
       - /mnt/data/services/silvasonic/logs:/var/log/silvasonic:ro
       # System Stats (Optional, depends on host)

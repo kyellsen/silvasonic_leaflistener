@@ -15,6 +15,7 @@ import datetime
 import signal
 import logging
 import numpy as np
+import json
 
 # --- Logging ---
 # --- Logging ---
@@ -36,6 +37,28 @@ BASE_OUTPUT_DIR = os.getenv("AUDIO_OUTPUT_DIR", "/data/recording")
 
 # --- Global State ---
 running = True
+STATUS_FILE = "/var/log/silvasonic/recorder_status.json"
+
+
+def write_status(status: str, profile_name: str = "Unknown", 
+                 device_desc: str = "Unknown", last_file: str = None):
+    """Write current status to JSON file for dashboard."""
+    try:
+        data = {
+            "timestamp": time.time(),
+            "status": status,
+            "profile": profile_name,
+            "device": device_desc,
+            "last_file": last_file,
+            "pid": os.getpid()
+        }
+        # Atomic write
+        tmp_file = f"{STATUS_FILE}.tmp"
+        with open(tmp_file, 'w') as f:
+            json.dump(data, f)
+        os.rename(tmp_file, STATUS_FILE)
+    except Exception as e:
+        logger.error(f"Failed to write status: {e}")
 
 
 def get_output_dir(profile_slug: str) -> str:
@@ -136,6 +159,7 @@ def generate_mock_audio(filename: str, duration: int,
         sf.write(filename, noise, sample_rate, subtype='PCM_16')
         
         size_mb = os.path.getsize(filename) / 1024 / 1024
+        size_mb = os.path.getsize(filename) / 1024 / 1024
         logger.info(f"[MOCK] Saved: {os.path.basename(filename)} ({size_mb:.2f} MB)")
         return True
         
@@ -196,6 +220,7 @@ def main():
     # Recording loop
     if profile.is_mock:
         logger.warning("🔧 MOCK MODE ENABLED - No real audio capture")
+        write_status("Mocking", profile.name, "Virtual Mock Device")
         while running:
             filename = get_filename(output_dir, profile.recording.output_format)
             generate_mock_audio(
@@ -204,13 +229,16 @@ def main():
                 profile.audio.sample_rate,
                 profile.audio.channels
             )
+            write_status("Mocking", profile.name, "Virtual Mock Device", os.path.basename(filename))
             time.sleep(1)
     else:
         if not device:
             logger.critical("No audio device found. Exiting.")
+            write_status("Error: No Device", profile.name, "None")
             sys.exit(1)
         
         logger.info("🎙️ Recording started. Press Ctrl+C to stop.")
+        write_status("Recording", profile.name, device.description)
         
         while running:
             filename = get_filename(output_dir, profile.recording.output_format)
@@ -224,10 +252,14 @@ def main():
                 compression_level=profile.recording.compression_level,
             )
             
-            if not success and running:
+            if success:
+                write_status("Recording", profile.name, device.description, os.path.basename(filename))
+            elif running:
                 logger.warning("Recording failed, retrying in 5s...")
+                write_status("Retrying", profile.name, device.description)
                 time.sleep(5)
     
+    write_status("Stopped", profile.name, device.description if device else "Unknown")
     logger.info("👋 Shutdown complete.")
 
 

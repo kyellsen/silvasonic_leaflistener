@@ -76,7 +76,7 @@ async def logout():
 
 # --- Protected Routes ---
 
-from src.services import SystemService, BirdNetService
+from src.services import SystemService, BirdNetService, CarrierService, RecorderService
 
 @app.get("/dashboard", response_class=HTMLResponse)
 async def dashboard(request: Request, auth=Depends(require_auth)):
@@ -85,13 +85,17 @@ async def dashboard(request: Request, auth=Depends(require_auth)):
     stats = SystemService.get_stats()
     detections = BirdNetService.get_recent_detections(limit=5)
     birdnet_stats = BirdNetService.get_stats()
+    carrier_stats = CarrierService.get_status()
+    recorder_stats = RecorderService.get_status()
     
     return render(request, "index.html", {
         "request": request, 
         "page": "home",
         "stats": stats,
         "detections": detections,
-        "birdnet_stats": birdnet_stats
+        "birdnet_stats": birdnet_stats,
+        "carrier_stats": carrier_stats,
+        "recorder_stats": recorder_stats
     })
 
 @app.get("/logs", response_class=HTMLResponse)
@@ -121,23 +125,30 @@ async def stream_logs(service: str, auth=Depends(require_auth)):
     if isinstance(auth, RedirectResponse): raise HTTPException(401)
     
     log_file = os.path.join(LOG_DIR, f"{service}.log")
-    if not os.path.exists(log_file):
-        # Create empty if not exists to avoid error
-        with open(log_file, 'a'): pass
+    # Do NOT try to create file (RO Volume violation)
         
     async def log_generator():
         import asyncio
         import aiofiles
-        async with aiofiles.open(log_file, mode='r') as f:
-            # Seek to end
-            await f.seek(0, 2)
-            while True:
-                line = await f.readline()
-                if line:
-                    yield f"data: {line}\n\n"
-                else:
-                    await asyncio.sleep(0.5)
-                    
+        
+        # Wait for file to exist
+        while not os.path.exists(log_file):
+            yield f"data: Waiting for {service} logs...\n\n"
+            await asyncio.sleep(2)
+            
+        try:
+            async with aiofiles.open(log_file, mode='r') as f:
+                # Seek to end
+                await f.seek(0, 2)
+                while True:
+                    line = await f.readline()
+                    if line:
+                        yield f"data: {line}\n\n"
+                    else:
+                        await asyncio.sleep(0.5)
+        except Exception as e:
+            yield f"data: Error reading logs: {e}\n\n"
+
     return StreamingResponse(log_generator(), media_type="text/event-stream")
 
 @app.get("/api/audio/{filename}")
