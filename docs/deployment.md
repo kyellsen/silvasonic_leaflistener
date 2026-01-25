@@ -7,18 +7,7 @@ This guide details how to deploy Silvasonic to a Raspberry Pi 5.
 - **Hardware**: Raspberry Pi 5
 - **Microphone**: Dodotronic Ultramic384 EVO (or USB microphone)
 - **Storage**: NVMe SSD mounted at `/mnt/data` (Critical!)
-- **OS**: Raspberry Pi OS (Bookworm) or Fedora IoT
-
-## Supported Microphones
-
-The recorder auto-detects microphones via profiles. Currently supported:
-
-| Microphone                   | Sample Rate | Use Case         |
-| ---------------------------- | ----------- | ---------------- |
-| Dodotronic Ultramic 384K EVO | 384 kHz     | Bats, Ultrasound |
-| Generic USB Microphone       | 48 kHz      | Birds, General   |
-
-To add support for new microphones, see [Contributing Microphone Profiles](#contributing-microphone-profiles).
+- **OS**: Raspberry Pi OS (Bookworm)
 
 ## 1. Access Repository
 
@@ -29,22 +18,37 @@ cd /mnt/data/dev/silvasonic
 git pull
 ```
 
-**Manual Clone (if needed):**
+## 2. Prepare Storage Directories
+
+The services require specific directories on the NVMe drive.
 
 ```bash
-cd /mnt/data/dev
-git clone https://github.com/kyellsen/silvasonic_leaflistener.git silvasonic
-cd silvasonic
+# Create base service directory
+sudo mkdir -p /mnt/data/services/silvasonic
+
+# Create sub-directories owned by the user (or container user)
+sudo mkdir -p /mnt/data/services/silvasonic/recorder/recordings
+sudo mkdir -p /mnt/data/services/silvasonic/logs
+sudo mkdir -p /mnt/data/services/silvasonic/status
+sudo mkdir -p /mnt/data/services/silvasonic/errors
+sudo mkdir -p /mnt/data/services/silvasonic/db/data
+
+# Set permissions (Adjust user if needed, assumed 'pi' or current user)
+sudo chown -R $USER:$USER /mnt/data/services/silvasonic
 ```
 
-## 2. Create Storage Directory
+## 3. Configure Environment
+
+Copy and edit the configuration file:
 
 ```bash
-sudo mkdir -p /mnt/data/storage/silvasonic/raw
-sudo chown $USER:$USER /mnt/data/storage/silvasonic/raw
+cp config.example.env .env
+nano .env
 ```
 
-## 3. Build & Run
+Set your Cloud credentials (Nextcloud/Rclone) and generic settings.
+
+## 4. Build & Run
 
 > ⚠️ **Important**: Use `sudo` with Podman for audio device access!
 
@@ -56,30 +60,13 @@ sudo podman-compose -f podman-compose.yml up --build -d
 sudo podman ps
 
 # View logs
-sudo podman logs -f silvasonic_ear
+sudo podman logs -f silvasonic_recorder
 ```
 
-### Expected Log Output
-
-```
-🎤 THE EAR - Silvasonic Audio Recorder
-==============================================================
-Profile: Dodotronic Ultramic 384K EVO
-  Manufacturer: Dodotronic
-  Sample Rate: 384000 Hz
-  Channels: 1
-  Bit Depth: 16
-  Chunk Duration: 60s
-  Device: hw:0,0
-🎙️ Recording started. Press Ctrl+C to stop.
-Recording 60s -> 2026-01-21_16-09-11.flac
-Saved: 2026-01-21_16-09-11.flac (14.02 MB)
-```
-
-## 4. Verify Recordings
+## 5. Verify Recordings
 
 ```bash
-ls -la /mnt/data/storage/silvasonic/raw/
+ls -la /mnt/data/services/silvasonic/recorder/recordings/
 ```
 
 You should see FLAC files with timestamps.
@@ -88,88 +75,26 @@ You should see FLAC files with timestamps.
 
 The recorder auto-detects configuration from microphone profiles. For advanced use:
 
-| Environment Variable | Description                   | Default           |
-| -------------------- | ----------------------------- | ----------------- |
-| `MOCK_HARDWARE`      | Generate fake audio (testing) | `false`           |
-| `AUDIO_PROFILE`      | Force specific profile name   | Auto-detect       |
-| `AUDIO_OUTPUT_DIR`   | Recording output directory    | `/data/recording` |
-
-Example with mock mode:
-
-```bash
-sudo podman-compose -f podman-compose.yml down
-sudo MOCK_HARDWARE=true podman-compose -f podman-compose.yml up -d
-```
+| Environment Variable | Description                   | Default |
+| -------------------- | ----------------------------- | ------- |
+| `MOCK_HARDWARE`      | Generate fake audio (testing) | `false` |
 
 ## Troubleshooting
 
 ### "No audio device found"
 
-1. Check if microphone is connected:
+1. Check if microphone is connected: `arecord -l`
+2. Ensure you're using `sudo` with Podman.
 
-   ```bash
-   arecord -l
-   ```
+### Permission Denied
 
-2. Ensure you're using `sudo` with Podman:
-
-   ```bash
-   sudo podman logs silvasonic_ear
-   ```
-
-3. Verify device permissions:
-   ```bash
-   ls -la /dev/snd/
-   ```
-
-### Container restarts repeatedly
-
-Check logs for errors:
+Ensure directories in `/mnt/data/services/silvasonic` utilize the correct SELinux labels if on Fedora/CentOS, or have correct ownership.
 
 ```bash
-sudo podman logs silvasonic_ear --tail 50
-```
-
-Common causes:
-
-- Missing microphone
-- Permission issues
-- Incorrect sample rate for device
-
-### Permission Denied (Storage)
-
-```bash
-sudo chown -R $USER:$USER /mnt/data/storage/silvasonic/
-```
-
-If using SELinux (Fedora):
-
-```bash
-sudo chcon -Rt container_file_t /mnt/data/storage/silvasonic/
+# Force ownership
+sudo chown -R 1000:1000 /mnt/data/services/silvasonic
 ```
 
 ## Contributing Microphone Profiles
 
-To add support for a new microphone:
-
-1. Create a YAML file in `containers/recorder/src/microphones/`
-2. Follow the template in `dodotronic_ultramic384k.yml`
-3. Test with your hardware
-4. Submit a Pull Request
-
-### Profile Template
-
-```yaml
-name: "Your Microphone Name"
-manufacturer: "Manufacturer"
-device_patterns:
-  - "Pattern in arecord -l output"
-audio:
-  sample_rate: 48000
-  channels: 1
-  bit_depth: 16
-recording:
-  chunk_duration_seconds: 60
-```
-
-See `containers/recorder/src/microphones/` for examples.
+To add support for a new microphone, create a YAML file in `containers/recorder/src/microphones/`.

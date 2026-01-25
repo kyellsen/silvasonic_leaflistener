@@ -3,42 +3,41 @@
 ## Storage Hierarchy
 
 1.  **RAM Buffer**: Audio is captured into a ring buffer in memory to smooth out IO latency.
-2.  **NVMe SSD (`/mnt/data/storage`)**:
-    - Primary persistent storage.
-    - Files are written immediately as **.flac** to save space and write bandwidth.
-    - Retention: Capable of holding several days/weeks of raw audio (512GB capacity).
-    - **Cache Policy**: Oldest files are deleted only when disk usage exceeds a high watermark (e.g., 90%).
+2.  **NVMe SSD (`/mnt/data/services/silvasonic`)**:
+    - Primary persistent storage for recordings and application state.
+    - **Raw Recordings**: `/mnt/data/services/silvasonic/recorder/recordings`
+    - **Database**: `/mnt/data/services/silvasonic/db/data` (PostgreSQL)
+    - **Logs**: `/mnt/data/services/silvasonic/logs`
+    - **Recycle Policy**: Oldest recordings are deleted when disk usage triggers limits.
 
 ## Compression
 
 - **Format**: FLAC (Free Lossless Audio Codec).
-- **Benefit**: Reduces file size by ~40-50% compared to raw WAV without losing any bioacoustic data.
+- **Benefit**: Reduces file size by ~40-50% compared to raw WAV.
 - **Cpu Usage**: Encoding is done on "The Ear" container.
 
 ## Synchronization (The Mirror)
 
-The system uses a "Store & Forward" approach.
+The system uses a "Store & Forward" approach managed by the **Uploader** container.
 
 ### Transport
 
-- **Tools**: Syncthing (preferred for continuous sync) or Rsync (for scheduled batches).
-- **VPN**: If the device is outside the local network, traffic is routed through **Tailscale** or **Wireguard** to the central server.
-
-### Destination (Server/NAS)
-
-- The central server acts as a mirror.
-- It runs a companion Syncthing instance.
-- **Fleet Monitoring**: A `fleet_monitor` service on the server tracks the "Last Seen" timestamp of files from each device to alert if a station goes silent.
+- **Tools**: Rclone (primary) or Syncthing.
+- **Method**: Files are synced to a central server/cloud (Nextcloud, S3, SFTP).
+- **Safety**: The Uploader mounts recordings as Read-Only (or managed) to prevent accidental deletions on the source.
 
 ## File System Layout
 
-The system uses a strict directory structure on the NVMe drive (`/mnt/data`). All agents and services must adhere to these canonical paths:
+The system uses a strict directory structure on the NVMe drive (`/mnt/data`).
 
 - **Infrastructure**: `/mnt/data/containers` (Volumes, Stacks, Storage)
-- **Development**: `/mnt/data/dev` (Repo checkouts)
-- **Raw Recordings**: `/mnt/data/services/silvasonic/recordings` (Recorders write here)
-- **Processed Data**: `/mnt/data/storage/silvasonic/processed`
-- **Export/Results**: `/mnt/data/storage/silvasonic/results`
+- **Dev Workspace**: `/mnt/data/dev` (Repo checkouts)
+- **Service Data**: `/mnt/data/services/silvasonic`
+  - `recorder/recordings`: FLAC files.
+  - `uploader/config`: Rclone/Sync config.
+  - `birdnet/results`: Analysis results (if file-based).
+  - `sound_analyser/artifacts`: Spectrograms/Plots.
+  - `db/data`: Postgres data.
 
 ### Transient Scripts
 

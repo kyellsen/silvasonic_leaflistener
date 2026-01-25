@@ -19,7 +19,7 @@ The Silvasonic architecture is designed around resiliency. The system is split i
 **Status:** Low priority background process
 
 - **Function**: Synchronizes recorded files to the central server (Nextcloud/WebDAV or Rsync).
-- **Technology**: Custom Python wrapper (`uploader` container) handling sync logic.
+- **Technology**: Custom Python wrapper (`uploader` container) handling sync logic via `rclone`.
 - **Mounts**: Mounts the storage directory with managed access to prevent accidental deletion or corruption by the sync process.
 - **Why separate?**: Network operations can be resource-intensive or hang. Isolating this ensures that a stuck upload doesn't block the recording loop.
 
@@ -32,7 +32,7 @@ The Silvasonic architecture is designed around resiliency. The system is split i
 - **Operation**:
   - Watches for new recordings.
   - Processes audio segments to generate detection entries.
-  - Stores results in a local database for the Dashboard.
+  - Stores results in the internal database.
 - **Why separate?**: Inference is CPU/RAM heavy. It must run decoupled from the recording loop.
 
 ## 4. The Dashboard ("The Face")
@@ -55,14 +55,20 @@ The Silvasonic architecture is designed around resiliency. The system is split i
 - **Function**: Monitors the health of other containers and system resources.
 - **Features**:
   - **Service Checks**: Verifies that Recorder, Uploader, etc., are running and responsive.
-  - **Log Rotation**: Manages log sizes to prevent disk overflow.
-  - **Alerting**: Sends notifications (e.g., email) on critical failures or if the "Dead Man's Switch" is triggered.
-- **Why separate?**: Monitoring must be independent of the monitored services. If other containers freeze, the HealthChecker remains alive to attempt recovery or alert the admin.
+  - **Log Rotation**: Manages log sizes.
+  - **Alerting**: Sends notifications on critical failures.
+- **Why separate?**: Monitoring must be independent of the monitored services.
 
 ## 6. SoundAnalyser (Custom/Experimental)
 
 **Role:** Specialized Analysis
 **Status:** Standard priority
 
-- **Function**: Framework for running additional or custom acoustic analysis beyond BirdNET.
-- **Use Case**: Bat detection, specific insect frequencies, or experimental models.
+- **Function**: Framework for running additional or custom acoustic analysis beyond BirdNET (e.g., bats).
+
+## 7. The Database
+
+**Role:** Central Storage
+**Status:** Service
+
+- **Function**: PostgreSQL database storing detection results and structured data for the Dashboard and analysis tools.
