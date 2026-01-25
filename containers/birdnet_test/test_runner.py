@@ -60,10 +60,10 @@ def analyze_file(input_path: Path, results_dir: Path):
     
     try:
         logger.info(f"Running analysis on {temp_resampled.name}...")
-        bn_analyze.analyze(
+        bn_analyze(
             audio_input=str(temp_resampled),
-            min_conf=0.01, # Low threshold to capture everything
-            lat=-1, lon=-1, week=-1, # No location filter
+            min_conf=0.7, # User requested min 70% confidence
+            lat=53.5, lon=10.0, week=-1, # Northern Germany (Hamburg area), Year-round filter
             overlap=0.0,
             sensitivity=1.0,
             threads=max(1, os.cpu_count() - 1),

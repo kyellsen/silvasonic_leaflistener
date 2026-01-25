@@ -156,3 +156,7 @@ sudo podman-compose -f podman-compose.yml up --build -d
 # 4. Logs prüfen
 sudo podman logs -f silvasonic_ear
 ```
+
+
+# Löscht alle ungenutzten Images, Container und Netzwerke
+sudo podman system prune -a --volumes
