@@ -47,12 +47,42 @@ class WatcherService:
         
         try:
             while True:
-                time.sleep(1)
+                self.write_status("Idle (Watching)")
+                time.sleep(10)
         except KeyboardInterrupt:
             self.observer.stop()
         self.observer.join()
 
+    def write_status(self, status: str):
+        try:
+            import psutil
+            import json
+            import os
+            
+            data = {
+                "service": "sound_analyser",
+                "timestamp": time.time(),
+                "status": status,
+                "cpu_percent": psutil.cpu_percent(),
+                "memory_usage_mb": psutil.Process(os.getpid()).memory_info().rss / 1024 / 1024,
+                "meta": {
+                    "input_dir": str(config.INPUT_DIR)
+                },
+                "pid": os.getpid()
+            }
+            
+            status_file = "/mnt/data/services/silvasonic/status/sound_analyser.json"
+            os.makedirs(os.path.dirname(status_file), exist_ok=True)
+            
+            tmp_file = f"{status_file}.tmp"
+            with open(tmp_file, 'w') as f:
+                json.dump(data, f)
+            os.rename(tmp_file, status_file)
+        except Exception as e:
+            logger.error(f"Failed to write status: {e}")
+
     def scan_existing(self):
+        self.write_status("Scanning")
         if not config.INPUT_DIR.exists():
             return
             

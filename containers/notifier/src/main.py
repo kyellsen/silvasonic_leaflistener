@@ -18,46 +18,53 @@ logger = logging.getLogger("Watchdog")
 
 # Config
 BASE_DIR = "/mnt/data/services/silvasonic"
-STATUS_FILE = f"{BASE_DIR}/status/carrier.json"
-ERROR_DIR = f"{BASE_DIR}/errors"
-ARCHIVE_DIR = f"{BASE_DIR}/errors/archive"
-CHECK_INTERVAL = 60 # Check every minute
-STALE_THRESHOLD = 60 * 60 # 60 minutes
+SERVICES_CONFIG = {
+    "carrier": {"name": "Carrier (Uploader)", "timeout": 3600}, # 60 mins
+    "recorder": {"name": "Recorder", "timeout": 120}, # 2 mins
+    "birdnet": {"name": "BirdNET", "timeout": 300}, # 5 mins
+    "sound_analyser": {"name": "Brain", "timeout": 300} # 5 mins
+}
 
-def ensure_dirs():
-    os.makedirs(ERROR_DIR, exist_ok=True)
-    os.makedirs(ARCHIVE_DIR, exist_ok=True)
+STATUS_DIR = f"{BASE_DIR}/status"
 
-def check_carrier_status(mailer: Mailer):
-    """Checks if the carrier is stale (hasn't uploaded in > 60 mins)."""
-    if not os.path.exists(STATUS_FILE):
-        # Allow some grace period on startup, but eventually alarm? 
-        # For now, just log warning.
-        logger.warning(f"Carrier status file not found at {STATUS_FILE}")
-        return
-
-    try:
-        with open(STATUS_FILE, 'r') as f:
-            status = json.load(f)
+def check_services_status(mailer: Mailer):
+    """Checks status files for all configured services."""
+    current_time = time.time()
+    
+    for service_id, config in SERVICES_CONFIG.items():
+        status_file = f"{STATUS_DIR}/{service_id}.json"
         
-        last_upload = status.get('last_upload', 0)
-        current_time = time.time()
-        
-        # If last_upload is 0, it might be a fresh start.
-        if last_upload == 0:
-            return
-
-        time_since_upload = current_time - last_upload
-        
-        if time_since_upload > STALE_THRESHOLD:
-            # Check if we already alerted recently to avoid spam (optional improvement)
-            # For now, simplistic check.
-            msg = f"Carrier has not uploaded successfully for {int(time_since_upload / 60)} minutes.\n\nLatest Status: {json.dumps(status, indent=2)}"
-            logger.error(msg)
-            mailer.send_alert("Carrier Stalled", msg)
+        if not os.path.exists(status_file):
+            logger.warning(f"Status file missing for {config['name']} ({status_file})")
+            continue
             
-    except Exception as e:
-        logger.error(f"Failed to read carrier status: {e}")
+        try:
+            with open(status_file, 'r') as f:
+                status = json.load(f)
+                
+            last_ts = status.get('timestamp', 0)
+            
+            # Special logic for Carrier (it reports 'last_upload' too, but use heartbeat for liveness)
+            # Actually, for carrier we specifically cared about 'last_upload' success.
+            # But here we check *liveness* of the process first.
+            if current_time - last_ts > config['timeout']:
+                msg = f"Service {config['name']} is silent. No heartbeat for {int(current_time - last_ts)} seconds.\nTimeout is {config['timeout']}s."
+                logger.error(msg)
+                mailer.send_alert(f"{config['name']} Down", msg)
+                
+            # Secondary check for Carrier: Upload success
+            if service_id == "carrier":
+                 last_upload = status.get('last_upload', 0) 
+                 # Note: Uploader main.py puts it in 'meta' maybe, or top level? 
+                 # We kept it top level for compat in previous edit.
+                 if current_time - last_upload > 3600: # 60 mins
+                      msg = f"Carrier running but no upload success for > 60 mins."
+                      # Check if we already alerted? (Simplified for now)
+                      logger.error(msg)
+                      mailer.send_alert("Carrier Stalled", msg)
+
+        except Exception as e:
+            logger.error(f"Failed to check status for {service_id}: {e}")
 
 def check_error_drops(mailer: Mailer):
     """Checks for new files in the error drop directory."""
@@ -91,7 +98,7 @@ def main():
     
     while True:
         try:
-            check_carrier_status(mailer)
+            check_services_status(mailer)
             check_error_drops(mailer)
         except Exception as e:
             logger.exception("Watchdog loop crashed:")

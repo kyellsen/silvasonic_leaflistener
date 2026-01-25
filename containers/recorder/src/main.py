@@ -36,21 +36,28 @@ BASE_OUTPUT_DIR = os.getenv("AUDIO_OUTPUT_DIR", "/data/recording")
 
 # --- Global State ---
 running = True
-STATUS_FILE = "/var/log/silvasonic/recorder_status.json"
+import psutil
 
+STATUS_FILE = "/mnt/data/services/silvasonic/status/recorder.json"
 
-
+# Ensure dir exists (it should via volume, but good practice)
+os.makedirs(os.path.dirname(STATUS_FILE), exist_ok=True)
 
 def write_status(status: str, profile_name: str = "Unknown", 
                  device_desc: str = "Unknown", last_file: str = None):
     """Write current status to JSON file for dashboard."""
     try:
         data = {
+            "service": "recorder",
             "timestamp": time.time(),
             "status": status,
-            "profile": profile_name,
-            "device": device_desc,
-            "last_file": last_file,
+            "cpu_percent": psutil.cpu_percent(),
+            "memory_usage_mb": psutil.Process(os.getpid()).memory_info().rss / 1024 / 1024,
+            "meta": {
+                "profile": profile_name,
+                "device": device_desc,
+                "last_file": last_file
+            },
             "pid": os.getpid()
         }
         # Atomic write

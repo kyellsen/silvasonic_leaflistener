@@ -391,21 +391,29 @@ class BirdNetService:
             print(f"Error get_time_stats: {e}")
             return {"daily": {"labels": [], "values": []}, "hourly": {"values": []}, "top": {"labels": [], "values": []}}
 
+STATUS_DIR = "/mnt/data/services/silvasonic/status"
+
 class CarrierService:
     @staticmethod
     def get_status():
         try:
-            status_file = os.path.join(LOG_DIR, "carrier_status.json")
+            status_file = os.path.join(STATUS_DIR, "carrier.json")
             if os.path.exists(status_file):
                 with open(status_file, 'r') as f:
                     data = json.load(f)
                     
                     # Convert last_upload ts to readable
-                    if data.get("last_upload", 0) > 0:
-                        data["last_upload_str"] = datetime.datetime.fromtimestamp(data["last_upload"]).strftime("%H:%M:%S")
+                    last_upload = data.get("meta", {}).get("last_upload", 0) 
+                    if last_upload == 0:
+                        # Fallback to top level if older format or transition
+                        last_upload = data.get("last_upload", 0)
+
+                    if last_upload > 0:
+                        data["last_upload_str"] = datetime.datetime.fromtimestamp(last_upload).strftime("%H:%M:%S")
                     else:
                         data["last_upload_str"] = "Never"
                         
+                    data["queue_size"] = data.get("meta", {}).get("queue_size", -1)
                     return data
         except Exception as e:
             print(f"Carrier status error: {e}")
@@ -416,10 +424,17 @@ class RecorderService:
     @staticmethod
     def get_status():
         try:
-            status_file = os.path.join(LOG_DIR, "recorder_status.json")
+            status_file = os.path.join(STATUS_DIR, "recorder.json")
             if os.path.exists(status_file):
                 with open(status_file, 'r') as f:
-                    return json.load(f)
+                    data = json.load(f)
+                    
+                    # Flatten meta for compatibility or just return rich data
+                    meta = data.get("meta", {})
+                    data["profile"] = meta.get("profile", "Unknown")
+                    data["device"] = meta.get("device", "Unknown")
+                    
+                    return data
         except Exception as e:
             print(f"Recorder status error: {e}")
             

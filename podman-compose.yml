@@ -32,6 +32,8 @@ services:
       - /mnt/data/services/silvasonic/recorder/recordings:/data/recording:z
       # Shared Logs
       - /mnt/data/services/silvasonic/logs:/var/log/silvasonic:z
+      # Shared Status
+      - /mnt/data/services/silvasonic/status:/mnt/data/services/silvasonic/status:z
 
     restart: always
 
@@ -103,6 +105,8 @@ services:
       - /mnt/data/services/silvasonic/birdnet/results:/data/results:z
       # Shared Logs
       - /mnt/data/services/silvasonic/logs:/var/log/silvasonic:z
+      # Shared Status
+      - /mnt/data/services/silvasonic/status:/mnt/data/services/silvasonic/status:z
 
     restart: always
 
@@ -140,6 +144,8 @@ services:
       - /mnt/data/services/silvasonic/sound_analyser/metadata:/data/processed/metadata:z
       # Shared Logs
       - /mnt/data/services/silvasonic/logs:/var/log/silvasonic:z
+      # Shared Status
+      - /mnt/data/services/silvasonic/status:/mnt/data/services/silvasonic/status:z
 
     restart: always
 
@@ -182,6 +188,8 @@ services:
       - /mnt/data/services/silvasonic/recorder/recordings:/data/recording:ro
       # Shared Logs (View)
       - /mnt/data/services/silvasonic/logs:/var/log/silvasonic:ro
+      # Shared Status
+      - /mnt/data/services/silvasonic/status:/mnt/data/services/silvasonic/status:ro
       # Spectrograms from Brain
       - /mnt/data/services/silvasonic/sound_analyser/artifacts:/data/processed/artifacts:ro
       # System Stats (Optional, depends on host)

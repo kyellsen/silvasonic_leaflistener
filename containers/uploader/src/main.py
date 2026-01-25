@@ -4,6 +4,7 @@ import logging
 import signal
 import sys
 import json
+import psutil
 from rclone_wrapper import RcloneWrapper
 from janitor import StorageJanitor
 
@@ -32,6 +33,7 @@ STATUS_FILE = "/mnt/data/services/silvasonic/status/carrier.json"
 ERROR_DIR = "/mnt/data/services/silvasonic/errors"
 CLEANUP_THRESHOLD = int(os.getenv("UPLOADER_CLEANUP_THRESHOLD", 70))
 CLEANUP_TARGET = int(os.getenv("UPLOADER_CLEANUP_TARGET", 60))
+MIN_AGE = os.getenv("UPLOADER_MIN_AGE", "1m")
 
 # Ensure directories exist
 os.makedirs(os.path.dirname(STATUS_FILE), exist_ok=True)
@@ -41,10 +43,16 @@ def write_status(status: str, last_upload: float = 0, queue_size: int = -1):
     """Write current status to JSON file for dashboard."""
     try:
         data = {
+            "service": "carrier",
             "timestamp": time.time(),
             "status": status,
-            "last_upload": last_upload,
-            "queue_size": queue_size,
+            "cpu_percent": psutil.cpu_percent(),
+            "memory_usage_mb": psutil.Process(os.getpid()).memory_info().rss / 1024 / 1024,
+            "meta": {
+                "last_upload": last_upload,
+                "queue_size": queue_size
+            },
+            "last_upload": last_upload, # Keeping top-level for backwards compat if needed temporarily, but dashboard should update
             "pid": os.getpid()
         }
         # Atomic write
@@ -113,7 +121,8 @@ def main():
                 write_status("Syncing", last_upload_success, queue_size)
                 
                 # Use COPY instead of SYNC to prevent deleting files on remote if they are missing locally
-                success = wrapper.copy(SOURCE_DIR, f"remote:{TARGET_DIR}")
+                # Use MIN_AGE to avoid uploading files currently being written by the recorder
+                success = wrapper.copy(SOURCE_DIR, f"remote:{TARGET_DIR}", min_age=MIN_AGE)
                 
                 if success:
                     last_upload_success = time.time()

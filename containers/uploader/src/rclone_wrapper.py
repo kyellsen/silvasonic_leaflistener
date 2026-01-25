@@ -58,7 +58,7 @@ class RcloneWrapper:
         
         return self._run_transfer(cmd, source, dest)
 
-    def copy(self, source: str, dest: str, transfers: int = 4, checkers: int = 8) -> bool:
+    def copy(self, source: str, dest: str, transfers: int = 4, checkers: int = 8, min_age: str = None) -> bool:
         """
         Runs the copy command (additive only) and streams output.
         Returns True if successful, False otherwise.
@@ -70,6 +70,9 @@ class RcloneWrapper:
             "--verbose",
             "--config", self.config_path
         ]
+        
+        if min_age:
+            cmd.extend(["--min-age", min_age])
         
         return self._run_transfer(cmd, source, dest)
 
