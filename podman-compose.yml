@@ -182,5 +182,7 @@ services:
       - /mnt/data/services/silvasonic/recorder/recordings:/data/recording:ro
       # Shared Logs (View)
       - /mnt/data/services/silvasonic/logs:/var/log/silvasonic:ro
+      # Spectrograms from Brain
+      - /mnt/data/services/silvasonic/sound_analyser/artifacts:/data/processed/artifacts:ro
       # System Stats (Optional, depends on host)
       # - /etc/localtime:/etc/localtime:ro

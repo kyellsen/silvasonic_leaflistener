@@ -101,25 +101,46 @@
     <header
       class="h-16 glass z-50 border-b border-gray-200 dark:border-dark-border flex items-center justify-between px-6 shrink-0 relative"
     >
-      <a
-        href="/dashboard"
-        class="flex items-center gap-3 hover:opacity-80 transition group"
-        hx-target="#main-content"
-        hx-swap="innerHTML"
-      >
-        <div
-          class="relative w-8 h-8 flex items-center justify-center bg-silva-100 dark:bg-silva-900/50 rounded-lg group-hover:scale-110 transition-transform duration-300"
+      <div class="flex items-center gap-4">
+        <button
+          onclick="toggleSidebar()"
+          class="p-2 text-gray-500 hover:text-silva-600 dark:text-gray-400 dark:hover:text-silva-400 transition rounded-lg hover:bg-gray-100 dark:hover:bg-white/5"
+          title="Toggle Menu"
         >
-          <span class="text-xl">🌲</span>
+          <svg
+            class="w-6 h-6"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              d="M4 6h16M4 12h16M4 18h16"
+            ></path>
+          </svg>
+        </button>
+        <a
+          href="/dashboard"
+          class="flex items-center gap-3 hover:opacity-80 transition group"
+          hx-target="#main-content"
+          hx-swap="innerHTML"
+        >
           <div
-            class="absolute inset-0 bg-silva-400/20 blur-lg rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
-          ></div>
-        </div>
-        <span
-          class="font-heading font-bold text-xl tracking-tight text-gray-900 dark:text-white"
-          >Silvasonic</span
-        >
-      </a>
+            class="relative w-8 h-8 flex items-center justify-center bg-silva-100 dark:bg-silva-900/50 rounded-lg group-hover:scale-110 transition-transform duration-300"
+          >
+            <span class="text-xl">🌲</span>
+            <div
+              class="absolute inset-0 bg-silva-400/20 blur-lg rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
+            ></div>
+          </div>
+          <span
+            class="font-heading font-bold text-xl tracking-tight text-gray-900 dark:text-white"
+            >Silvasonic</span
+          >
+        </a>
+      </div>
 
       <div class="flex items-center gap-4 text-sm">
         <div
@@ -228,185 +249,244 @@
 
       <!-- Left Sidebar (Nav) -->
       <nav
-        class="w-20 glass z-40 border-r border-gray-200 dark:border-dark-border flex flex-col items-center py-6 gap-6 shrink-0"
+        id="sidebar-menu"
+        class="w-20 glass z-40 border-r border-gray-200 dark:border-dark-border flex flex-col py-6 gap-2 shrink-0 transition-all duration-300 ease-in-out relative"
         hx-target="#main-content"
         hx-swap="innerHTML"
       >
         <!-- Home / Dashboard -->
         <a
           href="/dashboard"
-          class="p-3 rounded-xl hover:bg-white/50 dark:hover:bg-white/10 transition group relative"
+          class="flex items-center gap-3 p-3 mx-3 rounded-xl hover:bg-white/50 dark:hover:bg-white/10 transition group relative overflow-hidden whitespace-nowrap"
           title="Dashboard"
         >
           <div
-            class="absolute inset-0 bg-silva-400/20 dark:bg-silva-500/20 rounded-xl scale-50 opacity-0 group-hover:scale-100 group-hover:opacity-100 transition-all duration-300"
+            class="absolute inset-0 bg-silva-400/20 dark:bg-silva-500/20 rounded-xl opacity-0 transition-all duration-300 active-bg"
           ></div>
-          <svg
-            class="w-6 h-6 text-gray-400 group-hover:text-silva-600 dark:group-hover:text-silva-400 relative z-10 transition-colors nav-icon"
-            data-active-class="text-silva-600 dark:text-silva-400"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
+          <div
+            class="relative w-6 h-6 shrink-0 flex items-center justify-center"
           >
-            <path
-              stroke-linecap="round"
-              stroke-linejoin="round"
-              stroke-width="2"
-              d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"
-            ></path>
-          </svg>
+            <svg
+              class="w-6 h-6 text-gray-400 group-hover:text-silva-600 dark:group-hover:text-silva-400 relative z-10 transition-colors nav-icon"
+              data-active-class="text-silva-600 dark:text-silva-400"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"
+              ></path>
+            </svg>
+          </div>
+          <span
+            class="font-medium text-gray-700 dark:text-gray-300 opacity-0 group-[.expanded]:opacity-100 transition-opacity duration-300 sidebar-label"
+            >Dashboard</span
+          >
         </a>
 
-        <div class="w-10 h-px bg-gray-200 dark:bg-gray-700"></div>
+        <div class="w-full px-4 my-2">
+          <div class="h-px bg-gray-200 dark:bg-gray-700"></div>
+        </div>
 
         <!-- Recorder -->
         <a
           href="/recorder"
-          class="p-3 rounded-xl hover:bg-white/50 dark:hover:bg-white/10 transition group relative"
+          class="flex items-center gap-3 p-3 mx-3 rounded-xl hover:bg-white/50 dark:hover:bg-white/10 transition group relative overflow-hidden whitespace-nowrap"
           title="Recorder"
         >
           <div
-            class="absolute inset-0 bg-pink-500/20 rounded-xl scale-50 opacity-0 group-hover:scale-100 group-hover:opacity-100 transition-all duration-300"
+            class="absolute inset-0 bg-pink-500/20 rounded-xl opacity-0 transition-all duration-300 active-bg"
           ></div>
-          <svg
-            class="w-6 h-6 text-gray-400 group-hover:text-pink-600 dark:group-hover:text-pink-400 relative z-10 transition-colors nav-icon"
-            data-active-class="text-pink-600 dark:text-pink-400"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
+          <div
+            class="relative w-6 h-6 shrink-0 flex items-center justify-center"
           >
-            <path
-              stroke-linecap="round"
-              stroke-linejoin="round"
-              stroke-width="2"
-              d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z"
-            ></path>
-          </svg>
+            <svg
+              class="w-6 h-6 text-gray-400 group-hover:text-pink-600 dark:group-hover:text-pink-400 relative z-10 transition-colors nav-icon"
+              data-active-class="text-pink-600 dark:text-pink-400"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z"
+              ></path>
+            </svg>
+          </div>
+          <span
+            class="font-medium text-gray-700 dark:text-gray-300 opacity-0 group-[.expanded]:opacity-100 transition-opacity duration-300 sidebar-label"
+            >Recorder</span
+          >
         </a>
 
         <!-- Uploader -->
         <a
           href="/uploader"
-          class="p-3 rounded-xl hover:bg-white/50 dark:hover:bg-white/10 transition group relative"
+          class="flex items-center gap-3 p-3 mx-3 rounded-xl hover:bg-white/50 dark:hover:bg-white/10 transition group relative overflow-hidden whitespace-nowrap"
           title="Uploader"
         >
           <div
-            class="absolute inset-0 bg-cyan-500/20 rounded-xl scale-50 opacity-0 group-hover:scale-100 group-hover:opacity-100 transition-all duration-300"
+            class="absolute inset-0 bg-cyan-500/20 rounded-xl opacity-0 transition-all duration-300 active-bg"
           ></div>
-          <svg
-            class="w-6 h-6 text-gray-400 group-hover:text-cyan-600 dark:group-hover:text-cyan-400 relative z-10 transition-colors nav-icon"
-            data-active-class="text-cyan-600 dark:text-cyan-400"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
+          <div
+            class="relative w-6 h-6 shrink-0 flex items-center justify-center"
           >
-            <path
-              stroke-linecap="round"
-              stroke-linejoin="round"
-              stroke-width="2"
-              d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"
-            ></path>
-          </svg>
+            <svg
+              class="w-6 h-6 text-gray-400 group-hover:text-cyan-600 dark:group-hover:text-cyan-400 relative z-10 transition-colors nav-icon"
+              data-active-class="text-cyan-600 dark:text-cyan-400"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"
+              ></path>
+            </svg>
+          </div>
+          <span
+            class="font-medium text-gray-700 dark:text-gray-300 opacity-0 group-[.expanded]:opacity-100 transition-opacity duration-300 sidebar-label"
+            >Uploader</span
+          >
         </a>
 
         <!-- Analyzer (Brain) -->
         <a
           href="/analyzer"
-          class="p-3 rounded-xl hover:bg-white/50 dark:hover:bg-white/10 transition group relative"
+          class="flex items-center gap-3 p-3 mx-3 rounded-xl hover:bg-white/50 dark:hover:bg-white/10 transition group relative overflow-hidden whitespace-nowrap"
           title="Analyzer"
         >
           <div
-            class="absolute inset-0 bg-purple-500/20 rounded-xl scale-50 opacity-0 group-hover:scale-100 group-hover:opacity-100 transition-all duration-300"
+            class="absolute inset-0 bg-purple-500/20 rounded-xl opacity-0 transition-all duration-300 active-bg"
           ></div>
-          <svg
-            class="w-6 h-6 text-gray-400 group-hover:text-purple-600 dark:group-hover:text-purple-400 relative z-10 transition-colors nav-icon"
-            data-active-class="text-purple-600 dark:text-purple-400"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
+          <div
+            class="relative w-6 h-6 shrink-0 flex items-center justify-center"
           >
-            <path
-              stroke-linecap="round"
-              stroke-linejoin="round"
-              stroke-width="2"
-              d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"
-            ></path>
-          </svg>
+            <svg
+              class="w-6 h-6 text-gray-400 group-hover:text-purple-600 dark:group-hover:text-purple-400 relative z-10 transition-colors nav-icon"
+              data-active-class="text-purple-600 dark:text-purple-400"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"
+              ></path>
+            </svg>
+          </div>
+          <span
+            class="font-medium text-gray-700 dark:text-gray-300 opacity-0 group-[.expanded]:opacity-100 transition-opacity duration-300 sidebar-label"
+            >Analyzer</span
+          >
         </a>
 
         <!-- BirdNET -->
         <a
           href="/birdnet"
-          class="p-3 rounded-xl hover:bg-white/50 dark:hover:bg-white/10 transition group relative"
+          class="flex items-center gap-3 p-3 mx-3 rounded-xl hover:bg-white/50 dark:hover:bg-white/10 transition group relative overflow-hidden whitespace-nowrap"
           title="BirdNET"
         >
           <div
-            class="absolute inset-0 bg-green-500/20 rounded-xl scale-50 opacity-0 group-hover:scale-100 group-hover:opacity-100 transition-all duration-300"
+            class="absolute inset-0 bg-green-500/20 rounded-xl opacity-0 transition-all duration-300 active-bg"
           ></div>
-          <svg
-            class="w-6 h-6 text-gray-400 group-hover:text-lime-500 dark:group-hover:text-lime-400 relative z-10 transition-colors nav-icon"
-            data-active-class="text-lime-600 dark:text-lime-400"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
+          <div
+            class="relative w-6 h-6 shrink-0 flex items-center justify-center"
           >
-            <path
-              stroke-linecap="round"
-              stroke-linejoin="round"
-              stroke-width="2"
-              d="M9 19V6l12-3v13M9 19c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zm12-3c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zM9 10l12-3"
-            ></path>
-          </svg>
+            <svg
+              class="w-6 h-6 text-gray-400 group-hover:text-lime-500 dark:group-hover:text-lime-400 relative z-10 transition-colors nav-icon"
+              data-active-class="text-lime-600 dark:text-lime-400"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M9 19V6l12-3v13M9 19c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zm12-3c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zM9 10l12-3"
+              ></path>
+            </svg>
+          </div>
+          <span
+            class="font-medium text-gray-700 dark:text-gray-300 opacity-0 group-[.expanded]:opacity-100 transition-opacity duration-300 sidebar-label"
+            >BirdNET</span
+          >
         </a>
 
         <!-- BirdDiscover -->
         <a
           href="/birdnet/discover"
-          class="p-3 rounded-xl hover:bg-white/50 dark:hover:bg-white/10 transition group relative"
+          class="flex items-center gap-3 p-3 mx-3 rounded-xl hover:bg-white/50 dark:hover:bg-white/10 transition group relative overflow-hidden whitespace-nowrap"
           title="BirdDiscover"
         >
           <div
-            class="absolute inset-0 bg-amber-500/20 rounded-xl scale-50 opacity-0 group-hover:scale-100 group-hover:opacity-100 transition-all duration-300"
+            class="absolute inset-0 bg-amber-500/20 rounded-xl opacity-0 transition-all duration-300 active-bg"
           ></div>
-          <svg
-            class="w-6 h-6 text-gray-400 group-hover:text-amber-500 dark:group-hover:text-amber-400 relative z-10 transition-colors nav-icon"
-            data-active-class="text-amber-500 dark:text-amber-400"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
+          <div
+            class="relative w-6 h-6 shrink-0 flex items-center justify-center"
           >
-            <path
-              stroke-linecap="round"
-              stroke-linejoin="round"
-              stroke-width="2"
-              d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"
-            ></path>
-          </svg>
+            <svg
+              class="w-6 h-6 text-gray-400 group-hover:text-amber-500 dark:group-hover:text-amber-400 relative z-10 transition-colors nav-icon"
+              data-active-class="text-amber-500 dark:text-amber-400"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"
+              ></path>
+            </svg>
+          </div>
+          <span
+            class="font-medium text-gray-700 dark:text-gray-300 opacity-0 group-[.expanded]:opacity-100 transition-opacity duration-300 sidebar-label"
+            >BirdDiscover</span
+          >
         </a>
 
         <!-- Stats -->
         <a
           href="/stats"
-          class="p-3 rounded-xl hover:bg-white/50 dark:hover:bg-white/10 transition group relative"
+          class="flex items-center gap-3 p-3 mx-3 rounded-xl hover:bg-white/50 dark:hover:bg-white/10 transition group relative overflow-hidden whitespace-nowrap"
           title="BirdStats"
         >
           <div
-            class="absolute inset-0 bg-blue-500/20 rounded-xl scale-50 opacity-0 group-hover:scale-100 group-hover:opacity-100 transition-all duration-300"
+            class="absolute inset-0 bg-blue-500/20 rounded-xl opacity-0 transition-all duration-300 active-bg"
           ></div>
-          <svg
-            class="w-6 h-6 text-gray-400 group-hover:text-blue-500 dark:group-hover:text-blue-400 relative z-10 transition-colors nav-icon"
-            data-active-class="text-blue-500 dark:text-blue-400"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
+          <div
+            class="relative w-6 h-6 shrink-0 flex items-center justify-center"
           >
-            <path
-              stroke-linecap="round"
-              stroke-linejoin="round"
-              stroke-width="2"
-              d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"
-            ></path>
-          </svg>
+            <svg
+              class="w-6 h-6 text-gray-400 group-hover:text-blue-500 dark:group-hover:text-blue-400 relative z-10 transition-colors nav-icon"
+              data-active-class="text-blue-500 dark:text-blue-400"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"
+              ></path>
+            </svg>
+          </div>
+          <span
+            class="font-medium text-gray-700 dark:text-gray-300 opacity-0 group-[.expanded]:opacity-100 transition-opacity duration-300 sidebar-label"
+            >Stats</span
+          >
         </a>
       </nav>
 
@@ -716,6 +796,16 @@
           sidebar.classList.remove("w-80", "border-l");
         }
 
+        // Left Sidebar Init
+        const leftSidebar = document.getElementById("sidebar-menu");
+        const leftCollapsed = localStorage.getItem("sidebar-collapsed");
+        // Default to collapsed (w-20) if not set, or if set to true.
+        // If "false", we expand to w-64.
+        if (leftCollapsed === "false") {
+          leftSidebar.classList.remove("w-20");
+          leftSidebar.classList.add("w-64", "expanded");
+        }
+
         const storedTheme = localStorage.getItem("theme");
         const html = document.documentElement;
         if (storedTheme === "light") {
@@ -733,25 +823,75 @@
         updateActiveMenu();
       });
 
+      function toggleSidebar() {
+        const sidebar = document.getElementById("sidebar-menu");
+        const isExpanded = sidebar.classList.contains("w-64");
+
+        if (isExpanded) {
+          sidebar.classList.remove("w-64", "expanded");
+          sidebar.classList.add("w-20");
+          localStorage.setItem("sidebar-collapsed", "true");
+        } else {
+          sidebar.classList.remove("w-20");
+          sidebar.classList.add("w-64", "expanded");
+          localStorage.setItem("sidebar-collapsed", "false");
+        }
+      }
+
       function updateActiveMenu() {
         const currentPath = window.location.pathname;
-        const navLinks = document.querySelectorAll("nav a");
+        const navLinks = Array.from(document.querySelectorAll("nav a"));
+
+        // Match Logic: Find all matches, pick the specific one (longest href match)
+        // e.g. /birdnet/discover matches both /birdnet and /birdnet/discover
+        // We want the latter.
+
+        const matches = navLinks.filter((link) => {
+          const href = link.getAttribute("href");
+          return (
+            currentPath.startsWith(href) &&
+            (href !== "/" || currentPath === "/")
+          );
+        });
+
+        // Sort by length descending
+        matches.sort(
+          (a, b) =>
+            b.getAttribute("href").length - a.getAttribute("href").length,
+        );
+        const activeLink = matches.length > 0 ? matches[0] : null;
 
         navLinks.forEach((link) => {
-          const href = link.getAttribute("href");
-          const svg = link.querySelector("svg");
-          const bg = link.querySelector(".absolute");
+          const isActive = link === activeLink;
+          const svg = link.querySelector(".nav-icon");
+          const bg = link.querySelector(".active-bg");
+          const label = link.querySelector(".sidebar-label");
 
-          // Reset standard checks
-          link.classList.remove("bg-white/10", "bg-white/50", "shadow-neon");
+          // Reset everything
+          link.classList.remove(
+            "bg-white/50",
+            "dark:bg-white/10",
+            "shadow-neon",
+          );
+          if (bg) {
+            bg.classList.remove("opacity-100");
+            bg.classList.add("opacity-0");
+          }
+          if (svg) {
+            svg.classList.add("text-gray-400");
+            svg.classList.remove("text-silva-600", "dark:text-silva-400");
+            const activeClass = svg.getAttribute("data-active-class");
+            if (activeClass) {
+              activeClass.split(" ").forEach((c) => svg.classList.remove(c));
+            }
+          }
 
-          // Generic state for svg text color - override by data-active-class if present
-          if (currentPath.startsWith(href)) {
+          if (isActive) {
             link.classList.add("bg-white/50", "dark:bg-white/10");
 
             if (bg) {
-              bg.classList.remove("opacity-0", "scale-50");
-              bg.classList.add("opacity-100", "scale-100");
+              bg.classList.remove("opacity-0");
+              bg.classList.add("opacity-100");
             }
 
             if (svg) {
@@ -764,20 +904,6 @@
                 // Default fallback
                 svg.classList.add("text-silva-600", "dark:text-silva-400");
               }
-            }
-          } else {
-            if (bg) {
-              bg.classList.add("opacity-0", "scale-50");
-              bg.classList.remove("opacity-100", "scale-100");
-            }
-
-            if (svg) {
-              svg.classList.add("text-gray-400");
-              const activeClass = svg.getAttribute("data-active-class");
-              if (activeClass) {
-                activeClass.split(" ").forEach((c) => svg.classList.remove(c));
-              }
-              svg.classList.remove("text-silva-600", "dark:text-silva-400");
             }
           }
         });
