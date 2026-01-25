@@ -3,12 +3,20 @@ import sys
 from src.watcher import WatcherService
 
 # Setup logging to stdout
+import logging.handlers
+
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
     handlers=[
         logging.StreamHandler(sys.stdout),
-        logging.FileHandler("/var/log/silvasonic/birdnet.log")
+        logging.handlers.TimedRotatingFileHandler(
+            "/var/log/silvasonic/birdnet.log", 
+            when='midnight', 
+            interval=1, 
+            backupCount=30,
+            encoding='utf-8'
+        )
     ]
 )
 

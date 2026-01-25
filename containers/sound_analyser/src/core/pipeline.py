@@ -8,7 +8,7 @@ from src.config import config
 from src.analyzers.meta import MetaAnalyzer
 from src.analyzers.loudness import LoudnessAnalyzer
 from src.analyzers.frequency import FrequencyAnalyzer
-from src.analyzers.spectrum import SpectrogramAnalyzer
+from src.analyzers.frequency import FrequencyAnalyzer
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("Pipeline")
@@ -18,8 +18,7 @@ class AnalysisPipeline:
         self.analyzers = [
             MetaAnalyzer(),
             LoudnessAnalyzer(),
-            FrequencyAnalyzer(),
-            SpectrogramAnalyzer()
+            FrequencyAnalyzer()
         ]
         
     def process_file(self, filepath: str):

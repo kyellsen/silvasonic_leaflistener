@@ -10,7 +10,22 @@ from starlette.status import HTTP_302_FOUND
 from src.auth import require_auth, verify_credentials, SESSION_SECRET, COOKIE_NAME
 
 # Setup Logging
-logging.basicConfig(level=logging.INFO)
+import sys
+import logging.handlers
+
+logging.basicConfig(
+    level=logging.INFO,
+    handlers=[
+        logging.StreamHandler(sys.stdout),
+        logging.handlers.TimedRotatingFileHandler(
+            "/var/log/silvasonic/dashboard.log", 
+            when='midnight', 
+            interval=1, 
+            backupCount=30,
+            encoding='utf-8'
+        )
+    ]
+)
 logger = logging.getLogger("Dashboard")
 
 # Paths

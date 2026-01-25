@@ -9,6 +9,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     curl \
     gcc \
     libpq-dev \
+    libsndfile1 \
     && rm -rf /var/lib/apt/lists/*
 
 # Install python dependencies

@@ -11,13 +11,21 @@ from janitor import StorageJanitor
 # Configure Logging
 os.makedirs("/var/log/silvasonic", exist_ok=True)
 
+import logging.handlers
+
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s [%(levelname)s] %(message)s',
     datefmt='%Y-%m-%d %H:%M:%S',
     handlers=[
         logging.StreamHandler(sys.stdout),
-        logging.FileHandler("/var/log/silvasonic/uploader.log")
+        logging.handlers.TimedRotatingFileHandler(
+            "/var/log/silvasonic/uploader.log",
+            when='midnight',
+            interval=1,
+            backupCount=30,
+            encoding='utf-8'
+        )
     ]
 )
 logger = logging.getLogger("Carrier")

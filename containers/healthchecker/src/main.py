@@ -8,11 +8,22 @@ import shutil
 from mailer import Mailer
 
 # Logging Config
+import logging.handlers
+
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s [%(levelname)s] %(message)s',
     datefmt='%Y-%m-%d %H:%M:%S',
-    handlers=[logging.StreamHandler(sys.stdout)]
+    handlers=[
+        logging.StreamHandler(sys.stdout),
+        logging.handlers.TimedRotatingFileHandler(
+            "/var/log/silvasonic/notifier.log",
+            when='midnight',
+            interval=1,
+            backupCount=30,
+            encoding='utf-8'
+        )
+    ]
 )
 logger = logging.getLogger("Watchdog")
 
@@ -26,6 +37,15 @@ SERVICES_CONFIG = {
 }
 
 STATUS_DIR = f"{BASE_DIR}/status"
+ERROR_DIR = f"{BASE_DIR}/errors"
+ARCHIVE_DIR = f"{BASE_DIR}/errors/archive"
+CHECK_INTERVAL = 60 # Check every minute
+
+def ensure_dirs():
+    """Ensure all required directories exist."""
+    for d in [STATUS_DIR, ERROR_DIR, ARCHIVE_DIR]:
+        os.makedirs(d, exist_ok=True)
+
 
 def check_services_status(mailer: Mailer):
     """Checks status files for all configured services."""

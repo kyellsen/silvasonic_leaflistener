@@ -3,15 +3,15 @@ import os
 import logging
 from email.message import EmailMessage
 
-logger = logging.getLogger("Notifier.Mailer")
+logger = logging.getLogger("HealthChecker.Mailer")
 
 class Mailer:
     def __init__(self):
-        self.smtp_server = os.getenv("NOTIFIER_SMTP_SERVER", "smtp.gmail.com")
-        self.smtp_port = int(os.getenv("NOTIFIER_SMTP_PORT", 465))
-        self.smtp_user = os.getenv("NOTIFIER_SMTP_USER")
-        self.smtp_password = os.getenv("NOTIFIER_SMTP_PASSWORD")
-        self.recipient = os.getenv("NOTIFIER_RECIPIENT_EMAIL")
+        self.smtp_server = os.getenv("HEALTHCHECKER_SMTP_SERVER", "smtp.gmail.com")
+        self.smtp_port = int(os.getenv("HEALTHCHECKER_SMTP_PORT", 465))
+        self.smtp_user = os.getenv("HEALTHCHECKER_SMTP_USER")
+        self.smtp_password = os.getenv("HEALTHCHECKER_SMTP_PASSWORD")
+        self.recipient = os.getenv("HEALTHCHECKER_RECIPIENT_EMAIL")
 
     def send_alert(self, subject: str, body: str) -> bool:
         """Sends an email alert. Returns True if successful."""

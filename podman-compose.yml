@@ -77,8 +77,8 @@ services:
     restart: always
     env_file: .env
     volumes:
-      # Shared Status & Errors (Read/Write for archiving errors)
-      - /mnt/data/services/silvasonic/status:/mnt/data/services/silvasonic/status:ro
+      # Shared Status & Errors (Read/Write for archiving errors and writing own status)
+      - /mnt/data/services/silvasonic/status:/mnt/data/services/silvasonic/status:z
       - /mnt/data/services/silvasonic/errors:/mnt/data/services/silvasonic/errors:z
 
   # ---------------------------------------------------------------------------
