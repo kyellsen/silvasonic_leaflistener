@@ -77,6 +77,8 @@ services:
     restart: always
     env_file: .env
     volumes:
+      # Shared Config (Read/Write)
+      - /mnt/data/services/silvasonic/config:/config:z
       # Shared Status & Errors (Read/Write for archiving errors and writing own status)
       - /mnt/data/services/silvasonic/status:/mnt/data/services/silvasonic/status:z
       - /mnt/data/services/silvasonic/errors:/mnt/data/services/silvasonic/errors:z
@@ -186,6 +188,8 @@ services:
     volumes:
       # Read-Only Audio (Playback)
       - /mnt/data/services/silvasonic/recorder/recordings:/data/recording:ro
+      # Shared Config (Read/Write)
+      - /mnt/data/services/silvasonic/config:/config:z
       # Shared Logs (View)
       - /mnt/data/services/silvasonic/logs:/var/log/silvasonic:ro
       # Shared Status

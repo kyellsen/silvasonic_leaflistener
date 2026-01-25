@@ -12,6 +12,24 @@ class Mailer:
         self.smtp_user = os.getenv("HEALTHCHECKER_SMTP_USER")
         self.smtp_password = os.getenv("HEALTHCHECKER_SMTP_PASSWORD")
         self.recipient = os.getenv("HEALTHCHECKER_RECIPIENT_EMAIL")
+        
+        # Load overrides from settings.json
+        config_path = "/config/settings.json"
+        if os.path.exists(config_path):
+            try:
+                import json
+                with open(config_path, 'r') as f:
+                    settings = json.load(f)
+                    hc_settings = settings.get("healthchecker", {})
+                    
+                    # Override if present and not empty
+                    if hc_settings.get("recipient_email"):
+                        self.recipient = hc_settings.get("recipient_email")
+                        logger.info(f"Using recipient override: {self.recipient}")
+                        
+                    # Future: Allow overriding SMTP creds too if needed, but risky for security (plaintext in json)
+            except Exception as e:
+                logger.error(f"Failed to load settings override: {e}")
 
     def send_alert(self, subject: str, body: str) -> bool:
         """Sends an email alert. Returns True if successful."""
