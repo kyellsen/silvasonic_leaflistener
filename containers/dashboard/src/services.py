@@ -35,8 +35,19 @@ db = DatabaseHandler()
 class SystemService:
     @staticmethod
     def get_stats():
-        cpu = psutil.cpu_percent(interval=None)
-        mem = psutil.virtual_memory()
+        try:
+            cpu = psutil.cpu_percent(interval=None)
+        except:
+            cpu = 0
+            
+        try:
+            mem = psutil.virtual_memory()
+            mem_percent = mem.percent
+        except:
+            class MockMem:
+                percent = 0
+            mem = MockMem()
+            mem_percent = 0
         
         # Disk usage for /mnt/data (mapped to /data/recording usually or root)
         # using /data/recording as proxy for NVMe
@@ -47,8 +58,11 @@ class SystemService:
             disk_percent = 0
 
         # Boot time
-        boot_time = datetime.datetime.fromtimestamp(psutil.boot_time())
-        uptime = datetime.datetime.now() - boot_time
+        try:
+            boot_time = datetime.datetime.fromtimestamp(psutil.boot_time())
+            uptime = datetime.datetime.now() - boot_time
+        except:
+            uptime = "Unknown"
         
         # Last Recording
         last_rec = "Unknown"
@@ -75,9 +89,9 @@ class SystemService:
         return {
             "cpu": cpu,
             "cpu_temp": cpu_temp,
-            "ram_percent": mem.percent,
+            "ram_percent": mem_percent,
             "disk_percent": round(disk_percent, 1),
-            "uptime_str": str(uptime).split('.')[0],
+            "uptime_str": str(uptime).split('.')[0] if isinstance(uptime, datetime.timedelta) else str(uptime),
             "last_recording": last_rec,
             "last_recording_ago": int(datetime.datetime.now().timestamp() - last_rec_ts) if last_rec_ts > 0 else -1
         }

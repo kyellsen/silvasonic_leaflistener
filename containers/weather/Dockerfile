@@ -4,19 +4,28 @@ WORKDIR /app
 
 ENV PYTHONUNBUFFERED=1
 
-# Install system dependencies
-# libjemalloc2 is required to fix "Unsupported system page size" errors on RPi (64k pages)
-# by forcing usage of system allocator instead of polars' bundled jemalloc.
+# Install system dependencies for building polars from source
+# (Required because pre-built wheels are crashing with page size errors)
+# We need Rust to build polars.
 RUN apt-get update && apt-get install -y \
     curl \
-    libjemalloc2 \
+    build-essential \
+    pkg-config \
+    libssl-dev \
     && rm -rf /var/lib/apt/lists/*
 
-# Preload system jemalloc
-ENV LD_PRELOAD=libjemalloc.so.2
+# Install Rust (needed for polars build)
+ENV RUSTUP_HOME=/usr/local/rustup \
+    CARGO_HOME=/usr/local/cargo \
+    PATH=/usr/local/cargo/bin:$PATH
+RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
 
+# Copy project
 COPY pyproject.toml .
-RUN pip install --no-cache-dir .
+
+# Install dependencies with forced source build for polars
+# This ensures jemalloc is compiled against the actual system page size (or disabled if configured)
+RUN pip install --no-cache-dir --no-binary=polars .
 
 COPY src/ src/
 

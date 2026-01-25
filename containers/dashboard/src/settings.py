@@ -1,6 +1,7 @@
 import os
 import json
 import logging
+import copy
 
 logger = logging.getLogger("Dashboard.Settings")
 
@@ -25,14 +26,14 @@ class SettingsService:
     def get_settings():
         """Load settings from JSON, returning defaults for missing keys."""
         if not os.path.exists(CONFIG_PATH):
-            return DEFAULT_SETTINGS.copy()
+            return copy.deepcopy(DEFAULT_SETTINGS)
             
         try:
             with open(CONFIG_PATH, 'r') as f:
                 data = json.load(f)
                 
             # Merge with defaults (shallow merge for sections)
-            settings = DEFAULT_SETTINGS.copy()
+            settings = copy.deepcopy(DEFAULT_SETTINGS)
             
             # Deep merge manually for known sections
             if "locale" in data:
@@ -45,7 +46,7 @@ class SettingsService:
             return settings
         except Exception as e:
             logger.error(f"Failed to load settings: {e}")
-            return DEFAULT_SETTINGS.copy()
+            return copy.deepcopy(DEFAULT_SETTINGS)
 
     @staticmethod
     def save_settings(new_settings: dict):
