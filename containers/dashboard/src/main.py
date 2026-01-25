@@ -93,6 +93,7 @@ async def logout():
 # --- Protected Routes ---
 
 from src.services import SystemService, BirdNetService, CarrierService, RecorderService, AnalyzerService
+from src.settings import SettingsService
 
 @app.get("/dashboard", response_class=HTMLResponse)
 async def dashboard(request: Request, auth=Depends(require_auth)):
@@ -115,6 +116,59 @@ async def dashboard(request: Request, auth=Depends(require_auth)):
         "status_label": "System:",
         "status_value": "Online",
         "status_color": "text-green-600 dark:text-green-400"
+    })
+
+@app.get("/settings", response_class=HTMLResponse)
+async def settings_page(request: Request, auth=Depends(require_auth)):
+    if isinstance(auth, RedirectResponse): return auth
+    
+    settings = SettingsService.get_settings()
+    
+    return render(request, "settings.html", {
+        "request": request, 
+        "page": "settings",
+        "settings": settings,
+        "status_label": "System:",
+        "status_value": "Settings",
+        "status_color": "text-gray-500"
+    })
+
+@app.post("/settings", response_class=HTMLResponse)
+async def settings_save(request: Request, auth=Depends(require_auth)):
+    if isinstance(auth, RedirectResponse): return auth
+    
+    form = await request.form()
+    
+    # Process Form
+    use_german = form.get("use_german_names") == "on"
+    notifier_email = form.get("notifier_email", "").strip()
+    
+    # Load existing to preserve other fields if any
+    settings = SettingsService.get_settings()
+    
+    if "locale" not in settings: settings["locale"] = {}
+    settings["locale"]["use_german_names"] = use_german
+    
+    if "healthchecker" not in settings: settings["healthchecker"] = {}
+    settings["healthchecker"]["recipient_email"] = notifier_email
+    
+    # Save
+    if SettingsService.save_settings(settings):
+        msg = "Settings saved successfully."
+        err = None
+    else:
+        msg = None
+        err = "Failed to save settings."
+        
+    return render(request, "settings.html", {
+        "request": request,
+        "page": "settings",
+        "settings": settings,
+        "success": msg,
+        "error": err,
+        "status_label": "System:",
+        "status_value": "Settings",
+        "status_color": "text-gray-500"
     })
 
 @app.get("/logs", response_class=HTMLResponse)

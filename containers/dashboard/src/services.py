@@ -8,6 +8,7 @@ from pathlib import Path
 import json
 from sqlalchemy import create_engine, text
 from sqlalchemy.orm import sessionmaker
+from src.settings import SettingsService
 
 # Paths
 DB_PATH = "/data/birdnet_db/birdnet.sqlite"
@@ -90,21 +91,25 @@ class BirdNetService:
                 # We need to manually split timestamp into date/time map for value compatibility with template
                 query = text("""
                     SELECT 
-                        filepath, 
-                        start_time, 
-                        end_time, 
-                        confidence, 
-                        common_name as com_name, 
-                        scientific_name as sci_name, 
-                        timestamp,
-                        filename
-                    FROM birdnet.detections 
-                    ORDER BY timestamp DESC 
+                        d.filepath, 
+                        d.start_time, 
+                        d.end_time, 
+                        d.confidence, 
+                        d.common_name as com_name, 
+                        d.scientific_name as sci_name, 
+                        d.timestamp,
+                        d.filename,
+                        s.german_name
+                    FROM birdnet.detections d
+                    LEFT JOIN birdnet.species_info s ON d.scientific_name = s.scientific_name
+                    ORDER BY d.timestamp DESC 
                     LIMIT :limit
                 """)
                 result = conn.execute(query, {"limit": limit})
                 
                 detections = []
+                use_german = SettingsService.is_german_names_enabled()
+                
                 for row in result:
                     d = dict(row._mapping) # SQLAlchemy Row to dict
                     ts = d.get('timestamp')
@@ -117,6 +122,10 @@ class BirdNetService:
                     else:
                         d['iso_timestamp'] = ""
                         d['time'] = "-"
+                        
+                    # Display Name Logic
+                    d['display_name'] = d.get('german_name') if use_german and d.get('german_name') else d.get('com_name')
+                    
                     detections.append(d)
                     
                 return detections
@@ -162,6 +171,10 @@ class BirdNetService:
                     d['formatted_time'] = "-"
                     
                 d['confidence_percent'] = round(d['confidence'] * 100)
+                
+                # Display Name Logic
+                use_german = SettingsService.is_german_names_enabled()
+                d['display_name'] = d.get('german_name') if use_german and d.get('german_name') else d.get('com_name')
                 
                 return d
         except Exception as e:
@@ -261,6 +274,11 @@ class BirdNetService:
                     # But for now, simple gather is a start.
                     await asyncio.gather(*[BirdNetService.enrich_species_data(sp) for sp in to_enrich])
                     
+                # Display Name Logic (Post-process after enrichment)
+                use_german = SettingsService.is_german_names_enabled()
+                for sp in species:
+                    sp['display_name'] = sp.get('german_name') if use_german and sp.get('german_name') else sp.get('com_name')
+                    
                 return species
         except Exception as e:
             print(f"Error get_all_species: {e}")
@@ -315,6 +333,24 @@ class BirdNetService:
                     else:
                          d['iso_timestamp'] = ""
                     recent.append(d)
+                
+                # Fetch German name if needed (it wasn't in the group query clearly)
+                # Actually, stats for species are filtered by common_name. 
+                # If we want to display German name as header, we need to fetch it.
+                # It might be in 'species_info' table.
+                
+                # Use enriched info if available
+                # info is already fetched. But check if it has german_name.
+                # The first query aggregated detections, didn't join species_info. 
+                
+                # Let's trust enrich_species_data called later in controller will fix 'info'
+                # or ensure 'info' has it by joining above?
+                # The first query didn't join. Let's rely on enrichment in controller or add logic here.
+                # Controller calls enrich_species_data(data["info"]).
+                
+                # So we just return raw info here. Controller handles display.
+                
+                # Hourly Distribution
                 
                 # Hourly Distribution
                 query_hourly = text("""
