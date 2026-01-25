@@ -15,10 +15,14 @@ class SpectrogramAnalyzer(BaseAnalyzer):
     def analyze(self, filepath: str):
         # Limit to 60 seconds to avoid massive memory usage / huge images for long files
         try:
+            # Try to load just 60 seconds. 
+            # If this fails (e.g. seek error), do NOT convert to full load.
             y, sr = librosa.load(filepath, sr=48000, duration=60)
-        except Exception:
-            # Fallback for weird files?
-            y, sr = librosa.load(filepath, sr=48000)
+        except Exception as e:
+            print(f"Spectrogram generation failed: {e}")
+            return {
+                "error": str(e)
+            }
         
         # Compute Spectrogram
         D = librosa.amplitude_to_db(np.abs(librosa.stft(y)), ref=np.max)

@@ -83,9 +83,20 @@ class BirdNETAnalyzer:
                 shutil.move(str(temp_result_path), str(final_output_file))
                 logger.info(f"Saved results to: {final_output_file}")
                 
-                # Verify content if needed?
-                # For now just log success.
-                pass
+                # Verify content and log detection count
+                try:
+                    with open(final_output_file, 'r') as f:
+                        lines = f.readlines()
+                        # Subtract header
+                        detection_count = max(0, len(lines) - 1)
+                        
+                    if detection_count == 0:
+                        logger.warning(f"Analysis produced 0 detections for {path.name}.")
+                    else:
+                        logger.info(f"Analysis finished for {path.name}: Found {detection_count} detections.")
+                except Exception as e:
+                    logger.error(f"Failed to read result file for verification: {e}")
+
             except Exception as e:
                 logger.error(f"Failed to save results: {e}")
         else:

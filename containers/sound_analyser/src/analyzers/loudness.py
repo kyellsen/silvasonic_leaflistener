@@ -15,10 +15,17 @@ class LoudnessAnalyzer(BaseAnalyzer):
         
         # Use a reasonable block size (e.g., 65536 samples)
         # We process at native sample rate to avoid expensive resampling of large files
+        block_size = 65536
+        
         try:
             with sf.SoundFile(filepath) as f:
-                # Process in blocks
-                for block in f.blocks(blocksize=65536, dtype='float32', always_2d=True):
+                while True:
+                    # Read block directly
+                    block = f.read(frames=block_size, dtype='float32', always_2d=True)
+                    
+                    if len(block) == 0:
+                        break
+                        
                     # Mix to mono if necessary
                     if block.shape[1] > 1:
                         y = np.mean(block, axis=1)
@@ -34,11 +41,9 @@ class LoudnessAnalyzer(BaseAnalyzer):
                 mean_rms = float(np.sqrt(sum_squares / total_samples))
                 
         except Exception as e:
-            # Fallback for formats soundfile might struggle with, or if file is small enough
-            print(f"Streaming failed ({e}), falling back to standard load")
-            y, _ = librosa.load(filepath, sr=48000, mono=True)
-            rms = librosa.feature.rms(y=y)[0]
-            mean_rms = float(np.mean(rms))
+            print(f"Loudness analysis failed: {e}")
+            # Do NOT fallback to loading the entire file as it causes OOM on large high-res files
+            mean_rms = 0.0
 
         # Simple activity threshold (e.g. 0.005 is very quiet)
         # This needs calibration, but provides a relative metric.

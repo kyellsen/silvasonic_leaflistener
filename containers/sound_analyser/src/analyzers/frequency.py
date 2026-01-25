@@ -24,7 +24,15 @@ class FrequencyAnalyzer(BaseAnalyzer):
                 # Check consistency if we need specific SR, but usually native is fine for Peak Freq detecting
                 # We use overlap=0 for speed/simplicity in this stats check
                 
-                for block in f.blocks(blocksize=n_fft, dtype='float32', always_2d=True):
+                # Check consistency if we need specific SR, but usually native is fine for Peak Freq detecting
+                # We use overlap=0 for speed/simplicity in this stats check
+                
+                while True:
+                    block = f.read(frames=n_fft, dtype='float32', always_2d=True)
+                    
+                    if len(block) == 0:
+                        break
+
                     if len(block) < n_fft:
                         # Zero pad last block
                         pad_width = ((0, n_fft - len(block)), (0, 0))
@@ -52,12 +60,12 @@ class FrequencyAnalyzer(BaseAnalyzer):
         except Exception as e:
             # Fallback
             print(f"Streaming frequency analysis failed: {e}")
-            y, sr = librosa.load(filepath, sr=48000)
-            fft = np.fft.fft(y)
-            avg_mag = np.abs(fft)
-            frequencies = np.fft.fftfreq(len(y), 1/sr)
-            # Take positive half only for fallback consistency logic (roughly)
-            # But let's just rely on the new logic mostly.
+            # Do NOT fallback to loading the entire file as it causes OOM on large high-res files
+            # Return safe default
+            return {
+                "peak_frequency_hz": 0.0,
+                "error": str(e)
+            }
 
         # Find peak
         pos_mask = frequencies > 20 # Ignore sub-20Hz rumble
