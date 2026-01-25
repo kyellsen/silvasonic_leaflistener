@@ -1,0 +1,187 @@
+<div class="animate-fade-in space-y-6">
+  <!-- Header Image / Species Info -->
+  <div
+    class="relative overflow-hidden rounded-xl bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-sm group"
+  >
+    {% if d.image_url %}
+    <div class="aspect-video w-full overflow-hidden">
+      <img
+        src="{{ d.image_url }}"
+        alt="{{ d.com_name }}"
+        class="w-full h-full object-cover transform group-hover:scale-110 transition-transform duration-700"
+      />
+      <div
+        class="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent"
+      ></div>
+    </div>
+    {% else %}
+    <div
+      class="aspect-video w-full bg-silva-100 dark:bg-silva-900/20 flex items-center justify-center"
+    >
+      <span class="text-4xl">🐦</span>
+    </div>
+    {% endif %}
+
+    <div class="absolute bottom-0 left-0 right-0 p-4">
+      <h3 class="text-lg font-bold text-white leading-tight drop-shadow-md">
+        {{ d.com_name }}
+      </h3>
+      <p class="text-xs text-gray-300 italic">{{ d.sci_name }}</p>
+    </div>
+
+    <div class="absolute top-2 right-2">
+      <div
+        class="px-2 py-1 rounded-full text-xs font-bold backdrop-blur-md border border-white/10 {% if d.confidence_percent > 80 %} bg-green-500/80 text-white {% elif d.confidence_percent > 60 %} bg-amber-500/80 text-white {% else %} bg-gray-500/80 text-white {% endif %}"
+      >
+        {{ d.confidence_percent }}%
+      </div>
+    </div>
+  </div>
+
+  <!-- Audio Player Action -->
+  <div
+    class="p-4 bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm"
+  >
+    <label
+      class="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2 block"
+      >Detection Audio</label
+    >
+
+    <div class="flex flex-col gap-3">
+      <!-- Spectrogram (if implemented, placeholders for now or generated URL) -->
+      <div
+        class="w-full h-24 bg-gray-900 rounded-lg overflow-hidden relative border border-gray-700"
+      >
+        <!-- Using the spectrogram API (assuming existing filename logic) -->
+        <!-- We often use the same filename but with .png extension -->
+        <img
+          src="/api/spectrogram/{{ d.filename.replace('.flac', '.png') }}"
+          class="w-full h-full object-fill opacity-80"
+          onerror="this.style.display = 'none'"
+        />
+
+        <button
+          onclick="playGlobalAudio('{{ d.filename }}', '{{ d.com_name }}', '{{ d.confidence }}')"
+          class="absolute inset-0 flex items-center justify-center bg-black/30 hover:bg-black/10 transition group"
+        >
+          <div
+            class="w-10 h-10 rounded-full bg-silva-500 text-white flex items-center justify-center shadow-lg transform group-hover:scale-110 transition"
+          >
+            <svg
+              class="w-5 h-5 ml-0.5"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+            >
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"
+              ></path>
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+              ></path>
+            </svg>
+          </div>
+        </button>
+      </div>
+
+      <div
+        class="flex justify-between items-center text-xs text-gray-500 font-mono"
+      >
+        <span>{{ d.formatted_time }}</span>
+        <span>{{ (d.end_time - d.start_time)|round(1) }}s</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Details / Wiki -->
+  {% if d.description %}
+  <div class="space-y-2">
+    <h4
+      class="font-bold text-gray-700 dark:text-gray-300 text-sm flex items-center gap-2"
+    >
+      <svg
+        class="w-4 h-4 text-blue-500"
+        fill="none"
+        viewBox="0 0 24 24"
+        stroke="currentColor"
+      >
+        <path
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          stroke-width="2"
+          d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+        />
+      </svg>
+      About
+    </h4>
+    <div
+      class="text-sm text-gray-600 dark:text-gray-400 leading-relaxed bg-white/50 dark:bg-gray-800/50 p-3 rounded-lg border border-gray-200 dark:border-gray-700"
+    >
+      {{ d.description[:300] }}... {% if d.wikipedia_url %}
+      <a
+        href="{{ d.wikipedia_url }}"
+        target="_blank"
+        class="block mt-2 text-silva-600 dark:text-silva-400 hover:underline text-xs"
+        >Read more on Wikipedia →</a
+      >
+      {% endif %}
+    </div>
+  </div>
+  {% endif %}
+
+  <!-- Meta Table -->
+  <div
+    class="overflow-hidden rounded-lg border border-gray-200 dark:border-gray-700"
+  >
+    <table class="w-full text-xs text-left">
+      <tbody
+        class="divide-y divide-gray-200 dark:divide-gray-700 bg-white dark:bg-gray-800"
+      >
+        <tr>
+          <th
+            class="px-3 py-2 text-gray-500 dark:text-gray-400 font-medium bg-gray-50 dark:bg-gray-900/50"
+          >
+            Filename
+          </th>
+          <td
+            class="px-3 py-2 font-mono text-gray-600 dark:text-gray-300 break-all"
+          >
+            {{ d.filename }}
+          </td>
+        </tr>
+        <tr>
+          <th
+            class="px-3 py-2 text-gray-500 dark:text-gray-400 font-medium bg-gray-50 dark:bg-gray-900/50"
+          >
+            German
+          </th>
+          <td class="px-3 py-2 text-gray-600 dark:text-gray-300">
+            {{ d.german_name or '-' }}
+          </td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- Discovery Link -->
+  <a
+    href="/birdnet/discover/{{ d.com_name }}"
+    class="flex items-center justify-center gap-2 w-full py-2 bg-silva-100 dark:bg-silva-900/30 text-silva-700 dark:text-silva-300 rounded-lg hover:bg-silva-200 dark:hover:bg-silva-900/50 transition text-sm font-medium"
+  >
+    <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <path
+        stroke-linecap="round"
+        stroke-linejoin="round"
+        stroke-width="2"
+        d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"
+      />
+    </svg>
+    View Species Stats
+  </a>
+</div>

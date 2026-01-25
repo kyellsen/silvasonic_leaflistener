@@ -124,6 +124,50 @@ class BirdNetService:
             return []
 
     @staticmethod
+    def get_detection(filename: str):
+        try:
+            with db.get_connection() as conn:
+                query = text("""
+                    SELECT 
+                        d.filepath, 
+                        d.start_time, 
+                        d.end_time, 
+                        d.confidence, 
+                        d.common_name as com_name, 
+                        d.scientific_name as sci_name, 
+                        d.timestamp,
+                        d.filename,
+                        s.image_url,
+                        s.description,
+                        s.german_name,
+                        s.wikipedia_url
+                    FROM birdnet.detections d
+                    LEFT JOIN birdnet.species_info s ON d.scientific_name = s.scientific_name
+                    WHERE d.filename = :filename
+                """)
+                row = conn.execute(query, {"filename": filename}).fetchone()
+                
+                if not row:
+                    return None
+                    
+                d = dict(row._mapping)
+                if d.get('timestamp'):
+                    if d['timestamp'].tzinfo is None:
+                        d['timestamp'] = d['timestamp'].replace(tzinfo=timezone.utc)
+                    d['iso_timestamp'] = d['timestamp'].isoformat()
+                    d['formatted_time'] = d['timestamp'].strftime("%d.%m.%Y %H:%M:%S")
+                else:
+                    d['iso_timestamp'] = ""
+                    d['formatted_time'] = "-"
+                    
+                d['confidence_percent'] = round(d['confidence'] * 100)
+                
+                return d
+        except Exception as e:
+            print(f"DB Error (get_detection): {e}")
+            return None
+
+    @staticmethod
     def get_stats():
         try:
             with db.get_connection() as conn:
@@ -156,8 +200,9 @@ class BirdNetService:
             return {"today": 0, "total": 0, "top_species": []}
 
     @staticmethod
-    def get_all_species():
-        """Returns all species with their counts and last seen date."""
+    async def get_all_species():
+        """Returns all species with their counts and last seen date. Enriches with images if missing."""
+        import asyncio
         try:
             with db.get_connection() as conn:
                 query = text("""
@@ -177,6 +222,10 @@ class BirdNetService:
                 """)
                 result = conn.execute(query)
                 species = []
+                
+                # List of species that need enrichment
+                to_enrich = []
+                
                 for row in result:
                     d = dict(row._mapping)
                     # Format dates
@@ -194,8 +243,23 @@ class BirdNetService:
                     else:
                         d['first_seen_iso'] = ""
                         
-                    d['avg_conf'] = round(d.get('avg_conf', 0), 2)
+                    if d.get('avg_conf'):
+                        d['avg_conf'] = float(d['avg_conf'])
+                    else:
+                        d['avg_conf'] = 0.0
+                    
                     species.append(d)
+                    
+                    # Check if enrichment is needed (no image)
+                    if not d.get('image_url'):
+                        to_enrich.append(d)
+                
+                # Enrich in background (parallel)
+                if to_enrich:
+                    # We limit concurrency to avoid hitting API limits if many are missing
+                    # But for now, simple gather is a start.
+                    await asyncio.gather(*[BirdNetService.enrich_species_data(sp) for sp in to_enrich])
+                    
                 return species
         except Exception as e:
             print(f"Error get_all_species: {e}")
@@ -439,6 +503,26 @@ class RecorderService:
             print(f"Recorder status error: {e}")
             
         return {"status": "Unknown", "profile": "Unknown", "device": "Unknown"}
+
+class NotifierService:
+    @staticmethod
+    def get_status():
+        try:
+            status_file = os.path.join(STATUS_DIR, "notifier.json")
+            if os.path.exists(status_file):
+                with open(status_file, 'r') as f:
+                     # Check freshness
+                     data = json.load(f)
+                     
+                     # Check if stale (> 2 mins)
+                     if time.time() - data.get("timestamp", 0) > 120:
+                         data["status"] = "Stalled"
+                     
+                     return data
+        except Exception as e:
+            print(f"Notifier status error: {e}")
+            
+        return {"status": "Unknown"}
 
 class AnalyzerService:
     @staticmethod

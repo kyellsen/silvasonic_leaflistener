@@ -134,7 +134,7 @@ async def birdnet_page(request: Request, auth=Depends(require_auth)):
 async def birdnet_discover_page(request: Request, auth=Depends(require_auth)):
     if isinstance(auth, RedirectResponse): return auth
     
-    species_list = BirdNetService.get_all_species()
+    species_list = await BirdNetService.get_all_species()
     
     return render(request, "birdnet_discover.html", {
         "request": request,
@@ -236,6 +236,27 @@ async def analyzer_page(request: Request, auth=Depends(require_auth)):
         "status_value": "Monitoring",
         "status_color": "text-purple-600 dark:text-purple-400"
     })
+
+# --- Inspector API Partials ---
+
+@app.get("/api/details/birdnet/{filename}", response_class=HTMLResponse)
+async def get_birdnet_details(request: Request, filename: str, auth=Depends(require_auth)):
+    if isinstance(auth, RedirectResponse): return auth
+    
+    data = BirdNetService.get_detection(filename)
+    if not data:
+        return "<div class='p-4 text-red-500'>Detection not found</div>"
+        
+    # Enrich if missing (async) - optional, or rely on what get_detection fetched (via join)
+    # The join in get_detection might miss if not cached. 
+    # Let's trigger quick enrichment if basic info is missing but we have sci_name
+    if not data.get('image_url') and data.get('sci_name'):
+         # We trigger a background fetch or just Await it (better for user exp here)
+         await BirdNetService.enrich_species_data(data)
+         # Refresh data
+         data = BirdNetService.get_detection(filename) or data
+
+    return render(request, "partials/inspector_birdnet.html", {"request": request, "d": data})
 
 # --- API / HTMX Partials ---
 

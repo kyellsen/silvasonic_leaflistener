@@ -137,7 +137,7 @@
         <div
           class="absolute bottom-3 right-3 px-2 py-1 bg-black/40 backdrop-blur-md rounded-lg text-[10px] font-bold text-amber-300 border border-amber-500/20 shadow-lg"
         >
-          {{ sp.avg_conf|round(0) }}% CONFIDENCE
+          {{ (sp.avg_conf * 100)|int }}% CONFIDENCE
         </div>
       </div>
       <div class="p-5">

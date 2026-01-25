@@ -52,42 +52,99 @@
     </thead>
     <tbody class="divide-y divide-gray-200 dark:divide-gray-700">
       {% for d in detections %}
-      <tr class="hover:bg-gray-50 dark:hover:bg-gray-700 transition">
+      <tr
+        class="group hover:bg-silva-50/50 dark:hover:bg-gray-700/50 transition border-l-2 border-transparent hover:border-silva-500 cursor-pointer"
+        onclick="
+          if (!event.target.closest('button'))
+            htmx.trigger(this.querySelector('.details-btn'), 'click');
+        "
+      >
         <td class="p-4 text-gray-400">
           <span
-            class="local-date opacity-0 transition-opacity"
+            class="local-date opacity-70 group-hover:opacity-100 transition-opacity font-mono text-xs"
             data-timestamp="{{ d.iso_timestamp }}"
             >...</span
           >
         </td>
         <td class="p-4 font-mono text-gray-400">
           <span
-            class="local-time-only opacity-0 transition-opacity"
+            class="local-time-only opacity-70 group-hover:opacity-100 transition-opacity font-mono text-xs"
             data-timestamp="{{ d.iso_timestamp }}"
             >...</span
           >
         </td>
-        <td class="p-4 font-bold text-gray-900 dark:text-white">
-          {{ d.com_name }}
-        </td>
-        <td class="p-4 text-green-600 dark:text-green-400">
-          {{ (d.confidence * 100)|round }}%
+        <td class="p-4">
+          <div class="font-bold text-gray-900 dark:text-gray-100">
+            {{ d.com_name }}
+          </div>
+          <div class="text-xs text-gray-500 italic">{{ d.sci_name }}</div>
         </td>
         <td class="p-4">
-          <!-- Call global player function -->
+          <div class="flex items-center gap-2">
+            <div
+              class="w-16 h-1.5 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden"
+            >
+              <div
+                class="h-full bg-gradient-to-r from-silva-400 to-silva-600"
+                style="width: {{ d.confidence * 100 }}%"
+              ></div>
+            </div>
+            <span
+              class="text-xs font-medium text-gray-600 dark:text-gray-400 w-8"
+              >{{ (d.confidence * 100)|int }}%</span
+            >
+          </div>
+        </td>
+        <td class="p-4 flex items-center gap-2">
+          <!-- Play Button -->
           <button
-            class="text-blue-600 hover:text-blue-500 dark:text-blue-400 dark:hover:text-blue-300"
-            onclick="playGlobalAudio('{{ d.filename }}', '{{ d.com_name }}', '{{ d.confidence }}')"
+            class="p-2 rounded-full hover:bg-silva-100 dark:hover:bg-gray-600 text-silva-600 dark:text-silva-400 transition"
+            onclick="event.stopPropagation(); playGlobalAudio('{{ d.filename }}', '{{ d.com_name }}', '{{ d.confidence }}')"
+            title="Play Audio"
           >
-            Play
+            <svg
+              class="w-5 h-5"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+            >
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"
+              ></path>
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+              ></path>
+            </svg>
           </button>
-          <!-- Also update inspector details (could be separate HTMX call) -->
+
+          <!-- Details Trigger (Hidden/Visible) -->
           <button
-            class="text-gray-400 hover:text-gray-900 dark:hover:text-white ml-2"
-            hx-get="/api/details/{{ d.filename }}"
+            class="details-btn p-2 rounded-full hover:bg-blue-50 dark:hover:bg-gray-600 text-blue-500 dark:text-blue-400 transition opacity-0 group-hover:opacity-100"
+            hx-get="/api/details/birdnet/{{ d.filename }}"
             hx-target="#inspector-content"
+            hx-swap="innerHTML"
+            onclick="ensureInspectorOpen()"
+            title="View Details"
           >
-            Details
+            <svg
+              class="w-5 h-5"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+            >
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+              />
+            </svg>
           </button>
         </td>
       </tr>
@@ -95,6 +152,16 @@
     </tbody>
   </table>
 </div>
+
+<script>
+  function ensureInspectorOpen() {
+    const sidebar = document.getElementById("right-sidebar");
+    // Check if collapsed (w-0 class presence)
+    if (sidebar.classList.contains("w-0")) {
+      toggleInspector();
+    }
+  }
+</script>
 {% endblock %} {% block inspector %}
 <!-- Default Inspector Content for this page -->
 <div class="p-4 space-y-6">

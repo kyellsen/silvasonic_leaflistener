@@ -91,13 +91,38 @@ def check_error_drops(mailer: Mailer):
         except Exception as e:
             logger.error(f"Failed to process error file {err_file}: {e}")
 
+def write_status():
+    """Writes the Notifier's own heartbeat."""
+    try:
+        import psutil
+        data = {
+            "service": "notifier",
+            "timestamp": time.time(),
+            "status": "Running",
+            "cpu_percent": psutil.cpu_percent(),
+            "memory_usage_mb": psutil.Process(os.getpid()).memory_info().rss / 1024 / 1024,
+            "pid": os.getpid()
+        }
+        status_file = f"{STATUS_DIR}/notifier.json"
+        
+        tmp_file = f"{status_file}.tmp"
+        with open(tmp_file, 'w') as f:
+            json.dump(data, f)
+        os.rename(tmp_file, status_file)
+    except Exception as e:
+        logger.error(f"Failed to write notifier status: {e}")
+
 def main():
     logger.info("--- Silvasonic Watchdog Started ---")
     ensure_dirs()
     mailer = Mailer()
     
+    # Import psutil for status (ensuring it's imported if not global)
+    import psutil
+    
     while True:
         try:
+            write_status() # Heartbeat
             check_services_status(mailer)
             check_error_drops(mailer)
         except Exception as e:
