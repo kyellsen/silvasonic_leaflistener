@@ -1,6 +1,5 @@
 import logging
 import sys
-from src.database import init_db
 from src.watcher import WatcherService
 
 # Setup logging to stdout
@@ -17,11 +16,7 @@ logger = logging.getLogger("Main")
 def main():
     logger.info("Starting Silvasonic BirdNET (Ornithologist)...")
     
-    # 1. Init Database
-    logger.info("Initializing Database...")
-    init_db()
-    
-    # 2. Start Watcher (Blocking)
+    # Start Watcher (Blocking)
     logger.info("Starting Watcher Service...")
     service = WatcherService()
     service.run()

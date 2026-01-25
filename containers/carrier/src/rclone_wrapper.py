@@ -61,16 +61,22 @@ class RcloneWrapper:
             process = subprocess.Popen(
                 cmd,
                 stdout=subprocess.PIPE,
-                stderr=subprocess.STDOUT,
+                stderr=subprocess.STDOUT,  # Merge stdout and stderr
                 text=True,
                 bufsize=1
             )
+            
+            output_buffer = []
             
             # Stream logs line by line
             for line in process.stdout:
                 line = line.strip()
                 if line:
                     logger.debug(f"[Rclone] {line}")
+                    output_buffer.append(line)
+                    # Keep buffer size manageable (e.g., last 100 lines)
+                    if len(output_buffer) > 100:
+                        output_buffer.pop(0)
             
             process.wait()
             
@@ -79,6 +85,10 @@ class RcloneWrapper:
                 logger.info(f"Sync completed successfully in {duration:.2f}s")
             else:
                 logger.error(f"Sync failed with return code {process.returncode}")
+                logger.error("--- Rclone Output Dump (Last 100 lines) ---")
+                for line in output_buffer:
+                    logger.error(f"[Rclone] {line}")
+                logger.error("-------------------------------------------")
                 # We don't raise here, we let the main loop handle (retry)
                 
         except Exception as e:

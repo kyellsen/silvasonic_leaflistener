@@ -4,45 +4,29 @@ from pathlib import Path
 class Config:
     # Paths
     INPUT_DIR = Path(os.getenv("INPUT_DIR", "/data/recording"))
-    DB_PATH = Path(os.getenv("DB_PATH", "/data/db/birdnet.sqlite"))
+    RESULTS_DIR = Path(os.getenv("RESULTS_DIR", "/data/results"))
     
     # Watcher
     RECURSIVE_WATCH = os.getenv("RECURSIVE_WATCH", "true").lower() == "true"
     
     # BirdNET Settings
-    # Location for species prediction (optional)
-    # If False, we do not filter species by location, giving us "raw" BirdNET power.
-    LOCATION_FILTER_ENABLED = os.getenv("LOCATION_FILTER_ENABLED", "false").lower() == "true"
-    
-    # If None, no location filter is applied (= global species list)
-    _lat = os.getenv("LATITUDE")
-    LATITUDE = float(_lat) if _lat else None
-    
-    _lon = os.getenv("LONGITUDE")
-    LONGITUDE = float(_lon) if _lon else None
-    
     # Minimum confidence to store a detection (0.0 - 1.0)
     MIN_CONFIDENCE = float(os.getenv("MIN_CONFIDENCE", "0.7"))
     
-    # Robustness Settings (BirdNET-Pi style)
-    # Sensitivity: Multiplier for detection threshold (0.5 - 1.5). 
-    # Higher = More sensitive (lower effective threshold).
-    SENSITIVITY = float(os.getenv("SENSITIVITY", "1.0"))
-    
-    # Species Occurrence Threshold: 
-    # Minimum probability (0.01 - 0.99) for a species to be included in the local list.
-    # Lower = More rare birds included.
-    SPECIES_PRESENCE_THRESHOLD = float(os.getenv("SPECIES_PRESENCE_THRESHOLD", "0.05"))
-    
-    # Custom Species List Path (Optional)
-    # If set, we use this list instead of generating one based on location.
-    CUSTOM_SPECIES_LIST_PATH = os.getenv("CUSTOM_SPECIES_LIST_PATH", None)
-    
-    # Analysis chunks
-    SIG_LENGTH = 3.0  # BirdNET standard is 3 seconds
-    SIG_OVERLAP = 0.25 # Overlap for better coverage (BirdNET default)
-    
     # Threads - BirdNET Analyzer can use multi-threading
     THREADS = int(os.getenv("THREADS", "1"))
+    
+    # Location (Optional - defaults to -1 for global if not set)
+    # Using defaults similar to BirdNET-Pi or Global
+    _lat = os.getenv("LATITUDE")
+    LATITUDE = float(_lat) if _lat else -1
+    
+    _lon = os.getenv("LONGITUDE")
+    LONGITUDE = float(_lon) if _lon else -1
+    
+    WEEK = int(os.getenv("WEEK", "-1"))
+    OVERLAP = float(os.getenv("OVERLAP", "0.0"))
+    SENSITIVITY = float(os.getenv("SENSITIVITY", "1.0"))
+
 
 config = Config()

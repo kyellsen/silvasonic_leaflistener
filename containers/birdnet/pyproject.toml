@@ -4,7 +4,6 @@ version = "0.1.0"
 description = "Silvasonic BirdNET Container"
 requires-python = ">=3.11"
 dependencies = [
-    "sqlalchemy",
     "watchdog",
     "numpy",
     "librosa>=0.10.0",
