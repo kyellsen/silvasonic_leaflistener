@@ -105,7 +105,13 @@
           </div>
           <div class="flex justify-between">
             <span>Last Seen:</span>
-            <span class="text-gray-300">{{ sp.last_seen_str }}</span>
+            <span class="text-gray-300">
+              <span
+                class="local-time opacity-0 transition-opacity"
+                data-timestamp="{{ sp.last_seen_iso }}"
+                >...</span
+              >
+            </span>
           </div>
         </div>
       </div>

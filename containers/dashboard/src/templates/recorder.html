@@ -1,5 +1,7 @@
 {% extends base %} {% block content %}
-<h2 class="text-xl font-bold mb-4 text-pink-400 flex items-center gap-2">
+<h2
+  class="text-xl font-bold mb-4 text-pink-600 dark:text-pink-400 flex items-center gap-2"
+>
   <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
     <path
       stroke-linecap="round"
@@ -12,60 +14,78 @@
 </h2>
 
 <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-  <div class="bg-gray-800 p-6 rounded-xl shadow-lg border border-gray-700">
+  <div
+    class="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700"
+  >
     <div class="text-xs font-bold text-gray-500 uppercase">Input Device</div>
     <div
-      class="text-xl font-bold text-white mt-2 truncate"
+      class="text-xl font-bold text-gray-900 dark:text-white mt-2 truncate"
       title="{{ stats.device }}"
     >
       {{ stats.device or 'Unknown Device' }}
     </div>
     <div class="mt-4 flex items-center gap-2">
       <span
-        class="px-2 py-1 rounded text-xs font-bold uppercase {{ 'bg-green-900 text-green-300' if stats.status == 'Running' else 'bg-red-900 text-red-300' }}"
+        class="px-2 py-1 rounded text-xs font-bold uppercase {{ 'bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300' if stats.status == 'Running' else 'bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-300' }}"
       >
         {{ stats.status or 'Offline' }}
       </span>
     </div>
   </div>
 
-  <div class="bg-gray-800 p-6 rounded-xl shadow-lg border border-gray-700">
+  <div
+    class="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700"
+  >
     <div class="text-xs font-bold text-gray-500 uppercase">Active Profile</div>
-    <div class="text-2xl font-bold text-pink-400 mt-2">
+    <div class="text-2xl font-bold text-pink-600 dark:text-pink-400 mt-2">
       {{ stats.profile or 'Default' }}
     </div>
     <div class="text-xs text-text-gray-400 mt-2">
       Capturing audio to
-      <span class="font-mono text-gray-300">/data/recording</span>
+      <span class="font-mono text-gray-800 dark:text-gray-300"
+        >/data/recording</span
+      >
     </div>
   </div>
 </div>
 
-<div class="bg-gray-800 p-6 rounded-xl shadow-lg border border-gray-700">
-  <h3 class="font-bold text-gray-300 mb-4">System Context</h3>
+<div
+  class="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700"
+>
+  <h3 class="font-bold text-gray-700 dark:text-gray-300 mb-4">
+    System Context
+  </h3>
   <div class="grid grid-cols-2 gap-4 text-sm">
     <div>
       <span class="text-gray-500 block">Last Recording</span>
-      <span class="text-white font-mono">{{ sys_stats.last_recording }}</span>
+      <span class="text-gray-900 dark:text-white font-mono"
+        >{{ sys_stats.last_recording }}</span
+      >
     </div>
     <div>
       <span class="text-gray-500 block">Disk Usage</span>
-      <span class="text-white">{{ sys_stats.disk_percent }}%</span>
+      <span class="text-gray-900 dark:text-white"
+        >{{ sys_stats.disk_percent }}%</span
+      >
     </div>
   </div>
 </div>
 {% endblock %} {% block inspector %}
 <div class="space-y-6">
-  <div class="bg-gray-700/50 p-4 rounded-lg">
-    <h3 class="font-bold text-gray-300 mb-2 border-b border-gray-600 pb-2">
+  <div
+    class="bg-white dark:bg-gray-700/50 p-4 rounded-lg border border-gray-200 dark:border-transparent"
+  >
+    <h3
+      class="font-bold text-gray-700 dark:text-gray-300 mb-2 border-b border-gray-200 dark:border-gray-600 pb-2"
+    >
       Recorder Controls
     </h3>
-    <p class="text-xs text-gray-400 mb-4">
+    <p class="text-xs text-gray-500 dark:text-gray-400 mb-4">
       Live control is not yet implemented in this version.
     </p>
     <button
       disabled
-      class="w-full py-2 bg-gray-600 text-gray-400 rounded cursor-not-allowed"
+      class="w-full py-2 bg-gray-300 dark:bg-gray-600 text-gray-500 dark:text-gray-400 rounded cursor-not-allowed"
     >
       Reset Service
     </button>
