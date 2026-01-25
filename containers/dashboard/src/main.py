@@ -134,7 +134,8 @@ async def dashboard(request: Request, auth=Depends(require_auth)):
         "containers": containers,
         "status_label": "System:",
         "status_value": "Online",
-        "status_color": "text-green-600 dark:text-green-400"
+        "status_color": "text-green-600 dark:text-green-400",
+        "auto_refresh_interval": 15
     })
 
 @app.get("/settings", response_class=HTMLResponse)
@@ -233,7 +234,8 @@ async def birdnet_page(request: Request, auth=Depends(require_auth)):
         "stats": stats,
         "status_label": "BirdNET:",
         "status_value": stats.get("status", "Active"),
-        "status_color": "text-green-600 dark:text-green-400"
+        "status_color": "text-green-600 dark:text-green-400",
+        "auto_refresh_interval": 15
     })
 
 @app.get("/birdnet/discover", response_class=HTMLResponse)
@@ -316,7 +318,8 @@ async def recorder_page(request: Request, auth=Depends(require_auth)):
         "recordings": recordings,
         "status_label": "Recorder:",
         "status_value": stats.get("status", "Unknown"),
-        "status_color": "text-green-600 dark:text-green-400" if stats.get("status") == "Running" else "text-red-600 dark:text-red-400"
+        "status_color": "text-green-600 dark:text-green-400" if stats.get("status") == "Running" else "text-red-600 dark:text-red-400",
+        "auto_refresh_interval": 15
     })
 
 @app.get("/uploader", response_class=HTMLResponse)
@@ -331,7 +334,8 @@ async def uploader_page(request: Request, auth=Depends(require_auth)):
         "stats": stats,
         "status_label": "Uploader:",
         "status_value": stats.get("status", "Idle"),
-        "status_color": "text-cyan-600 dark:text-cyan-400"
+        "status_color": "text-cyan-600 dark:text-cyan-400",
+        "auto_refresh_interval": 15
     })
 
 @app.get("/analyzer", response_class=HTMLResponse)
@@ -351,7 +355,8 @@ async def analyzer_page(request: Request, auth=Depends(require_auth)):
         "sys_stats": sys_stats,
         "status_label": "Analyzer:",
         "status_value": "Monitoring",
-        "status_color": "text-purple-600 dark:text-purple-400"
+        "status_color": "text-purple-600 dark:text-purple-400",
+        "auto_refresh_interval": 15
     })
 
 @app.get("/weather", response_class=HTMLResponse)
@@ -369,7 +374,8 @@ async def weather_page(request: Request, auth=Depends(require_auth)):
         "history": history,
         "status_label": "Weather:",
         "status_value": status_data.get("status", "Unknown"),
-        "status_color": "text-blue-500 dark:text-blue-400" if status_data.get("status") == "Running" else "text-red-500"
+        "status_color": "text-blue-500 dark:text-blue-400" if status_data.get("status") == "Running" else "text-red-500",
+        "auto_refresh_interval": 15
     })
 
 # --- Inspector API Partials ---
