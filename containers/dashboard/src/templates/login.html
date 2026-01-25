@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="en" class="dark">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Login - Silvasonic</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+  </head>
+  <body
+    class="bg-gray-900 text-gray-200 h-screen flex items-center justify-center"
+  >
+    <div
+      class="bg-gray-800 p-8 rounded-xl shadow-2xl w-96 border border-gray-700"
+    >
+      <div class="text-center mb-8">
+        <div class="text-4xl mb-2">🌲</div>
+        <h1 class="text-2xl font-bold text-green-400">Silvasonic</h1>
+        <p class="text-gray-500 text-sm">Secure Dashboard Access</p>
+      </div>
+
+      {% if error %}
+      <div
+        class="bg-red-900/50 border border-red-700 text-red-200 px-4 py-2 rounded mb-4 text-sm text-center"
+      >
+        {{ error }}
+      </div>
+      {% endif %}
+
+      <form action="/auth/login" method="POST" class="space-y-4">
+        <div>
+          <label class="block text-xs font-bold text-gray-400 uppercase mb-1"
+            >Username</label
+          >
+          <input
+            type="text"
+            name="username"
+            class="w-full bg-gray-900 border border-gray-600 rounded p-2 focus:border-green-500 focus:outline-none transition"
+          />
+        </div>
+        <div>
+          <label class="block text-xs font-bold text-gray-400 uppercase mb-1"
+            >Password</label
+          >
+          <input
+            type="password"
+            name="password"
+            class="w-full bg-gray-900 border border-gray-600 rounded p-2 focus:border-green-500 focus:outline-none transition"
+          />
+        </div>
+        <button
+          type="submit"
+          class="w-full bg-green-700 hover:bg-green-600 text-white font-bold py-2 rounded transition shadow-lg"
+        >
+          Enter
+        </button>
+      </form>
+    </div>
+  </body>
+</html>

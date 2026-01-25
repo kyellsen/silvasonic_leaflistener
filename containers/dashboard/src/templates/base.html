@@ -1,0 +1,165 @@
+<!doctype html>
+<html lang="en" class="dark">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Silvasonic Dashboard</title>
+    <!-- Tailwind CSS (CDN) -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            colors: {
+              silva: {
+                50: "#e8f5e9",
+                100: "#c8e6c9",
+                500: "#4caf50",
+                800: "#2e7d32",
+                900: "#1b5e20",
+                950: "#052e16", // Dark Forest
+              },
+            },
+          },
+        },
+      };
+    </script>
+    <!-- HTMX -->
+    <script src="https://unpkg.com/htmx.org@1.9.10"></script>
+    <style>
+      /* Custom Scrollbar for IDE feel */
+      ::-webkit-scrollbar {
+        width: 8px;
+        height: 8px;
+      }
+      ::-webkit-scrollbar-track {
+        background: #1a202c;
+      }
+      ::-webkit-scrollbar-thumb {
+        background: #4a5568;
+        border-radius: 4px;
+      }
+      ::-webkit-scrollbar-thumb:hover {
+        background: #718096;
+      }
+    </style>
+  </head>
+  <body
+    class="bg-gray-900 text-gray-200 font-sans h-screen flex flex-col overflow-hidden"
+  >
+    <!-- Header -->
+    <header
+      class="h-12 bg-silva-950 border-b border-gray-700 flex items-center justify-between px-4 shrink-0"
+    >
+      <div class="flex items-center gap-2">
+        <span class="text-2xl">🌲</span>
+        <span class="font-bold tracking-wider text-silva-100">SILVASONIC</span>
+      </div>
+      <div class="flex items-center gap-4 text-sm">
+        <span class="text-gray-400">User: Admin</span>
+        <a href="/auth/logout" class="hover:text-red-400 transition">Logout</a>
+      </div>
+    </header>
+
+    <!-- Main Workspace (Holy Grail) -->
+    <div class="flex-1 flex overflow-hidden">
+      <!-- Left Sidebar (Nav) -->
+      <nav
+        class="w-16 bg-gray-800 border-r border-gray-700 flex flex-col items-center py-4 gap-4 shrink-0"
+      >
+        <a
+          href="/dashboard"
+          class="p-3 rounded-lg hover:bg-gray-700 {{ 'bg-silva-900 text-white' if page == 'home' else 'text-gray-400' }}"
+          title="Dashboard"
+        >
+          <svg
+            class="w-6 h-6"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"
+            ></path>
+          </svg>
+        </a>
+        <a
+          href="/birdnet"
+          class="p-3 rounded-lg hover:bg-gray-700 {{ 'bg-silva-900 text-white' if page == 'birdnet' else 'text-gray-400' }}"
+          title="BirdNET"
+        >
+          <svg
+            class="w-6 h-6"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              d="M9 19V6l12-3v13M9 19c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zm12-3c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zM9 10l12-3"
+            ></path>
+          </svg>
+        </a>
+        <a
+          href="/logs"
+          class="p-3 rounded-lg hover:bg-gray-700 {{ 'bg-silva-900 text-white' if page == 'logs' else 'text-gray-400' }}"
+          title="Logs"
+        >
+          <svg
+            class="w-6 h-6"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"
+            ></path>
+          </svg>
+        </a>
+      </nav>
+
+      <!-- Center Content -->
+      <main class="flex-1 overflow-y-auto p-6 bg-gray-900 relative">
+        {% block content %}{% endblock %}
+      </main>
+
+      <!-- Right Sidebar (Inspector) -->
+      <aside
+        class="w-80 bg-gray-800 border-l border-gray-700 flex flex-col shrink-0"
+      >
+        <div
+          class="h-10 bg-gray-750 flex items-center px-4 border-b border-gray-700 font-bold text-xs uppercase tracking-wider text-gray-400"
+        >
+          Inspector
+        </div>
+        <div class="p-4 flex-1 overflow-y-auto">
+          {% block inspector %}
+          <div class="text-gray-500 text-sm text-center mt-10">
+            Select an item to view details
+          </div>
+          {% endblock %}
+        </div>
+      </aside>
+    </div>
+
+    <!-- Status Bar -->
+    <footer
+      class="h-6 bg-silva-950 border-t border-gray-700 flex items-center px-4 text-xs text-gray-400 justify-between shrink-0"
+    >
+      <div class="flex gap-4">
+        <span>Server: <span class="text-green-400">Online</span></span>
+        <span>Uptime: 2d 4h</span>
+      </div>
+      <div>Silvasonic v0.1.0</div>
+    </footer>
+  </body>
+</html>

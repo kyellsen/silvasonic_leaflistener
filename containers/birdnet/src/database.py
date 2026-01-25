@@ -35,6 +35,7 @@ class BirdNETDetection(Base):
     latitude = Column(Float, nullable=True)
     longitude = Column(Float, nullable=True)
     model_version = Column(String(50), nullable=True)
+    clip_path = Column(String(1024), nullable=True)
 
 class DatabaseHandler:
     def __init__(self):
@@ -116,6 +117,7 @@ class DatabaseHandler:
                 scientific_name=detection_dict.get('scientific_name'),
                 latitude=detection_dict.get('lat'),
                 longitude=detection_dict.get('lon'),
+                clip_path=detection_dict.get('clip_path'),
                 timestamp=datetime.utcnow()
             )
             session.add(det)

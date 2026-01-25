@@ -1,0 +1,108 @@
+{% extends "base.html" %} {% block content %}
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+  <!-- CPU Card -->
+  <div class="bg-gray-800 p-4 rounded-xl shadow-lg border border-gray-700">
+    <div class="text-xs font-bold text-gray-500 uppercase">CPU Usage</div>
+    <div class="text-3xl font-bold text-green-400 mt-2">{{ stats.cpu }}%</div>
+    <div class="w-full bg-gray-700 h-1 mt-4 rounded-full overflow-hidden">
+      <div class="bg-green-500 h-full" style="width: {{ stats.cpu }}%"></div>
+    </div>
+  </div>
+
+  <!-- RAM Card -->
+  <div class="bg-gray-800 p-4 rounded-xl shadow-lg border border-gray-700">
+    <div class="text-xs font-bold text-gray-500 uppercase">RAM Usage</div>
+    <div class="text-3xl font-bold text-blue-400 mt-2">
+      {{ stats.ram_percent }}%
+    </div>
+    <div class="w-full bg-gray-700 h-1 mt-4 rounded-full overflow-hidden">
+      <div
+        class="bg-blue-500 h-full"
+        style="width: {{ stats.ram_percent }}%"
+      ></div>
+    </div>
+  </div>
+
+  <!-- Disk Card -->
+  <div class="bg-gray-800 p-4 rounded-xl shadow-lg border border-gray-700">
+    <div class="text-xs font-bold text-gray-500 uppercase">NVMe Storage</div>
+    <div class="text-3xl font-bold text-purple-400 mt-2">
+      {{ stats.disk_percent }}%
+    </div>
+    <div class="text-xs text-gray-400 mt-1">Mounted at /data</div>
+  </div>
+
+  <!-- Last Recording Card -->
+  <div class="bg-gray-800 p-4 rounded-xl shadow-lg border border-gray-700">
+    <div class="text-xs font-bold text-gray-500 uppercase">Last Recording</div>
+    <div class="text-2xl font-bold text-amber-400 mt-2">
+      {{ stats.last_recording }}
+    </div>
+    <div class="text-xs text-gray-400 mt-1">
+      {% if stats.last_recording_ago >= 0 %} {{ stats.last_recording_ago }}s ago
+      {% else %} No recordings yet {% endif %}
+    </div>
+  </div>
+</div>
+
+<h2 class="text-xl font-bold mb-4 text-silva-100 flex items-center gap-2">
+  <span>🐦</span> Recent Detections
+</h2>
+<div class="bg-gray-800 rounded-xl border border-gray-700 overflow-hidden">
+  <table class="w-full text-left text-sm">
+    <thead class="bg-gray-750 text-gray-400 uppercase font-bold text-xs">
+      <tr>
+        <th class="p-4">Time</th>
+        <th class="p-4">Common Name</th>
+        <th class="p-4">Confidence</th>
+        <th class="p-4">Action</th>
+      </tr>
+    </thead>
+    <tbody class="divide-y divide-gray-700">
+      {% for d in detections %}
+      <tr class="hover:bg-gray-700 transition cursor-pointer">
+        <td class="p-4 font-mono text-gray-400">{{ d.time }}</td>
+        <td class="p-4 font-bold text-white">{{ d.com_name }}</td>
+        <td class="p-4 text-green-400">{{ (d.confidence * 100)|round(1) }}%</td>
+        <td class="p-4">
+          <button
+            class="text-blue-400 hover:text-blue-300"
+            hx-get="/api/audio/{{ d.filename }}"
+            hx-target="#audio-player-container"
+          >
+            Play
+          </button>
+        </td>
+      </tr>
+      {% endfor %} {% if not detections %}
+      <tr>
+        <td colspan="4" class="p-8 text-center text-gray-500">
+          No detections found in DB yet.
+        </td>
+      </tr>
+      {% endif %}
+    </tbody>
+  </table>
+</div>
+{% endblock %} {% block inspector %}
+<div class="space-y-6">
+  <div class="bg-gray-700/50 p-4 rounded-lg">
+    <h3 class="font-bold text-gray-300 mb-2 border-b border-gray-600 pb-2">
+      Quick Stats
+    </h3>
+    <div class="flex justify-between text-sm py-1">
+      <span class="text-gray-400">Today</span>
+      <span class="font-bold text-white">{{ birdnet_stats.today }}</span>
+    </div>
+    <div class="flex justify-between text-sm py-1">
+      <span class="text-gray-400">Total</span>
+      <span class="font-bold text-white">{{ birdnet_stats.total }}</span>
+    </div>
+  </div>
+
+  <div id="audio-player-container" class="bg-gray-700/50 p-4 rounded-lg hidden">
+    <h3 class="font-bold text-gray-300 mb-2">Audio Player</h3>
+    <audio controls class="w-full mt-2"></audio>
+  </div>
+</div>
+{% endblock %}

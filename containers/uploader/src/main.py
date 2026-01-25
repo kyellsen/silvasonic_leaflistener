@@ -6,10 +6,17 @@ import sys
 from rclone_wrapper import RcloneWrapper
 
 # Configure Logging
+# Configure Logging
+os.makedirs("/var/log/silvasonic", exist_ok=True)
+
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s [%(levelname)s] %(message)s',
-    datefmt='%Y-%m-%d %H:%M:%S'
+    datefmt='%Y-%m-%d %H:%M:%S',
+    handlers=[
+        logging.StreamHandler(sys.stdout),
+        logging.FileHandler("/var/log/silvasonic/uploader.log")
+    ]
 )
 logger = logging.getLogger("Carrier")
 

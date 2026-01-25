@@ -17,9 +17,17 @@ import logging
 import numpy as np
 
 # --- Logging ---
+# --- Logging ---
+# Ensure log directory exists (handled by volume, but safe to check)
+os.makedirs("/var/log/silvasonic", exist_ok=True)
+
 logging.basicConfig(
     level=logging.INFO, 
-    format='%(asctime)s [%(levelname)s] %(message)s'
+    format='%(asctime)s [%(levelname)s] %(message)s',
+    handlers=[
+        logging.StreamHandler(sys.stdout),
+        logging.FileHandler("/var/log/silvasonic/recorder.log")
+    ]
 )
 logger = logging.getLogger("recorder")
 

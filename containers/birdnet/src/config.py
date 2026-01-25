@@ -10,6 +10,7 @@ class Config:
         # Paths
         self.INPUT_DIR = Path(os.getenv("INPUT_DIR", "/data/recording"))
         self.RESULTS_DIR = Path(os.getenv("RESULTS_DIR", "/data/db/results"))
+        self.CLIPS_DIR = self.RESULTS_DIR / "clips"
         self.CONFIG_FILE = Path(os.getenv("CONFIG_FILE", "/etc/birdnet/config.yml"))
 
         # Watcher

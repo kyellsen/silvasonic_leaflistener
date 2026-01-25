@@ -105,16 +105,25 @@ class BirdNETAnalyzer:
                                 
                             # Parse Row: Start (s), End (s), Scientific name, Common name, Confidence
                             try:
+                                start_t = float(row[0])
+                                end_t = float(row[1])
+                                conf = float(row[4])
+                                common_name = row[3]
+                                
+                                # Save Clip
+                                clip_path = self._save_clip(temp_resampled, start_t, end_t, common_name)
+                                
                                 detection = {
                                     'filename': path.name,
                                     'filepath': str(path),
-                                    'start_time': float(row[0]),
-                                    'end_time': float(row[1]),
+                                    'start_time': start_t,
+                                    'end_time': end_t,
                                     'scientific_name': row[2],
-                                    'common_name': row[3],
-                                    'confidence': float(row[4]),
+                                    'common_name': common_name,
+                                    'confidence': conf,
                                     'lat': config.LATITUDE,
-                                    'lon': config.LONGITUDE
+                                    'lon': config.LONGITUDE,
+                                    'clip_path': clip_path
                                 }
                                 db.save_detection(detection)
                             except ValueError:
@@ -139,7 +148,35 @@ class BirdNETAnalyzer:
                 temp_resampled.unlink()
         except:
             pass
+    def _save_clip(self, audio_path: Path, start_time: float, end_time: float, species: str) -> str:
+        """
+        Extracts and saves the audio clip for a detection.
+        Returns the relative path to the clip or None if failed.
+        """
+        try:
+            # Create clips directory if it doesn't exist
+            config.CLIPS_DIR.mkdir(parents=True, exist_ok=True)
 
+            # Generate filename: {original_name}_{start}_{end}_{species}.wav
+            # Sanitize species name for filename
+            safe_species = "".join([c for c in species if c.isalnum() or c in (' ', '_')]).strip().replace(' ', '_')
+            clip_name = f"{audio_path.stem}_{start_time:.1f}_{end_time:.1f}_{safe_species}.wav"
+            clip_path = config.CLIPS_DIR / clip_name
+
+            # Read the specific segment
+            # We use soundfile for precision reading
+            # Note: start/end are in seconds
+            data, samplerate = sf.read(str(audio_path), start=int(start_time * 48000), stop=int(end_time * 48000), always_2d=True)
+            
+            sf.write(str(clip_path), data, samplerate)
+            
+            # Return path relative to RESULTS_DIR for portability if needed, or just absolute string
+            # Returning absolute path as string for now to match DB schema
+            return str(clip_path)
+
+        except Exception as e:
+            logger.error(f"Failed to save clip for {audio_path.name}: {e}")
+            return None
     def _run_ffmpeg_resampling(self, input_path: Path, output_path: Path):
         """Resample to 48kHz mono using ffmpeg (robust against formats)"""
         try:

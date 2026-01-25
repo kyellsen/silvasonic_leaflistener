@@ -30,6 +30,8 @@ services:
     volumes:
       # Master Audio Storage
       - /mnt/data/services/silvasonic/recorder/recordings:/data/recording:z
+      # Shared Logs
+      - /mnt/data/services/silvasonic/logs:/var/log/silvasonic:z
 
     restart: always
 
@@ -56,6 +58,8 @@ services:
       - /mnt/data/services/silvasonic/recorder/recordings:/data/recording:ro
       # Rclone Config Persistence
       - /mnt/data/services/silvasonic/uploader/config:/config/rclone:z
+      # Shared Logs
+      - /mnt/data/services/silvasonic/logs:/var/log/silvasonic:z
 
   # ---------------------------------------------------------------------------
   # BirdNET - Species Identification
@@ -81,6 +85,8 @@ services:
       - /mnt/data/services/silvasonic/birdnet/db:/data/db:z
       # Isolated Results
       - /mnt/data/services/silvasonic/birdnet/results:/data/results:z
+      # Shared Logs
+      - /mnt/data/services/silvasonic/logs:/var/log/silvasonic:z
 
     restart: always
 
@@ -101,11 +107,11 @@ services:
 
     # Low priority to prevent starvation of recorder/birdnet
     cpu_shares: 128
-    deploy:
-      resources:
-        limits:
-          cpus: "0.5"
-          memory: 512M
+    # deploy:
+    #   resources:
+    #     limits:
+    #       cpus: "0.5"
+    #       memory: 512M
 
     volumes:
       # Read-only access to recordings
@@ -116,6 +122,8 @@ services:
       - /mnt/data/services/silvasonic/sound_analyser/artifacts:/data/processed/artifacts:z
       # Metadata (JSON Exports)
       - /mnt/data/services/silvasonic/sound_analyser/metadata:/data/processed/metadata:z
+      # Shared Logs
+      - /mnt/data/services/silvasonic/logs:/var/log/silvasonic:z
 
     restart: always
 
@@ -123,7 +131,7 @@ services:
   # Database (PostgreSQL) - Central Storage
   # ---------------------------------------------------------------------------
   db:
-    image: postgres:15-alpine
+    image: docker.io/library/postgres:15-alpine
     container_name: silvasonic_db
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-silvasonic}
@@ -137,3 +145,28 @@ services:
       timeout: 5s
       retries: 5
     restart: always
+
+  # ---------------------------------------------------------------------------
+  # Dashboard (The Face) - Status UI
+  # ---------------------------------------------------------------------------
+  dashboard:
+    build:
+      context: containers/dashboard
+    image: silvasonic-dashboard:latest
+    container_name: silvasonic_dashboard
+    hostname: silvasonic-dashboard
+    restart: always
+    env_file: .env
+    environment:
+      - PYTHONUNBUFFERED=1
+    ports:
+      - "8080:8080"
+    volumes:
+      # Read-Only Audio (Playback)
+      - /mnt/data/services/silvasonic/recorder/recordings:/data/recording:ro
+      # Read-Only DB (Stats)
+      - /mnt/data/services/silvasonic/birdnet/db:/data/birdnet_db:ro
+      # Shared Logs (View)
+      - /mnt/data/services/silvasonic/logs:/var/log/silvasonic:ro
+      # System Stats (Optional, depends on host)
+      - /etc/localtime:/etc/localtime:ro
