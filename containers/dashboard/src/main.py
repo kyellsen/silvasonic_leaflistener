@@ -109,7 +109,7 @@ async def logout():
 
 # --- Protected Routes ---
 
-from src.services import SystemService, BirdNetService, CarrierService, RecorderService, AnalyzerService, HealthCheckerService
+from src.services import SystemService, BirdNetService, CarrierService, RecorderService, AnalyzerService, HealthCheckerService, WeatherService
 from src.settings import SettingsService
 
 @app.get("/dashboard", response_class=HTMLResponse)
@@ -352,6 +352,24 @@ async def analyzer_page(request: Request, auth=Depends(require_auth)):
         "status_label": "Analyzer:",
         "status_value": "Monitoring",
         "status_color": "text-purple-600 dark:text-purple-400"
+    })
+
+@app.get("/weather", response_class=HTMLResponse)
+async def weather_page(request: Request, auth=Depends(require_auth)):
+    if isinstance(auth, RedirectResponse): return auth
+    
+    current = WeatherService.get_current_weather()
+    history = WeatherService.get_history(hours=24)
+    status_data = WeatherService.get_status()
+    
+    return render(request, "weather.html", {
+        "request": request,
+        "page": "weather",
+        "current": current,
+        "history": history,
+        "status_label": "Weather:",
+        "status_value": status_data.get("status", "Unknown"),
+        "status_color": "text-blue-500 dark:text-blue-400" if status_data.get("status") == "Running" else "text-red-500"
     })
 
 # --- Inspector API Partials ---

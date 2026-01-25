@@ -1,0 +1,163 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Silvasonic Setup</title>
+    <style>
+      body {
+        font-family:
+          -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica,
+          Arial, sans-serif;
+        background-color: #121212;
+        color: #eeeeee;
+        margin: 0;
+        padding: 20px;
+        display: flex;
+        justify-content: center;
+      }
+      .container {
+        max-width: 400px;
+        width: 100%;
+      }
+      h1 {
+        text-align: center;
+        color: #00dbb5; /* Silvasonic Green */
+        margin-bottom: 30px;
+      }
+      .network-list {
+        list-style: none;
+        padding: 0;
+        margin: 0;
+      }
+      .network-item {
+        background: #1e1e1e;
+        margin-bottom: 10px;
+        padding: 15px;
+        border-radius: 8px;
+        cursor: pointer;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        transition: background 0.2s;
+      }
+      .network-item:hover {
+        background: #2d2d2d;
+      }
+      .signal {
+        color: #888;
+        font-size: 0.9em;
+      }
+      .locked::after {
+        content: "🔒";
+        margin-left: 5px;
+      }
+      /* Modal */
+      #modal {
+        display: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0, 0, 0, 0.8);
+        align-items: center;
+        justify-content: center;
+        padding: 20px;
+      }
+      .modal-content {
+        background: #252525;
+        padding: 25px;
+        border-radius: 12px;
+        width: 100%;
+        max-width: 320px;
+      }
+      input {
+        width: 100%;
+        padding: 12px;
+        margin: 15px 0;
+        border-radius: 6px;
+        border: 1px solid #444;
+        background: #121212;
+        color: white;
+        box-sizing: border-box;
+      }
+      button {
+        width: 100%;
+        padding: 12px;
+        border-radius: 6px;
+        border: none;
+        font-weight: bold;
+        font-size: 16px;
+        cursor: pointer;
+      }
+      .btn-connect {
+        background: #00dbb5;
+        color: #000;
+      }
+      .btn-cancel {
+        background: transparent;
+        color: #888;
+        margin-top: 10px;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <h1>Silvasonic Setup</h1>
+      <p style="text-align: center; color: #aaa; margin-bottom: 20px">
+        Select your WiFi network
+      </p>
+
+      <ul class="network-list">
+        {% for net in networks %}
+        <li
+          class="network-item"
+          onclick="selectNetwork('{{ net.ssid }}', '{{ net.security }}')"
+        >
+          <span class="{{ 'locked' if net.security else '' }}"
+            >{{ net.ssid }}</span
+          >
+          <span class="signal">{{ net.signal }}%</span>
+        </li>
+        {% endfor %}
+      </ul>
+    </div>
+
+    <div id="modal">
+      <form class="modal-content" action="/connect" method="POST">
+        <h3 id="modal-title">Connect</h3>
+        <input type="hidden" name="ssid" id="input-ssid" />
+        <input
+          type="password"
+          name="password"
+          id="input-password"
+          placeholder="Password"
+        />
+        <button type="submit" class="btn-connect">Connect</button>
+        <button type="button" class="btn-cancel" onclick="closeModal()">
+          Cancel
+        </button>
+      </form>
+    </div>
+
+    <script>
+      function selectNetwork(ssid, security) {
+        document.getElementById("input-ssid").value = ssid;
+        document.getElementById("modal-title").innerText = ssid;
+        document.getElementById("modal").style.display = "flex";
+
+        const pwdInput = document.getElementById("input-password");
+        if (security === "") {
+          pwdInput.style.display = "none";
+        } else {
+          pwdInput.style.display = "block";
+          pwdInput.focus();
+        }
+      }
+      function closeModal() {
+        document.getElementById("modal").style.display = "none";
+      }
+    </script>
+  </body>
+</html>

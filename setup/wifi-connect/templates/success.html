@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Connecting...</title>
+    <style>
+      body {
+        font-family: sans-serif;
+        background: #121212;
+        color: #eee;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        height: 100vh;
+        flex-direction: column;
+        text-align: center;
+      }
+      h1 {
+        color: #00dbb5;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Connecting to {{ ssid }}...</h1>
+    <p>Please wait. The device is restarting its network.</p>
+    <p>
+      In a few moments, connect your phone back to <b>{{ ssid }}</b> and visit:
+    </p>
+    <h2>
+      <a href="http://silvasonic.local" style="color: #fff"
+        >http://silvasonic.local</a
+      >
+    </h2>
+  </body>
+</html>

@@ -1,0 +1,16 @@
+[Unit]
+Description=Silvasonic WiFi Bootstrap Service
+After=network.target NetworkManager.service
+Requires=NetworkManager.service
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=/opt/silvasonic-wifi
+ExecStart=/usr/bin/python3 monitor.py
+Restart=always
+RestartSec=10
+Environment=PYTHONUNBUFFERED=1
+
+[Install]
+WantedBy=connect.target multi-user.target

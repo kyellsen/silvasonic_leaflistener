@@ -27,6 +27,7 @@
       - cockpit-podman
       - python3-venv
       - python3-pip
+      - python3-flask
     # Repository settings
     repo_url: "https://github.com/kyellsen/silvasonic_leaflistener.git"
     repo_dest: "/mnt/data/dev/silvasonic"
@@ -148,6 +149,38 @@
     - name: Enable & Start Silvasonic Service
       systemd:
         name: silvasonic
+        enabled: yes
+        state: started
+        daemon_reload: yes
+
+    # --- 8. WIFI BOOTSTRAP INSTALLATION ---
+    - name: Create WiFi Bootstrap Directory
+      file:
+        path: /opt/silvasonic-wifi
+        state: directory
+        mode: "0755"
+
+    - name: Copy WiFi Bootstrap Scripts
+      copy:
+        src: "{{ repo_dest }}/setup/wifi-connect/"
+        dest: "/opt/silvasonic-wifi/"
+        owner: root
+        group: root
+        mode: "0755"
+        remote_src: yes
+      tags: [wifi]
+
+    - name: Install WiFi Bootstrap Service
+      copy:
+        src: "{{ repo_dest }}/setup/config/silvasonic-wifi.service"
+        dest: "/etc/systemd/system/silvasonic-wifi.service"
+        mode: "0644"
+        remote_src: yes
+      notify: Reload Systemd
+
+    - name: Enable WiFi Bootstrap Service
+      systemd:
+        name: silvasonic-wifi
         enabled: yes
         state: started
         daemon_reload: yes
