@@ -2,7 +2,7 @@
 set -e
 
 # setup.sh
-# Bootstrap script for Silvasonic Leaflistener Development
+# Bootstrap script for Silvasonic Development
 # Establishes the canonical environment using 'uv'.
 
 echo "🌱 Silvasonic Development Setup"

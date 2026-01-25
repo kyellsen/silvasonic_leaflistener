@@ -22,10 +22,10 @@ To add support for new microphones, see [Contributing Microphone Profiles](#cont
 
 ## 1. Access Repository
 
-> **Note**: If you ran `setup/install.sh`, the repository is already cloned at `/mnt/data/dev/silvasonic_leaflistener`.
+> **Note**: If you ran `setup/install.sh`, the repository is already cloned at `/mnt/data/dev/silvasonic`.
 
 ```bash
-cd /mnt/data/dev/silvasonic_leaflistener
+cd /mnt/data/dev/silvasonic
 git pull
 ```
 
@@ -33,15 +33,15 @@ git pull
 
 ```bash
 cd /mnt/data/dev
-git clone https://github.com/kyellsen/silvasonic_leaflistener.git
-cd silvasonic_leaflistener
+git clone https://github.com/kyellsen/silvasonic_leaflistener.git silvasonic
+cd silvasonic
 ```
 
 ## 2. Create Storage Directory
 
 ```bash
-sudo mkdir -p /mnt/data/storage/leaflistener/raw
-sudo chown $USER:$USER /mnt/data/storage/leaflistener/raw
+sudo mkdir -p /mnt/data/storage/silvasonic/raw
+sudo chown $USER:$USER /mnt/data/storage/silvasonic/raw
 ```
 
 ## 3. Build & Run
@@ -79,7 +79,7 @@ Saved: 2026-01-21_16-09-11.flac (14.02 MB)
 ## 4. Verify Recordings
 
 ```bash
-ls -la /mnt/data/storage/leaflistener/raw/
+ls -la /mnt/data/storage/silvasonic/raw/
 ```
 
 You should see FLAC files with timestamps.
@@ -139,13 +139,13 @@ Common causes:
 ### Permission Denied (Storage)
 
 ```bash
-sudo chown -R $USER:$USER /mnt/data/storage/leaflistener/
+sudo chown -R $USER:$USER /mnt/data/storage/silvasonic/
 ```
 
 If using SELinux (Fedora):
 
 ```bash
-sudo chcon -Rt container_file_t /mnt/data/storage/leaflistener/
+sudo chcon -Rt container_file_t /mnt/data/storage/silvasonic/
 ```
 
 ## Contributing Microphone Profiles

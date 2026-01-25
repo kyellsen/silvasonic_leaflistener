@@ -1,8 +1,8 @@
-# Silvasonic Leaflistener
+# Silvasonic
 
 **Comprehensive Bioacoustic Recording Station for Long-term Monitoring**
 
-Silvasonic Leaflistener is a robust, autonomous bioacoustic monitoring device built on the Raspberry Pi 5 platform. Designed for long-term deployment (3+ years), it captures the entire soundscape—from singing birds to ultrasonic bat calls—ensuring data resilience and seamless synchronization with central servers.
+Silvasonic is a robust, autonomous bioacoustic monitoring device built on the Raspberry Pi 5 platform. Designed for long-term deployment (3+ years), it captures the entire soundscape—from singing birds to ultrasonic bat calls—ensuring data resilience and seamless synchronization with central servers.
 
 > [!IMPORTANT]
 > **MVP Scope Definition**

@@ -37,8 +37,8 @@ The system uses a strict directory structure on the NVMe drive (`/mnt/data`). Al
 - **Infrastructure**: `/mnt/data/containers` (Volumes, Stacks, Storage)
 - **Development**: `/mnt/data/dev` (Repo checkouts)
 - **Raw Recordings**: `/mnt/data/services/silvasonic/recordings` (Recorders write here)
-- **Processed Data**: `/mnt/data/storage/leaflistener/processed`
-- **Export/Results**: `/mnt/data/storage/leaflistener/results`
+- **Processed Data**: `/mnt/data/storage/silvasonic/processed`
+- **Export/Results**: `/mnt/data/storage/silvasonic/results`
 
 ### Transient Scripts
 

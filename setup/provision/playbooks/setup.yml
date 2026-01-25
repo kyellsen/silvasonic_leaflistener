@@ -29,7 +29,7 @@
       - python3-pip
     # Repository settings
     repo_url: "https://github.com/kyellsen/silvasonic_leaflistener.git"
-    repo_dest: "/mnt/data/dev/silvasonic_leaflistener"
+    repo_dest: "/mnt/data/dev/silvasonic"
 
   tasks:
     # --- 1. SYSTEM UPDATE ---
@@ -103,7 +103,7 @@
         creates: "/home/{{ user }}/.local/share/containers/storage"
 
     # --- 5. CLONE REPOSITORY FROM GITHUB ---
-    - name: Clone Silvasonic Leaflistener Repository
+    - name: Clone Silvasonic Repository
       become: true
       become_user: "{{ user }}"
       git:

@@ -47,7 +47,7 @@
 ### 1.1) Konfiguration vorbereiten
 
 ```bash
-cd ~/dev/silvasonic_leaflistener
+cd ~/dev/silvasonic
 mkdir -p setup/config
 cp setup/config.example.env setup/config/config.env
 nano setup/config/config.env
@@ -114,7 +114,7 @@ sudo poweroff
 ### 3.1) Install-Script ausführen
 
 ```bash
-cd ~/dev/silvasonic_leaflistener
+cd ~/dev/silvasonic
 ./setup/install.sh
 ```
 
@@ -122,7 +122,7 @@ cd ~/dev/silvasonic_leaflistener
 
 - System-Update
 - Pakete installieren (Podman, Git, etc.)
-- **Repo klonen nach `/mnt/data/dev/silvasonic_leaflistener`**
+- **Repo klonen nach `/mnt/data/dev/silvasonic`**
 - Storage-Struktur anlegen
 - WiFi konfigurieren (falls in config.env gesetzt)
 
@@ -138,7 +138,7 @@ ssh admin@silvasonic.local 'sudo reboot'
 
 ```bash
 ssh admin@silvasonic.local
-cd /mnt/data/dev/silvasonic_leaflistener
+cd /mnt/data/dev/silvasonic
 sudo podman-compose -f podman-compose.yml up --build -d
 sudo podman logs -f silvasonic_ear
 ```
@@ -152,7 +152,7 @@ Mehr Details: [docs/deployment.md](../docs/deployment.md)
 Da das Repo von GitHub geklont wurde:
 
 ```bash
-cd /mnt/data/dev/silvasonic_leaflistener
+cd /mnt/data/dev/silvasonic
 git pull
 sudo podman-compose down
 sudo podman-compose up --build -d

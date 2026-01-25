@@ -1,6 +1,6 @@
 # 🚀 QUICKSTART
 
-> **Neuer Raspberry Pi → Laufender Leaflistener in wenigen Schritten**
+> **Neuer Raspberry Pi → Laufender Silvasonic in wenigen Schritten**
 
 ---
 
@@ -22,7 +22,7 @@ Dies ist der **vollständige, eigenständige Weg**, um ein komplett leeres Syste
 Einmalig auf deinem Rechner ausführen, um Passwörter und SSH-Keys festzulegen.
 
 ```bash
-cd ~/dev/silvasonic_leaflistener
+cd ~/dev/silvasonic
 
 # 1. Config anlegen
 mkdir -p setup/config
@@ -101,11 +101,11 @@ sudo ./setup/bootstrap/prepare_stick.sh
 Zurück auf deinem Rechner. Dieses Script verbindet sich per SSH, **klont das Repo** und richtet alles ein.
 
 ```bash
-cd ~/dev/silvasonic_leaflistener
+cd ~/dev/silvasonic
 ./setup/install.sh
 ```
 
-_Das Script installiert Podman, richtet Verzeichnisse ein und klont den Code nach `/mnt/data/dev/silvasonic_leaflistener`._
+_Das Script installiert Podman, richtet Verzeichnisse ein und klont den Code nach `/mnt/data/dev/silvasonic`._
 
 ---
 
@@ -118,7 +118,7 @@ Dein Silvasonic ist bereit.
 ssh admin@silvasonic.local
 
 # 2. In das geklonte Repo wechseln
-cd /mnt/data/dev/silvasonic_leaflistener
+cd /mnt/data/dev/silvasonic
 
 # 3. Starten
 sudo podman-compose -f podman-compose.yml up --build -d

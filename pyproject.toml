@@ -1,5 +1,5 @@
 [project]
-name = "silvasonic-leaflistener"
+name = "silvasonic"
 version = "0.1.0"
 description = "Bioacoustic recording station for Raspberry Pi 5"
 readme = "README.md"

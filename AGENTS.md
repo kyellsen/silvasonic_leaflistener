@@ -2,7 +2,7 @@
 
 ## Purpose
 
-This file defines **all binding rules, boundaries, and expectations** for humans, agents, and automation working in the **Silvasonic Leaflistener** repository.
+This file defines **all binding rules, boundaries, and expectations** for humans, agents, and automation working in the **Silvasonic** repository.
 
 It is the **single and only AGENTS.md** in the project. All scope, responsibilities, and constraints must be derived from this document and the linked normative documentation.
 
@@ -10,7 +10,7 @@ It is the **single and only AGENTS.md** in the project. All scope, responsibilit
 
 ## One-Sentence Orientation
 
-Silvasonic Leaflistener is a **robust, autonomous bioacoustic monitoring device** (Raspberry Pi 5 + NVMe) designed for continuous, multi-year deployment to capture and sync soundscapes with high resilience.
+Silvasonic is a **robust, autonomous bioacoustic monitoring device** (Raspberry Pi 5 + NVMe) designed for continuous, multi-year deployment to capture and sync soundscapes with high resilience.
 
 ## Single Source of Truth (Normative Documentation)
 
