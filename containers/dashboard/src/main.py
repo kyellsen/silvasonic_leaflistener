@@ -117,6 +117,47 @@ async def birdnet_page(request: Request, auth=Depends(require_auth)):
         "stats": stats
     })
 
+@app.get("/recorder", response_class=HTMLResponse)
+async def recorder_page(request: Request, auth=Depends(require_auth)):
+    if isinstance(auth, RedirectResponse): return auth
+    
+    stats = RecorderService.get_status()
+    # Also get system stats for context if needed
+    sys_stats = SystemService.get_stats()
+    
+    return render(request, "recorder.html", {
+        "request": request, 
+        "page": "recorder",
+        "stats": stats,
+        "sys_stats": sys_stats
+    })
+
+@app.get("/uploader", response_class=HTMLResponse)
+async def uploader_page(request: Request, auth=Depends(require_auth)):
+    if isinstance(auth, RedirectResponse): return auth
+    
+    stats = CarrierService.get_status()
+    
+    return render(request, "uploader.html", {
+        "request": request, 
+        "page": "uploader",
+        "stats": stats
+    })
+
+@app.get("/analyzer", response_class=HTMLResponse)
+async def analyzer_page(request: Request, auth=Depends(require_auth)):
+    if isinstance(auth, RedirectResponse): return auth
+    
+    # Brain/Analyzer specific stats could go here. 
+    # For now, we reuse system stats as Brain is the main CPU user.
+    stats = SystemService.get_stats()
+    
+    return render(request, "analyzer.html", {
+        "request": request, 
+        "page": "analyzer",
+        "stats": stats
+    })
+
 # --- API / HTMX Partials ---
 
 @app.get("/api/logs/{service}")

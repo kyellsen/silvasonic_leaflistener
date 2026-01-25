@@ -133,13 +133,14 @@
         hx-target="#main-content"
         hx-swap="innerHTML"
       >
+        <!-- Home / Dashboard -->
         <a
           href="/dashboard"
-          class="p-3 rounded-lg hover:bg-gray-700 transition"
+          class="p-3 rounded-lg hover:bg-gray-700 transition group relative"
           title="Dashboard"
         >
           <svg
-            class="w-6 h-6 text-gray-400"
+            class="w-6 h-6 text-gray-400 group-hover:text-white"
             fill="none"
             stroke="currentColor"
             viewBox="0 0 24 24"
@@ -152,13 +153,80 @@
             ></path>
           </svg>
         </a>
+
+        <div class="w-8 h-px bg-gray-700 my-1"></div>
+
+        <!-- Recorder -->
+        <a
+          href="/recorder"
+          class="p-3 rounded-lg hover:bg-gray-700 transition group relative"
+          title="Recorder"
+        >
+          <svg
+            class="w-6 h-6 text-gray-400 group-hover:text-pink-400"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z"
+            ></path>
+          </svg>
+        </a>
+
+        <!-- Uploader -->
+        <a
+          href="/uploader"
+          class="p-3 rounded-lg hover:bg-gray-700 transition group relative"
+          title="Uploader"
+        >
+          <svg
+            class="w-6 h-6 text-gray-400 group-hover:text-cyan-400"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"
+            ></path>
+          </svg>
+        </a>
+
+        <!-- Analyzer (Brain) -->
+        <a
+          href="/analyzer"
+          class="p-3 rounded-lg hover:bg-gray-700 transition group relative"
+          title="Analyzer"
+        >
+          <svg
+            class="w-6 h-6 text-gray-400 group-hover:text-purple-400"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"
+            ></path>
+          </svg>
+        </a>
+
+        <!-- BirdNET -->
         <a
           href="/birdnet"
-          class="p-3 rounded-lg hover:bg-gray-700 transition"
+          class="p-3 rounded-lg hover:bg-gray-700 transition group relative"
           title="BirdNET"
         >
           <svg
-            class="w-6 h-6 text-gray-400"
+            class="w-6 h-6 text-gray-400 group-hover:text-green-400"
             fill="none"
             stroke="currentColor"
             viewBox="0 0 24 24"
@@ -171,25 +239,6 @@
             ></path>
           </svg>
         </a>
-        <a
-          href="/logs"
-          class="p-3 rounded-lg hover:bg-gray-700 transition"
-          title="Logs"
-        >
-          <svg
-            class="w-6 h-6 text-gray-400"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-          >
-            <path
-              stroke-linecap="round"
-              stroke-linejoin="round"
-              stroke-width="2"
-              d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"
-            ></path>
-          </svg>
-        </a>
       </nav>
 
       <!-- Center Content (Dynamic Swap Zone) -->
@@ -198,6 +247,54 @@
         class="flex-1 overflow-y-auto p-6 bg-gray-900 relative"
       >
         {% block content %}{% endblock %}
+
+        <!-- Log Viewer Overlay -->
+        <div
+          id="log-viewer"
+          class="absolute bottom-0 left-0 right-0 h-1/2 bg-gray-950 border-t border-gray-700 transform transition-transform duration-300 translate-y-full z-40 flex flex-col shadow-2xl"
+        >
+          <div
+            class="flex items-center justify-between px-4 py-2 bg-gray-900 border-b border-gray-800"
+          >
+            <div class="flex items-center gap-2">
+              <span class="text-xs font-bold uppercase text-gray-500"
+                >Live Logs:</span
+              >
+              <span
+                id="log-context-label"
+                class="text-sm font-mono text-green-400"
+                >System</span
+              >
+            </div>
+            <div class="flex gap-2">
+              <button
+                onclick="toggleLogs()"
+                class="text-gray-400 hover:text-white transition"
+              >
+                <svg
+                  class="w-5 h-5"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="2"
+                    d="M6 18L18 6M6 6l12 12"
+                  ></path>
+                </svg>
+              </button>
+            </div>
+          </div>
+          <div
+            class="flex-1 overflow-auto p-4 font-mono text-xs text-gray-300 bg-gray-950"
+            id="log-terminal"
+          >
+            <!-- Logs stream here -->
+            <div class="text-gray-600 italic">Waiting for connection...</div>
+          </div>
+        </div>
       </main>
 
       <!-- Right Sidebar (Inspector - Persistent) -->
@@ -243,13 +340,132 @@
     <footer
       class="h-6 bg-silva-950 border-t border-gray-700 flex items-center px-4 text-xs text-gray-400 justify-between shrink-0"
     >
-      <div class="flex gap-4">
+      <div class="flex gap-4 items-center">
         <span>Server: <span class="text-green-400">Online</span></span>
+        <button
+          onclick="toggleLogs()"
+          class="hover:text-white transition flex items-center gap-1"
+        >
+          <svg
+            class="w-3 h-3"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              d="M4 6h16M4 12h16M4 18h7"
+            ></path>
+          </svg>
+          Logs
+        </button>
       </div>
       <div>Silvasonic v0.1.0</div>
     </footer>
 
     <script>
+      // Log Viewer Logic
+      let logEventSource = null;
+      let currentLogContext = null;
+
+      function toggleLogs() {
+        const viewer = document.getElementById("log-viewer");
+        const term = document.getElementById("log-terminal");
+
+        // Check if opening
+        if (viewer.classList.contains("translate-y-full")) {
+          viewer.classList.remove("translate-y-full");
+          // Determine context from URL if not set
+          if (!currentLogContext) {
+            updateLogContextFromUrl();
+          }
+          connectLogStream(currentLogContext);
+          // Auto scroll to bottom
+          term.scrollTop = term.scrollHeight;
+        } else {
+          viewer.classList.add("translate-y-full");
+          // Optional: Close stream to save resources?
+          // Better to keep it if user toggles frequently.
+          // For now, let's keep it open.
+        }
+      }
+
+      function updateLogContextFromUrl() {
+        const path = window.location.pathname;
+        let context = "dashboard";
+
+        if (path.includes("/recorder")) context = "recorder";
+        else if (path.includes("/uploader")) context = "uploader";
+        else if (path.includes("/analyzer")) context = "sound_analyser";
+        else if (path.includes("/birdnet")) context = "birdnet";
+
+        setLogContext(context);
+      }
+
+      function setLogContext(context) {
+        if (currentLogContext === context && logEventSource) return;
+
+        currentLogContext = context;
+        document.getElementById("log-context-label").innerText =
+          context.toUpperCase();
+
+        // If viewer is open, reconnect
+        const viewer = document.getElementById("log-viewer");
+        if (!viewer.classList.contains("translate-y-full")) {
+          connectLogStream(context);
+        }
+      }
+
+      function connectLogStream(context) {
+        if (logEventSource) {
+          logEventSource.close();
+        }
+
+        const term = document.getElementById("log-terminal");
+        term.innerHTML = `<div class="text-gray-500">Connecting to ${context}...</div>`;
+
+        logEventSource = new EventSource(`/api/logs/${context}`);
+
+        logEventSource.onmessage = function (event) {
+          const div = document.createElement("div");
+          div.textContent = event.data;
+          term.appendChild(div);
+
+          // Auto scroll if near bottom
+          if (term.scrollHeight - term.scrollTop - term.clientHeight < 100) {
+            term.scrollTop = term.scrollHeight;
+          }
+
+          // Limit backlog
+          if (term.childElementCount > 500) {
+            term.removeChild(term.firstChild);
+          }
+        };
+
+        logEventSource.onerror = function (err) {
+          console.error("SSE Error:", err);
+          // Retry handled by browser usually, but let's show visual
+          const div = document.createElement("div");
+          div.className = "text-red-500";
+          div.textContent = `[Connection Lost. Reconnecting...]`;
+          term.appendChild(div);
+          logEventSource.close();
+          logEventSource = null;
+        };
+      }
+
+      // Hook into HTMX navigation updates to switch logs
+      document.body.addEventListener("htmx:afterSwap", function (evt) {
+        updateLogContextFromUrl();
+      });
+
+      // Initial check
+      document.addEventListener("DOMContentLoaded", () => {
+        updateLogContextFromUrl();
+      });
+
       // Global Player Logic
       function playGlobalAudio(filename, name, conf) {
         const container = document.getElementById("global-player-container");
@@ -308,7 +524,42 @@
           html.classList.add("dark");
           updateThemeIcon(true);
         }
+
+        // Initial Active Menu
+        updateActiveMenu();
       });
+
+      // Update menu on HTMX navigation
+      document.body.addEventListener("htmx:afterOnLoad", function () {
+        updateActiveMenu();
+      });
+
+      // Active Menu Logic
+      function updateActiveMenu() {
+        const currentPath = window.location.pathname;
+        const navLinks = document.querySelectorAll("nav a");
+
+        navLinks.forEach((link) => {
+          const href = link.getAttribute("href");
+          const svg = link.querySelector("svg");
+
+          // Simple active check: matches start (e.g. /dashboard matches /dashboard/xyz)
+          // Exception: root / should match exactly / ? No, main menu has explicit routes
+          if (currentPath.startsWith(href)) {
+            link.classList.add("bg-gray-700");
+            if (svg) {
+              svg.classList.remove("text-gray-400");
+              svg.classList.add("text-green-400");
+            }
+          } else {
+            link.classList.remove("bg-gray-700");
+            if (svg) {
+              svg.classList.add("text-gray-400");
+              svg.classList.remove("text-green-400");
+            }
+          }
+        });
+      }
 
       // Theme Logic
       function toggleTheme() {

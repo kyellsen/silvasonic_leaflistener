@@ -5,8 +5,8 @@ from fastapi.security import HTTPBasic, HTTPBasicCredentials
 from starlette.responses import RedirectResponse
 
 # Simple Env-based Auth
-ADMIN_USER = os.getenv("DASHBOARD_USER", "admin")
-ADMIN_PASS = os.getenv("DASHBOARD_PASS", "silvasonic")
+ADMIN_USER = os.getenv("DASHBOARD_USER", "Admin")
+ADMIN_PASS = os.getenv("DASHBOARD_PASS", "1234")
 SESSION_SECRET = os.getenv("SESSION_SECRET", secrets.token_hex(32))
 COOKIE_NAME = "silvasonic_session"
 
