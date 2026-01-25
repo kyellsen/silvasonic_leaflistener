@@ -46,13 +46,10 @@ services:
     hostname: silvasonic-uploader
     restart: always
 
+    env_file: .env
     environment:
       - PUID=1000
       - PGID=1000
-      - UPLOADER_NEXTCLOUD_URL=${UPLOADER_NEXTCLOUD_URL}
-      - UPLOADER_NEXTCLOUD_USER=${UPLOADER_NEXTCLOUD_USER}
-      - UPLOADER_NEXTCLOUD_PASSWORD=${UPLOADER_NEXTCLOUD_PASSWORD}
-      - UPLOADER_TARGET_DIR=${UPLOADER_TARGET_DIR:-silvasonic}
 
     volumes:
       # Read-only access to recordings from Recorder
