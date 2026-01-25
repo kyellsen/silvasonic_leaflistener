@@ -48,43 +48,75 @@ def ensure_dirs():
 
 
 def check_services_status(mailer: Mailer):
-    """Checks status files for all configured services."""
+    """Checks status files for all services and produces a consolidated system status."""
     current_time = time.time()
+    system_status = {}
     
     for service_id, config in SERVICES_CONFIG.items():
         status_file = f"{STATUS_DIR}/{service_id}.json"
         
-        if not os.path.exists(status_file):
-            logger.warning(f"Status file missing for {config['name']} ({status_file})")
-            continue
-            
-        try:
-            with open(status_file, 'r') as f:
-                status = json.load(f)
-                
-            last_ts = status.get('timestamp', 0)
-            
-            # Special logic for Carrier (it reports 'last_upload' too, but use heartbeat for liveness)
-            # Actually, for carrier we specifically cared about 'last_upload' success.
-            # But here we check *liveness* of the process first.
-            if current_time - last_ts > config['timeout']:
-                msg = f"Service {config['name']} is silent. No heartbeat for {int(current_time - last_ts)} seconds.\nTimeout is {config['timeout']}s."
-                logger.error(msg)
-                mailer.send_alert(f"{config['name']} Down", msg)
-                
-            # Secondary check for Carrier: Upload success
-            if service_id == "carrier":
-                 last_upload = status.get('last_upload', 0) 
-                 # Note: Uploader main.py puts it in 'meta' maybe, or top level? 
-                 # We kept it top level for compat in previous edit.
-                 if current_time - last_upload > 3600: # 60 mins
-                      msg = f"Carrier running but no upload success for > 60 mins."
-                      # Check if we already alerted? (Simplified for now)
-                      logger.error(msg)
-                      mailer.send_alert("Carrier Stalled", msg)
+        # Default State
+        service_data = {
+            "id": service_id,
+            "name": config["name"],
+            "status": "Down",
+            "last_seen": 0,
+            "message": "No heartbeat found",
+            "timeout_threshold": config['timeout']
+        }
 
-        except Exception as e:
-            logger.error(f"Failed to check status for {service_id}: {e}")
+        if os.path.exists(status_file):
+            try:
+                with open(status_file, 'r') as f:
+                    status = json.load(f)
+                
+                last_ts = status.get('timestamp', 0)
+                service_data["last_seen"] = last_ts
+                
+                # Check Timeout
+                if current_time - last_ts > config['timeout']:
+                    msg = f"Service {config['name']} is silent. No heartbeat for {int(current_time - last_ts)} seconds."
+                    logger.error(msg)
+                    mailer.send_alert(f"{config['name']} Down", msg)
+                    
+                    service_data["status"] = "Down"
+                    service_data["message"] = f"Timeout ({int(current_time - last_ts)}s > {config['timeout']}s)"
+                else:
+                    service_data["status"] = "Running"
+                    service_data["message"] = "Active"
+                
+                # Carrier Special Logic for Alerting (keep existing)
+                if service_id == "carrier":
+                     last_upload = status.get('last_upload', 0) 
+                     if current_time - last_upload > 3600:
+                          msg = f"Carrier running but no upload success for > 60 mins."
+                          logger.error(msg)
+                          mailer.send_alert("Carrier Stalled", msg)
+                          # We updates status too? Maybe 'Warning'?
+                          service_data["status"] = "Warning"
+                          service_data["message"] = "Stalled (No Upload)"
+
+            except Exception as e:
+                logger.error(f"Failed to check status for {service_id}: {e}")
+                service_data["message"] = f"Error: {str(e)}"
+        
+        system_status[service_id] = service_data
+
+    # Add HealthChecker itself
+    system_status["healthchecker"] = {
+        "id": "healthchecker",
+        "name": "HealthChecker",
+        "status": "Running",
+        "last_seen": current_time,
+        "message": "Active (Self)"
+    }
+
+    # Write Consolidated Status
+    try:
+        with open(f"{STATUS_DIR}/system_status.json", 'w') as f:
+            json.dump(system_status, f)
+    except Exception as e:
+        logger.error(f"Failed to write system status: {e}")
 
 def check_error_drops(mailer: Mailer):
     """Checks for new files in the error drop directory."""
@@ -132,6 +164,51 @@ def write_status():
     except Exception as e:
         logger.error(f"Failed to write healthchecker status: {e}")
 
+NOTIFICATION_DIR = "/data/notifications"
+
+def check_notification_queue(mailer: Mailer):
+    """Processes notification events directly from the queue."""
+    if not os.path.exists(NOTIFICATION_DIR):
+        return
+
+    # Look for json files
+    events = glob.glob(f"{NOTIFICATION_DIR}/*.json")
+    for event_file in events:
+        try:
+            with open(event_file, 'r') as f:
+                event = json.load(f)
+            
+            logger.info(f"Processing notification event: {os.path.basename(event_file)}")
+            
+            if event.get('type') == 'bird_detection':
+                data = event.get('data', {})
+                com_name = data.get('common_name', 'Unknown Bird')
+                sci_name = data.get('scientific_name', '')
+                conf = int(data.get('confidence', 0) * 100)
+                time_str = datetime.datetime.fromtimestamp(data.get('start_time', 0)).strftime('%H:%M:%S')
+                
+                subject = f"Bird Alert: {com_name}"
+                body = f"Detected {com_name} ({sci_name}) with {conf}% confidence at {time_str}.\n\nListen to the clip."
+                
+                # Send the alert!
+                if mailer.send_alert(subject, body):
+                    os.remove(event_file) # Consume event
+                else:
+                    logger.warning(f"Failed to send alert for {event_file}, keeping for retry (or move to error?)")
+                    # For now, maybe move to error to avoid infinite loop if backend down?
+                    # Or just keep and retry next loop.
+                    # To allow retry, do nothing. But prevent log spam?
+                    pass 
+            else:
+                # Unknown event? Remove.
+                os.remove(event_file)
+                
+        except Exception as e:
+            logger.error(f"Failed to process notification {event_file}: {e}")
+            try:
+                os.remove(event_file) # Remove bad files
+            except: pass
+
 def main():
     logger.info("--- Silvasonic HealthChecker Started ---")
     ensure_dirs()
@@ -139,12 +216,14 @@ def main():
     
     # Import psutil for status (ensuring it's imported if not global)
     import psutil
+    import datetime # Need this for new logic
     
     while True:
         try:
             write_status() # Heartbeat
             check_services_status(mailer)
             check_error_drops(mailer)
+            check_notification_queue(mailer)
         except Exception as e:
             logger.exception("HealthChecker loop crashed:")
         

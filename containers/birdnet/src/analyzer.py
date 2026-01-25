@@ -126,6 +126,11 @@ class BirdNETAnalyzer:
                                     'clip_path': clip_path
                                 }
                                 db.save_detection(detection)
+                                
+                                # Check Watchlist & Alert
+                                if db.is_watched(row[2]):
+                                    self._trigger_alert(detection)
+                                    
                             except ValueError:
                                 logger.warning(f"Skipping invalid row in {final_output_file}")
 
@@ -194,6 +199,33 @@ class BirdNETAnalyzer:
         except subprocess.CalledProcessError as e:
             logger.error(f"FFmpeg failed for {input_path.name}: {e}")
             return False
-        except Exception as e:
             logger.error(f"Resampling error: {e}")
             return False
+
+    def _trigger_alert(self, detection: dict):
+        """Creates a notification event in the shared queue."""
+        try:
+            # Shared notification queue path
+            # Using /data/notifications (mapped volume)
+            queue_dir = Path("/data/notifications")
+            queue_dir.mkdir(parents=True, exist_ok=True)
+            
+            import json
+            import time
+            
+            event_id = f"{int(time.time()*1000)}_{detection['scientific_name'].replace(' ', '_')}"
+            event_path = queue_dir / f"{event_id}.json"
+            
+            payload = {
+                "type": "bird_detection",
+                "timestamp": time.time(),
+                "data": detection
+            }
+            
+            with open(event_path, "w") as f:
+                json.dump(payload, f)
+                
+            logger.info(f"Triggered notification alert for {detection['common_name']}")
+            
+        except Exception as e:
+            logger.error(f"Failed to trigger alert: {e}")

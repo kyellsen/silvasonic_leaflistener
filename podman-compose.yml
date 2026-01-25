@@ -82,6 +82,8 @@ services:
       # Shared Status & Errors (Read/Write for archiving errors and writing own status)
       - /mnt/data/services/silvasonic/status:/mnt/data/services/silvasonic/status:z
       - /mnt/data/services/silvasonic/errors:/mnt/data/services/silvasonic/errors:z
+      # Notification Queue
+      - /mnt/data/services/silvasonic/notifications:/data/notifications:z
 
   # ---------------------------------------------------------------------------
   # BirdNET - Species Identification
@@ -109,6 +111,8 @@ services:
       - /mnt/data/services/silvasonic/logs:/var/log/silvasonic:z
       # Shared Status
       - /mnt/data/services/silvasonic/status:/mnt/data/services/silvasonic/status:z
+      # Notification Queue
+      - /mnt/data/services/silvasonic/notifications:/data/notifications:z
 
     restart: always
 

@@ -1,4 +1,4 @@
-FROM python:3.11-slim
+FROM python:3.13-slim
 
 # Install system dependencies
 # - rclone: The core sync engine
@@ -11,9 +11,9 @@ RUN apt-get update && apt-get install -y \
 # Set working directory
 WORKDIR /app
 
-# Install python dependencies (if any). For now, standard library is sufficient.
-# COPY requirements.txt .
-# RUN pip install --no-cache-dir -r requirements.txt
+# Install python dependencies from pyproject.toml
+COPY pyproject.toml .
+RUN pip install --no-cache-dir .
 
 # Copy source code
 COPY src /app/src

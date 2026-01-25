@@ -206,6 +206,7 @@
     const cards = grid.getElementsByClassName("species-card");
 
     for (let i = 0; i < cards.length; i++) {
+      // ... (existing logic)
       const title = cards[i].querySelector("h3");
       const sci = cards[i].querySelector("p");
       const txtValue = title.textContent || title.innerText;
@@ -219,6 +220,67 @@
       } else {
         cards[i].style.display = "none";
       }
+    }
+  }
+
+  async function toggleWatchlist(event, sciName, comName) {
+    event.preventDefault(); // Stop link navigation
+    event.stopPropagation();
+
+    const btn = event.currentTarget;
+    // Check current state by class or data attr (simple check: does it have amber bg?)
+    const isEnabled = !btn.classList.contains("bg-amber-500");
+
+    try {
+      const res = await fetch("/api/watchlist/toggle", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          scientific_name: sciName,
+          common_name: comName,
+          enabled: isEnabled,
+        }),
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        if (data.enabled) {
+          // Active State
+          btn.classList.remove(
+            "bg-black/40",
+            "text-gray-400",
+            "border-gray-700",
+            "hover:bg-black/60",
+            "hover:text-white",
+          );
+          btn.classList.add(
+            "bg-amber-500",
+            "text-white",
+            "border-amber-400",
+            "hover:bg-amber-600",
+          );
+        } else {
+          // Inactive State
+          btn.classList.remove(
+            "bg-amber-500",
+            "text-white",
+            "border-amber-400",
+            "hover:bg-amber-600",
+          );
+          btn.classList.add(
+            "bg-black/40",
+            "text-gray-400",
+            "border-gray-700",
+            "hover:bg-black/60",
+            "hover:text-white",
+          );
+        }
+      } else {
+        alert("Failed to toggle setting");
+      }
+    } catch (e) {
+      console.error(e);
+      alert("Error communicating with server");
     }
   }
 </script>

@@ -92,7 +92,7 @@ async def logout():
 
 # --- Protected Routes ---
 
-from src.services import SystemService, BirdNetService, CarrierService, RecorderService, AnalyzerService
+from src.services import SystemService, BirdNetService, CarrierService, RecorderService, AnalyzerService, HealthCheckerService
 from src.settings import SettingsService
 
 @app.get("/dashboard", response_class=HTMLResponse)
@@ -104,6 +104,7 @@ async def dashboard(request: Request, auth=Depends(require_auth)):
     birdnet_stats = BirdNetService.get_stats()
     carrier_stats = CarrierService.get_status()
     recorder_stats = RecorderService.get_status()
+    containers = HealthCheckerService.get_system_metrics()
     
     return render(request, "index.html", {
         "request": request, 
@@ -113,6 +114,7 @@ async def dashboard(request: Request, auth=Depends(require_auth)):
         "birdnet_stats": birdnet_stats,
         "carrier_stats": carrier_stats,
         "recorder_stats": recorder_stats,
+        "containers": containers,
         "status_label": "System:",
         "status_value": "Online",
         "status_color": "text-green-600 dark:text-green-400"
