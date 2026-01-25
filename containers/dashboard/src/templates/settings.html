@@ -115,8 +115,11 @@
             name="latitude"
             id="latitude"
             value="{{ settings.location.latitude }}"
-            class="w-full bg-gray-50 dark:bg-gray-900 border border-gray-300 dark:border-gray-700 text-gray-900 dark:text-white text-sm rounded-lg focus:ring-silva-500 focus:border-silva-500 block p-2.5"
+            class="w-full bg-gray-50 dark:bg-gray-900 border {% if field_errors and field_errors.latitude %}border-red-500{% else %}border-gray-300 dark:border-gray-700{% endif %} text-gray-900 dark:text-white text-sm rounded-lg focus:ring-silva-500 focus:border-silva-500 block p-2.5"
           />
+          {% if field_errors and field_errors.latitude %}
+          <p class="mt-1 text-sm text-red-500">{{ field_errors.latitude }}</p>
+          {% endif %}
         </div>
         <div>
           <label
@@ -131,8 +134,11 @@
             name="longitude"
             id="longitude"
             value="{{ settings.location.longitude }}"
-            class="w-full bg-gray-50 dark:bg-gray-900 border border-gray-300 dark:border-gray-700 text-gray-900 dark:text-white text-sm rounded-lg focus:ring-silva-500 focus:border-silva-500 block p-2.5"
+            class="w-full bg-gray-50 dark:bg-gray-900 border {% if field_errors and field_errors.longitude %}border-red-500{% else %}border-gray-300 dark:border-gray-700{% endif %} text-gray-900 dark:text-white text-sm rounded-lg focus:ring-silva-500 focus:border-silva-500 block p-2.5"
           />
+          {% if field_errors and field_errors.longitude %}
+          <p class="mt-1 text-sm text-red-500">{{ field_errors.longitude }}</p>
+          {% endif %}
         </div>
       </div>
       <p class="mt-2 text-sm text-gray-500 dark:text-gray-400">
@@ -164,9 +170,14 @@
             id="notifier_email"
             value="{{ settings.healthchecker.recipient_email }}"
             placeholder="user@example.com"
-            class="flex-1 bg-gray-50 dark:bg-gray-900 border border-gray-300 dark:border-gray-700 text-gray-900 dark:text-white text-sm rounded-lg focus:ring-silva-500 focus:border-silva-500 block p-2.5"
+            class="flex-1 bg-gray-50 dark:bg-gray-900 border {% if field_errors and field_errors.notifier_email %}border-red-500{% else %}border-gray-300 dark:border-gray-700{% endif %} text-gray-900 dark:text-white text-sm rounded-lg focus:ring-silva-500 focus:border-silva-500 block p-2.5"
           />
         </div>
+        {% if field_errors and field_errors.notifier_email %}
+        <p class="mt-1 text-sm text-red-500">
+          {{ field_errors.notifier_email }}
+        </p>
+        {% endif %}
         <p class="mt-2 text-sm text-gray-500 dark:text-gray-400">
           Overrides the default recipient defined in environment variables.
           Leave empty to use default.
@@ -185,10 +196,13 @@
           id="apprise_urls"
           rows="3"
           placeholder="tgram://TOKEN/CHAT_ID, discord://WEBHOOK_ID/TOKEN"
-          class="w-full bg-gray-50 dark:bg-gray-900 border border-gray-300 dark:border-gray-700 text-gray-900 dark:text-white text-sm rounded-lg focus:ring-silva-500 focus:border-silva-500 block p-2.5 font-mono"
+          class="w-full bg-gray-50 dark:bg-gray-900 border {% if field_errors and field_errors.apprise_urls %}border-red-500{% else %}border-gray-300 dark:border-gray-700{% endif %} text-gray-900 dark:text-white text-sm rounded-lg focus:ring-silva-500 focus:border-silva-500 block p-2.5 font-mono"
         >
 {{ settings.healthchecker.apprise_urls | join(', ') if settings.healthchecker.apprise_urls else '' }}</textarea
         >
+        {% if field_errors and field_errors.apprise_urls %}
+        <p class="mt-1 text-sm text-red-500">{{ field_errors.apprise_urls }}</p>
+        {% endif %}
         <p class="mt-2 text-sm text-gray-500 dark:text-gray-400">
           Comma-separated list of
           <a
