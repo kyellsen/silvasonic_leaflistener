@@ -207,7 +207,20 @@ def main():
         if not running:
             break
             
+        if not running:
+            break
+            
         logger.warning(f"FFmpeg exited with code {proc.returncode}. Restarting in 5s...")
+        
+        # Read stderr to see why it crashed
+        if proc.stderr:
+            try:
+                stderr_output = proc.stderr.read().decode().strip()
+                if stderr_output:
+                    logger.error(f"FFmpeg Error Output:\n{stderr_output}")
+            except Exception as e:
+                logger.error(f"Failed to read stderr: {e}")
+
         write_status("Error: Restarting", profile, device)
         time.sleep(5)
 
