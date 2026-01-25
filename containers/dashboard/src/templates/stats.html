@@ -102,22 +102,43 @@
 
     <!-- All Species Histogram -->
     <div class="bg-gray-800 rounded-xl p-6 border border-gray-700 shadow-xl">
-      <h3 class="text-lg font-bold text-white mb-6 flex items-center gap-2">
-        <svg
-          class="w-5 h-5 text-purple-400"
-          fill="none"
-          stroke="currentColor"
-          viewBox="0 0 24 24"
+      <div class="flex items-center justify-between mb-6">
+        <h3 class="text-lg font-bold text-white flex items-center gap-2">
+          <svg
+            class="w-5 h-5 text-purple-400"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"
+            ></path>
+          </svg>
+          Species Distribution
+        </h3>
+        <!-- Log Toggle -->
+        <div
+          class="flex items-center gap-2 cursor-pointer"
+          onclick="toggleLogScale()"
         >
-          <path
-            stroke-linecap="round"
-            stroke-linejoin="round"
-            stroke-width="2"
-            d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"
-          ></path>
-        </svg>
-        Species Abundance Distribution
-      </h3>
+          <span class="text-xs text-gray-400 font-mono uppercase"
+            >Log Scale</span
+          >
+          <div
+            id="logToggleBtn"
+            class="w-9 h-5 bg-gray-700 border border-gray-600 rounded-full relative transition-all"
+          >
+            <div
+              id="logToggleCircle"
+              class="w-3 h-3 bg-gray-400 rounded-full absolute top-1 left-1 transition-all duration-200"
+            ></div>
+          </div>
+        </div>
+      </div>
+
       <div class="h-64 w-full relative">
         <canvas id="histChart"></canvas>
       </div>
@@ -189,6 +210,34 @@
 {% endblock %} {% block scripts %}
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
+  let histChart = null;
+  let isLogScale = false;
+
+  function toggleLogScale() {
+      if(!histChart) return;
+      isLogScale = !isLogScale;
+
+      // Update UI
+      const btn = document.getElementById('logToggleBtn');
+      const circle = document.getElementById('logToggleCircle');
+
+      if(isLogScale) {
+          btn.classList.replace('bg-gray-700', 'bg-silva-600');
+          btn.classList.replace('border-gray-600', 'border-silva-500');
+          circle.classList.replace('left-1', 'left-5');
+          circle.classList.replace('bg-gray-400', 'bg-white');
+      } else {
+          btn.classList.replace('bg-silva-600', 'bg-gray-700');
+          btn.classList.replace('border-silva-500', 'border-gray-600');
+          circle.classList.replace('left-5', 'left-1');
+          circle.classList.replace('bg-white', 'bg-gray-400');
+      }
+
+      // Update Chart
+      histChart.options.scales.y.type = isLogScale ? 'logarithmic' : 'linear';
+      histChart.update();
+  }
+
   document.addEventListener('DOMContentLoaded', function() {
 
       // Configs
@@ -206,11 +255,7 @@
            const ctx = document.getElementById(id);
            if(!ctx) return;
 
-           // If no data, show placeholder or empty
-           if(data.length === 0) {
-               // Draw "No data" text? Or just leave empty.
-               return;
-           }
+           if(data.length === 0) return;
 
            new Chart(ctx.getContext('2d'), {
               type: 'doughnut',
@@ -227,6 +272,17 @@
                   responsive: true,
                   maintainAspectRatio: false,
                   cutout: '70%',
+                  onClick: (e, activeEls) => {
+                      if(activeEls.length > 0) {
+                          const index = activeEls[0].index;
+                          // Use labels array directly as fallback
+                          const label = labels[index];
+                          if(label) window.location.href = `/birdnet/discover/${encodeURIComponent(label)}`;
+                      }
+                  },
+                  onHover: (e, activeEls) => {
+                      e.native.target.style.cursor = activeEls.length > 0 ? 'pointer' : 'default';
+                  },
                   plugins: {
                       legend: { display: false },
                       tooltip: {
@@ -307,11 +363,9 @@
       const histLabels = {{ histogram.labels|tojson }};
       const histValues = {{ histogram.values|tojson }};
 
-      // If too many, slice? ChartJS handles scroll poorly without plugin.
-      // We will show all but hide X labels if > 20
       const showX = histLabels.length < 25;
 
-      new Chart(histCtx, {
+      histChart = new Chart(histCtx, {
           type: 'bar',
           data: {
               labels: histLabels,
@@ -325,6 +379,16 @@
           options: {
               responsive: true,
               maintainAspectRatio: false,
+              onClick: (e, activeEls) => {
+                  if(activeEls.length > 0) {
+                      const index = activeEls[0].index;
+                      const label = histLabels[index];
+                      if(label) window.location.href = `/birdnet/discover/${encodeURIComponent(label)}`;
+                  }
+              },
+              onHover: (e, activeEls) => {
+                  e.native.target.style.cursor = activeEls.length > 0 ? 'pointer' : 'default';
+              },
               plugins: { legend: { display: false } },
               scales: {
                   x: {
@@ -332,15 +396,13 @@
                       grid: { display: false },
                       ticks: { display: showX, autoSkip: false, maxRotation: 90, minRotation: 90 }
                   },
-                  y: { grid: { color: 'rgba(255,255,255,0.05)' }, type: 'logarithmic' }
+                  y: {
+                      grid: { color: 'rgba(255,255,255,0.05)' },
+                      type: 'linear' // Default start
+                  }
               }
           }
       });
-      // Note: Logarithmic scale helps visualize long tails better if counts vary wildly (1 vs 1000).
-      // If user dislikes it, we'll swap to linear. Linear is safer default but "rare" species disappear.
-      // Let's stick to linear first as it's more standard, unless specifically requested.
-      // Actually, linear. I removed `type: 'logarithmic'` in thought, but code above has it.
-      // I will remove it to be safe.
   });
 </script>
 {% endblock %}

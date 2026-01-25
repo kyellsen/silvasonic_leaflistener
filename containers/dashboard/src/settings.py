@@ -1,9 +1,10 @@
-from pydantic import BaseModel, Field, EmailStr, AnyUrl, ValidationError, validator
+from pydantic import BaseModel, Field, AnyUrl, ValidationError, validator
 from typing import List, Optional
 import os
 import json
 import logging
 import copy
+import re
 
 logger = logging.getLogger("Dashboard.Settings")
 
@@ -19,15 +20,9 @@ class HealthCheckerSettings(BaseModel):
     @validator('recipient_email')
     def validate_email(cls, v):
         if not v: return ""
-        # Basic check or use EmailStr if email-validator is strictly available
-        # Using simple check to avoid hard crash if dependency missing, 
-        # but Plan said EmailStr. Let's assume EmailStr is desired but might fail if pydantic[email] not installed.
-        # Given the user wants validation, let's try to be robust. 
-        # If we use EmailStr and it fails import, it crashes. 
-        # Let's stick to str but manual regex or if pydantic has it built-in without extra dep? 
-        # Pydantic v1 vs v2? Assuming v1 based on typical stack or v2.
-        # Let's use EmailStr but import it safely? No, let's just use strict type if possible.
-        # Actually user explicitly asked for validation.
+        # Simple regex for email validation to avoid external dependencies
+        if not re.match(r"[^@]+@[^@]+\.[^@]+", v):
+            raise ValueError('Invalid email address format')
         return v
 
 class LocationSettings(BaseModel):
