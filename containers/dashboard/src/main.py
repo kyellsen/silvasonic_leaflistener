@@ -171,16 +171,18 @@ async def birdnet_species_page(request: Request, species_name: str, auth=Depends
 async def stats_page(request: Request, auth=Depends(require_auth)):
     if isinstance(auth, RedirectResponse): return auth
     
-    stats_data = BirdNetService.get_time_stats()
+    stats_data = BirdNetService.get_advanced_stats()
     
     return render(request, "stats.html", {
         "request": request,
         "page": "stats",
         "daily": stats_data["daily"],
         "hourly": stats_data["hourly"],
-        "top": stats_data["top"],
+        "distributions": stats_data["distributions"],
+        "histogram": stats_data["histogram"],
+        "rarest": stats_data["rarest"],
         "status_label": "Statistics:",
-        "status_value": "Overview",
+        "status_value": "Detailed",
         "status_color": "text-blue-500 dark:text-blue-400"
     })
 

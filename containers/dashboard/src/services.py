@@ -401,11 +401,11 @@ class BirdNetService:
         return info
 
     @staticmethod
-    def get_time_stats():
-        """Get global temporal stats for charts."""
+    def get_advanced_stats():
+        """Get comprehensive stats for the BirdStats dashboard."""
         try:
             with db.get_connection() as conn:
-                # Detections per day (last 30 days)
+                # 1. Daily Trend (Last 30 Days) - Keep existing
                 query_daily = text("""
                     SELECT DATE(timestamp) as date, COUNT(*) as count
                     FROM birdnet.detections
@@ -414,47 +414,123 @@ class BirdNetService:
                     ORDER BY date ASC
                 """)
                 res_daily = conn.execute(query_daily)
-                
-                daily_labels = []
-                daily_values = []
+                daily = {"labels": [], "values": []}
                 for row in res_daily:
-                    daily_labels.append(row.date.strftime("%Y-%m-%d"))
-                    daily_values.append(row.count)
+                    daily["labels"].append(row.date.strftime("%Y-%m-%d"))
+                    daily["values"].append(row.count)
 
-                # Detections by Hour of Day (All time)
+                # 2. Hourly Distribution (All Time) - Keep existing
                 query_hourly = text("""
                     SELECT EXTRACT(HOUR FROM timestamp) as hour, COUNT(*) as count
                     FROM birdnet.detections
                     GROUP BY hour
-                    ORDER BY hour ASC
                 """)
                 res_hourly = conn.execute(query_hourly)
                 dist_map = {int(r.hour): r.count for r in res_hourly}
-                hourly_values = [dist_map.get(h, 0) for h in range(24)]
+                hourly = {"values": [dist_map.get(h, 0) for h in range(24)]}
                 
-                # Top Species Composition
-                query_top = text("""
+                # 3. Top Species Distributions (Pie Charts)
+                # Helper for top species
+                def get_top_species(interval_clause, limit=20):
+                    where_sql = ""
+                    params = {}
+                    if interval_clause:
+                        where_sql = f"WHERE timestamp >= NOW() - INTERVAL '{interval_clause}'"
+                    
+                    query = text(f"""
+                        SELECT common_name, COUNT(*) as count 
+                        FROM birdnet.detections 
+                        {where_sql}
+                        GROUP BY common_name 
+                        ORDER BY count DESC 
+                        LIMIT :limit
+                    """)
+                    rows = conn.execute(query, {"limit": limit})
+                    return {
+                        "labels": [r.common_name for r in rows], 
+                        "values": [r.count for r in rows]
+                    }
+
+                dist_today = get_top_species("1 DAY") # Actually strictly today? User said "Today". 1 DAY interval is last 24h. 
+                                                     # Usually "Today" means since 00:00. 
+                                                     # Let's use DATE(timestamp) = CURRENT_DATE for Today.
+                
+                # Correcting for "Today" (Calendar Day)
+                query_today_exact = text("""
                     SELECT common_name, COUNT(*) as count 
                     FROM birdnet.detections 
+                    WHERE DATE(timestamp) = CURRENT_DATE
                     GROUP BY common_name 
                     ORDER BY count DESC 
-                    LIMIT 10
+                    LIMIT 20
                 """)
-                res_top = conn.execute(query_top)
-                top_labels = []
-                top_values = []
-                for row in res_top:
-                    top_labels.append(row.common_name)
-                    top_values.append(row.count)
+                rows_today = conn.execute(query_today_exact)
+                dist_today = {"labels": [r.common_name for r in rows_today], "values": [r.count for r in rows_today]}
+
+                dist_week = get_top_species("7 DAYS")
+                dist_month = get_top_species("30 DAYS")
+                dist_year = get_top_species("1 YEAR")
+
+                # 4. Histogram (All Species Ranked)
+                # We fetch all species and their counts
+                query_all = text("""
+                    SELECT common_name, COUNT(*) as count
+                    FROM birdnet.detections
+                    GROUP BY common_name
+                    ORDER BY count DESC
+                """)
+                res_all = conn.execute(query_all)
+                hist_labels = []
+                hist_values = []
+                rarest_list = []
                 
+                all_rows = [dict(row._mapping) for row in res_all]
+                
+                # Populate Histogram (Top 100 to avoid overload?) User said 'Histogram over all species'. 
+                # If there are 500 species, chart.js handles it ok-ish. 
+                for d in all_rows:
+                    hist_labels.append(d['common_name'])
+                    hist_values.append(d['count'])
+                
+                # 5. Rarest Species (List)
+                # Since we have the list sorted DESC, the rarest are at the end.
+                # But user might want them sorted ASC for the list view.
+                # Let's just slice the last 20 from all_rows and reverse.
+                if len(all_rows) > 0:
+                    rarest_slice = all_rows[-20:] # Get last 20
+                    # Sort them ASC by count (they are already somewhat sorted, but let's be sure if ties exist)
+                    rarest_list = sorted(rarest_slice, key=lambda x: x['count'])
+                else:
+                    rarest_list = []
+
                 return {
-                    "daily": {"labels": daily_labels, "values": daily_values},
-                    "hourly": {"values": hourly_values},
-                    "top": {"labels": top_labels, "values": top_values}
+                    "daily": daily,
+                    "hourly": hourly,
+                    "distributions": {
+                        "today": dist_today,
+                        "week": dist_week,
+                        "month": dist_month,
+                        "year": dist_year
+                    },
+                    "histogram": {
+                        "labels": hist_labels,
+                        "values": hist_values
+                    },
+                    "rarest": rarest_list
                 }
         except Exception as e:
-            print(f"Error get_time_stats: {e}")
-            return {"daily": {"labels": [], "values": []}, "hourly": {"values": []}, "top": {"labels": [], "values": []}}
+            print(f"Error get_advanced_stats: {e}")
+            empty_chart = {"labels": [], "values": []}
+            return {
+                "daily": empty_chart, 
+                "hourly": {"values": []}, 
+                "distributions": {
+                    "today": empty_chart, "week": empty_chart, 
+                    "month": empty_chart, "year": empty_chart
+                },
+                "histogram": empty_chart,
+                "rarest": []
+            }
 
 STATUS_DIR = "/mnt/data/services/silvasonic/status"
 
