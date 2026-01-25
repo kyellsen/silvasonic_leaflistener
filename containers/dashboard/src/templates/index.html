@@ -227,8 +227,7 @@
         <td class="p-5 text-right">
           <button
             class="px-4 py-2 rounded-lg bg-silva-100 dark:bg-silva-900/30 text-silva-700 dark:text-silva-300 font-bold text-xs hover:bg-silva-200 dark:hover:bg-silva-900/50 transition shadow-sm"
-            hx-get="/api/audio/{{ d.filename }}"
-            hx-target="#audio-player-container"
+            onclick="playGlobalAudio('{{ d.audio_relative_path }}', '{{ d.display_name }}', '{{ d.confidence }}')"
           >
             Play
           </button>
@@ -246,15 +245,55 @@
 </div>
 {% endblock %} {% block inspector %}
 <div class="space-y-6">
+  <!-- System Health -->
+  <div class="glass-panel p-6 rounded-2xl">
+    <h3
+      class="font-bold text-gray-900 dark:text-white mb-4 border-b border-gray-200 dark:border-white/10 pb-2 text-sm uppercase tracking-wide"
+    >
+      System Overview
+    </h3>
+    <div class="space-y-3">
+      {% for c in containers.values()|sort(attribute='name') %}
+      <div class="flex items-center justify-between">
+        <div class="flex items-center gap-2">
+          <div
+            class="w-1.5 h-1.5 rounded-full {% if c.status == 'Running' %}bg-green-500{% elif c.status == 'Warning' %}bg-amber-500{% else %}bg-red-500{% endif %}"
+          ></div>
+          <span class="text-xs font-bold text-gray-600 dark:text-gray-300"
+            >{{ c.name.replace('silvasonic-', '').title() }}</span
+          >
+        </div>
+        <span class="text-[10px] text-gray-400 font-mono">{{ c.status }}</span>
+      </div>
+      {% endfor %}
+    </div>
+    <div class="mt-4 pt-4 border-t border-gray-200 dark:border-white/5">
+      <h4 class="text-xs font-bold text-gray-500 uppercase mb-2">Storage</h4>
+      <div
+        class="w-full bg-gray-200 dark:bg-gray-700 h-1.5 rounded-full overflow-hidden"
+      >
+        <div
+          class="bg-gray-500 h-full rounded-full"
+          style="width: {{ stats.disk_percent }}%"
+        ></div>
+      </div>
+      <div class="flex justify-between text-[10px] text-gray-400 mt-1">
+        <span>Used: {{ stats.disk_percent }}%</span>
+        <span>Free: {{ 100 - stats.disk_percent }}%</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Quick Stats -->
   <div class="glass-panel p-6 rounded-2xl">
     <h3
       class="font-heading font-bold text-gray-900 dark:text-white mb-4 border-b border-gray-200 dark:border-white/10 pb-2 text-sm uppercase tracking-wide"
     >
-      Quick Stats
+      BirdNET Stats
     </h3>
     <div class="flex justify-between items-center py-2 group">
       <span class="text-gray-400 group-hover:text-gray-300 transition"
-        >Today's Detections</span
+        >Today</span
       >
       <span class="font-mono font-bold text-xl text-silva-500"
         >{{ birdnet_stats.today }}</span
@@ -264,25 +303,12 @@
       class="flex justify-between items-center py-2 border-t border-gray-200 dark:border-white/5 group"
     >
       <span class="text-gray-400 group-hover:text-gray-300 transition"
-        >Total Detections</span
+        >Total</span
       >
       <span class="font-mono font-bold text-xl text-blue-500"
         >{{ birdnet_stats.total }}</span
       >
     </div>
-  </div>
-
-  <div id="audio-player-container" class="glass-panel p-6 rounded-2xl hidden">
-    <h3
-      class="font-heading font-bold text-gray-900 dark:text-white mb-3 text-sm uppercase tracking-wide flex items-center gap-2"
-    >
-      <span class="w-2 h-2 rounded-full bg-silva-500 animate-pulse"></span>
-      Audio Player
-    </h3>
-    <audio
-      controls
-      class="w-full mt-2 rounded-lg bg-gray-100 dark:bg-gray-800"
-    ></audio>
   </div>
 </div>
 {% endblock %}

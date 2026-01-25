@@ -140,6 +140,13 @@ class BirdNetService:
                     # Display Name Logic
                     d['display_name'] = d.get('german_name') if use_german and d.get('german_name') else d.get('com_name')
                     
+                    # Audio Path Logic
+                    fp = d.get('filepath')
+                    if fp and fp.startswith(REC_DIR):
+                        d['audio_relative_path'] = fp[len(REC_DIR):].lstrip('/')
+                    else:
+                        d['audio_relative_path'] = d.get('filename') # Fallback
+                    
                     detections.append(d)
                     
                 return detections
@@ -190,6 +197,13 @@ class BirdNetService:
                 use_german = SettingsService.is_german_names_enabled()
                 d['display_name'] = d.get('german_name') if use_german and d.get('german_name') else d.get('com_name')
                 
+                # Audio Path Logic
+                fp = d.get('filepath')
+                if fp and fp.startswith(REC_DIR):
+                    d['audio_relative_path'] = fp[len(REC_DIR):].lstrip('/')
+                else:
+                    d['audio_relative_path'] = d.get('filename')
+
                 return d
         except Exception as e:
             print(f"DB Error (get_detection): {e}")
@@ -346,6 +360,16 @@ class BirdNetService:
                          d['iso_timestamp'] = d['timestamp'].isoformat()
                     else:
                          d['iso_timestamp'] = ""
+                    else:
+                         d['iso_timestamp'] = ""
+                    
+                    # Audio Path Logic for species stats
+                    fp = d.get('filepath')
+                    if fp and fp.startswith(REC_DIR):
+                        d['audio_relative_path'] = fp[len(REC_DIR):].lstrip('/')
+                    else:
+                        d['audio_relative_path'] = d.get('filename')
+                        
                     recent.append(d)
                 
                 # Fetch German name if needed (it wasn't in the group query clearly)
@@ -725,6 +749,21 @@ class RecorderService:
                     # Calculate Size in MB
                     d['size_mb'] = round((d.get('file_size_bytes') or 0) / (1024*1024), 2)
                     d['duration_str'] = f"{d.get('duration_sec', 0):.1f}s"
+                    
+                    # Audio Path Logic (Recorder usually stores just filename in filename column, or full path?)
+                    # brain.audio_files table usually is populated by Carrier/Recorder.
+                    # If filename is just "file.flac", it's relative to REC_DIR?
+                    # Let's assume filename IS the relative path or base name.
+                    # But we should try to be smart.
+                    
+                    # Ideally we have a filepath column in audio_files too? 
+                    # The query selects: filename.
+                    fname = d.get('filename')
+                    # If it's a full path
+                    if fname and fname.startswith(REC_DIR):
+                        d['audio_relative_path'] = fname[len(REC_DIR):].lstrip('/')
+                    else:
+                        d['audio_relative_path'] = fname
                     
                     items.append(d)
                 return items

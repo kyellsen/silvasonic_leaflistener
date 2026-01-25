@@ -519,8 +519,20 @@ async def stream_audio(filename: str, auth=Depends(require_auth)):
     if isinstance(auth, RedirectResponse): raise HTTPException(401)
     
     # Security: Prevent traversing out of audio dir
-    safe_path = os.path.normpath(os.path.join(AUDIO_DIR, filename))
-    if not safe_path.startswith(AUDIO_DIR) or not os.path.exists(safe_path):
+    # filename here is actually a path potentially (e.g. "2023-10-27/bird.flac")
+    
+    # Sanitize:
+    clean_path = os.path.normpath(filename).lstrip('/')
+    
+    # Construct full path
+    full_path = os.path.join(AUDIO_DIR, clean_path)
+    safe_path = os.path.abspath(full_path)
+    
+    # Verify it is still inside AUDIO_DIR
+    if not safe_path.startswith(os.path.abspath(AUDIO_DIR)):
+        raise HTTPException(403, "Access denied")
+        
+    if not os.path.exists(safe_path):
         raise HTTPException(404, "File not found")
         
     return FileResponse(safe_path, media_type="audio/flac")
