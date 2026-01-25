@@ -5,7 +5,7 @@ from sqlalchemy import create_engine, Column, String, Integer, Float, DateTime, 
 from sqlalchemy.orm import declarative_base, sessionmaker
 from sqlalchemy.schema import CreateSchema
 from sqlalchemy.exc import ProgrammingError, OperationalError
-from datetime import datetime
+from datetime import datetime, timezone
 
 # Setup logging
 logger = logging.getLogger("Database")
@@ -17,7 +17,7 @@ class BirdNETDetection(Base):
     __table_args__ = {'schema': 'birdnet'}
 
     id = Column(Integer, primary_key=True, autoincrement=True)
-    timestamp = Column(DateTime, default=datetime.utcnow)
+    timestamp = Column(DateTime, default=lambda: datetime.now(timezone.utc))
     
     # File Info
     filename = Column(String(255), nullable=False)
@@ -118,7 +118,7 @@ class DatabaseHandler:
                 latitude=detection_dict.get('lat'),
                 longitude=detection_dict.get('lon'),
                 clip_path=detection_dict.get('clip_path'),
-                timestamp=datetime.utcnow()
+                timestamp=datetime.now(timezone.utc)
             )
             session.add(det)
             session.commit()

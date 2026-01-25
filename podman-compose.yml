@@ -165,4 +165,4 @@ services:
       # Shared Logs (View)
       - /mnt/data/services/silvasonic/logs:/var/log/silvasonic:ro
       # System Stats (Optional, depends on host)
-      - /etc/localtime:/etc/localtime:ro
+      # - /etc/localtime:/etc/localtime:ro

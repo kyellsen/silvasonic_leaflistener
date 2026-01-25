@@ -1,6 +1,7 @@
 import os
 import psutil
 import datetime
+from datetime import timezone
 import shutil
 from pathlib import Path
 import json
@@ -107,10 +108,13 @@ class BirdNetService:
                     d = dict(row._mapping) # SQLAlchemy Row to dict
                     ts = d.get('timestamp')
                     if ts:
-                        d['date'] = ts.strftime("%Y-%m-%d")
-                        d['time'] = ts.strftime("%H:%M:%S")
+                        if ts.tzinfo is None:
+                            ts = ts.replace(tzinfo=timezone.utc)
+                        d['iso_timestamp'] = ts.isoformat()
+                        # Legacy support or direct use? We'll use ISO in frontend.
+                        d['time'] = ts.isoformat() # Temporary overload for template compatibility check
                     else:
-                        d['date'] = "-"
+                        d['iso_timestamp'] = ""
                         d['time'] = "-"
                     detections.append(d)
                     
@@ -150,6 +154,162 @@ class BirdNetService:
                 }
         except:
             return {"today": 0, "total": 0, "top_species": []}
+
+    @staticmethod
+    def get_all_species():
+        """Returns all species with their counts and last seen date."""
+        try:
+            with db.get_connection() as conn:
+                query = text("""
+                    SELECT 
+                        common_name as com_name, 
+                        scientific_name as sci_name,
+                        COUNT(*) as count,
+                        MAX(timestamp) as last_seen,
+                        MIN(timestamp) as first_seen,
+                        AVG(confidence) as avg_conf
+                    FROM birdnet.detections
+                    GROUP BY common_name, scientific_name
+                    ORDER BY count DESC
+                """)
+                result = conn.execute(query)
+                species = []
+                for row in result:
+                    d = dict(row._mapping)
+                    # Format dates
+                    if d.get('last_seen'):
+                        d['last_seen_str'] = d['last_seen'].strftime("%Y-%m-%d %H:%M")
+                    else:
+                        d['last_seen_str'] = "-"
+                    
+                    if d.get('first_seen'):
+                        d['first_seen_str'] = d['first_seen'].strftime("%Y-%m-%d")
+                    else:
+                        d['first_seen_str'] = "-"
+                        
+                    d['avg_conf'] = round(d.get('avg_conf', 0), 2)
+                    species.append(d)
+                return species
+        except Exception as e:
+            print(f"Error get_all_species: {e}")
+            return []
+
+    @staticmethod
+    def get_species_stats(species_name: str):
+        """Get detailed stats for a specific species."""
+        try:
+            with db.get_connection() as conn:
+                # Basic Info & Aggregate stats
+                query_info = text("""
+                    SELECT 
+                        common_name as com_name, 
+                        scientific_name as sci_name,
+                        COUNT(*) as total_count,
+                        MAX(timestamp) as last_seen,
+                        MIN(timestamp) as first_seen,
+                        AVG(confidence) as avg_conf,
+                        MAX(confidence) as max_conf
+                    FROM birdnet.detections
+                    WHERE common_name = :name
+                    GROUP BY common_name, scientific_name
+                """)
+                res_info = conn.execute(query_info, {"name": species_name}).fetchone()
+                if not res_info:
+                    return None
+                    
+                info = dict(res_info._mapping)
+                
+                # Recent Detections
+                query_recent = text("""
+                    SELECT * FROM birdnet.detections 
+                    WHERE common_name = :name 
+                    ORDER BY timestamp DESC 
+                    LIMIT 20
+                """)
+                res_recent = conn.execute(query_recent, {"name": species_name})
+                recent = []
+                for row in res_recent:
+                    d = dict(row._mapping)
+                    d['time_str'] = d['timestamp'].strftime("%Y-%m-%d %H:%M:%S") if d.get('timestamp') else "-"
+                    recent.append(d)
+                
+                # Hourly Distribution
+                query_hourly = text("""
+                    SELECT EXTRACT(HOUR FROM timestamp) as hour, COUNT(*) as count
+                    FROM birdnet.detections
+                    WHERE common_name = :name
+                    GROUP BY hour
+                    ORDER BY hour
+                """)
+                res_hourly = conn.execute(query_hourly, {"name": species_name})
+                hourly_dist = {int(r.hour): r.count for r in res_hourly}
+                # Fill missing hours
+                hourly_data = [hourly_dist.get(h, 0) for h in range(24)]
+                
+                return {
+                    "info": info,
+                    "recent": recent,
+                    "hourly": hourly_data
+                }
+        except Exception as e:
+            print(f"Error get_species_stats: {e}")
+            return None
+
+    @staticmethod
+    def get_time_stats():
+        """Get global temporal stats for charts."""
+        try:
+            with db.get_connection() as conn:
+                # Detections per day (last 30 days)
+                query_daily = text("""
+                    SELECT DATE(timestamp) as date, COUNT(*) as count
+                    FROM birdnet.detections
+                    WHERE timestamp >= NOW() - INTERVAL '30 DAYS'
+                    GROUP BY date
+                    ORDER BY date ASC
+                """)
+                res_daily = conn.execute(query_daily)
+                
+                daily_labels = []
+                daily_values = []
+                for row in res_daily:
+                    daily_labels.append(row.date.strftime("%Y-%m-%d"))
+                    daily_values.append(row.count)
+
+                # Detections by Hour of Day (All time)
+                query_hourly = text("""
+                    SELECT EXTRACT(HOUR FROM timestamp) as hour, COUNT(*) as count
+                    FROM birdnet.detections
+                    GROUP BY hour
+                    ORDER BY hour ASC
+                """)
+                res_hourly = conn.execute(query_hourly)
+                dist_map = {int(r.hour): r.count for r in res_hourly}
+                hourly_values = [dist_map.get(h, 0) for h in range(24)]
+                
+                # Top Species Composition
+                query_top = text("""
+                    SELECT common_name, COUNT(*) as count 
+                    FROM birdnet.detections 
+                    GROUP BY common_name 
+                    ORDER BY count DESC 
+                    LIMIT 10
+                """)
+                res_top = conn.execute(query_top)
+                top_labels = []
+                top_values = []
+                for row in res_top:
+                    top_labels.append(row.common_name)
+                    top_values.append(row.count)
+                
+                return {
+                    "daily": {"labels": daily_labels, "values": daily_values},
+                    "hourly": {"values": hourly_values},
+                    "top": {"labels": top_labels, "values": top_values}
+                }
+        except Exception as e:
+            print(f"Error get_time_stats: {e}")
+            return {"daily": {"labels": [], "values": []}, "hourly": {"values": []}, "top": {"labels": [], "values": []}}
 
 class CarrierService:
     @staticmethod

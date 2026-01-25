@@ -1,0 +1,142 @@
+{% extends "base.html" %} {% block content %}
+<div class="max-w-7xl mx-auto space-y-6">
+  <!-- Header -->
+  <div class="flex items-center justify-between">
+    <div>
+      <h1
+        class="text-3xl font-bold bg-gradient-to-r from-amber-400 to-orange-500 bg-clip-text text-transparent"
+      >
+        BirdDiscover
+      </h1>
+      <p class="text-gray-400 mt-1">
+        Species Reference & Collection ({{ species_list|length }} found)
+      </p>
+    </div>
+
+    <div class="relative">
+      <input
+        type="text"
+        id="species-search"
+        placeholder="Search species..."
+        class="bg-gray-800 border-none rounded-full px-4 py-2 w-64 text-sm focus:ring-2 focus:ring-amber-500 text-gray-200"
+        onkeyup="filterSpecies()"
+      />
+      <svg
+        class="w-4 h-4 text-gray-400 absolute right-3 top-3"
+        fill="none"
+        stroke="currentColor"
+        viewBox="0 0 24 24"
+      >
+        <path
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          stroke-width="2"
+          d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+        ></path>
+      </svg>
+    </div>
+  </div>
+
+  <!-- Stats Overview -->
+  <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+    <!-- Card 1 -->
+    <div class="bg-gray-800 rounded-xl p-4 border border-gray-700 shadow-lg">
+      <div class="flex items-center gap-3 mb-2">
+        <div class="p-2 bg-amber-500/20 rounded-lg text-amber-500">
+          <svg
+            class="w-5 h-5"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              d="M19.428 15.428a2 2 0 00-1.022-.547l-2.384-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z"
+            ></path>
+          </svg>
+        </div>
+        <h3 class="font-bold text-gray-300">Total Species</h3>
+      </div>
+      <p class="text-3xl font-mono text-white">{{ species_list|length }}</p>
+    </div>
+  </div>
+
+  <!-- Species Grid -->
+  <div
+    class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6"
+    id="species-grid"
+  >
+    {% for sp in species_list %}
+    <a
+      href="/birdnet/discover/{{ sp.com_name }}"
+      class="species-card group block bg-gray-800 rounded-xl border border-gray-700 hover:border-amber-500/50 hover:bg-gray-750 transition overflow-hidden shadow-lg relative"
+    >
+      <div
+        class="h-32 bg-gray-900 flex items-center justify-center relative overflow-hidden"
+      >
+        <!-- Using a gradient or pattern since we don't have images yet -->
+        <div
+          class="absolute inset-0 bg-gradient-to-br from-gray-800 to-gray-900 group-hover:scale-110 transition duration-700"
+        ></div>
+        <div class="z-10 text-4xl opacity-50 font-serif">
+          {{ sp.com_name[0] }}
+        </div>
+
+        <div
+          class="absolute bottom-2 right-2 px-2 py-1 bg-black/50 backdrop-blur rounded text-xs text-amber-300 border border-amber-500/20"
+        >
+          {{ sp.avg_conf|round(2) }}% Conf
+        </div>
+      </div>
+      <div class="p-4">
+        <h3
+          class="font-bold text-lg text-gray-100 group-hover:text-amber-400 transition truncate"
+        >
+          {{ sp.com_name }}
+        </h3>
+        <p class="text-xs text-gray-500 italic mb-3">{{ sp.sci_name }}</p>
+
+        <div class="space-y-2 text-xs text-gray-400">
+          <div class="flex justify-between">
+            <span>Encounters:</span>
+            <span class="text-white font-mono">{{ sp.count }}</span>
+          </div>
+          <div class="flex justify-between">
+            <span>Last Seen:</span>
+            <span class="text-gray-300">{{ sp.last_seen_str }}</span>
+          </div>
+        </div>
+      </div>
+    </a>
+    {% endfor %}
+  </div>
+</div>
+
+{% endblock %} {% block scripts %}
+<script>
+  function filterSpecies() {
+    const input = document.getElementById("species-search");
+    const filter = input.value.toUpperCase();
+    const grid = document.getElementById("species-grid");
+    const cards = grid.getElementsByClassName("species-card");
+
+    for (let i = 0; i < cards.length; i++) {
+      const title = cards[i].querySelector("h3");
+      const sci = cards[i].querySelector("p");
+      const txtValue = title.textContent || title.innerText;
+      const sciValue = sci.textContent || sci.innerText;
+
+      if (
+        txtValue.toUpperCase().indexOf(filter) > -1 ||
+        sciValue.toUpperCase().indexOf(filter) > -1
+      ) {
+        cards[i].style.display = "";
+      } else {
+        cards[i].style.display = "none";
+      }
+    }
+  }
+</script>
+{% endblock %}

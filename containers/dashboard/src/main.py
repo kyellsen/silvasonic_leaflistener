@@ -117,6 +117,48 @@ async def birdnet_page(request: Request, auth=Depends(require_auth)):
         "stats": stats
     })
 
+@app.get("/birdnet/discover", response_class=HTMLResponse)
+async def birdnet_discover_page(request: Request, auth=Depends(require_auth)):
+    if isinstance(auth, RedirectResponse): return auth
+    
+    species_list = BirdNetService.get_all_species()
+    
+    return render(request, "birdnet_discover.html", {
+        "request": request,
+        "page": "birdnet_discover",
+        "species_list": species_list
+    })
+
+@app.get("/birdnet/discover/{species_name}", response_class=HTMLResponse)
+async def birdnet_species_page(request: Request, species_name: str, auth=Depends(require_auth)):
+    if isinstance(auth, RedirectResponse): return auth
+    
+    data = BirdNetService.get_species_stats(species_name)
+    if not data:
+        raise HTTPException(status_code=404, detail="Species not found")
+        
+    return render(request, "birdnet_species.html", {
+        "request": request,
+        "page": "birdnet_discover",
+        "species": data["info"],
+        "recent": data["recent"],
+        "hourly": data["hourly"]
+    })
+
+@app.get("/stats", response_class=HTMLResponse)
+async def stats_page(request: Request, auth=Depends(require_auth)):
+    if isinstance(auth, RedirectResponse): return auth
+    
+    stats_data = BirdNetService.get_time_stats()
+    
+    return render(request, "stats.html", {
+        "request": request,
+        "page": "stats",
+        "daily": stats_data["daily"],
+        "hourly": stats_data["hourly"],
+        "top": stats_data["top"]
+    })
+
 @app.get("/recorder", response_class=HTMLResponse)
 async def recorder_page(request: Request, auth=Depends(require_auth)):
     if isinstance(auth, RedirectResponse): return auth
