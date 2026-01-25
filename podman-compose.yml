@@ -78,14 +78,14 @@ services:
     env_file: .env
     volumes:
       # Shared Config (Read/Write)
-      - ./config:/config:z
+      - /mnt/data/services/silvasonic/config:/config:z
       # Shared Status & Errors (Read/Write for archiving errors and writing own status)
-      - ./status:/mnt/data/services/silvasonic/status:z
-      - ./errors:/mnt/data/services/silvasonic/errors:z
+      - /mnt/data/services/silvasonic/status:/mnt/data/services/silvasonic/status:z
+      - /mnt/data/services/silvasonic/errors:/mnt/data/services/silvasonic/errors:z
       # Notification Queue
-      - ./notifications:/data/notifications:z
+      - /mnt/data/services/silvasonic/notifications:/data/notifications:z
       # Shared Logs
-      - ./logs:/var/log/silvasonic:z
+      - /mnt/data/services/silvasonic/logs:/var/log/silvasonic:z
 
   # ---------------------------------------------------------------------------
   # BirdNET - Species Identification

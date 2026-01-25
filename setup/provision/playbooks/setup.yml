@@ -84,12 +84,19 @@
         - /mnt/data/dev
         - /mnt/data/containers
         - /mnt/data/services/silvasonic/recordings
+        - /mnt/data/backups
         - /mnt/data/services/silvasonic/logs
         - /mnt/data/services/silvasonic/config
-        - /mnt/data/services/silvasonic/brain
-        - /mnt/data/services/silvasonic/birdnet
-        - /mnt/data/services/silvasonic/carrier
-        - /mnt/data/backups
+        - /mnt/data/services/silvasonic/status
+        - /mnt/data/services/silvasonic/errors
+        - /mnt/data/services/silvasonic/notifications
+        - /mnt/data/services/silvasonic/recorder/recordings
+        - /mnt/data/services/silvasonic/uploader/config
+        - /mnt/data/services/silvasonic/birdnet/results
+        - /mnt/data/services/silvasonic/sound_analyser/db
+        - /mnt/data/services/silvasonic/sound_analyser/artifacts
+        - /mnt/data/services/silvasonic/sound_analyser/metadata
+        - /mnt/data/services/silvasonic/db/data
 
     # Storage-Link Fix for Podman (User-Level)
     - name: Link Podman Storage to SSD (for User)
