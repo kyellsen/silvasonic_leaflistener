@@ -26,11 +26,11 @@ cd ~/dev/silvasonic
 
 # 1. Config anlegen
 mkdir -p setup/config
-cp setup/config.example.env setup/config/config.env
+cp setup/config/bootstrap.example.env setup/config/bootstrap.env
 
 # 2. Config bearbeiten (WICHTIG!)
 # Setze USER_PASSWORD_HASH und SSH_PUB_KEY
-nano setup/config/config.env
+nano setup/config/bootstrap.env
 ```
 
 > 💡 **Passwort-Hash generieren:**
@@ -106,6 +106,36 @@ cd ~/dev/silvasonic
 ```
 
 _Das Script installiert Podman, richtet Verzeichnisse ein und klont den Code nach `/mnt/data/dev/silvasonic`._
+
+---
+
+---
+
+### Schritt 6: Carrier (Nextcloud) Konfiguration
+
+Damit deine Aufnahmen automatisch hochgeladen werden, musst du die `.env` Datei konfigurieren.
+
+1. **Konfigurations-Datei erstellen**:
+
+   ```bash
+   # Auf dem Pi:
+   cd /mnt/data/dev/silvasonic
+   cp config.example.env .env
+   ```
+
+2. **Zugangsdaten eintragen**:
+   Öffne die Datei und trage deine Nextcloud-URL, Benutzer und App-Passwort ein:
+
+   ```bash
+   nano .env
+   ```
+
+   ```ini
+   CARRIER_NEXTCLOUD_URL=https://deine-nextcloud.de/remote.php/webdav/
+   CARRIER_NEXTCLOUD_USER=dein_nutzer
+   CARRIER_NEXTCLOUD_PASSWORD=dein_app_passwort
+   CARRIER_TARGET_DIR=silvasonic
+   ```
 
 ---
 

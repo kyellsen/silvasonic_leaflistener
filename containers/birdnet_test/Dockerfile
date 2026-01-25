@@ -4,6 +4,7 @@ FROM python:3.11-slim
 RUN apt-get update && apt-get install -y \
     libsndfile1 \
     ffmpeg \
+    sox \
     git \
     && rm -rf /var/lib/apt/lists/*
 
@@ -24,7 +25,7 @@ RUN uv pip compile pyproject.toml -o requirements.txt && \
     uv pip install --system --no-cache -r requirements.txt
 
 # Copy source code
-COPY containers/birdnet/src /app/src
+
 
 # Copy test runner
 COPY containers/birdnet_test/test_runner.py /app/test_runner.py

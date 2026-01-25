@@ -19,6 +19,6 @@ echo "Running BirdNET Test Container..."
 mkdir -p "$SCRIPT_DIR/results" # Ensure local results dir exists
 
 docker run --rm \
-    -v "$SCRIPT_DIR/test_data":/app/test_data \
-    -v "$SCRIPT_DIR/results":/data/db/results \
+    -v "$SCRIPT_DIR/test_data":/app/test_data:z \
+    -v "$SCRIPT_DIR/results":/data/db/results:z \
     birdnet_test

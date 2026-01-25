@@ -244,9 +244,16 @@ log "Copying flash_ssd.sh..."
 sudo cp "$SCRIPT_DIR/flash_ssd.sh" "$TARGET_SETUP/"
 sudo chmod +x "$TARGET_SETUP/flash_ssd.sh"
 
-# Copy ONLY config.env (flattened, next to flash_ssd.sh)
-log "Copying config.env..."
-sudo cp "$CONFIG_FILE" "$TARGET_SETUP/config.env"
+# Copy bootstrap config (flattened)
+log "Copying bootstrap.env..."
+sudo cp "$CONFIG_FILE" "$TARGET_SETUP/bootstrap.env"
+
+# Copy Runtime Template
+RUNTIME_TEMPLATE="$SCRIPT_DIR/../../config.example.env"
+if [[ -f "$RUNTIME_TEMPLATE" ]]; then
+    log "Copying runtime config.example.env..."
+    sudo cp "$RUNTIME_TEMPLATE" "$TARGET_SETUP/config.example.env"
+fi
 
 # Copy Image File (With space check)
 if [[ -f "$IMAGE_FILE" ]]; then
@@ -285,7 +292,7 @@ ls -la "$TARGET_SETUP" 2>/dev/null || sudo ls -la "$TARGET_SETUP"
 log ""
 log "This stick contains ONLY:"
 log "  • flash_ssd.sh  (NVMe installer)"
-log "  • config.env    (credentials + settings)"
+log "  • bootstrap.env (credentials + settings)"
 log "  • OS image      (to flash onto NVMe)"
 log ""
 log "The Silvasonic repo will be cloned from GitHub"

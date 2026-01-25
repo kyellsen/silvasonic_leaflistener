@@ -3,15 +3,14 @@ set -e
 
 # ===================== SETUP & CONFIG =====================
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-CONFIG_FILE="$SCRIPT_DIR/config/config.env"
+BOOTSTRAP_FILE="$SCRIPT_DIR/config/bootstrap.env"
 
-if [[ ! -f "$CONFIG_FILE" ]]; then
+if [[ ! -f "$BOOTSTRAP_FILE" ]]; then
     # Fallback to local if flattened
-    if [[ -f "$SCRIPT_DIR/config.env" ]]; then
-        CONFIG_FILE="$SCRIPT_DIR/config.env"
+    if [[ -f "$SCRIPT_DIR/bootstrap.env" ]]; then
+        BOOTSTRAP_FILE="$SCRIPT_DIR/bootstrap.env"
     else
-        echo "ERROR: Config file not found ($CONFIG_FILE). Please copy setup/config.example.env to setup/config/config.env and edit it."
-        exit 1
+        echo "WARNING: Bootstrap config not found ($BOOTSTRAP_FILE). Installation might rely on defaults."
     fi
 fi
 

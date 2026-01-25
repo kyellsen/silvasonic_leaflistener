@@ -6,22 +6,21 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 LOG_PREFIX="[FLASH]"
 log() { echo "${LOG_PREFIX} $*"; }
 
-# 1. Try standard repo location (setup/config/config.env relative to setup/bootstrap/flash_ssd.sh)
-CONFIG_FILE="$SCRIPT_DIR/../config/config.env"
+# 1. Try standard repo location
+CONFIG_FILE="$SCRIPT_DIR/../config/bootstrap.env"
 
 if [[ ! -f "$CONFIG_FILE" ]]; then
-    # 2. Try location on stick (setup/config/config.env relative to ~/setup_files/flash_ssd.sh)
-    # On stick, we have setup_files/setup/config...
-    if [[ -f "$SCRIPT_DIR/setup/config/config.env" ]]; then
-        CONFIG_FILE="$SCRIPT_DIR/setup/config/config.env"
-    elif [[ -f "$SCRIPT_DIR/config.env" ]]; then
-        # Flattened structure: config.env next to flash_ssd.sh
-        CONFIG_FILE="$SCRIPT_DIR/config.env"
+    # 2. Try location on stick (setup/config/bootstrap.env relative to ~/setup_files/flash_ssd.sh)
+    if [[ -f "$SCRIPT_DIR/setup/config/bootstrap.env" ]]; then
+        CONFIG_FILE="$SCRIPT_DIR/setup/config/bootstrap.env"
+    elif [[ -f "$SCRIPT_DIR/bootstrap.env" ]]; then
+        # Flattened structure: bootstrap.env next to flash_ssd.sh
+        CONFIG_FILE="$SCRIPT_DIR/bootstrap.env"
     else
         log "ERROR: Config file not found."
-        log "Checked: $SCRIPT_DIR/../config/config.env"
-        log "Checked: $SCRIPT_DIR/setup/config/config.env"
-        log "Checked: $SCRIPT_DIR/config.env"
+        log "Checked: $SCRIPT_DIR/../config/bootstrap.env"
+        log "Checked: $SCRIPT_DIR/setup/config/bootstrap.env"
+        log "Checked: $SCRIPT_DIR/bootstrap.env"
         exit 1
     fi
 fi

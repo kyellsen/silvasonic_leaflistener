@@ -81,6 +81,7 @@ class BirdNETAnalyzer:
                 "-i", str(path.absolute()), 
                 "-ar", "48000", 
                 "-ac", "1", 
+                "-c:a", "pcm_s16le",
                 str(temp_resampled_path)
             ]
             # Suppress ffmpeg output unless error
@@ -142,7 +143,15 @@ class BirdNETAnalyzer:
             logger.info(f"Running BirdNET with Filter={config.LOCATION_FILTER_ENABLED}, Sensitivity={config.SENSITIVITY}, Lat={use_lat}, Lon={use_lon}, Week={week}")
             
             # bn_analyze IS the analyze function itself (not a module)!
-            raw_detections = bn_analyze(
+            # v2.4+ returns None and writes to file. We must configure output path.
+            # We use a temp directory for results
+            results_dir = temp_dir / "results"
+            results_dir.mkdir(parents=True, exist_ok=True)
+            
+            logger.info(f"Running BirdNET with Filter={config.LOCATION_FILTER_ENABLED}, Sensitivity={config.SENSITIVITY}, Lat={use_lat}, Lon={use_lon}, Week={week}")
+            
+            # Run analysis - Output to CSV
+            bn_analyze(
                 audio_input=str(temp_resampled_path),
                 min_conf=0.01,  # Use very low threshold to see all raw predictions
                 lat=use_lat if use_lat is not None else -1,
@@ -151,11 +160,51 @@ class BirdNETAnalyzer:
                 overlap=config.SIG_OVERLAP,
                 sensitivity=config.SENSITIVITY,
                 threads=config.THREADS,
-                output=None
+                sf_thresh=0.0001, # Force analysis of faint signals
+                output=str(results_dir),
+                rtype='csv'
             )
             
-            if raw_detections is None:
-                raw_detections = {}
+            # Locate the result file
+            # BirdNET names it: <filename_stem>.BirdNET.results.csv
+            expected_csv_name = f"{temp_resampled_path.stem}.BirdNET.results.csv"
+            result_csv_path = results_dir / expected_csv_name
+            
+            raw_detections = {}
+            if result_csv_path.exists():
+                logger.info(f"Found result file: {result_csv_path}")
+                try:
+                    import csv
+                    with open(result_csv_path, 'r') as f:
+                        reader = csv.DictReader(f)
+                        # Header expected: Start (s),End (s),Scientific name,Common name,Confidence,File
+                        for row in reader:
+                            start_s = float(row.get('Start (s)', 0))
+                            end_s = float(row.get('End (s)', 0))
+                            sci = row.get('Scientific name', '')
+                            com = row.get('Common name', '')
+                            conf = float(row.get('Confidence', 0))
+                            
+                            timestamp_key = f"{start_s}-{end_s}"
+                            
+                            entry = {
+                                'scientific_name': sci,
+                                'common_name': com,
+                                'confidence': conf,
+                                'label': f"{com} ({sci})"
+                            }
+                            
+                            if timestamp_key not in raw_detections:
+                                raw_detections[timestamp_key] = []
+                            raw_detections[timestamp_key].append(entry)
+                except Exception as e:
+                    logger.error(f"Failed to parse result CSV: {e}")
+            else:
+                 logger.warning(f"Result file not found: {result_csv_path}. Listing output dir:")
+                 try:
+                     logger.warning([p.name for p in results_dir.iterdir()])
+                 except:
+                     pass
 
             # DEBUG: Deep inspection of raw_detections
             logger.info(f"[DEBUG] raw_detections type: {type(raw_detections)}")
@@ -169,8 +218,8 @@ class BirdNETAnalyzer:
             # Debug Logging: Show what we found
             logger.info(f"Raw analysis returned {len(raw_detections)} segments with > 0.01 confidence.")
             
-            # Export raw results to CSV for inspection
-            self._export_to_csv(raw_detections, path.name)
+            # Export raw results to CSV for inspection (WE ALREADY HAVE IT, just copy/rename or skip)
+            # self._export_to_csv(raw_detections, path.name) # Disabled as we read from CSV anyway
 
             for timestamp, preds in raw_detections.items():
                 # entry is usually list of dicts or list of tuples

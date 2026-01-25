@@ -38,31 +38,43 @@ services:
     restart: always
 
   # ---------------------------------------------------------------------------
-  # The Carrier - Data Sync (Syncthing)
+  # The Carrier - Data Sync (Rclone)
   # ---------------------------------------------------------------------------
-  # Syncs recordings to the central server.
-  # Mounts recordings as Read-Only to prevent accidental deletion.
+  # Syncs recordings to cloud storage (Google Drive / Nextcloud) using Rclone.
+  # Runs a sync loop every hour.
+  # ---------------------------------------------------------------------------
+  # The Carrier - Data Sync (Rclone)
+  # ---------------------------------------------------------------------------
+  # Syncs recordings to cloud storage (e.g. Nextcloud) using Rclone.
+  # Automatically configures itself using environment variables.
+  # ---------------------------------------------------------------------------
+  # The Carrier - Data Sync (Rclone + Python)
+  # ---------------------------------------------------------------------------
+  # Syncs recordings to cloud storage (e.g. Nextcloud) using Rclone.
+  # Wraps Rclone in Python for robust logging and logic.
   carrier:
-    image: docker.io/syncthing/syncthing:latest
+    build:
+      context: containers/carrier
+    image: silvasonic-carrier:latest
     container_name: silvasonic_carrier
     hostname: silvasonic-carrier
     restart: always
 
     environment:
       - PUID=1000
+
       - PGID=1000
+      # Secrets must be provided via .env file or environment
+      - CARRIER_NEXTCLOUD_URL=${CARRIER_NEXTCLOUD_URL}
+      - CARRIER_NEXTCLOUD_USER=${CARRIER_NEXTCLOUD_USER}
+      - CARRIER_NEXTCLOUD_PASSWORD=${CARRIER_NEXTCLOUD_PASSWORD}
+      - CARRIER_TARGET_DIR=${CARRIER_TARGET_DIR:-silvasonic}
 
     volumes:
       # Read-only access to raw recordings
-      - /mnt/data/services/silvasonic/recordings:/var/syncthing/data/raw:ro
-      # Persistent config
-      - /mnt/data/services/silvasonic/carrier/config:/var/syncthing/config:z
-
-    ports:
-      - "8384:8384" # Web GUI (Localhost only recommended for prod, but handy for setup)
-      - "22000:22000/tcp" # Sync TCP
-      - "22000:22000/udp" # Sync UDP
-      - "21027:21027/udp" # Discovery
+      - /mnt/data/services/silvasonic/recordings:/data/recording:ro
+      # Config persistence (optional, but good for caching checks)
+      - /mnt/data/services/silvasonic/carrier/config:/config/rclone:z
 
   # ---------------------------------------------------------------------------
   # The Ornithologist - BirdNET Analysis
