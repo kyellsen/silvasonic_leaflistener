@@ -657,6 +657,25 @@
           second: "2-digit",
         });
       }
+      function formatLocalDate(isoString) {
+        if (!isoString) return "-";
+        const date = new Date(isoString);
+        return date.toLocaleDateString(undefined, {
+          year: "numeric",
+          month: "2-digit",
+          day: "2-digit",
+        });
+      }
+
+      function formatLocalTimeOnly(isoString) {
+        if (!isoString) return "-";
+        const date = new Date(isoString);
+        return date.toLocaleTimeString(undefined, {
+          hour: "2-digit",
+          minute: "2-digit",
+          second: "2-digit",
+        });
+      }
 
       function updateTimeElements() {
         document.querySelectorAll(".local-time").forEach((el) => {
@@ -664,7 +683,23 @@
           if (iso && !el.hasAttribute("data-converted")) {
             el.innerText = formatLocalTime(iso);
             el.setAttribute("data-converted", "true");
-            el.classList.remove("opacity-0"); // Show after conversion
+            el.classList.remove("opacity-0");
+          }
+        });
+        document.querySelectorAll(".local-date").forEach((el) => {
+          const iso = el.getAttribute("data-timestamp");
+          if (iso && !el.hasAttribute("data-converted")) {
+            el.innerText = formatLocalDate(iso);
+            el.setAttribute("data-converted", "true");
+            el.classList.remove("opacity-0");
+          }
+        });
+        document.querySelectorAll(".local-time-only").forEach((el) => {
+          const iso = el.getAttribute("data-timestamp");
+          if (iso && !el.hasAttribute("data-converted")) {
+            el.innerText = formatLocalTimeOnly(iso);
+            el.setAttribute("data-converted", "true");
+            el.classList.remove("opacity-0");
           }
         });
       }

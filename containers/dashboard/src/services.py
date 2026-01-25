@@ -178,14 +178,18 @@ class BirdNetService:
                     d = dict(row._mapping)
                     # Format dates
                     if d.get('last_seen'):
-                        d['last_seen_str'] = d['last_seen'].strftime("%Y-%m-%d %H:%M")
+                        if d['last_seen'].tzinfo is None:
+                             d['last_seen'] = d['last_seen'].replace(tzinfo=timezone.utc)
+                        d['last_seen_iso'] = d['last_seen'].isoformat()
                     else:
-                        d['last_seen_str'] = "-"
+                        d['last_seen_iso'] = ""
                     
                     if d.get('first_seen'):
-                        d['first_seen_str'] = d['first_seen'].strftime("%Y-%m-%d")
+                        if d['first_seen'].tzinfo is None:
+                             d['first_seen'] = d['first_seen'].replace(tzinfo=timezone.utc)
+                        d['first_seen_iso'] = d['first_seen'].isoformat()
                     else:
-                        d['first_seen_str'] = "-"
+                        d['first_seen_iso'] = ""
                         
                     d['avg_conf'] = round(d.get('avg_conf', 0), 2)
                     species.append(d)
@@ -218,7 +222,14 @@ class BirdNetService:
                     return None
                     
                 info = dict(res_info._mapping)
-                
+                # Convert info datetimes to ISO
+                if info.get('first_seen'):
+                    if info['first_seen'].tzinfo is None: info['first_seen'] = info['first_seen'].replace(tzinfo=timezone.utc)
+                    info['first_seen_iso'] = info['first_seen'].isoformat()
+                if info.get('last_seen'):
+                    if info['last_seen'].tzinfo is None: info['last_seen'] = info['last_seen'].replace(tzinfo=timezone.utc)
+                    info['last_seen_iso'] = info['last_seen'].isoformat()
+
                 # Recent Detections
                 query_recent = text("""
                     SELECT * FROM birdnet.detections 
@@ -230,7 +241,11 @@ class BirdNetService:
                 recent = []
                 for row in res_recent:
                     d = dict(row._mapping)
-                    d['time_str'] = d['timestamp'].strftime("%Y-%m-%d %H:%M:%S") if d.get('timestamp') else "-"
+                    if d.get('timestamp'):
+                         if d['timestamp'].tzinfo is None: d['timestamp'] = d['timestamp'].replace(tzinfo=timezone.utc)
+                         d['iso_timestamp'] = d['timestamp'].isoformat()
+                    else:
+                         d['iso_timestamp'] = ""
                     recent.append(d)
                 
                 # Hourly Distribution

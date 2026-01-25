@@ -99,8 +99,11 @@
           First Seen
         </div>
         <div class="text-lg font-bold text-gray-300">
-          {{ species.first_seen.strftime('%Y-%m-%d') if species.first_seen else
-          '-' }}
+          <span
+            class="local-date opacity-0 transition-opacity"
+            data-timestamp="{{ species.first_seen_iso }}"
+            >...</span
+          >
         </div>
       </div>
       <div class="p-6 text-center">
@@ -108,8 +111,11 @@
           Last Seen
         </div>
         <div class="text-lg font-bold text-amber-300">
-          {{ species.last_seen.strftime('%Y-%m-%d') if species.last_seen else
-          '-' }}
+          <span
+            class="local-date opacity-0 transition-opacity"
+            data-timestamp="{{ species.last_seen_iso }}"
+            >...</span
+          >
         </div>
       </div>
     </div>
@@ -153,7 +159,11 @@
         >
           <div>
             <div class="text-amber-500 text-sm font-bold">
-              {{ item.time_str }}
+              <span
+                class="local-time opacity-0 transition-opacity"
+                data-timestamp="{{ item.iso_timestamp }}"
+                >...</span
+              >
             </div>
             <div class="text-xs text-gray-500 mt-1">
               Confidence:

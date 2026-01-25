@@ -7,14 +7,16 @@
     <script src="https://cdn.tailwindcss.com"></script>
   </head>
   <body
-    class="bg-gray-900 text-gray-200 h-screen flex items-center justify-center"
+    class="bg-gray-100 dark:bg-gray-900 text-gray-900 dark:text-gray-200 h-screen flex items-center justify-center"
   >
     <div
-      class="bg-gray-800 p-8 rounded-xl shadow-2xl w-96 border border-gray-700"
+      class="bg-white dark:bg-gray-800 p-8 rounded-xl shadow-2xl w-96 border border-gray-200 dark:border-gray-700"
     >
       <div class="text-center mb-8">
         <div class="text-4xl mb-2">🌲</div>
-        <h1 class="text-2xl font-bold text-green-400">Silvasonic</h1>
+        <h1 class="text-2xl font-bold text-green-600 dark:text-green-400">
+          Silvasonic
+        </h1>
         <p class="text-gray-500 text-sm">Secure Dashboard Access</p>
       </div>
 
@@ -28,23 +30,25 @@
 
       <form action="/auth/login" method="POST" class="space-y-4">
         <div>
-          <label class="block text-xs font-bold text-gray-400 uppercase mb-1"
+          <label
+            class="block text-xs font-bold text-gray-500 dark:text-gray-400 uppercase mb-1"
             >Username</label
           >
           <input
             type="text"
             name="username"
-            class="w-full bg-gray-900 border border-gray-600 rounded p-2 focus:border-green-500 focus:outline-none transition"
+            class="w-full bg-gray-50 dark:bg-gray-900 border border-gray-300 dark:border-gray-600 rounded p-2 focus:border-green-500 focus:outline-none transition text-gray-900 dark:text-white"
           />
         </div>
         <div>
-          <label class="block text-xs font-bold text-gray-400 uppercase mb-1"
+          <label
+            class="block text-xs font-bold text-gray-500 dark:text-gray-400 uppercase mb-1"
             >Password</label
           >
           <input
             type="password"
             name="password"
-            class="w-full bg-gray-900 border border-gray-600 rounded p-2 focus:border-green-500 focus:outline-none transition"
+            class="w-full bg-gray-50 dark:bg-gray-900 border border-gray-300 dark:border-gray-600 rounded p-2 focus:border-green-500 focus:outline-none transition text-gray-900 dark:text-white"
           />
         </div>
         <button

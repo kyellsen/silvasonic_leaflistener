@@ -1,5 +1,7 @@
 {% extends base %} {% block content %}
-<h2 class="text-xl font-bold mb-4 text-purple-400 flex items-center gap-2">
+<h2
+  class="text-xl font-bold mb-4 text-purple-600 dark:text-purple-400 flex items-center gap-2"
+>
   <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
     <path
       stroke-linecap="round"
@@ -13,24 +15,34 @@
 
 <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
   <!-- CPU Usage (Proxy for Brain Load) -->
-  <div class="bg-gray-800 p-6 rounded-xl shadow-lg border border-gray-700">
+  <div
+    class="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700"
+  >
     <div class="text-xs font-bold text-gray-500 uppercase flex justify-between">
       <span>Core Load</span>
       <span>{{ stats.cpu_temp }}</span>
     </div>
-    <div class="text-3xl font-bold text-purple-400 mt-2">{{ stats.cpu }}%</div>
-    <div class="w-full bg-gray-700 h-1 mt-4 rounded-full overflow-hidden">
+    <div class="text-3xl font-bold text-purple-600 dark:text-purple-400 mt-2">
+      {{ stats.cpu }}%
+    </div>
+    <div
+      class="w-full bg-gray-200 dark:bg-gray-700 h-1 mt-4 rounded-full overflow-hidden"
+    >
       <div class="bg-purple-500 h-full" style="width: {{ stats.cpu }}%"></div>
     </div>
   </div>
 
   <!-- RAM Usage -->
-  <div class="bg-gray-800 p-6 rounded-xl shadow-lg border border-gray-700">
+  <div
+    class="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700"
+  >
     <div class="text-xs font-bold text-gray-500 uppercase">Memory</div>
-    <div class="text-3xl font-bold text-white mt-2">
+    <div class="text-3xl font-bold text-gray-900 dark:text-white mt-2">
       {{ stats.ram_percent }}%
     </div>
-    <div class="w-full bg-gray-700 h-1 mt-4 rounded-full overflow-hidden">
+    <div
+      class="w-full bg-gray-200 dark:bg-gray-700 h-1 mt-4 rounded-full overflow-hidden"
+    >
       <div
         class="bg-blue-500 h-full"
         style="width: {{ stats.ram_percent }}%"
@@ -39,18 +51,24 @@
   </div>
 
   <!-- Disk Usage -->
-  <div class="bg-gray-800 p-6 rounded-xl shadow-lg border border-gray-700">
+  <div
+    class="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700"
+  >
     <div class="text-xs font-bold text-gray-500 uppercase">Storage</div>
-    <div class="text-3xl font-bold text-white mt-2">
+    <div class="text-3xl font-bold text-gray-900 dark:text-white mt-2">
       {{ stats.disk_percent }}%
     </div>
     <div class="text-xs text-gray-400 mt-1">Artifacts & DB</div>
   </div>
 </div>
 
-<div class="bg-gray-800 p-6 rounded-xl border border-gray-700">
-  <h3 class="font-bold text-gray-300 mb-2">About Analyzer</h3>
-  <p class="text-gray-400 text-sm">
+<div
+  class="bg-white dark:bg-gray-800 p-6 rounded-xl border border-gray-200 dark:border-gray-700"
+>
+  <h3 class="font-bold text-gray-700 dark:text-gray-300 mb-2">
+    About Analyzer
+  </h3>
+  <p class="text-gray-600 dark:text-gray-400 text-sm">
     The Sound Analyzer (Brain) processes incoming audio to generate spectrograms
     and perform initial signal processing before species identification.
   </p>
@@ -58,11 +76,17 @@
 
 {% endblock %} {% block inspector %}
 <div class="space-y-6">
-  <div class="bg-gray-700/50 p-4 rounded-lg">
-    <h3 class="font-bold text-gray-300 mb-2 border-b border-gray-600 pb-2">
+  <div
+    class="bg-white dark:bg-gray-700/50 p-4 rounded-lg border border-gray-200 dark:border-transparent"
+  >
+    <h3
+      class="font-bold text-gray-700 dark:text-gray-300 mb-2 border-b border-gray-200 dark:border-gray-600 pb-2"
+    >
       Analysis Stats
     </h3>
-    <p class="text-xs text-gray-400">Processing real-time audio...</p>
+    <p class="text-xs text-gray-500 dark:text-gray-400">
+      Processing real-time audio...
+    </p>
   </div>
 </div>
 {% endblock %}

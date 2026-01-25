@@ -1,21 +1,30 @@
 {% extends base %} {% block content %}
-<h2 class="text-2xl font-bold mb-6 text-silva-100">BirdNET Detections</h2>
+<h2 class="text-2xl font-bold mb-6 text-silva-800 dark:text-silva-100">
+  BirdNET Detections
+</h2>
 
 <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
   <!-- Stats Panel -->
-  <div class="bg-gray-800 p-6 rounded-xl border border-gray-700">
+  <div
+    class="bg-white dark:bg-gray-800 p-6 rounded-xl border border-gray-200 dark:border-gray-700"
+  >
     <h3 class="font-bold text-gray-400 uppercase text-xs mb-4">
       Top Species (All Time)
     </h3>
     <div class="space-y-3">
       {% for s in stats.top_species %}
       <div class="flex items-center justify-between">
-        <span class="font-bold text-white">{{ s.com_name }}</span>
-        <span class="bg-gray-700 text-green-400 px-2 py-1 rounded text-xs"
+        <span class="font-bold text-gray-900 dark:text-white"
+          >{{ s.com_name }}</span
+        >
+        <span
+          class="bg-gray-100 dark:bg-gray-700 text-green-600 dark:text-green-400 px-2 py-1 rounded text-xs"
           >{{ s.count }}</span
         >
       </div>
-      <div class="w-full bg-gray-700 h-1 rounded-full overflow-hidden">
+      <div
+        class="w-full bg-gray-200 dark:bg-gray-700 h-1 rounded-full overflow-hidden"
+      >
         <div
           class="bg-green-500 h-full"
           style="width: {{ (s.count / stats.total * 100)|round }}%"
@@ -26,9 +35,13 @@
   </div>
 </div>
 
-<div class="bg-gray-800 rounded-xl border border-gray-700 overflow-hidden">
+<div
+  class="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden"
+>
   <table class="w-full text-left text-sm">
-    <thead class="bg-gray-750 text-gray-400 uppercase font-bold text-xs">
+    <thead
+      class="bg-gray-100 dark:bg-gray-750 text-gray-500 dark:text-gray-400 uppercase font-bold text-xs"
+    >
       <tr>
         <th class="p-4">Date</th>
         <th class="p-4">Time</th>
@@ -37,24 +50,40 @@
         <th class="p-4">Play</th>
       </tr>
     </thead>
-    <tbody class="divide-y divide-gray-700">
+    <tbody class="divide-y divide-gray-200 dark:divide-gray-700">
       {% for d in detections %}
-      <tr class="hover:bg-gray-700 transition">
-        <td class="p-4 text-gray-400">{{ d.date }}</td>
-        <td class="p-4 font-mono text-gray-400">{{ d.time }}</td>
-        <td class="p-4 font-bold text-white">{{ d.com_name }}</td>
-        <td class="p-4 text-green-400">{{ (d.confidence * 100)|round }}%</td>
+      <tr class="hover:bg-gray-50 dark:hover:bg-gray-700 transition">
+        <td class="p-4 text-gray-400">
+          <span
+            class="local-date opacity-0 transition-opacity"
+            data-timestamp="{{ d.iso_timestamp }}"
+            >...</span
+          >
+        </td>
+        <td class="p-4 font-mono text-gray-400">
+          <span
+            class="local-time-only opacity-0 transition-opacity"
+            data-timestamp="{{ d.iso_timestamp }}"
+            >...</span
+          >
+        </td>
+        <td class="p-4 font-bold text-gray-900 dark:text-white">
+          {{ d.com_name }}
+        </td>
+        <td class="p-4 text-green-600 dark:text-green-400">
+          {{ (d.confidence * 100)|round }}%
+        </td>
         <td class="p-4">
           <!-- Call global player function -->
           <button
-            class="text-blue-400 hover:text-blue-300"
+            class="text-blue-600 hover:text-blue-500 dark:text-blue-400 dark:hover:text-blue-300"
             onclick="playGlobalAudio('{{ d.filename }}', '{{ d.com_name }}', '{{ d.confidence }}')"
           >
             Play
           </button>
           <!-- Also update inspector details (could be separate HTMX call) -->
           <button
-            class="text-gray-400 hover:text-white ml-2"
+            class="text-gray-400 hover:text-gray-900 dark:hover:text-white ml-2"
             hx-get="/api/details/{{ d.filename }}"
             hx-target="#inspector-content"
           >
@@ -69,30 +98,36 @@
 {% endblock %} {% block inspector %}
 <!-- Default Inspector Content for this page -->
 <div class="p-4 space-y-6">
-  <div class="bg-gray-700/50 p-4 rounded-lg">
-    <h3 class="font-bold text-gray-300 mb-2 border-b border-gray-600 pb-2">
+  <div
+    class="bg-white dark:bg-gray-700/50 p-4 rounded-lg border border-gray-200 dark:border-transparent"
+  >
+    <h3
+      class="font-bold text-gray-700 dark:text-gray-300 mb-2 border-b border-gray-200 dark:border-gray-600 pb-2"
+    >
       Quick Stats
     </h3>
     <div class="flex justify-between text-sm py-1">
       <span class="text-gray-400">Today</span>
-      <span class="font-bold text-white"
+      <span class="font-bold text-gray-900 dark:text-white"
         >{{ stats.today if stats else '0' }}</span
       >
     </div>
     <div class="flex justify-between text-sm py-1">
       <span class="text-gray-400">Total</span>
-      <span class="font-bold text-white"
+      <span class="font-bold text-gray-900 dark:text-white"
         >{{ stats.total if stats else '0' }}</span
       >
     </div>
   </div>
 
-  <div class="bg-gray-800 p-4 rounded-lg border border-gray-700 mt-4">
+  <div
+    class="bg-white dark:bg-gray-800 p-4 rounded-lg border border-gray-200 dark:border-gray-700 mt-4"
+  >
     <h3 class="font-bold text-gray-400 uppercase text-xs mb-4">Filter</h3>
     <input
       type="text"
       placeholder="Search..."
-      class="w-full bg-gray-900 border border-gray-600 rounded p-2 text-sm"
+      class="w-full bg-gray-50 dark:bg-gray-900 border border-gray-300 dark:border-gray-600 rounded p-2 text-sm text-gray-900 dark:text-white"
     />
   </div>
 </div>
