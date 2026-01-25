@@ -902,6 +902,65 @@ class WeatherService:
             return {"labels": [], "temp": [], "humidity": [], "rain": [], "wind": []}
 
     @staticmethod
+    def get_correlations(days=30):
+        """Get correlation stats for charts (Hourly buckets)."""
+        try:
+            with db.get_connection() as conn:
+                # Fetch aggregated stats from weather.bird_stats
+                # We order by timestamp ASC for the time series
+                query = text(f"""
+                    SELECT * 
+                    FROM weather.bird_stats 
+                    WHERE timestamp >= NOW() - INTERVAL '{int(days)} DAYS'
+                    ORDER BY timestamp ASC
+                """)
+                
+                result = conn.execute(query)
+                
+                data = {
+                    "labels": [],
+                    "scatter_temp": [], # {x: temp, y: count}
+                    "scatter_rain": [],
+                    "scatter_wind": [],
+                    "series_temp": [],
+                    "series_count": [],
+                    "series_rain": []
+                }
+                
+                for row in result:
+                    d = dict(row._mapping)
+                    ts = d['timestamp']
+                    if ts.tzinfo is None: ts = ts.replace(tzinfo=timezone.utc)
+                    
+                    label = ts.strftime("%d.%m %H:00")
+                    count = d.get("detection_count", 0)
+                    temp = d.get("temperature_c", 0)
+                    rain = d.get("precipitation_mm", 0)
+                    wind = d.get("wind_speed_ms", 0)
+                    
+                    data["labels"].append(label)
+                    
+                    # Series (for Overlay Chart)
+                    data["series_temp"].append(temp)
+                    data["series_count"].append(count)
+                    data["series_rain"].append(rain)
+                    
+                    # Scatter (Correlation)
+                    # ChartJS scatter format: {x: val, y: val}
+                    data["scatter_temp"].append({"x": temp, "y": count})
+                    if rain > 0: 
+                        data["scatter_rain"].append({"x": rain, "y": count})
+                    
+                return data
+        except Exception as e:
+            print(f"Weather Correlation Error: {e}")
+            return {
+                "labels": [], 
+                "scatter_temp": [], "scatter_rain": [], 
+                "series_temp": [], "series_count": [], "series_rain": []
+            }
+
+    @staticmethod
     def get_status():
         """Get service status from JSON file."""
         try:

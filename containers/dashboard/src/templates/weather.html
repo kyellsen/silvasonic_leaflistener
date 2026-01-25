@@ -131,6 +131,31 @@
   </div>
 </div>
 
+</script>
+  <!-- Correlation Charts -->
+  <div class="glass-panel p-6 rounded-2xl border border-gray-200 dark:border-white/5 mt-6">
+    <h3 class="font-bold text-lg text-gray-900 dark:text-white mb-6">
+      Ecological Correlations (Last 30 Days)
+    </h3>
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <!-- Temperature vs Activity (Scatter) -->
+        <div class="space-y-2">
+            <h4 class="text-sm font-medium text-gray-500 uppercase tracking-wider text-center">Temperature Impact</h4>
+            <div class="relative h-64 w-full">
+                <canvas id="scatterTempChart"></canvas>
+            </div>
+        </div>
+        
+        <!-- Rain vs Activity (Overlay) -->
+        <div class="space-y-2">
+            <h4 class="text-sm font-medium text-gray-500 uppercase tracking-wider text-center">Rain Impact</h4>
+            <div class="relative h-64 w-full">
+                <canvas id="rainOverlayChart"></canvas>
+            </div>
+        </div>
+    </div>
+  </div>
+
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
   // Initialize Chart
@@ -201,7 +226,89 @@
           }
       }
   });
-</script>
+
+  // --- Correlations ---
+  const corrData = {{ correlations | tojson }};
+
+  // 1. Scatter Temp
+  const ctxScatter = document.getElementById('scatterTempChart').getContext('2d');
+  new Chart(ctxScatter, {
+      type: 'scatter',
+      data: {
+          datasets: [{
+              label: 'Detection Count vs Temp',
+              data: corrData.scatter_temp,
+              backgroundColor: 'rgba(239, 68, 68, 0.6)'
+          }]
+      },
+      options: {
+          responsive: true, 
+          maintainAspectRatio: false,
+          plugins: { legend: { display: false } },
+          scales: {
+              x: { 
+                  title: { display: true, text: 'Temperature (°C)', color: '#6b7280' },
+                  grid: { color: 'rgba(255,255,255,0.05)' },
+                  ticks: { color: '#9ca3af' }
+              },
+              y: { 
+                  title: { display: true, text: 'Detections (Count)', color: '#6b7280' },
+                  grid: { color: 'rgba(255,255,255,0.05)' },
+                  ticks: { color: '#9ca3af' }
+              }
+          }
+      }
+  });
+
+  // 2. Rain Overlay
+  const ctxRain = document.getElementById('rainOverlayChart').getContext('2d');
+  new Chart(ctxRain, {
+      type: 'bar',
+      data: {
+          labels: corrData.labels,
+          datasets: [
+              {
+                  label: 'Rain (mm)',
+                  data: corrData.series_rain,
+                  backgroundColor: 'rgba(59, 130, 246, 0.5)',
+                  yAxisID: 'yRain',
+                  order: 2
+              },
+              {
+                  label: 'Detections',
+                  data: corrData.series_count,
+                  borderColor: '#10b981', // Emerald
+                  backgroundColor: 'rgba(16, 185, 129, 0.1)',
+                  type: 'line',
+                  tension: 0.3,
+                  yAxisID: 'yCount',
+                  order: 1
+              }
+          ]
+      },
+      options: {
+          responsive: true, 
+          maintainAspectRatio: false,
+          interaction: { mode: 'index', intersect: false },
+          scales: {
+              x: { 
+                  grid: { display: false },
+                  ticks: { display: false } // Hide dense labels
+              },
+              yRain: {
+                  type: 'linear', position: 'right',
+                  grid: { display: false },
+                  title: { display: true, text: 'Rain (mm)', color: '#3b82f6' }
+              },
+              yCount: {
+                  type: 'linear', position: 'left',
+                  grid: { color: 'rgba(255,255,255,0.05)' },
+                  title: { display: true, text: 'Detections', color: '#10b981' }
+              }
+          }
+      }
+  });
+
 {% endblock %} {% block inspector %}
 <div class="flex flex-col h-full">
   <div class="p-4 border-b border-gray-200 dark:border-white/10">

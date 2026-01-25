@@ -162,7 +162,6 @@ async def settings_save(request: Request, auth=Depends(require_auth)):
     # Process Form
     use_german = form.get("use_german_names") == "on"
     notifier_email = form.get("notifier_email", "").strip()
-    notifier_email = form.get("notifier_email", "").strip()
     apprise_urls_raw = form.get("apprise_urls", "").strip()
     
     # Location
@@ -170,8 +169,14 @@ async def settings_save(request: Request, auth=Depends(require_auth)):
         latitude = float(form.get("latitude", 52.52))
         longitude = float(form.get("longitude", 13.40))
     except (ValueError, TypeError):
-        latitude = 52.52
-        longitude = 13.40
+        latitude = 0.0 # Will likely fail validation if range logic works, or be valid but wrong. 
+        # Actually, let's keep the raw values or try parse?
+        # If float conversion fails, it's invalid input.
+        # But here we are converting safely. Pydantic will validate Range.
+        latitude = 52.52 # Default fallback or 0? 
+        longitude = 13.40 # fallback
+        # Ideally we pass raw to Pydantic but Pydantic expects types if we use Settings(**dict).
+        # Let's trust the float conversion here for basic typing, Pydantic for Logic.
     
     # Parse URLs (comma separated)
     apprise_urls = [u.strip() for u in apprise_urls_raw.split(',') if u.strip()]
@@ -191,19 +196,47 @@ async def settings_save(request: Request, auth=Depends(require_auth)):
     settings["location"]["longitude"] = longitude
     
     # Save
-    if SettingsService.save_settings(settings):
+    msg = None
+    err = None
+    field_errors = {}
+    
+    try:
+        from pydantic import ValidationError
+        SettingsService.save_settings(settings)
         msg = "Settings saved successfully."
-        err = None
-    else:
-        msg = None
-        err = "Failed to save settings."
+    except ValidationError as e:
+        err = "Validation Error. Please check your inputs."
+        # Parse Pydantic errors
+        # e.errors() returns list of dicts: [{'loc': ('healthchecker', 'recipient_email'), 'msg': '...', 'type': '...'}]
+        for error in e.errors():
+            # Get the leaf field name
+            loc = error['loc']
+            if loc:
+                field_name = loc[-1]
+                # Map to form field names if different
+                # We use hierarchical names in Pydantic but flattened in Form?
+                # Actually our form logic above maps Flattened Form -> Hierarchical Dict
+                # So we need to map Hierarchical Error -> Flattened Form Field to show in UI
+                
+                # Mapping:
+                # ('healthchecker', 'recipient_email') -> 'notifier_email'
+                # ('location', 'latitude') -> 'latitude'
+                
+                if field_name == 'recipient_email': field_name = 'notifier_email'
+                # others match (latitude, longitude, use_german_names)
+                
+                field_errors[field_name] = error['msg']
+                
+    except Exception as e:
+        err = f"Failed to save settings: {e}"
         
     return render(request, "settings.html", {
         "request": request,
         "page": "settings",
-        "settings": settings,
+        "settings": settings, # Pass back the attempted settings so user doesn't lose input (partial)
         "success": msg,
         "error": err,
+        "field_errors": field_errors,
         "status_label": "System:",
         "status_value": "Settings",
         "status_color": "text-gray-500"
@@ -366,12 +399,14 @@ async def weather_page(request: Request, auth=Depends(require_auth)):
     current = WeatherService.get_current_weather()
     history = WeatherService.get_history(hours=24)
     status_data = WeatherService.get_status()
+    correlations = WeatherService.get_correlations(days=30)
     
     return render(request, "weather.html", {
         "request": request,
         "page": "weather",
         "current": current,
         "history": history,
+        "correlations": correlations,
         "status_label": "Weather:",
         "status_value": status_data.get("status", "Unknown"),
         "status_color": "text-blue-500 dark:text-blue-400" if status_data.get("status") == "Running" else "text-red-500",

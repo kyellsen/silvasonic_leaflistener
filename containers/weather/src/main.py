@@ -220,6 +220,12 @@ if __name__ == "__main__":
     # Schedule every 20 minutes (DWD updates are around that)
     schedule.every(20).minutes.do(fetch_weather)
     
+    # Analysis aggregation (every hour)
+    from src.analysis import init_analysis_db, run_analysis
+    init_analysis_db()
+    run_analysis() # Run once on startup
+    schedule.every(1).hours.do(run_analysis)
+    
     logger.info("Weather service started.")
     
     # Status Helper
