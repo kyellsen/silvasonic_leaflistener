@@ -22,6 +22,28 @@ LOG_DIR = "/var/log/silvasonic"
 app = FastAPI(title="Silvasonic Dashboard")
 templates = Jinja2Templates(directory=TEMPLATES_DIR)
 
+def render(request: Request, template: str, context: dict):
+    # If HTMX request, we could try to render only the block, 
+    # BUT Jinja2 doesn't support block rendering easily without extensions.
+    # ALTERNATIVE: Use the same template but let the base.html logic handle it?
+    # NO, base.html has the sidebar. We need to swap ONLY the content.
+    # Hack: Pass 'htmx' flag to template, and in base.html derive inheritance?
+    # Better: If HTMX, render a partial template. 
+    # Simplest for now: Use the fact that we target #main-content. 
+    # We still send the full page but the client swaps correct part? NO bandwidth waste.
+    
+    # Correct HTMX Pattern with Jinja2:
+    # Check header. If HX-Request, use a different "base" that is empty?
+    if request.headers.get("HX-Request"):
+        context["base"] = "partials/empty_base.html" 
+    else:
+        context["base"] = "base.html"
+        
+    return templates.TemplateResponse(template, context)
+
+# We need a partial base that outputs only the blocks
+
+
 # Mount Static (if we had specific assets, for now CDN is used)
 # app.mount("/static", StaticFiles(directory="static"), name="static")
 
@@ -64,7 +86,7 @@ async def dashboard(request: Request, auth=Depends(require_auth)):
     detections = BirdNetService.get_recent_detections(limit=5)
     birdnet_stats = BirdNetService.get_stats()
     
-    return templates.TemplateResponse("index.html", {
+    return render(request, "index.html", {
         "request": request, 
         "page": "home",
         "stats": stats,
@@ -75,7 +97,7 @@ async def dashboard(request: Request, auth=Depends(require_auth)):
 @app.get("/logs", response_class=HTMLResponse)
 async def logs_page(request: Request, auth=Depends(require_auth)):
     if isinstance(auth, RedirectResponse): return auth
-    return templates.TemplateResponse("logs.html", {"request": request, "page": "logs"})
+    return render(request, "logs.html", {"request": request, "page": "logs"})
 
 @app.get("/birdnet", response_class=HTMLResponse)
 async def birdnet_page(request: Request, auth=Depends(require_auth)):
@@ -84,7 +106,7 @@ async def birdnet_page(request: Request, auth=Depends(require_auth)):
     detections = BirdNetService.get_recent_detections(limit=50) # More for browser
     stats = BirdNetService.get_stats()
     
-    return templates.TemplateResponse("birdnet.html", {
+    return render(request, "birdnet.html", {
         "request": request, 
         "page": "birdnet",
         "detections": detections,

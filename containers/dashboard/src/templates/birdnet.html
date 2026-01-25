@@ -1,4 +1,4 @@
-{% extends "base.html" %} {% block content %}
+{% extends base %} {% block content %}
 <h2 class="text-2xl font-bold mb-6 text-silva-100">BirdNET Detections</h2>
 
 <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
@@ -26,10 +26,7 @@
   </div>
 </div>
 
-<!-- Browser Table (Similar to Home but maybe paginated/filterable in future) -->
-<!-- For now, showing expanded list -->
 <div class="bg-gray-800 rounded-xl border border-gray-700 overflow-hidden">
-  <!-- Reuse table structure or component -->
   <table class="w-full text-left text-sm">
     <thead class="bg-gray-750 text-gray-400 uppercase font-bold text-xs">
       <tr>
@@ -48,12 +45,20 @@
         <td class="p-4 font-bold text-white">{{ d.com_name }}</td>
         <td class="p-4 text-green-400">{{ (d.confidence * 100)|round }}%</td>
         <td class="p-4">
-          <!-- HTMX swap to inspector -->
+          <!-- Call global player function -->
           <button
             class="text-blue-400 hover:text-blue-300"
-            onclick="playAudio('{{ d.filename }}', '{{ d.com_name }}', '{{ d.confidence }}')"
+            onclick="playGlobalAudio('{{ d.filename }}', '{{ d.com_name }}', '{{ d.confidence }}')"
           >
             Play
+          </button>
+          <!-- Also update inspector details (could be separate HTMX call) -->
+          <button
+            class="text-gray-400 hover:text-white ml-2"
+            hx-get="/api/details/{{ d.filename }}"
+            hx-target="#inspector-content"
+          >
+            Details
           </button>
         </td>
       </tr>
@@ -61,51 +66,34 @@
     </tbody>
   </table>
 </div>
-
-<script>
-  function playAudio(filename, name, conf) {
-    const player = document.getElementById("main-player");
-    const label = document.getElementById("player-label");
-    const source = document.getElementById("audio-source");
-
-    // Update src
-    player.src = `/api/audio/${filename}`;
-    label.innerText = `${name} (${Math.round(conf * 100)}%)`;
-
-    player.parentElement.classList.remove("hidden");
-    player.play();
-  }
-</script>
 {% endblock %} {% block inspector %}
+<!-- Default Inspector Content for this page -->
 <div class="p-4 space-y-6">
-  <div
-    id="player-container"
-    class="bg-gray-700/50 p-4 rounded-lg border border-gray-600 hidden"
-  >
-    <h3 class="font-bold text-green-400 mb-1">Now Playing</h3>
-    <div id="player-label" class="text-white font-bold text-sm mb-4">
-      Select a clip
+  <div class="bg-gray-700/50 p-4 rounded-lg">
+    <h3 class="font-bold text-gray-300 mb-2 border-b border-gray-600 pb-2">
+      Quick Stats
+    </h3>
+    <div class="flex justify-between text-sm py-1">
+      <span class="text-gray-400">Today</span>
+      <span class="font-bold text-white"
+        >{{ birdnet_stats.today if birdnet_stats else '0' }}</span
+      >
     </div>
-    <audio id="main-player" controls class="w-full"></audio>
+    <div class="flex justify-between text-sm py-1">
+      <span class="text-gray-400">Total</span>
+      <span class="font-bold text-white"
+        >{{ birdnet_stats.total if birdnet_stats else '0' }}</span
+      >
+    </div>
   </div>
 
-  <!-- Filters placeholder -->
-  <div class="bg-gray-800 p-4 rounded-lg border border-gray-700">
+  <div class="bg-gray-800 p-4 rounded-lg border border-gray-700 mt-4">
     <h3 class="font-bold text-gray-400 uppercase text-xs mb-4">Filter</h3>
     <input
       type="text"
-      placeholder="Search species..."
-      class="w-full bg-gray-900 border border-gray-600 rounded p-2 text-sm text-white focus:border-green-500 outline-none mb-2"
+      placeholder="Search..."
+      class="w-full bg-gray-900 border border-gray-600 rounded p-2 text-sm"
     />
-    <input
-      type="date"
-      class="w-full bg-gray-900 border border-gray-600 rounded p-2 text-sm text-white focus:border-green-500 outline-none"
-    />
-    <button
-      class="w-full bg-green-700 hover:bg-green-600 text-white font-bold py-2 rounded mt-4 text-sm"
-    >
-      Apply
-    </button>
   </div>
 </div>
 {% endblock %}

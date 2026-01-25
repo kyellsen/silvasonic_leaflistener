@@ -26,7 +26,7 @@ NEXTCLOUD_USER = os.getenv("UPLOADER_NEXTCLOUD_USER")
 NEXTCLOUD_PASSWORD = os.getenv("UPLOADER_NEXTCLOUD_PASSWORD")
 TARGET_DIR = os.getenv("UPLOADER_TARGET_DIR", "silvasonic")
 SOURCE_DIR = "/data/recording"
-SYNC_INTERVAL = 3600  # 1 Hour
+SYNC_INTERVAL = int(os.getenv("UPLOADER_SYNC_INTERVAL", 60))
 
 def signal_handler(sig, frame):
     logger.info("Graceful shutdown received. Exiting...")

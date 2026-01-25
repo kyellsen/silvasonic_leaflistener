@@ -18,7 +18,7 @@
                 500: "#4caf50",
                 800: "#2e7d32",
                 900: "#1b5e20",
-                950: "#052e16", // Dark Forest
+                950: "#052e16",
               },
             },
           },
@@ -28,7 +28,6 @@
     <!-- HTMX -->
     <script src="https://unpkg.com/htmx.org@1.9.10"></script>
     <style>
-      /* Custom Scrollbar for IDE feel */
       ::-webkit-scrollbar {
         width: 8px;
         height: 8px;
@@ -47,6 +46,7 @@
   </head>
   <body
     class="bg-gray-900 text-gray-200 font-sans h-screen flex flex-col overflow-hidden"
+    hx-boost="true"
   >
     <!-- Header -->
     <header
@@ -58,23 +58,32 @@
       </div>
       <div class="flex items-center gap-4 text-sm">
         <span class="text-gray-400">User: Admin</span>
-        <a href="/auth/logout" class="hover:text-red-400 transition">Logout</a>
+        <a
+          href="/auth/logout"
+          hx-boost="false"
+          class="hover:text-red-400 transition"
+          >Logout</a
+        >
       </div>
     </header>
 
-    <!-- Main Workspace (Holy Grail) -->
+    <!-- Main Workspace -->
     <div class="flex-1 flex overflow-hidden">
       <!-- Left Sidebar (Nav) -->
+      <!-- hx-boost makes links issue AJAX requests to swap body, but we want to target #main-content specifically to keep sidebar/player persistent -->
+      <!-- Actually with hx-boost on body, standard links will do a full body swap. For SPA feel we want specific targeting -->
       <nav
         class="w-16 bg-gray-800 border-r border-gray-700 flex flex-col items-center py-4 gap-4 shrink-0"
+        hx-target="#main-content"
+        hx-swap="innerHTML"
       >
         <a
           href="/dashboard"
-          class="p-3 rounded-lg hover:bg-gray-700 {{ 'bg-silva-900 text-white' if page == 'home' else 'text-gray-400' }}"
+          class="p-3 rounded-lg hover:bg-gray-700 transition"
           title="Dashboard"
         >
           <svg
-            class="w-6 h-6"
+            class="w-6 h-6 text-gray-400"
             fill="none"
             stroke="currentColor"
             viewBox="0 0 24 24"
@@ -89,11 +98,11 @@
         </a>
         <a
           href="/birdnet"
-          class="p-3 rounded-lg hover:bg-gray-700 {{ 'bg-silva-900 text-white' if page == 'birdnet' else 'text-gray-400' }}"
+          class="p-3 rounded-lg hover:bg-gray-700 transition"
           title="BirdNET"
         >
           <svg
-            class="w-6 h-6"
+            class="w-6 h-6 text-gray-400"
             fill="none"
             stroke="currentColor"
             viewBox="0 0 24 24"
@@ -108,11 +117,11 @@
         </a>
         <a
           href="/logs"
-          class="p-3 rounded-lg hover:bg-gray-700 {{ 'bg-silva-900 text-white' if page == 'logs' else 'text-gray-400' }}"
+          class="p-3 rounded-lg hover:bg-gray-700 transition"
           title="Logs"
         >
           <svg
-            class="w-6 h-6"
+            class="w-6 h-6 text-gray-400"
             fill="none"
             stroke="currentColor"
             viewBox="0 0 24 24"
@@ -127,12 +136,15 @@
         </a>
       </nav>
 
-      <!-- Center Content -->
-      <main class="flex-1 overflow-y-auto p-6 bg-gray-900 relative">
+      <!-- Center Content (Dynamic Swap Zone) -->
+      <main
+        id="main-content"
+        class="flex-1 overflow-y-auto p-6 bg-gray-900 relative"
+      >
         {% block content %}{% endblock %}
       </main>
 
-      <!-- Right Sidebar (Inspector) -->
+      <!-- Right Sidebar (Inspector - Persistent) -->
       <aside
         class="w-80 bg-gray-800 border-l border-gray-700 flex flex-col shrink-0"
       >
@@ -141,7 +153,26 @@
         >
           Inspector
         </div>
-        <div class="p-4 flex-1 overflow-y-auto">
+
+        <!-- Global Player Container (Persistent) -->
+        <div
+          id="global-player-container"
+          class="bg-gray-850 p-4 border-b border-gray-700 hidden"
+        >
+          <h3 class="font-bold text-green-400 mb-1 text-xs uppercase">
+            Now Playing
+          </h3>
+          <div
+            id="global-player-label"
+            class="text-white font-bold text-sm mb-2 truncate"
+          >
+            ...
+          </div>
+          <audio id="global-audio" controls class="w-full h-8"></audio>
+        </div>
+
+        <!-- Dynamic Inspector Content -->
+        <div id="inspector-content" class="p-4 flex-1 overflow-y-auto">
           {% block inspector %}
           <div class="text-gray-500 text-sm text-center mt-10">
             Select an item to view details
@@ -157,9 +188,22 @@
     >
       <div class="flex gap-4">
         <span>Server: <span class="text-green-400">Online</span></span>
-        <span>Uptime: 2d 4h</span>
       </div>
       <div>Silvasonic v0.1.0</div>
     </footer>
+
+    <script>
+      // Global Player Logic
+      function playGlobalAudio(filename, name, conf) {
+        const container = document.getElementById("global-player-container");
+        const player = document.getElementById("global-audio");
+        const label = document.getElementById("global-player-label");
+
+        container.classList.remove("hidden");
+        player.src = `/api/audio/${filename}`;
+        label.innerText = `${name}`;
+        player.play();
+      }
+    </script>
   </body>
 </html>

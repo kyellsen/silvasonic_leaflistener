@@ -1,0 +1,9 @@
+{# This base is used for HTMX updates, it only yields the blocks without
+surrounding layout #} {% block content %}{% endblock %} {# We also want to
+update the inspector if provided #}
+<!-- oob swap for inspector if present -->
+{% if self.inspector() %}
+<div id="inspector-content" hx-swap-oob="innerHTML">
+  {% block inspector %}{% endblock %}
+</div>
+{% endif %}

@@ -1,4 +1,4 @@
-{% extends "base.html" %} {% block content %}
+{% extends base %} {% block content %}
 <div class="flex flex-col h-full">
   <!-- Tab Bar -->
   <div class="flex gap-2 mb-4">
@@ -23,29 +23,32 @@
 </div>
 
 <script>
-  let eventSource = null;
+  // Ensure we don't leak event sources when navigating (basic cleanup)
+  if (window.currentEventSource) {
+    window.currentEventSource.close();
+  }
 
   function connectLog(service) {
     const output = document.getElementById("log-output");
     const term = document.getElementById("terminal");
 
-    if (eventSource) {
-      eventSource.close();
+    if (window.currentEventSource) {
+      window.currentEventSource.close();
     }
 
     output.innerHTML = ""; // Clear
     output.innerHTML += `<span class="text-green-500">Connecting to ${service} logs...</span>\n`;
 
-    eventSource = new EventSource(`/api/logs/${service}`);
+    window.currentEventSource = new EventSource(`/api/logs/${service}`);
 
-    eventSource.onmessage = function (event) {
+    window.currentEventSource.onmessage = function (event) {
       output.innerText += event.data + "\n";
       term.scrollTop = term.scrollHeight; // Auto-scroll
     };
 
-    eventSource.onerror = function () {
+    window.currentEventSource.onerror = function () {
       output.innerHTML += `<span class="text-red-500">Connection lost. Reconnecting...</span>\n`;
-      eventSource.close();
+      window.currentEventSource.close();
     };
   }
 </script>
@@ -56,5 +59,10 @@
   <p>
     Logs are read from the shared volume at <code>/var/log/silvasonic/</code>.
   </p>
+  <div
+    class="mt-4 p-2 bg-yellow-900/20 text-yellow-200 text-xs rounded border border-yellow-800"
+  >
+    Navigating away will stop the log stream.
+  </div>
 </div>
 {% endblock %}
