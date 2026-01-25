@@ -1,4 +1,5 @@
 wetterdienst==0.74.0
+marshmallow<3.20.0
 sqlalchemy
 psycopg2-binary
 schedule

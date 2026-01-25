@@ -84,6 +84,8 @@ services:
       - /mnt/data/services/silvasonic/errors:/mnt/data/services/silvasonic/errors:z
       # Notification Queue
       - /mnt/data/services/silvasonic/notifications:/data/notifications:z
+      # Shared Logs
+      - /mnt/data/services/silvasonic/logs:/var/log/silvasonic:z
 
   # ---------------------------------------------------------------------------
   # BirdNET - Species Identification
