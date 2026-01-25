@@ -405,4 +405,42 @@
       });
   });
 </script>
+</script>
+{% endblock %}
+{% block inspector %}
+<div class="space-y-6">
+  <!-- Top Species (Today) -->
+  <div class="glass-panel p-6 rounded-2xl">
+    <h3 class="font-bold text-gray-900 dark:text-white mb-4 border-b border-gray-200 dark:border-white/10 pb-2 text-sm uppercase tracking-wide">
+      Today's Leaders
+    </h3>
+    <div class="space-y-3">
+        {% for label in distributions.today.labels[:5] %}
+        <div class="flex items-center justify-between group cursor-pointer" onclick="window.location.href='/birdnet/discover/{{ label|urlencode }}'">
+             <span class="text-sm font-medium text-gray-600 dark:text-gray-300 group-hover:text-silva-500 transition">{{ label }}</span>
+             <span class="text-xs font-mono text-gray-400">{{ distributions.today.values[loop.index0] }}</span>
+        </div>
+        {% endfor %}
+        {% if not distributions.today.labels %}
+        <div class="text-xs text-gray-400 italic">No detections today.</div>
+        {% endif %}
+    </div>
+  </div>
+
+  <!-- Rare Sightings Summary -->
+  <div class="glass-panel p-6 rounded-2xl">
+    <h3 class="font-bold text-gray-900 dark:text-white mb-4 border-b border-gray-200 dark:border-white/10 pb-2 text-sm uppercase tracking-wide">
+      Rarity Watch
+    </h3>
+    <div class="flex items-center gap-4">
+        <div class="w-12 h-12 rounded-full bg-purple-500/10 flex items-center justify-center text-2xl">
+            ✨
+        </div>
+        <div>
+            <div class="text-2xl font-bold text-gray-900 dark:text-white">{{ rarest|length }}</div>
+            <div class="text-xs text-gray-500 uppercase">Rare Species <br> (All Time)</div>
+        </div>
+    </div>
+  </div>
+</div>
 {% endblock %}
