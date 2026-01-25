@@ -39,7 +39,17 @@ MIN_AGE = os.getenv("UPLOADER_MIN_AGE", "1m")
 os.makedirs(os.path.dirname(STATUS_FILE), exist_ok=True)
 os.makedirs(ERROR_DIR, exist_ok=True)
 
-def write_status(status: str, last_upload: float = 0, queue_size: int = -1):
+def count_files(directory):
+    """Count total files in directory recursively."""
+    count = 0
+    try:
+        for root, _, filenames in os.walk(directory):
+            count += len(filenames)
+    except Exception:
+        pass
+    return count
+
+def write_status(status: str, last_upload: float = 0, queue_size: int = -1, disk_usage: float = 0):
     """Write current status to JSON file for dashboard."""
     try:
         data = {
@@ -50,7 +60,8 @@ def write_status(status: str, last_upload: float = 0, queue_size: int = -1):
             "memory_usage_mb": psutil.Process(os.getpid()).memory_info().rss / 1024 / 1024,
             "meta": {
                 "last_upload": last_upload,
-                "queue_size": queue_size
+                "queue_size": queue_size,
+                "disk_usage_percent": disk_usage
             },
             "last_upload": last_upload, # Keeping top-level for backwards compat if needed temporarily, but dashboard should update
             "pid": os.getpid()
@@ -115,21 +126,27 @@ def main():
     while True:
         try:
             if os.path.exists(SOURCE_DIR):
-                queue_size = -1 
+                # Gather Metrics
+                queue_size = count_files(SOURCE_DIR)
+                disk_usage = wrapper.get_disk_usage_percent(SOURCE_DIR)
                 
                 # --- PHASE 1: UPLOAD ---
-                write_status("Syncing", last_upload_success, queue_size)
+                write_status("Syncing", last_upload_success, queue_size, disk_usage)
                 
                 # Use COPY instead of SYNC to prevent deleting files on remote if they are missing locally
                 # Use MIN_AGE to avoid uploading files currently being written by the recorder
                 success = wrapper.copy(SOURCE_DIR, f"remote:{TARGET_DIR}", min_age=MIN_AGE)
                 
+                # Update metrics after upload attempt
+                queue_size = count_files(SOURCE_DIR)
+                disk_usage = wrapper.get_disk_usage_percent(SOURCE_DIR)
+                
                 if success:
                     last_upload_success = time.time()
-                    write_status("Idle", last_upload_success, queue_size)
+                    write_status("Idle", last_upload_success, queue_size, disk_usage)
 
                     # --- PHASE 2: CLEANUP ---
-                    write_status("Cleaning", last_upload_success, queue_size)
+                    write_status("Cleaning", last_upload_success, queue_size, disk_usage)
                     
                     # Fetch remote file list for safe deletion verification
                     # We do this AFTER upload to ensure the list is fresh
@@ -137,9 +154,14 @@ def main():
                     
                     # Run cleanup
                     janitor.check_and_clean(remote_files, wrapper.get_disk_usage_percent)
+
+                    # Final update after cleanup
+                    queue_size = count_files(SOURCE_DIR)
+                    disk_usage = wrapper.get_disk_usage_percent(SOURCE_DIR)
+                    write_status("Idle", last_upload_success, queue_size, disk_usage)
                 else:
                     logger.error("Upload failed. Validation and cleanup skipped.")
-                    write_status("Error: Upload Failed", last_upload_success, queue_size)
+                    write_status("Error: Upload Failed", last_upload_success, queue_size, disk_usage)
                     # We don't write an explicit error file for transient network errors,
                     # we rely on the watchdog spotting the stale 'last_upload' timestamp.
 
@@ -148,7 +170,7 @@ def main():
                 write_status("Error: No Source", last_upload_success)
             
             logger.info(f"Sleeping for {SYNC_INTERVAL} seconds...")
-            write_status("Sleeping", last_upload_success)
+            write_status("Sleeping", last_upload_success, count_files(SOURCE_DIR), wrapper.get_disk_usage_percent(SOURCE_DIR) if os.path.exists(SOURCE_DIR) else 0)
             
             # Smart Sleep (interruptible)
             for _ in range(SYNC_INTERVAL):

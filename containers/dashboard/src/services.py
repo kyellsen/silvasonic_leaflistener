@@ -1,6 +1,7 @@
 import os
 import psutil
 import datetime
+import time
 from datetime import timezone
 import shutil
 from pathlib import Path
@@ -473,16 +474,34 @@ class CarrierService:
                         last_upload = data.get("last_upload", 0)
 
                     if last_upload > 0:
-                        data["last_upload_str"] = datetime.datetime.fromtimestamp(last_upload).strftime("%H:%M:%S")
+                        dt = datetime.datetime.fromtimestamp(last_upload)
+                        data["last_upload_str"] = dt.strftime("%H:%M:%S")
+                        
+                        # Add relative time
+                        ago = time.time() - last_upload
+                        if ago < 60:
+                            data["last_upload_ago"] = "Just now"
+                        elif ago < 3600:
+                            data["last_upload_ago"] = f"{int(ago/60)}m ago"
+                        else:
+                            data["last_upload_ago"] = f"{int(ago/3600)}h ago"
                     else:
                         data["last_upload_str"] = "Never"
+                        data["last_upload_ago"] = ""
                         
                     data["queue_size"] = data.get("meta", {}).get("queue_size", -1)
+                    data["disk_usage"] = round(data.get("meta", {}).get("disk_usage_percent", 0), 1)
                     return data
         except Exception as e:
             print(f"Carrier status error: {e}")
             
-        return {"status": "Unknown", "last_upload_str": "Unknown", "queue_size": -1}
+        return {
+            "status": "Unknown", 
+            "last_upload_str": "Unknown", 
+            "last_upload_ago": "",
+            "queue_size": -1,
+            "disk_usage": 0
+        }
 
 class RecorderService:
     @staticmethod
@@ -503,6 +522,43 @@ class RecorderService:
             print(f"Recorder status error: {e}")
             
         return {"status": "Unknown", "profile": "Unknown", "device": "Unknown"}
+
+    @staticmethod
+    def get_recent_recordings(limit=20):
+        try:
+             with db.get_connection() as conn:
+                query = text("""
+                    SELECT 
+                        filename,
+                        duration_sec,
+                        file_size_bytes,
+                        created_at
+                    FROM brain.audio_files
+                    ORDER BY created_at DESC
+                    LIMIT :limit
+                """)
+                result = conn.execute(query, {"limit": limit})
+                items = []
+                for row in result:
+                    d = dict(row._mapping)
+                    if d.get('created_at'):
+                        if d['created_at'].tzinfo is None:
+                             d['created_at'] = d['created_at'].replace(tzinfo=timezone.utc)
+                        d['created_at_iso'] = d['created_at'].isoformat()
+                        d['formatted_time'] = d['created_at'].strftime("%Y-%m-%d %H:%M:%S")
+                    else:
+                        d['created_at_iso'] = ""
+                        d['formatted_time'] = "Unknown"
+                        
+                    # Calculate Size in MB
+                    d['size_mb'] = round((d.get('file_size_bytes') or 0) / (1024*1024), 2)
+                    d['duration_str'] = f"{d.get('duration_sec', 0):.1f}s"
+                    
+                    items.append(d)
+                return items
+        except Exception as e:
+            print(f"Recorder History Error: {e}")
+            return []
 
 class NotifierService:
     @staticmethod

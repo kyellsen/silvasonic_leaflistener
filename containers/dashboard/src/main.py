@@ -191,12 +191,14 @@ async def recorder_page(request: Request, auth=Depends(require_auth)):
     stats = RecorderService.get_status()
     # Also get system stats for context if needed
     sys_stats = SystemService.get_stats()
+    recordings = RecorderService.get_recent_recordings()
     
     return render(request, "recorder.html", {
         "request": request, 
         "page": "recorder",
         "stats": stats,
         "sys_stats": sys_stats,
+        "recordings": recordings,
         "status_label": "Recorder:",
         "status_value": stats.get("status", "Unknown"),
         "status_color": "text-green-600 dark:text-green-400" if stats.get("status") == "Running" else "text-red-600 dark:text-red-400"

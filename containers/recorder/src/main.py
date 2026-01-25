@@ -16,6 +16,7 @@ import signal
 import logging
 import numpy as np
 import json
+from dataclasses import asdict
 
 # --- Logging ---
 # Ensure log directory exists (handled by volume, but safe to check)
@@ -43,8 +44,7 @@ STATUS_FILE = "/mnt/data/services/silvasonic/status/recorder.json"
 # Ensure dir exists (it should via volume, but good practice)
 os.makedirs(os.path.dirname(STATUS_FILE), exist_ok=True)
 
-def write_status(status: str, profile_name: str = "Unknown", 
-                 device_desc: str = "Unknown", last_file: str = None):
+def write_status(status: str, profile=None, device=None, last_file: str = None):
     """Write current status to JSON file for dashboard."""
     try:
         data = {
@@ -54,8 +54,8 @@ def write_status(status: str, profile_name: str = "Unknown",
             "cpu_percent": psutil.cpu_percent(),
             "memory_usage_mb": psutil.Process(os.getpid()).memory_info().rss / 1024 / 1024,
             "meta": {
-                "profile": profile_name,
-                "device": device_desc,
+                "profile": asdict(profile) if profile and hasattr(profile, 'slug') else {"name": profile_name} if profile_name != "Unknown" else {},
+                "device": asdict(device) if device and hasattr(device, 'hw_address') else {"description": device_desc} if device_desc != "Unknown" else {},
                 "last_file": last_file
             },
             "pid": os.getpid()
@@ -268,7 +268,7 @@ def main():
     
     if profile.is_mock:
         logger.warning("🔧 MOCK MODE ENABLED - No real audio capture")
-        write_status("Mocking", profile.name, "Virtual Mock Device")
+        write_status("Mocking", profile, device)
         while running:
 
             filename = get_filename(output_dir, profile.recording.output_format)
@@ -278,7 +278,7 @@ def main():
                 profile.audio.sample_rate,
                 profile.audio.channels
             ):
-                write_status("Mocking", profile.name, "Virtual Mock Device", os.path.basename(filename))
+                write_status("Mocking", profile, device, os.path.basename(filename))
                 consecutive_errors = 0
             else:
                  consecutive_errors += 1
@@ -287,11 +287,11 @@ def main():
     else:
         if not device:
             logger.critical("No audio device found. Exiting.")
-            write_status("Error: No Device", profile.name, "None")
+            write_status("Error: No Device", profile, None)
             sys.exit(1)
         
         logger.info("🎙️ Recording started. Press Ctrl+C to stop.")
-        write_status("Recording", profile.name, device.description)
+        write_status("Recording", profile, device)
         
         while running:
 
@@ -307,7 +307,7 @@ def main():
             )
             
             if success:
-                write_status("Recording", profile.name, device.description, os.path.basename(filename))
+                write_status("Recording", profile, device, os.path.basename(filename))
                 consecutive_errors = 0
             else:
                 consecutive_errors += 1
@@ -315,14 +315,14 @@ def main():
                 
                 if consecutive_errors >= MAX_CONSECUTIVE_ERRORS:
                     logger.critical("Too many consecutive errors. Exiting to trigger restart.")
-                    write_status("Fatal Error", profile.name, device.description)
+                    write_status("Fatal Error", profile, device)
                     sys.exit(1)
                     
                 if running:
-                    write_status("Retrying", profile.name, device.description)
+                    write_status("Retrying", profile, device)
                     time.sleep(5)
     
-    write_status("Stopped", profile.name, device.description if device else "Unknown")
+    write_status("Stopped", profile, device)
     logger.info("👋 Shutdown complete.")
 
 
