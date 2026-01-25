@@ -14,8 +14,8 @@
     <div class="space-y-3">
       {% for s in stats.top_species %}
       <div class="flex items-center justify-between">
-        <span class="font-bold text-gray-900 dark:text-white"
-          >{{ s.com_name }}</span
+        <span class="font-bold text-gray-900 dark:text-white text-base block"
+          >{{ s.display_name }}</span
         >
         <span
           class="bg-gray-100 dark:bg-gray-700 text-green-600 dark:text-green-400 px-2 py-1 rounded text-xs"
@@ -75,7 +75,7 @@
         </td>
         <td class="p-4">
           <div class="font-bold text-gray-900 dark:text-gray-100">
-            {{ d.com_name }}
+            {{ d.display_name }}
           </div>
           <div class="text-xs text-gray-500 italic">{{ d.sci_name }}</div>
         </td>
@@ -99,7 +99,7 @@
           <!-- Play Button -->
           <button
             class="p-2 rounded-full hover:bg-silva-100 dark:hover:bg-gray-600 text-silva-600 dark:text-silva-400 transition"
-            onclick="event.stopPropagation(); playGlobalAudio('{{ d.filename }}', '{{ d.com_name }}', '{{ d.confidence }}')"
+            onclick="event.stopPropagation(); playGlobalAudio('{{ d.filename }}', '{{ d.display_name }}', '{{ d.confidence }}')"
             title="Play Audio"
           >
             <svg

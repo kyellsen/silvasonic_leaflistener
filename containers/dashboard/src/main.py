@@ -142,7 +142,11 @@ async def settings_save(request: Request, auth=Depends(require_auth)):
     # Process Form
     use_german = form.get("use_german_names") == "on"
     notifier_email = form.get("notifier_email", "").strip()
+    apprise_urls_raw = form.get("apprise_urls", "").strip()
     
+    # Parse URLs (comma separated)
+    apprise_urls = [u.strip() for u in apprise_urls_raw.split(',') if u.strip()]
+
     # Load existing to preserve other fields if any
     settings = SettingsService.get_settings()
     
@@ -151,6 +155,7 @@ async def settings_save(request: Request, auth=Depends(require_auth)):
     
     if "healthchecker" not in settings: settings["healthchecker"] = {}
     settings["healthchecker"]["recipient_email"] = notifier_email
+    settings["healthchecker"]["apprise_urls"] = apprise_urls
     
     # Save
     if SettingsService.save_settings(settings):
@@ -204,6 +209,13 @@ async def birdnet_discover_page(request: Request, auth=Depends(require_auth)):
     if isinstance(auth, RedirectResponse): return auth
     
     species_list = await BirdNetService.get_all_species()
+    
+    # Enrich with Watchlist Status
+    sci_names = [s['sci_name'] for s in species_list]
+    watchlist_status = BirdNetService.get_watchlist_status(sci_names)
+    
+    for s in species_list:
+        s['is_watched'] = watchlist_status.get(s['sci_name'], False)
     
     return render(request, "birdnet_discover.html", {
         "request": request,
@@ -311,6 +323,22 @@ async def analyzer_page(request: Request, auth=Depends(require_auth)):
     })
 
 # --- Inspector API Partials ---
+from pydantic import BaseModel
+
+class WatchlistToggleRequest(BaseModel):
+    scientific_name: str
+    common_name: str
+    enabled: bool
+
+@app.post("/api/watchlist/toggle")
+async def api_toggle_watchlist(req: WatchlistToggleRequest, auth=Depends(require_auth)):
+    if isinstance(auth, RedirectResponse): raise HTTPException(401)
+    
+    success = BirdNetService.toggle_watchlist(req.scientific_name, req.common_name, req.enabled)
+    if success:
+        return {"status": "ok", "enabled": req.enabled}
+    else:
+        raise HTTPException(500, "Failed to toggle watchlist")
 
 @app.get("/api/details/birdnet/{filename}", response_class=HTMLResponse)
 async def get_birdnet_details(request: Request, filename: str, auth=Depends(require_auth)):

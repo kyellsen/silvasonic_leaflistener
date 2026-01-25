@@ -7,7 +7,7 @@
     <div class="aspect-video w-full overflow-hidden">
       <img
         src="{{ d.image_url }}"
-        alt="{{ d.com_name }}"
+        alt="{{ d.display_name }}"
         class="w-full h-full object-cover transform group-hover:scale-110 transition-transform duration-700"
       />
       <div
@@ -24,7 +24,7 @@
 
     <div class="absolute bottom-0 left-0 right-0 p-4">
       <h3 class="text-lg font-bold text-white leading-tight drop-shadow-md">
-        {{ d.com_name }}
+        {{ d.display_name }}
       </h3>
       <p class="text-xs text-gray-300 italic">{{ d.sci_name }}</p>
     </div>
@@ -61,7 +61,7 @@
         />
 
         <button
-          onclick="playGlobalAudio('{{ d.filename }}', '{{ d.com_name }}', '{{ d.confidence }}')"
+          onclick="playGlobalAudio('{{ d.filename }}', '{{ d.display_name }}', '{{ d.confidence }}')"
           class="absolute inset-0 flex items-center justify-center bg-black/30 hover:bg-black/10 transition group"
         >
           <div

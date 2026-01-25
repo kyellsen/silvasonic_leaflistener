@@ -52,6 +52,19 @@ class SpeciesInfo(Base):
     wikipedia_url = Column(String(1024), nullable=True)
     last_updated = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
+class Watchlist(Base):
+    __tablename__ = 'watchlist'
+    __table_args__ = {'schema': 'birdnet'}
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    scientific_name = Column(String(255), unique=True, nullable=False)
+    common_name = Column(String(255), nullable=True) # Cache for display if needed
+    enabled = Column(Integer, default=1) # 1=Enabled, 0=Disabled. Using Integer for SQLite/PG compat just in case, though Boolean is fine in PG.
+    last_notification = Column(DateTime, nullable=True)
+    
+    # Notification Settings (Future Proofing)
+    min_confidence = Column(Float, default=0.0) # 0.0 = Use global default
+
 class DatabaseHandler:
     def __init__(self):
         self.user = os.getenv("POSTGRES_USER", "silvasonic")
@@ -140,6 +153,50 @@ class DatabaseHandler:
         except Exception as e:
             logger.error(f"Failed to save detection: {e}")
             session.rollback()
+        finally:
+            session.close()
+
+    def get_watchlist(self):
+        """Returns all enabled watchlist items."""
+        if not self.Session: return []
+        session = self.Session()
+        try:
+            return session.query(Watchlist).filter_by(enabled=1).all()
+        finally:
+            session.close()
+
+    def update_watchlist(self, scientific_name, common_name, enabled=True):
+        """Add/Update a species in the watchlist."""
+        if not self.Session: return False
+        session = self.Session()
+        try:
+            item = session.query(Watchlist).filter_by(scientific_name=scientific_name).first()
+            if item:
+                item.enabled = 1 if enabled else 0
+                item.common_name = common_name # Update common name just in case
+            else:
+                item = Watchlist(
+                    scientific_name=scientific_name,
+                    common_name=common_name,
+                    enabled=1 if enabled else 0
+                )
+                session.add(item)
+            session.commit()
+            return True
+        except Exception as e:
+            logger.error(f"Failed to update watchlist: {e}")
+            session.rollback()
+            return False
+        finally:
+            session.close()
+
+    def is_watched(self, scientific_name):
+        """Check if a species is in the watchlist and enabled."""
+        if not self.Session: return False
+        session = self.Session()
+        try:
+            # We trust scientific name to be stable
+            return session.query(Watchlist).filter_by(scientific_name=scientific_name, enabled=1).count() > 0
         finally:
             session.close()
 

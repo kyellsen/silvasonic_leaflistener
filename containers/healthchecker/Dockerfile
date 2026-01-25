@@ -5,6 +5,9 @@ WORKDIR /app
 # No external dependencies currently needed beyond standard lib for this simple version
 # If future needs arise, COPY requirements.txt . && pip install -r requirements.txt
 
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
 COPY src/ /app/src/
 
 # Create silvasonic group/user for rootless consistency if needed, 

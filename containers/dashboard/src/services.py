@@ -434,7 +434,62 @@ class BirdNetService:
         except Exception as e:
             print(f"Enrichment error for {sci_name}: {e}")
             
+                if wiki_data:
+                    info['german_name'] = wiki_data.get('german_name')
+                    info['image_url'] = wiki_data.get('image_url')
+                    info['description'] = wiki_data.get('description')
+                    info['wikipedia_url'] = wiki_data.get('wikipedia_url')
+                    
+        except Exception as e:
+            print(f"Enrichment error for {sci_name}: {e}")
+            
         return info
+
+    @staticmethod
+    def toggle_watchlist(sci_name: str, com_name: str, enabled: bool) -> bool:
+        """Toggle watchlist status for a species."""
+        try:
+            with db.get_connection() as conn:
+                # Upsert logic (Postgres specific) or check/update
+                # Check if exists
+                check = text("SELECT id FROM birdnet.watchlist WHERE scientific_name = :sci")
+                res = conn.execute(check, {"sci": sci_name}).fetchone()
+                
+                if res:
+                    # Update
+                    upd = text("UPDATE birdnet.watchlist SET enabled = :en, common_name = :com WHERE scientific_name = :sci")
+                    conn.execute(upd, {"en": 1 if enabled else 0, "com": com_name, "sci": sci_name})
+                else:
+                    # Insert
+                    ins = text("INSERT INTO birdnet.watchlist (scientific_name, common_name, enabled) VALUES (:sci, :com, :en)")
+                    conn.execute(ins, {"sci": sci_name, "com": com_name, "en": 1 if enabled else 0})
+                    
+                conn.commit()
+                return True
+        except Exception as e:
+            print(f"Watchlist toggle error: {e}")
+            return False
+
+    @staticmethod
+    def get_watchlist_status(sci_names: list) -> dict:
+        """Get watchlist status for a list of scientific names. Returns dict {sci_name: bool}"""
+        try:
+            if not sci_names: return {}
+            with db.get_connection() as conn:
+                query = text("SELECT scientific_name FROM birdnet.watchlist WHERE enabled = 1 AND scientific_name IN :names")
+                # SQL Alchemy IN clause handling with text? 
+                # Better: SELECT scientific_name FROM birdnet.watchlist WHERE enabled = 1
+                # And filter in python if list is small, or bind parameters dynamically.
+                # For safety/simplicity let's fetch all enabled (watchlist is usually small).
+                
+                query_all = text("SELECT scientific_name FROM birdnet.watchlist WHERE enabled = 1")
+                res = conn.execute(query_all)
+                watched = {row.scientific_name for row in res}
+                
+                return {name: (name in watched) for name in sci_names}
+        except Exception as e:
+            print(f"Watchlist status error: {e}")
+            return {}
 
     @staticmethod
     def get_advanced_stats():

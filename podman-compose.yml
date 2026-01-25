@@ -127,6 +127,9 @@ services:
       - DB_PATH=/data/db/brain.sqlite
       - RECURSIVE_WATCH=true
 
+    ports:
+      - "8000:8000"
+
     # Low priority to prevent starvation of recorder/birdnet
     cpu_shares: 128
     # deploy:
@@ -190,11 +193,11 @@ services:
       - /mnt/data/services/silvasonic/recorder/recordings:/data/recording:ro
       # Shared Config (Read/Write)
       - /mnt/data/services/silvasonic/config:/config:z
-      # Shared Logs (View)
-      - /mnt/data/services/silvasonic/logs:/var/log/silvasonic:ro
+      # Shared Logs (Read/Write)
+      - /mnt/data/services/silvasonic/logs:/var/log/silvasonic:z
       # Shared Status
       - /mnt/data/services/silvasonic/status:/mnt/data/services/silvasonic/status:ro
-      # Spectrograms from Brain
-      - /mnt/data/services/silvasonic/sound_analyser/artifacts:/data/processed/artifacts:ro
+      # Spectrograms from Brain (Read/Write for lazy generation)
+      - /mnt/data/services/silvasonic/sound_analyser/artifacts:/data/processed/artifacts:z
       # System Stats (Optional, depends on host)
       # - /etc/localtime:/etc/localtime:ro

@@ -123,6 +123,33 @@
           Leave empty to use default.
         </p>
       </div>
+
+      <div class="mt-4">
+        <label
+          for="apprise_urls"
+          class="block font-medium text-gray-700 dark:text-gray-300 mb-2"
+        >
+          Apprise Notification URLs (Advanced)
+        </label>
+        <textarea
+          name="apprise_urls"
+          id="apprise_urls"
+          rows="3"
+          placeholder="tgram://TOKEN/CHAT_ID, discord://WEBHOOK_ID/TOKEN"
+          class="w-full bg-gray-50 dark:bg-gray-900 border border-gray-300 dark:border-gray-700 text-gray-900 dark:text-white text-sm rounded-lg focus:ring-silva-500 focus:border-silva-500 block p-2.5 font-mono"
+        >
+{{ settings.healthchecker.apprise_urls | join(', ') if settings.healthchecker.apprise_urls else '' }}</textarea
+        >
+        <p class="mt-2 text-sm text-gray-500 dark:text-gray-400">
+          Comma-separated list of
+          <a
+            href="https://github.com/caronc/apprise"
+            target="_blank"
+            class="text-silva-600 underline"
+            >Apprise URLs</a
+          >. Use this for Telegram, Discord, Slack, etc.
+        </p>
+      </div>
     </div>
 
     <!-- Actions -->
