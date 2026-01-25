@@ -1,56 +1,68 @@
 # Container Architecture
 
-The Silvasonic architecture is designed around resiliency. The system is split into four logical blocks, each isolated in its own container to ensure that critical functions (recording) are not affected by secondary tasks (UI, Uploads).
+The Silvasonic architecture is designed around resiliency. The system is split into logical blocks, each isolated in its own container to ensure that critical functions (recording) are not affected by secondary tasks (UI, Uploads).
 
-## 1. The Recorder
+## 1. The Recorder ("The Ear")
 
 **Role:** Critical Audio Capture
 **Status:** Privileged / Real-time priority
 
 - **Function**: Captures audio directly from the Dodotronic Ultramic384 EVO via ALSA/SoundDevice.
 - **Operation**:
-  - buffers audio in RAM to avoid dropped samples.
+  - Buffers audio in RAM to avoid dropped samples.
   - Writes compressed **.flac** files to the NVMe SSD (`/mnt/data/services/silvasonic/recorder/recordings`).
 - **Why separate?**: This container is "sacred". It must never crash or be stopped, even if the dashboard fails or the network hangs.
 
-## 2. The Uploader
+## 2. The Uploader ("The Carrier")
 
 **Role:** Data Sync & Transport
 **Status:** Low priority background process
 
-- **Function**: Synchronizes recorded files to the central server.
-- **Technology**: Syncthing or Rclone (wrapped in a script).
-- **Mounts**: Mounts the storage directory as **Read-Only** to prevent accidental deletion or corruption by the sync process.
+- **Function**: Synchronizes recorded files to the central server (Nextcloud/WebDAV or Rsync).
+- **Technology**: Custom Python wrapper (`uploader` container) handling sync logic.
+- **Mounts**: Mounts the storage directory with managed access to prevent accidental deletion or corruption by the sync process.
 - **Why separate?**: Network operations can be resource-intensive or hang. Isolating this ensures that a stuck upload doesn't block the recording loop.
 
-## 3. The SoundAnalyser (Optional)
+## 3. BirdNET ("The Brain")
 
-**Role:** Edge Inference
+**Role:** Species Classification
 **Status:** Standard priority
 
-- **Function**: Watches for new files and processes them through on-device ML models (e.g., Bat detectors).
-- **Output**: Writes results to a lightweight database (DuckDB/SQLite) or JSON sidecar files.
-- **Why separate?**: ML libraries (TensorFlow, PyTorch) are heavy and can be unstable. Updates to the model should not risk the stability of the core recorder.
+- **Function**: Analyzes audio files to detect and classify bird species using the BirdNET model.
+- **Operation**:
+  - Watches for new recordings.
+  - Processes audio segments to generate detection entries.
+  - Stores results in a local database for the Dashboard.
+- **Why separate?**: Inference is CPU/RAM heavy. It must run decoupled from the recording loop.
 
-## 4. The Face (Dashboard)
+## 4. The Dashboard ("The Face")
 
 **Role:** Local Status & Diagnostics
 **Status:** Standard priority
 
-- **Function**: User interface for checking the device status locally.
-- **Tech Stack**: FastAPI + HTMX or Streamlit.
-- **Features**:
-  - "Last recording 2s ago"
-  - "SSD 40% full"
-  - "50 Bats detected (approx)"
-- **Note**: Admin-level system management (restart, logs, updates) is handled by **Cockpit** running on the host, not this container.
+- **Function**: User interface for checking the device status locally and exploring data.
+- **Tech Stack**: Modern Web App (Python/FastAPI).
+- **Modules**:
+  - **BirdStats**: Statistics on detected species.
+  - **BirdDiscover**: Gallery and details of detected birds.
+  - **System Status**: Disk usage, uptime, service health.
 
-## 5. The Notifier (Watchdog)
+## 5. The HealthChecker ("The Watchdog")
 
 **Role:** Monitoring & Alerts
 **Status:** High Availability / Watchdog
 
-- **Function**: Monitors the health of other containers and sends alerts.
-- **Dead Man's Switch**: Monitors the Uploader status. If no successful upload occurs for >60 minutes, triggers an email via SMTP.
-- **Critical Error Relay**: Watches the shared `/errors` directory for crash dumps from any service and emails them immediately.
-- **Why separate?**: Monitoring must be independent of the monitored services. If the Uploader freezes, the Notifier (running in its own isolated process) remains alive to sound the alarm.
+- **Function**: Monitors the health of other containers and system resources.
+- **Features**:
+  - **Service Checks**: Verifies that Recorder, Uploader, etc., are running and responsive.
+  - **Log Rotation**: Manages log sizes to prevent disk overflow.
+  - **Alerting**: Sends notifications (e.g., email) on critical failures or if the "Dead Man's Switch" is triggered.
+- **Why separate?**: Monitoring must be independent of the monitored services. If other containers freeze, the HealthChecker remains alive to attempt recovery or alert the admin.
+
+## 6. SoundAnalyser (Custom/Experimental)
+
+**Role:** Specialized Analysis
+**Status:** Standard priority
+
+- **Function**: Framework for running additional or custom acoustic analysis beyond BirdNET.
+- **Use Case**: Bat detection, specific insect frequencies, or experimental models.

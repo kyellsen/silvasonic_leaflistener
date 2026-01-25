@@ -5,14 +5,13 @@
 Silvasonic is a robust, autonomous bioacoustic monitoring device built on the Raspberry Pi 5 platform. Designed for long-term deployment (3+ years), it captures the entire soundscape—from singing birds to ultrasonic bat calls—ensuring data resilience and seamless synchronization with central servers.
 
 > [!IMPORTANT]
-> **MVP Scope Definition**
-> The current development phase focuses strictly on:
+> **Current Status**
+> The project provides a full-stack bioacoustic station including:
 >
-> 1.  **Infrastructure**: Automated setup & OS hardening.
-> 2.  **The Ear**: Reliable, uninterrupted audio capture with auto-detecting microphone profiles.
-> 3.  **The Carrier**: Resilient data synchronization.
->
-> _Advanced analysis, on-device ML, and complex dashboards are explicitly OUT OF SCOPE for this phase._
+> 1.  **The Ear**: Reliable recording.
+> 2.  **The Carrier**: Resilient upload/sync.
+> 3.  **The Brain**: On-device BirdNET analysis.
+> 4.  **The Face**: Interactive Dashboard.
 
 ## 🚀 Inbetriebnahme
 
@@ -48,17 +47,20 @@ Ensure your hardware meets the **Raspberry Pi 5** platform standard.
 - **Continuous Monitoring**: 24/7 recording capability for bioacoustics (birds, bats, environmental noise).
 - **Resilience**: Designed to run non-stop for at least 3 years with active caching and crash recovery.
 - **Scalability**: "Fleet-ready" architecture allowing quick deployment to multiple devices via automated setup scripts and Ansible.
-- **Edge Intelligence**: On-device buffering and optional initial analysis (ML) to ensure data integrity even without network.
-
-## Hardware Specifications
-
-The system is built on the Raspberry Pi 5 platform with NVMe storage and high-fidelity ultrasonic microphones.
-
-[View Hardware Specifications](docs/hardware.md)
+- **Edge Intelligence**: On-device buffering and analysis (BirdNET) to ensure data integrity and immediate insights.
 
 ## Architecture Overview
 
 Silvasonic uses a containerized "Mirror Infrastructure" ensuring that audio capture ("The Ear") is isolated from uploads ("The Carrier") and UI ("The Face").
+
+**Active Containers:**
+
+- **recorder**: Audio Capture
+- **uploader**: Data Synchronization
+- **healthchecker**: System Monitoring & Alerts
+- **birdnet**: Bird Species Analysis
+- **dashboard**: User Interface
+- **sound_analyser**: Specialized Acoustic Analysis
 
 [View Container Strategy](docs/containers.md)
 [View Data Flow & Storage](docs/data_flow.md)

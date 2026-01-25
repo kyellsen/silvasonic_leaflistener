@@ -28,13 +28,14 @@ If behavior is not specified there, it must not be implemented.
 
 ### 1. Resilience & Capture-First Discipline
 
-Silvasonic is a recording station, not an analytics cluster. The primary directive is **Data Capture Integrity**.
+Silvasonic is a recording station, not just an analytics cluster. The primary directive is **Data Capture Integrity**.
 
 **Priority Levels:**
 
 1.  **The Ear (Recorder)**: [CRITICAL] Must **never** be blocked or interrupted. It buffers in RAM and writes to NVMe.
-2.  **The Carrier (Uploader)**: [HIGH] Syncs data to the central server (Syncthing/Rsync). Must run independently.
-3.  **The Brain (Analyzer)** & **The Face (Dashboard)**: [LOW] Supplemental. See [docs/containers.md](docs/containers.md) for full role definitions.
+2.  **The Carrier (Uploader)**: [HIGH] Syncs data to the central server. Must run independently.
+3.  **The HealthChecker**: [HIGH] Monitors system health and alerts on failure.
+4.  **The Brain (BirdNET/SoundAnalyser)** & **The Face (Dashboard)**: [STANDARD] Supplemental. See [docs/containers.md](docs/containers.md) for full role definitions.
 
 **Rule**: Any operation that risks the continuity of "The Ear" is forbidden.
 
@@ -72,13 +73,13 @@ Code is not "done" until it passes:
 
 ### 4. Application Constraints (Dashboard/Face)
 
-- **Goal**: Provides device status ("Last recording 5s ago") and basic interaction (trigger test, view logs).
-- **Technology**: Lightweight stack (e.g., FastAPI + HTMX) to minimize overhead.
-- **Interaction**: Users may trigger small analyses, but these must be offloaded to prevent blocking the main loop or "The Ear".
+- **Goal**: Provides device status, statistics, and exploration tools.
+- **Technology**: FastAPI.
+- **Interaction**: Users may explore data (BirdDiscover) and view stats (BirdStats). Heavy analysis must be handled by the specialized containers (BirdNET/SoundAnalyser), not the Dashboard itself.
 
 ---
 
-## How to Change the System (Iterative MVP Mode)
+## How to Change the System (Iterative Mode)
 
 1.  **Check Priorities**
     - Does this change threaten "The Ear"? If yes, redesign.
@@ -94,7 +95,7 @@ Code is not "done" until it passes:
 
 - Commit messages must be **semantic, imperative, and in English**.
 - Format: `<type>(<scope>): <summary>`
-  - Examples: `feat(recorder): optimize buffer size`, `fix(ansible): correct nvme mount path`.
+  - Examples: `feat(recorder): optimize buffer size`, `fix(healthchecker): correct email alert`.
 
 ---
 
