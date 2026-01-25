@@ -134,7 +134,29 @@
         remote_src: yes
       tags: [tools, audio]
 
+    # --- 7. SERVICE INSTALLATION ---
+    - name: Install Silvasonic Service
+      copy:
+        src: "{{ repo_dest }}/setup/config/silvasonic.service"
+        dest: "/etc/systemd/system/silvasonic.service"
+        owner: root
+        group: root
+        mode: "0644"
+        remote_src: yes
+      notify: Reload Systemd
+
+    - name: Enable & Start Silvasonic Service
+      systemd:
+        name: silvasonic
+        enabled: yes
+        state: started
+        daemon_reload: yes
+
   handlers:
+    - name: Reload Systemd
+      systemd:
+        daemon_reload: yes
+
     - name: Reboot Required
       debug:
         msg: "A reboot is required (e.g. for PCIe Gen3 Config or Kernel updates)."

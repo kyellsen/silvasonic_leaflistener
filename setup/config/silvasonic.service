@@ -1,0 +1,23 @@
+[Unit]
+Description=Silvasonic Sensor Stack
+Documentation=https://github.com/kyellsen/silvasonic_leaflistener
+Requires=network-online.target sound.target
+After=network-online.target sound.target podman.socket
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+WorkingDirectory=/mnt/data/dev/silvasonic
+# Using root to access hardware/ALSA as per requirement
+User=root
+Group=root
+
+# Start up detached. We generally do NOT want --build on auto-restart
+# to ensure fast boot and offline reliability.
+ExecStart=/usr/bin/podman-compose -f podman-compose.yml up -d
+
+# Clean shutdown
+ExecStop=/usr/bin/podman-compose -f podman-compose.yml down
+
+[Install]
+WantedBy=multi-user.target
