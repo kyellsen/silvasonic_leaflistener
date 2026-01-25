@@ -2,35 +2,60 @@
 <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
   <!-- CPU Card -->
   <div
-    class="bg-white dark:bg-gray-800 p-4 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700"
+    class="glass-panel p-5 rounded-2xl shadow-lg relative overflow-hidden group"
   >
-    <div class="text-xs font-bold text-gray-500 uppercase flex justify-between">
+    <div
+      class="absolute -right-4 -top-4 w-24 h-24 bg-silva-500/10 rounded-full blur-xl group-hover:bg-silva-500/20 transition-all"
+    ></div>
+
+    <div
+      class="text-xs font-bold text-gray-400 uppercase tracking-wider flex justify-between relative z-10"
+    >
       <span>CPU Usage</span>
-      <span class="text-gray-400">{{ stats.cpu_temp }}</span>
-    </div>
-    <div class="text-3xl font-bold text-green-600 dark:text-green-400 mt-2">
-      {{ stats.cpu }}%
+      <span class="text-silva-400 font-mono">{{ stats.cpu_temp }}</span>
     </div>
     <div
-      class="w-full bg-gray-200 dark:bg-gray-700 h-1 mt-4 rounded-full overflow-hidden"
+      class="text-4xl font-heading font-bold text-gray-900 dark:text-white mt-3 relative z-10"
     >
-      <div class="bg-green-500 h-full" style="width: {{ stats.cpu }}%"></div>
+      {{ stats.cpu }}<span class="text-lg text-gray-500 font-normal ml-1"
+        >%</span
+      >
+    </div>
+    <div
+      class="w-full bg-gray-200 dark:bg-gray-700/50 h-1.5 mt-5 rounded-full overflow-hidden"
+    >
+      <div
+        class="bg-gradient-to-r from-silva-500 to-silva-400 h-full rounded-full transition-all duration-1000 ease-out"
+        style="width: {{ stats.cpu }}%"
+      ></div>
     </div>
   </div>
 
   <!-- RAM Card -->
   <div
-    class="bg-white dark:bg-gray-800 p-4 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700"
+    class="glass-panel p-5 rounded-2xl shadow-lg relative overflow-hidden group"
   >
-    <div class="text-xs font-bold text-gray-500 uppercase">RAM Usage</div>
-    <div class="text-3xl font-bold text-blue-600 dark:text-blue-400 mt-2">
-      {{ stats.ram_percent }}%
+    <div
+      class="absolute -right-4 -top-4 w-24 h-24 bg-blue-500/10 rounded-full blur-xl group-hover:bg-blue-500/20 transition-all"
+    ></div>
+    <div
+      class="text-xs font-bold text-gray-400 uppercase tracking-wider relative z-10"
+    >
+      RAM Usage
     </div>
     <div
-      class="w-full bg-gray-200 dark:bg-gray-700 h-1 mt-4 rounded-full overflow-hidden"
+      class="text-4xl font-heading font-bold text-gray-900 dark:text-white mt-3 relative z-10"
+    >
+      {{ stats.ram_percent }}<span
+        class="text-lg text-gray-500 font-normal ml-1"
+        >%</span
+      >
+    </div>
+    <div
+      class="w-full bg-gray-200 dark:bg-gray-700/50 h-1.5 mt-5 rounded-full overflow-hidden"
     >
       <div
-        class="bg-blue-500 h-full"
+        class="bg-gradient-to-r from-blue-500 to-cyan-400 h-full rounded-full transition-all duration-1000 ease-out"
         style="width: {{ stats.ram_percent }}%"
       ></div>
     </div>
@@ -38,97 +63,179 @@
 
   <!-- Disk Card -->
   <div
-    class="bg-white dark:bg-gray-800 p-4 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700"
+    class="glass-panel p-5 rounded-2xl shadow-lg relative overflow-hidden group"
   >
-    <div class="text-xs font-bold text-gray-500 uppercase">NVMe Storage</div>
-    <div class="text-3xl font-bold text-purple-600 dark:text-purple-400 mt-2">
-      {{ stats.disk_percent }}%
+    <div
+      class="absolute -right-4 -top-4 w-24 h-24 bg-purple-500/10 rounded-full blur-xl group-hover:bg-purple-500/20 transition-all"
+    ></div>
+    <div
+      class="text-xs font-bold text-gray-400 uppercase tracking-wider relative z-10"
+    >
+      NVMe Storage
     </div>
-    <div class="text-xs text-gray-400 mt-1">Mounted at /data</div>
+    <div
+      class="text-4xl font-heading font-bold text-gray-900 dark:text-white mt-3 relative z-10"
+    >
+      {{ stats.disk_percent }}<span
+        class="text-lg text-gray-500 font-normal ml-1"
+        >%</span
+      >
+    </div>
+    <div class="text-xs text-gray-500 mt-2 font-mono relative z-10">/data</div>
   </div>
 
   <!-- Last Recording Card -->
   <div
-    class="bg-white dark:bg-gray-800 p-4 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700"
+    class="glass-panel p-5 rounded-2xl shadow-lg relative overflow-hidden group"
   >
-    <div class="text-xs font-bold text-gray-500 uppercase">Last Recording</div>
-    <div class="text-2xl font-bold text-amber-600 dark:text-amber-400 mt-2">
+    <div
+      class="absolute -right-4 -top-4 w-24 h-24 bg-amber-500/10 rounded-full blur-xl group-hover:bg-amber-500/20 transition-all"
+    ></div>
+    <div
+      class="text-xs font-bold text-gray-400 uppercase tracking-wider relative z-10"
+    >
+      Last Recording
+    </div>
+    <div
+      class="text-3xl font-heading font-bold text-gray-900 dark:text-white mt-3 truncate relative z-10"
+    >
       {{ stats.last_recording }}
     </div>
-    <div class="text-xs text-gray-400 mt-1">
+    <div class="text-xs text-silva-500 mt-2 font-bold relative z-10">
       {% if stats.last_recording_ago >= 0 %} {{ stats.last_recording_ago }}s ago
-      {% else %} No recordings yet {% endif %}
+      {% else %} -- {% endif %}
     </div>
   </div>
 
-  <!-- Carrier Card -->
+  <!-- Status Row -->
   <div
-    class="bg-white dark:bg-gray-800 p-4 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700"
+    class="glass-panel p-5 rounded-2xl shadow-lg relative overflow-hidden group md:col-span-2"
   >
-    <div class="text-xs font-bold text-gray-500 uppercase">Carrier Status</div>
-    <div class="text-2xl font-bold text-cyan-600 dark:text-cyan-400 mt-2">
-      {{ carrier_stats.status }}
-    </div>
-    <div class="text-xs text-gray-400 mt-1">
-      Last: {{ carrier_stats.last_upload_str }}
-    </div>
-  </div>
+    <div class="flex items-center justify-between">
+      <div class="flex items-center gap-4">
+        <div class="p-3 rounded-full bg-cyan-500/10 text-cyan-500">
+          <svg
+            class="w-6 h-6"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"
+            ></path>
+          </svg>
+        </div>
+        <div>
+          <div class="text-xs font-bold text-gray-400 uppercase tracking-wider">
+            Uploader
+          </div>
+          <div class="font-bold text-gray-900 dark:text-white">
+            {{ carrier_stats.status }}
+          </div>
+          <div class="text-xs text-gray-500">
+            {{ carrier_stats.last_upload_str }}
+          </div>
+        </div>
+      </div>
 
-  <!-- Mic Card -->
-  <div
-    class="bg-white dark:bg-gray-800 p-4 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700"
-  >
-    <div class="text-xs font-bold text-gray-500 uppercase">Microphone</div>
-    <div
-      class="text-xl font-bold text-pink-600 dark:text-pink-400 mt-2 truncate"
-      title="{{ recorder_stats.device }}"
-    >
-      {{ recorder_stats.profile }}
+      <div class="w-px h-10 bg-gray-200 dark:bg-gray-700"></div>
+
+      <div class="flex items-center gap-4">
+        <div class="p-3 rounded-full bg-pink-500/10 text-pink-500">
+          <svg
+            class="w-6 h-6"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z"
+            ></path>
+          </svg>
+        </div>
+        <div class="max-w-[150px]">
+          <div class="text-xs font-bold text-gray-400 uppercase tracking-wider">
+            Microphone
+          </div>
+          <div
+            class="font-bold text-gray-900 dark:text-white truncate"
+            title="{{ recorder_stats.device }}"
+          >
+            {{ recorder_stats.profile }}
+          </div>
+          <div class="text-xs text-gray-500">{{ recorder_stats.status }}</div>
+        </div>
+      </div>
     </div>
-    <div class="text-xs text-gray-400 mt-1">{{ recorder_stats.status }}</div>
   </div>
 </div>
 
 <h2
-  class="text-xl font-bold mb-4 text-silva-800 dark:text-silva-100 flex items-center gap-2"
+  class="text-xl font-heading font-bold mb-6 text-gray-900 dark:text-white flex items-center gap-3"
 >
-  <span>🐦</span> Recent Detections
+  <span class="text-2xl">🐦</span> Recent Detections
 </h2>
+
 <div
-  class="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden"
+  class="glass-panel rounded-2xl overflow-hidden shadow-lg border border-gray-200 dark:border-white/5"
 >
   <table class="w-full text-left text-sm">
     <thead
-      class="bg-gray-100 dark:bg-gray-750 text-gray-500 dark:text-gray-400 uppercase font-bold text-xs"
+      class="bg-gray-50/50 dark:bg-white/5 text-gray-500 dark:text-gray-400 uppercase font-bold text-[10px] tracking-wider"
     >
       <tr>
-        <th class="p-4">Time</th>
-        <th class="p-4">Common Name</th>
-        <th class="p-4">Confidence</th>
-        <th class="p-4">Action</th>
+        <th class="p-5 font-bold">Time</th>
+        <th class="p-5 font-bold">Common Name</th>
+        <th class="p-5 font-bold">Confidence</th>
+        <th class="p-5 font-bold text-right">Action</th>
       </tr>
     </thead>
-    <tbody class="divide-y divide-gray-200 dark:divide-gray-700">
+    <tbody class="divide-y divide-gray-200 dark:divide-gray-800">
       {% for d in detections %}
       <tr
-        class="hover:bg-gray-50 dark:hover:bg-gray-700 transition cursor-pointer"
+        class="hover:bg-silva-50 dark:hover:bg-white/5 transition duration-200 cursor-pointer group"
       >
-        <td class="p-4 font-mono text-gray-400">
+        <td
+          class="p-5 font-mono text-gray-400 group-hover:text-silva-600 dark:group-hover:text-silva-400 transition-colors"
+        >
           <span
             class="local-time opacity-0 transition-opacity duration-300"
             data-timestamp="{{ d.iso_timestamp }}"
-            >Loading...</span
+            >...</span
           >
         </td>
-        <td class="p-4 font-bold text-gray-900 dark:text-white">
-          {{ d.com_name }}
+        <td class="p-5">
+          <span class="font-bold text-gray-900 dark:text-white text-base block"
+            >{{ d.com_name }}</span
+          >
+          <span class="text-xs text-gray-400 italic block mt-0.5"
+            >{{ d.sci_name }}</span
+          >
         </td>
-        <td class="p-4 text-green-600 dark:text-green-400">
-          {{ (d.confidence * 100)|round(1) }}%
+        <td class="p-5">
+          <div class="flex items-center gap-2">
+            <div
+              class="w-24 h-1.5 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden"
+            >
+              <div
+                class="h-full bg-gradient-to-r from-silva-500 to-green-400"
+                style="width: {{ (d.confidence * 100)|round(1) }}%"
+              ></div>
+            </div>
+            <span class="font-bold text-silva-600 dark:text-silva-400"
+              >{{ (d.confidence * 100)|round(1) }}%</span
+            >
+          </div>
         </td>
-        <td class="p-4">
+        <td class="p-5 text-right">
           <button
-            class="text-blue-600 hover:text-blue-500 dark:text-blue-400 dark:hover:text-blue-300"
+            class="px-4 py-2 rounded-lg bg-silva-100 dark:bg-silva-900/30 text-silva-700 dark:text-silva-300 font-bold text-xs hover:bg-silva-200 dark:hover:bg-silva-900/50 transition shadow-sm"
             hx-get="/api/audio/{{ d.filename }}"
             hx-target="#audio-player-container"
           >
@@ -138,7 +245,7 @@
       </tr>
       {% endfor %} {% if not detections %}
       <tr>
-        <td colspan="4" class="p-8 text-center text-gray-500">
+        <td colspan="4" class="p-10 text-center text-gray-500 italic">
           No detections found in DB yet.
         </td>
       </tr>
@@ -148,36 +255,43 @@
 </div>
 {% endblock %} {% block inspector %}
 <div class="space-y-6">
-  <div
-    class="bg-white dark:bg-gray-700/50 p-4 rounded-lg border border-gray-200 dark:border-transparent"
-  >
+  <div class="glass-panel p-6 rounded-2xl">
     <h3
-      class="font-bold text-gray-700 dark:text-gray-300 mb-2 border-b border-gray-200 dark:border-gray-600 pb-2"
+      class="font-heading font-bold text-gray-900 dark:text-white mb-4 border-b border-gray-200 dark:border-white/10 pb-2 text-sm uppercase tracking-wide"
     >
       Quick Stats
     </h3>
-    <div class="flex justify-between text-sm py-1">
-      <span class="text-gray-400">Today</span>
-      <span class="font-bold text-gray-900 dark:text-white"
+    <div class="flex justify-between items-center py-2 group">
+      <span class="text-gray-400 group-hover:text-gray-300 transition"
+        >Today's Detections</span
+      >
+      <span class="font-mono font-bold text-xl text-silva-500"
         >{{ birdnet_stats.today }}</span
       >
     </div>
-    <div class="flex justify-between text-sm py-1">
-      <span class="text-gray-400">Total</span>
-      <span class="font-bold text-gray-900 dark:text-white"
+    <div
+      class="flex justify-between items-center py-2 border-t border-gray-200 dark:border-white/5 group"
+    >
+      <span class="text-gray-400 group-hover:text-gray-300 transition"
+        >Total Detections</span
+      >
+      <span class="font-mono font-bold text-xl text-blue-500"
         >{{ birdnet_stats.total }}</span
       >
     </div>
   </div>
 
-  <div
-    id="audio-player-container"
-    class="bg-white dark:bg-gray-700/50 p-4 rounded-lg hidden border border-gray-200 dark:border-transparent"
-  >
-    <h3 class="font-bold text-gray-700 dark:text-gray-300 mb-2">
+  <div id="audio-player-container" class="glass-panel p-6 rounded-2xl hidden">
+    <h3
+      class="font-heading font-bold text-gray-900 dark:text-white mb-3 text-sm uppercase tracking-wide flex items-center gap-2"
+    >
+      <span class="w-2 h-2 rounded-full bg-silva-500 animate-pulse"></span>
       Audio Player
     </h3>
-    <audio controls class="w-full mt-2"></audio>
+    <audio
+      controls
+      class="w-full mt-2 rounded-lg bg-gray-100 dark:bg-gray-800"
+    ></audio>
   </div>
 </div>
 {% endblock %}

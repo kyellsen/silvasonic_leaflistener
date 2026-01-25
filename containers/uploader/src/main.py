@@ -5,8 +5,8 @@ import signal
 import sys
 import json
 from rclone_wrapper import RcloneWrapper
+from janitor import StorageJanitor
 
-# Configure Logging
 # Configure Logging
 os.makedirs("/var/log/silvasonic", exist_ok=True)
 
@@ -29,8 +29,10 @@ TARGET_DIR = os.getenv("UPLOADER_TARGET_DIR", "silvasonic")
 SOURCE_DIR = "/data/recording"
 SYNC_INTERVAL = int(os.getenv("UPLOADER_SYNC_INTERVAL", 60))
 STATUS_FILE = "/var/log/silvasonic/carrier_status.json"
+CLEANUP_THRESHOLD = int(os.getenv("UPLOADER_CLEANUP_THRESHOLD", 70))
+CLEANUP_TARGET = int(os.getenv("UPLOADER_CLEANUP_TARGET", 60))
 
-def write_status(status: str, last_upload: flt = 0, queue_size: int = -1):
+def write_status(status: str, last_upload: float = 0, queue_size: int = -1):
     """Write current status to JSON file for dashboard."""
     try:
         data = {
@@ -60,6 +62,7 @@ def main():
     logger.info("--- Silvasonic Carrier (Python Edition) ---")
 
     wrapper = RcloneWrapper()
+    janitor = StorageJanitor(SOURCE_DIR, threshold_percent=CLEANUP_THRESHOLD, target_percent=CLEANUP_TARGET)
     
     # 1. Configuration Check
     if NEXTCLOUD_URL and NEXTCLOUD_USER and NEXTCLOUD_PASSWORD:
@@ -78,19 +81,27 @@ def main():
     while True:
         try:
             if os.path.exists(SOURCE_DIR):
-                # Count files (rough queue size)
-                # This could be slow if too many files, so we might skip or do shallow check
-                # Simple check:
-                # queue_size = len(os.listdir(SOURCE_DIR)) # Warning: recursive? 
-                # Let's just say "Scanning..." or handle simple count
                 queue_size = -1 
                 
+                # --- PHASE 1: UPLOAD ---
                 write_status("Syncing", last_upload_success, queue_size)
                 
-                wrapper.sync(SOURCE_DIR, f"remote:{TARGET_DIR}")
+                # Use COPY instead of SYNC to prevent deleting files on remote if they are missing locally
+                wrapper.copy(SOURCE_DIR, f"remote:{TARGET_DIR}")
                 
                 last_upload_success = time.time()
                 write_status("Idle", last_upload_success, queue_size)
+
+                # --- PHASE 2: CLEANUP ---
+                write_status("Cleaning", last_upload_success, queue_size)
+                
+                # Fetch remote file list for safe deletion verification
+                # We do this AFTER upload to ensure the list is fresh
+                remote_files = wrapper.list_files(f"remote:{TARGET_DIR}")
+                
+                # Run cleanup
+                janitor.check_and_clean(remote_files, wrapper.get_disk_usage_percent)
+
             else:
                 logger.error(f"Source directory {SOURCE_DIR} does not exist!")
                 write_status("Error: No Source", last_upload_success)

@@ -2,6 +2,7 @@ import subprocess
 import logging
 import time
 import os
+import json
 from typing import Optional
 
 logger = logging.getLogger(__name__)
@@ -54,7 +55,25 @@ class RcloneWrapper:
             "--config", self.config_path
         ]
         
-        logger.info(f"Starting sync: {source} -> {dest}")
+        self._run_transfer(cmd, source, dest)
+
+    def copy(self, source: str, dest: str, transfers: int = 4, checkers: int = 8):
+        """
+        Runs the copy command (additive only) and streams output.
+        """
+        cmd = [
+            "rclone", "copy", source, dest,
+            "--transfers", str(transfers),
+            "--checkers", str(checkers),
+            "--verbose",
+            "--config", self.config_path
+        ]
+        
+        self._run_transfer(cmd, source, dest)
+
+    def _run_transfer(self, cmd: list, source: str, dest: str):
+        """Helper to run transfer commands and stream logs."""
+        logger.info(f"Starting transfer: {source} -> {dest}")
         start_time = time.time()
         
         try:
@@ -82,9 +101,9 @@ class RcloneWrapper:
             
             duration = time.time() - start_time
             if process.returncode == 0:
-                logger.info(f"Sync completed successfully in {duration:.2f}s")
+                logger.info(f"Transfer completed successfully in {duration:.2f}s")
             else:
-                logger.error(f"Sync failed with return code {process.returncode}")
+                logger.error(f"Transfer failed with return code {process.returncode}")
                 logger.error("--- Rclone Output Dump (Last 100 lines) ---")
                 for line in output_buffer:
                     logger.error(f"[Rclone] {line}")
@@ -92,4 +111,40 @@ class RcloneWrapper:
                 # We don't raise here, we let the main loop handle (retry)
                 
         except Exception as e:
-            logger.error(f"Sync execution error: {e}")
+            logger.error(f"Transfer execution error: {e}")
+
+    def list_files(self, remote: str) -> dict:
+        """
+        Lists files on the remote and returns a dict {filename: size}.
+        Uses 'rclone lsjson' for parsing.
+        """
+        cmd = [
+            "rclone", "lsjson", remote,
+            "--recursive",
+            "--config", self.config_path
+        ]
+        
+        try:
+            result = subprocess.run(cmd, check=True, capture_output=True, text=True)
+            items = json.loads(result.stdout)
+            
+            # Create a simple dict: relative_path -> size
+            # rclone lsjson returns 'Path' relative to the root of the remote
+            return {item['Path']: item['Size'] for item in items if not item['IsDir']}
+            
+        except Exception as e:
+            logger.error(f"Failed to list remote files: {e}")
+            return {}
+
+    def get_disk_usage_percent(self, path: str) -> float:
+        """Checks disk usage percentage for the given path."""
+        try:
+            stat = os.statvfs(path)
+            total = stat.f_blocks * stat.f_frsize
+            free = stat.f_bavail * stat.f_frsize
+            used = total - free
+            percent = (used / total) * 100
+            return percent
+        except Exception as e:
+            logger.error(f"Failed to check disk usage: {e}")
+            return 0.0

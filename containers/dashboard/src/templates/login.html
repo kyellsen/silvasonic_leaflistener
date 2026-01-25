@@ -4,60 +4,115 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Login - Silvasonic</title>
+
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;500;700;900&display=swap"
+      rel="stylesheet"
+    />
+
     <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            fontFamily: {
+              sans: ["Inter", "sans-serif"],
+              heading: ["Outfit", "sans-serif"],
+            },
+            colors: {
+              silva: {
+                400: "#34d399",
+                500: "#10b981",
+                600: "#059669",
+              },
+              dark: {
+                bg: "#020617",
+              },
+            },
+          },
+        },
+      };
+    </script>
+    <style>
+      .glass-panel {
+        background: rgba(30, 41, 59, 0.7);
+        backdrop-filter: blur(12px);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+      }
+    </style>
   </head>
   <body
-    class="bg-gray-100 dark:bg-gray-900 text-gray-900 dark:text-gray-200 h-screen flex items-center justify-center"
+    class="bg-gray-900 text-gray-200 h-screen flex items-center justify-center relative overflow-hidden font-sans"
   >
-    <div
-      class="bg-white dark:bg-gray-800 p-8 rounded-xl shadow-2xl w-96 border border-gray-200 dark:border-gray-700"
-    >
+    <!-- Background Gradients -->
+    <div class="absolute inset-0 pointer-events-none">
+      <div
+        class="absolute top-[-20%] left-[-10%] w-[60%] h-[60%] bg-green-500/20 blur-[100px] rounded-full"
+      ></div>
+      <div
+        class="absolute bottom-[-20%] right-[-10%] w-[60%] h-[60%] bg-blue-500/20 blur-[100px] rounded-full"
+      ></div>
+    </div>
+
+    <div class="glass-panel p-10 rounded-2xl shadow-2xl w-96 relative z-10">
       <div class="text-center mb-8">
-        <div class="text-4xl mb-2">🌲</div>
-        <h1 class="text-2xl font-bold text-green-600 dark:text-green-400">
+        <div class="text-5xl mb-4 animate-bounce">🌲</div>
+        <h1
+          class="text-3xl font-heading font-bold text-transparent bg-clip-text bg-gradient-to-r from-silva-400 to-blue-400"
+        >
           Silvasonic
         </h1>
-        <p class="text-gray-500 text-sm">Secure Dashboard Access</p>
+        <p class="text-gray-400 text-sm tracking-wide mt-1">SECURE ACCESS</p>
       </div>
 
       {% if error %}
       <div
-        class="bg-red-900/50 border border-red-700 text-red-200 px-4 py-2 rounded mb-4 text-sm text-center"
+        class="bg-red-500/10 border border-red-500/30 text-red-200 px-4 py-3 rounded-lg mb-6 text-sm text-center backdrop-blur-sm"
       >
         {{ error }}
       </div>
       {% endif %}
 
-      <form action="/auth/login" method="POST" class="space-y-4">
-        <div>
+      <form action="/auth/login" method="POST" class="space-y-5">
+        <div class="group">
           <label
-            class="block text-xs font-bold text-gray-500 dark:text-gray-400 uppercase mb-1"
+            class="block text-xs font-bold text-gray-400 uppercase mb-1.5 ml-1 transition-colors group-hover:text-silva-400"
             >Username</label
           >
           <input
             type="text"
             name="username"
-            class="w-full bg-gray-50 dark:bg-gray-900 border border-gray-300 dark:border-gray-600 rounded p-2 focus:border-green-500 focus:outline-none transition text-gray-900 dark:text-white"
+            class="w-full bg-gray-950/50 border border-gray-700 rounded-lg p-3 text-white focus:border-silva-500 focus:ring-1 focus:ring-silva-500 focus:outline-none transition-all placeholder-gray-600"
+            placeholder="Identity"
           />
         </div>
-        <div>
+        <div class="group">
           <label
-            class="block text-xs font-bold text-gray-500 dark:text-gray-400 uppercase mb-1"
+            class="block text-xs font-bold text-gray-400 uppercase mb-1.5 ml-1 transition-colors group-hover:text-silva-400"
             >Password</label
           >
           <input
             type="password"
             name="password"
-            class="w-full bg-gray-50 dark:bg-gray-900 border border-gray-300 dark:border-gray-600 rounded p-2 focus:border-green-500 focus:outline-none transition text-gray-900 dark:text-white"
+            class="w-full bg-gray-950/50 border border-gray-700 rounded-lg p-3 text-white focus:border-silva-500 focus:ring-1 focus:ring-silva-500 focus:outline-none transition-all placeholder-gray-600"
+            placeholder="Key"
           />
         </div>
         <button
           type="submit"
-          class="w-full bg-green-700 hover:bg-green-600 text-white font-bold py-2 rounded transition shadow-lg"
+          class="w-full bg-gradient-to-r from-silva-600 to-silva-500 hover:from-silva-500 hover:to-silva-400 text-white font-bold py-3 rounded-lg transition-all shadow-lg hover:shadow-silva-500/20 transform hover:-translate-y-0.5"
         >
-          Enter
+          Enter Dashboard
         </button>
       </form>
+
+      <div class="mt-8 text-center text-xs text-gray-600">
+        v0.1.0 • Authorized Personnel Only
+      </div>
     </div>
   </body>
 </html>
