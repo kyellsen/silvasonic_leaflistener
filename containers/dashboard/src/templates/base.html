@@ -242,7 +242,8 @@
             class="absolute inset-0 bg-silva-400/20 dark:bg-silva-500/20 rounded-xl scale-50 opacity-0 group-hover:scale-100 group-hover:opacity-100 transition-all duration-300"
           ></div>
           <svg
-            class="w-6 h-6 text-gray-400 group-hover:text-silva-600 dark:group-hover:text-silva-400 relative z-10 transition-colors"
+            class="w-6 h-6 text-gray-400 group-hover:text-silva-600 dark:group-hover:text-silva-400 relative z-10 transition-colors nav-icon"
+            data-active-class="text-silva-600 dark:text-silva-400"
             fill="none"
             stroke="currentColor"
             viewBox="0 0 24 24"
@@ -268,7 +269,8 @@
             class="absolute inset-0 bg-pink-500/20 rounded-xl scale-50 opacity-0 group-hover:scale-100 group-hover:opacity-100 transition-all duration-300"
           ></div>
           <svg
-            class="w-6 h-6 text-gray-400 group-hover:text-pink-600 dark:group-hover:text-pink-400 relative z-10 transition-colors"
+            class="w-6 h-6 text-gray-400 group-hover:text-pink-600 dark:group-hover:text-pink-400 relative z-10 transition-colors nav-icon"
+            data-active-class="text-pink-600 dark:text-pink-400"
             fill="none"
             stroke="currentColor"
             viewBox="0 0 24 24"
@@ -292,7 +294,8 @@
             class="absolute inset-0 bg-cyan-500/20 rounded-xl scale-50 opacity-0 group-hover:scale-100 group-hover:opacity-100 transition-all duration-300"
           ></div>
           <svg
-            class="w-6 h-6 text-gray-400 group-hover:text-cyan-600 dark:group-hover:text-cyan-400 relative z-10 transition-colors"
+            class="w-6 h-6 text-gray-400 group-hover:text-cyan-600 dark:group-hover:text-cyan-400 relative z-10 transition-colors nav-icon"
+            data-active-class="text-cyan-600 dark:text-cyan-400"
             fill="none"
             stroke="currentColor"
             viewBox="0 0 24 24"
@@ -316,7 +319,8 @@
             class="absolute inset-0 bg-purple-500/20 rounded-xl scale-50 opacity-0 group-hover:scale-100 group-hover:opacity-100 transition-all duration-300"
           ></div>
           <svg
-            class="w-6 h-6 text-gray-400 group-hover:text-purple-600 dark:group-hover:text-purple-400 relative z-10 transition-colors"
+            class="w-6 h-6 text-gray-400 group-hover:text-purple-600 dark:group-hover:text-purple-400 relative z-10 transition-colors nav-icon"
+            data-active-class="text-purple-600 dark:text-purple-400"
             fill="none"
             stroke="currentColor"
             viewBox="0 0 24 24"
@@ -340,7 +344,8 @@
             class="absolute inset-0 bg-green-500/20 rounded-xl scale-50 opacity-0 group-hover:scale-100 group-hover:opacity-100 transition-all duration-300"
           ></div>
           <svg
-            class="w-6 h-6 text-gray-400 group-hover:text-green-600 dark:group-hover:text-green-400 relative z-10 transition-colors"
+            class="w-6 h-6 text-gray-400 group-hover:text-lime-500 dark:group-hover:text-lime-400 relative z-10 transition-colors nav-icon"
+            data-active-class="text-lime-600 dark:text-lime-400"
             fill="none"
             stroke="currentColor"
             viewBox="0 0 24 24"
@@ -364,7 +369,8 @@
             class="absolute inset-0 bg-amber-500/20 rounded-xl scale-50 opacity-0 group-hover:scale-100 group-hover:opacity-100 transition-all duration-300"
           ></div>
           <svg
-            class="w-6 h-6 text-gray-400 group-hover:text-amber-500 dark:group-hover:text-amber-400 relative z-10 transition-colors"
+            class="w-6 h-6 text-gray-400 group-hover:text-amber-500 dark:group-hover:text-amber-400 relative z-10 transition-colors nav-icon"
+            data-active-class="text-amber-500 dark:text-amber-400"
             fill="none"
             stroke="currentColor"
             viewBox="0 0 24 24"
@@ -388,7 +394,8 @@
             class="absolute inset-0 bg-blue-500/20 rounded-xl scale-50 opacity-0 group-hover:scale-100 group-hover:opacity-100 transition-all duration-300"
           ></div>
           <svg
-            class="w-6 h-6 text-gray-400 group-hover:text-blue-500 dark:group-hover:text-blue-400 relative z-10 transition-colors"
+            class="w-6 h-6 text-gray-400 group-hover:text-blue-500 dark:group-hover:text-blue-400 relative z-10 transition-colors nav-icon"
+            data-active-class="text-blue-500 dark:text-blue-400"
             fill="none"
             stroke="currentColor"
             viewBox="0 0 24 24"
@@ -738,25 +745,39 @@
           // Reset standard checks
           link.classList.remove("bg-white/10", "bg-white/50", "shadow-neon");
 
+          // Generic state for svg text color - override by data-active-class if present
           if (currentPath.startsWith(href)) {
             link.classList.add("bg-white/50", "dark:bg-white/10");
-            // Add glow if needed
-            if (svg) {
-              svg.classList.remove("text-gray-400");
-              svg.classList.add("text-silva-600", "dark:text-silva-400");
-            }
+
             if (bg) {
               bg.classList.remove("opacity-0", "scale-50");
               bg.classList.add("opacity-100", "scale-100");
             }
-          } else {
+
             if (svg) {
-              svg.classList.add("text-gray-400");
-              svg.classList.remove("text-silva-600", "dark:text-silva-400");
+              svg.classList.remove("text-gray-400");
+              const activeClass = svg.getAttribute("data-active-class");
+              if (activeClass) {
+                // Add specific accent class
+                activeClass.split(" ").forEach((c) => svg.classList.add(c));
+              } else {
+                // Default fallback
+                svg.classList.add("text-silva-600", "dark:text-silva-400");
+              }
             }
+          } else {
             if (bg) {
               bg.classList.add("opacity-0", "scale-50");
               bg.classList.remove("opacity-100", "scale-100");
+            }
+
+            if (svg) {
+              svg.classList.add("text-gray-400");
+              const activeClass = svg.getAttribute("data-active-class");
+              if (activeClass) {
+                activeClass.split(" ").forEach((c) => svg.classList.remove(c));
+              }
+              svg.classList.remove("text-silva-600", "dark:text-silva-400");
             }
           }
         });
