@@ -162,14 +162,17 @@ class BirdNetService:
             with db.get_connection() as conn:
                 query = text("""
                     SELECT 
-                        common_name as com_name, 
-                        scientific_name as sci_name,
+                        d.common_name as com_name, 
+                        d.scientific_name as sci_name,
                         COUNT(*) as count,
-                        MAX(timestamp) as last_seen,
-                        MIN(timestamp) as first_seen,
-                        AVG(confidence) as avg_conf
-                    FROM birdnet.detections
-                    GROUP BY common_name, scientific_name
+                        MAX(d.timestamp) as last_seen,
+                        MIN(d.timestamp) as first_seen,
+                        AVG(d.confidence) as avg_conf,
+                        si.image_url,
+                        si.german_name
+                    FROM birdnet.detections d
+                    LEFT JOIN birdnet.species_info si ON d.scientific_name = si.scientific_name
+                    GROUP BY d.common_name, d.scientific_name, si.image_url, si.german_name
                     ORDER BY count DESC
                 """)
                 result = conn.execute(query)
@@ -269,6 +272,68 @@ class BirdNetService:
         except Exception as e:
             print(f"Error get_species_stats: {e}")
             return None
+
+    @staticmethod
+    async def enrich_species_data(info: dict):
+        """Enrich species info with Wikimedia data, using cache."""
+        if not info or not info.get('sci_name'):
+            return info
+            
+        sci_name = info['sci_name']
+        
+        try:
+             with db.get_connection() as conn:
+                # 1. Check Cache
+                query_cache = text("SELECT * FROM birdnet.species_info WHERE scientific_name = :sci_name")
+                cache = conn.execute(query_cache, {"sci_name": sci_name}).fetchone()
+                
+                wiki_data = None
+                if cache:
+                    wiki_data = dict(cache._mapping)
+                    # Check age (optional, e.g. update every 30 days)
+                    
+                # 2. Fetch if missing
+                if not wiki_data:
+                    from src.wikimedia import WikimediaService
+                    print(f"Fetching Wikimedia data for {sci_name}...")
+                    wiki_data = await WikimediaService.fetch_species_data(sci_name)
+                    
+                    if wiki_data:
+                        # 3. Cache Result
+                        # We use UPSERT (INSERT ... ON CONFLICT)
+                        query_upsert = text("""
+                            INSERT INTO birdnet.species_info (
+                                scientific_name, common_name, german_name, family, 
+                                image_url, description, wikipedia_url, last_updated
+                            ) VALUES (
+                                :scientific_name, :common_name, :german_name, :family,
+                                :image_url, :description, :wikipedia_url, NOW()
+                            )
+                            ON CONFLICT (scientific_name) DO UPDATE SET
+                                german_name = EXCLUDED.german_name,
+                                image_url = EXCLUDED.image_url,
+                                description = EXCLUDED.description,
+                                wikipedia_url = EXCLUDED.wikipedia_url,
+                                last_updated = NOW()
+                        """)
+                        # Fill gaps
+                        wiki_data['common_name'] = info.get('com_name')
+                        wiki_data['family'] = "" # ToDo
+                        
+                        conn.execute(query_upsert, wiki_data)
+                        conn.commit()
+                        
+                # 4. Merge
+                if wiki_data:
+                    info['german_name'] = wiki_data.get('german_name')
+                    info['image_url'] = wiki_data.get('image_url')
+                    info['description'] = wiki_data.get('description')
+                    info['wikipedia_url'] = wiki_data.get('wikipedia_url')
+                    
+        except Exception as e:
+            print(f"Enrichment error for {sci_name}: {e}")
+            
+        return info
 
     @staticmethod
     def get_time_stats():

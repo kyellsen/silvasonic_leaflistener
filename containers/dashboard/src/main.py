@@ -152,6 +152,9 @@ async def birdnet_species_page(request: Request, species_name: str, auth=Depends
     if not data:
         raise HTTPException(status_code=404, detail="Species not found")
         
+    # Enrich with Wikimedia Data (Async)
+    data["info"] = await BirdNetService.enrich_species_data(data["info"])
+        
     return render(request, "birdnet_species.html", {
         "request": request,
         "page": "birdnet_discover",

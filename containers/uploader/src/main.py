@@ -28,9 +28,14 @@ NEXTCLOUD_PASSWORD = os.getenv("UPLOADER_NEXTCLOUD_PASSWORD")
 TARGET_DIR = os.getenv("UPLOADER_TARGET_DIR", "silvasonic")
 SOURCE_DIR = "/data/recording"
 SYNC_INTERVAL = int(os.getenv("UPLOADER_SYNC_INTERVAL", 60))
-STATUS_FILE = "/var/log/silvasonic/carrier_status.json"
+STATUS_FILE = "/mnt/data/services/silvasonic/status/carrier.json"
+ERROR_DIR = "/mnt/data/services/silvasonic/errors"
 CLEANUP_THRESHOLD = int(os.getenv("UPLOADER_CLEANUP_THRESHOLD", 70))
 CLEANUP_TARGET = int(os.getenv("UPLOADER_CLEANUP_TARGET", 60))
+
+# Ensure directories exist
+os.makedirs(os.path.dirname(STATUS_FILE), exist_ok=True)
+os.makedirs(ERROR_DIR, exist_ok=True)
 
 def write_status(status: str, last_upload: float = 0, queue_size: int = -1):
     """Write current status to JSON file for dashboard."""
@@ -49,6 +54,27 @@ def write_status(status: str, last_upload: float = 0, queue_size: int = -1):
         os.rename(tmp_file, STATUS_FILE)
     except Exception as e:
         logger.error(f"Failed to write status: {e}") 
+
+def report_error(context: str, error: Exception):
+    """Write critical error to shared error directory for the Watchdog."""
+    try:
+        timestamp = int(time.time())
+        filename = f"{ERROR_DIR}/error_carrier_{timestamp}.json"
+        
+        data = {
+            "service": "carrier",
+            "timestamp": timestamp,
+            "context": context,
+            "error": str(error),
+            "pid": os.getpid()
+        }
+        
+        with open(filename, 'w') as f:
+            json.dump(data, f)
+            
+        logger.error(f"Critical error reported to {filename}")
+    except Exception as ie:
+         logger.error(f"Failed to report error: {ie}") 
 
 
 def signal_handler(sig, frame):
@@ -87,20 +113,26 @@ def main():
                 write_status("Syncing", last_upload_success, queue_size)
                 
                 # Use COPY instead of SYNC to prevent deleting files on remote if they are missing locally
-                wrapper.copy(SOURCE_DIR, f"remote:{TARGET_DIR}")
+                success = wrapper.copy(SOURCE_DIR, f"remote:{TARGET_DIR}")
                 
-                last_upload_success = time.time()
-                write_status("Idle", last_upload_success, queue_size)
+                if success:
+                    last_upload_success = time.time()
+                    write_status("Idle", last_upload_success, queue_size)
 
-                # --- PHASE 2: CLEANUP ---
-                write_status("Cleaning", last_upload_success, queue_size)
-                
-                # Fetch remote file list for safe deletion verification
-                # We do this AFTER upload to ensure the list is fresh
-                remote_files = wrapper.list_files(f"remote:{TARGET_DIR}")
-                
-                # Run cleanup
-                janitor.check_and_clean(remote_files, wrapper.get_disk_usage_percent)
+                    # --- PHASE 2: CLEANUP ---
+                    write_status("Cleaning", last_upload_success, queue_size)
+                    
+                    # Fetch remote file list for safe deletion verification
+                    # We do this AFTER upload to ensure the list is fresh
+                    remote_files = wrapper.list_files(f"remote:{TARGET_DIR}")
+                    
+                    # Run cleanup
+                    janitor.check_and_clean(remote_files, wrapper.get_disk_usage_percent)
+                else:
+                    logger.error("Upload failed. Validation and cleanup skipped.")
+                    write_status("Error: Upload Failed", last_upload_success, queue_size)
+                    # We don't write an explicit error file for transient network errors,
+                    # we rely on the watchdog spotting the stale 'last_upload' timestamp.
 
             else:
                 logger.error(f"Source directory {SOURCE_DIR} does not exist!")
@@ -115,6 +147,8 @@ def main():
                 
         except Exception as e:
             logger.exception("Unexpected error in main loop:")
+            report_error("main_loop_crash", e)
+            write_status("Error: Crashed", last_upload_success)
             time.sleep(60) # Prevent tight loop on error
 
 if __name__ == "__main__":

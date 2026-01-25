@@ -37,6 +37,21 @@ class BirdNETDetection(Base):
     model_version = Column(String(50), nullable=True)
     clip_path = Column(String(1024), nullable=True)
 
+class SpeciesInfo(Base):
+    __tablename__ = 'species_info'
+    __table_args__ = {'schema': 'birdnet'}
+
+    scientific_name = Column(String(255), primary_key=True)
+    common_name = Column(String(255), nullable=True)
+    german_name = Column(String(255), nullable=True)
+    family = Column(String(255), nullable=True)
+    image_url = Column(String(1024), nullable=True)
+    image_author = Column(String(255), nullable=True)
+    image_license = Column(String(255), nullable=True)
+    description = Column(Text, nullable=True)
+    wikipedia_url = Column(String(1024), nullable=True)
+    last_updated = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+
 class DatabaseHandler:
     def __init__(self):
         self.user = os.getenv("POSTGRES_USER", "silvasonic")

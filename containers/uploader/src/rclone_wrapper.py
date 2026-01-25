@@ -43,9 +43,10 @@ class RcloneWrapper:
             logger.error(f"Failed to configure remote: {e.stderr}")
             raise
 
-    def sync(self, source: str, dest: str, transfers: int = 4, checkers: int = 8):
+    def sync(self, source: str, dest: str, transfers: int = 4, checkers: int = 8) -> bool:
         """
         Runs the sync command and streams output.
+        Returns True if successful, False otherwise.
         """
         cmd = [
             "rclone", "sync", source, dest,
@@ -55,11 +56,12 @@ class RcloneWrapper:
             "--config", self.config_path
         ]
         
-        self._run_transfer(cmd, source, dest)
+        return self._run_transfer(cmd, source, dest)
 
-    def copy(self, source: str, dest: str, transfers: int = 4, checkers: int = 8):
+    def copy(self, source: str, dest: str, transfers: int = 4, checkers: int = 8) -> bool:
         """
         Runs the copy command (additive only) and streams output.
+        Returns True if successful, False otherwise.
         """
         cmd = [
             "rclone", "copy", source, dest,
@@ -69,10 +71,10 @@ class RcloneWrapper:
             "--config", self.config_path
         ]
         
-        self._run_transfer(cmd, source, dest)
+        return self._run_transfer(cmd, source, dest)
 
-    def _run_transfer(self, cmd: list, source: str, dest: str):
-        """Helper to run transfer commands and stream logs."""
+    def _run_transfer(self, cmd: list, source: str, dest: str) -> bool:
+        """Helper to run transfer commands and stream logs. Returns True on success."""
         logger.info(f"Starting transfer: {source} -> {dest}")
         start_time = time.time()
         
@@ -102,16 +104,18 @@ class RcloneWrapper:
             duration = time.time() - start_time
             if process.returncode == 0:
                 logger.info(f"Transfer completed successfully in {duration:.2f}s")
+                return True
             else:
                 logger.error(f"Transfer failed with return code {process.returncode}")
                 logger.error("--- Rclone Output Dump (Last 100 lines) ---")
                 for line in output_buffer:
                     logger.error(f"[Rclone] {line}")
                 logger.error("-------------------------------------------")
-                # We don't raise here, we let the main loop handle (retry)
+                return False
                 
         except Exception as e:
             logger.error(f"Transfer execution error: {e}")
+            return False
 
     def list_files(self, remote: str) -> dict:
         """

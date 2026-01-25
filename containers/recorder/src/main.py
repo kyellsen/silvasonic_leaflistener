@@ -18,7 +18,6 @@ import numpy as np
 import json
 
 # --- Logging ---
-# --- Logging ---
 # Ensure log directory exists (handled by volume, but safe to check)
 os.makedirs("/var/log/silvasonic", exist_ok=True)
 
@@ -38,6 +37,8 @@ BASE_OUTPUT_DIR = os.getenv("AUDIO_OUTPUT_DIR", "/data/recording")
 # --- Global State ---
 running = True
 STATUS_FILE = "/var/log/silvasonic/recorder_status.json"
+
+
 
 
 def write_status(status: str, profile_name: str = "Unknown", 
@@ -105,6 +106,9 @@ def record_chunk(device_hw: str, filename: str, duration: int,
     
     logger.info(f"Recording {duration}s -> {os.path.basename(filename)}")
     
+    arecord_proc = None
+    ffmpeg_proc = None
+
     try:
         arecord_proc = subprocess.Popen(
             arecord_cmd, 
@@ -118,26 +122,57 @@ def record_chunk(device_hw: str, filename: str, duration: int,
             stderr=subprocess.PIPE
         )
         
-        arecord_proc.stdout.close()
+        # Allow arecord to receive SIGPIPE if ffmpeg dies
+        if arecord_proc.stdout:
+            arecord_proc.stdout.close()
         
-        ffmpeg_proc.wait()
-        arecord_proc.wait()
-        
+        # Wait for processes with timeout (duration + 5s buffer)
+        try:
+            _, stderr = ffmpeg_proc.communicate(timeout=duration + 5)
+            
+            # Wait for arecord to finish (should be done if ffmpeg is done reading)
+            arecord_proc.wait(timeout=2)
+            
+        except subprocess.TimeoutExpired:
+            logger.error("Recording process timed out - killing...")
+            return False
+
+        if arecord_proc.returncode != 0:
+            arecord_err = arecord_proc.stderr.read().decode() if arecord_proc.stderr else "Unknown"
+            logger.error(f"Arecord error (code {arecord_proc.returncode}): {arecord_err}")
+            return False
+
         if ffmpeg_proc.returncode == 0:
             try:
-                size_mb = os.path.getsize(filename) / 1024 / 1024
-                logger.info(f"Saved: {os.path.basename(filename)} ({size_mb:.2f} MB)")
-            except:
-                logger.info(f"Saved: {os.path.basename(filename)}")
+                if os.path.exists(filename):
+                    size_mb = os.path.getsize(filename) / 1024 / 1024
+                    logger.info(f"Saved: {os.path.basename(filename)} ({size_mb:.2f} MB)")
+                else:
+                     logger.error("FFmpeg exited 0 but file not found!")
+                     return False
+            except Exception as e:
+                logger.warning(f"Error checking file size: {e}")
             return True
         else:
-            stderr = ffmpeg_proc.stderr.read().decode()
-            logger.error(f"FFmpeg error: {stderr}")
+            err_msg = stderr.decode() if stderr else "Unknown error"
+            logger.error(f"FFmpeg error (code {ffmpeg_proc.returncode}): {err_msg}")
             return False
             
     except Exception as e:
         logger.error(f"Recording error: {e}")
         return False
+    finally:
+        # cleanup processes if still running
+        for p in [arecord_proc, ffmpeg_proc]:
+            if p is not None and p.poll() is None:
+                try:
+                    p.terminate()
+                    p.wait(timeout=1)
+                except:
+                    try:
+                        p.kill()
+                    except:
+                        pass
 
 
 def generate_mock_audio(filename: str, duration: int, 
@@ -158,7 +193,6 @@ def generate_mock_audio(filename: str, duration: int,
         
         sf.write(filename, noise, sample_rate, subtype='PCM_16')
         
-        size_mb = os.path.getsize(filename) / 1024 / 1024
         size_mb = os.path.getsize(filename) / 1024 / 1024
         logger.info(f"[MOCK] Saved: {os.path.basename(filename)} ({size_mb:.2f} MB)")
         return True
@@ -214,22 +248,34 @@ def main():
     signal.signal(signal.SIGTERM, signal_handler)
     
     # Ensure output directory exists
-    os.makedirs(output_dir, exist_ok=True)
-    logger.info(f"Output directory ready: {output_dir}")
+    try:
+        os.makedirs(output_dir, exist_ok=True)
+        logger.info(f"Output directory ready: {output_dir}")
+    except OSError as e:
+        logger.critical(f"Could not create output directory {output_dir}: {e}")
+        sys.exit(1)
     
     # Recording loop
+    consecutive_errors = 0
+    MAX_CONSECUTIVE_ERRORS = 10
+    
     if profile.is_mock:
         logger.warning("🔧 MOCK MODE ENABLED - No real audio capture")
         write_status("Mocking", profile.name, "Virtual Mock Device")
         while running:
+
             filename = get_filename(output_dir, profile.recording.output_format)
-            generate_mock_audio(
+            if generate_mock_audio(
                 filename,
                 profile.recording.chunk_duration_seconds,
                 profile.audio.sample_rate,
                 profile.audio.channels
-            )
-            write_status("Mocking", profile.name, "Virtual Mock Device", os.path.basename(filename))
+            ):
+                write_status("Mocking", profile.name, "Virtual Mock Device", os.path.basename(filename))
+                consecutive_errors = 0
+            else:
+                 consecutive_errors += 1
+            
             time.sleep(1)
     else:
         if not device:
@@ -241,6 +287,7 @@ def main():
         write_status("Recording", profile.name, device.description)
         
         while running:
+
             filename = get_filename(output_dir, profile.recording.output_format)
             success = record_chunk(
                 device_hw=device.hw_address,
@@ -254,10 +301,19 @@ def main():
             
             if success:
                 write_status("Recording", profile.name, device.description, os.path.basename(filename))
-            elif running:
-                logger.warning("Recording failed, retrying in 5s...")
-                write_status("Retrying", profile.name, device.description)
-                time.sleep(5)
+                consecutive_errors = 0
+            else:
+                consecutive_errors += 1
+                logger.warning(f"Recording failed ({consecutive_errors}/{MAX_CONSECUTIVE_ERRORS})")
+                
+                if consecutive_errors >= MAX_CONSECUTIVE_ERRORS:
+                    logger.critical("Too many consecutive errors. Exiting to trigger restart.")
+                    write_status("Fatal Error", profile.name, device.description)
+                    sys.exit(1)
+                    
+                if running:
+                    write_status("Retrying", profile.name, device.description)
+                    time.sleep(5)
     
     write_status("Stopped", profile.name, device.description if device else "Unknown")
     logger.info("👋 Shutdown complete.")

@@ -44,3 +44,13 @@ The Silvasonic architecture is designed around resiliency. The system is split i
   - "SSD 40% full"
   - "50 Bats detected (approx)"
 - **Note**: Admin-level system management (restart, logs, updates) is handled by **Cockpit** running on the host, not this container.
+
+## 5. The Notifier (Watchdog)
+
+**Role:** Monitoring & Alerts
+**Status:** High Availability / Watchdog
+
+- **Function**: Monitors the health of other containers and sends alerts.
+- **Dead Man's Switch**: Monitors the Uploader status. If no successful upload occurs for >60 minutes, triggers an email via SMTP.
+- **Critical Error Relay**: Watches the shared `/errors` directory for crash dumps from any service and emails them immediately.
+- **Why separate?**: Monitoring must be independent of the monitored services. If the Uploader freezes, the Notifier (running in its own isolated process) remains alive to sound the alarm.

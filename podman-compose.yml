@@ -60,6 +60,24 @@ services:
       - /mnt/data/services/silvasonic/uploader/config:/config/rclone:z
       # Shared Logs
       - /mnt/data/services/silvasonic/logs:/var/log/silvasonic:z
+      # Shared Status & Errors
+      - /mnt/data/services/silvasonic/status:/mnt/data/services/silvasonic/status:z
+      - /mnt/data/services/silvasonic/errors:/mnt/data/services/silvasonic/errors:z
+
+  # ---------------------------------------------------------------------------
+  # Notifier (Watchdog) - Alerts & Monitoring
+  # ---------------------------------------------------------------------------
+  notifier:
+    build:
+      context: containers/notifier
+    image: silvasonic-notifier:latest
+    container_name: silvasonic_notifier
+    restart: always
+    env_file: .env
+    volumes:
+      # Shared Status & Errors (Read/Write for archiving errors)
+      - /mnt/data/services/silvasonic/status:/mnt/data/services/silvasonic/status:ro
+      - /mnt/data/services/silvasonic/errors:/mnt/data/services/silvasonic/errors:z
 
   # ---------------------------------------------------------------------------
   # BirdNET - Species Identification
