@@ -636,11 +636,11 @@ class RecorderService:
             print(f"Recorder History Error: {e}")
             return []
 
-class NotifierService:
+class HealthCheckerService:
     @staticmethod
     def get_status():
         try:
-            status_file = os.path.join(STATUS_DIR, "notifier.json")
+            status_file = os.path.join(STATUS_DIR, "healthchecker.json")
             if os.path.exists(status_file):
                 with open(status_file, 'r') as f:
                      # Check freshness
@@ -652,7 +652,7 @@ class NotifierService:
                      
                      return data
         except Exception as e:
-            print(f"Notifier status error: {e}")
+            print(f"HealthChecker status error: {e}")
             
         return {"status": "Unknown"}
 

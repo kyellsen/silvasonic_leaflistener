@@ -325,12 +325,49 @@ async def stream_audio(filename: str, auth=Depends(require_auth)):
 
 @app.get("/api/spectrogram/{filename}")
 async def stream_spectrogram(filename: str, auth=Depends(require_auth)):
-    """Stream spectrogram from artifacts dir"""
+    """Stream spectrogram from artifacts dir, generating it if needed (Lazy Loading)"""
     if isinstance(auth, RedirectResponse): raise HTTPException(401)
     
+    # Path to the visual artifact (PNG)
     safe_path = os.path.normpath(os.path.join(ARTIFACTS_DIR, filename))
-    if not safe_path.startswith(ARTIFACTS_DIR) or not os.path.exists(safe_path):
-        # Return fallback placeholder if needed, or 404
+    
+    # Security: Prevent traversing out of artifacts dir
+    if not safe_path.startswith(ARTIFACTS_DIR):
+        raise HTTPException(403, "Invalid path")
+        
+    # Lazy Loading Strategy:
+    # 1. Check if the PNG exists.
+    if not os.path.exists(safe_path):
+        # 2. If not, check if we have the Source Audio
+        # The filename for spectrogram usually is: {audio_filename}_spec.png
+        # So we need to reconstruct the original audio filename.
+        # Logic from sound_analyser/src/analyzers/spectrum.py:
+        # artifact_name = f"{filename}_spec.png"
+        # So if we have "recording.flac_spec.png", the audio is "recording.flac"
+        
+        if not filename.endswith("_spec.png"):
+             raise HTTPException(404, "Invalid spectrogram filename format")
+             
+        audio_filename = filename.replace("_spec.png", "")
+        audio_path = os.path.join(AUDIO_DIR, audio_filename)
+        
+        if not os.path.exists(audio_path):
+            raise HTTPException(404, "Source audio for spectrogram not found")
+            
+        # 3. Generate it on the fly
+        # This is invalidating the "read-only" constraint if ARTIFACTS_DIR is read-only?
+        # Usually /data/processed is R/W.
+        from src.spectrogram import generate_spectrogram
+        
+        # Run in threadpool so we don't block the async loop
+        import asyncio
+        loop = asyncio.get_event_loop()
+        success = await loop.run_in_executor(None, generate_spectrogram, audio_path, safe_path)
+        
+        if not success:
+            raise HTTPException(500, "Failed to generate spectrogram")
+
+    if not os.path.exists(safe_path):
         raise HTTPException(404, "Spectrogram not found")
         
     return FileResponse(safe_path, media_type="image/png")

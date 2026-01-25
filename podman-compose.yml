@@ -67,13 +67,13 @@ services:
       - /mnt/data/services/silvasonic/errors:/mnt/data/services/silvasonic/errors:z
 
   # ---------------------------------------------------------------------------
-  # Notifier (Watchdog) - Alerts & Monitoring
+  # HealthChecker (formerly Notifier) - Alerts & Monitoring
   # ---------------------------------------------------------------------------
-  notifier:
+  healthchecker:
     build:
-      context: containers/notifier
-    image: silvasonic-notifier:latest
-    container_name: silvasonic_notifier
+      context: containers/healthchecker
+    image: silvasonic-healthchecker:latest
+    container_name: silvasonic_healthchecker
     restart: always
     env_file: .env
     volumes:

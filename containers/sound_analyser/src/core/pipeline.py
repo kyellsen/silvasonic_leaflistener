@@ -8,7 +8,7 @@ from src.config import config
 from src.analyzers.meta import MetaAnalyzer
 from src.analyzers.loudness import LoudnessAnalyzer
 from src.analyzers.frequency import FrequencyAnalyzer
-from src.analyzers.frequency import FrequencyAnalyzer
+
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("Pipeline")

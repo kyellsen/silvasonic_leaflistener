@@ -17,7 +17,7 @@ logging.basicConfig(
     handlers=[
         logging.StreamHandler(sys.stdout),
         logging.handlers.TimedRotatingFileHandler(
-            "/var/log/silvasonic/notifier.log",
+            "/var/log/silvasonic/healthchecker.log",
             when='midnight',
             interval=1,
             backupCount=30,
@@ -25,7 +25,7 @@ logging.basicConfig(
         )
     ]
 )
-logger = logging.getLogger("Watchdog")
+logger = logging.getLogger("HealthChecker")
 
 # Config
 BASE_DIR = "/mnt/data/services/silvasonic"
@@ -112,28 +112,28 @@ def check_error_drops(mailer: Mailer):
             logger.error(f"Failed to process error file {err_file}: {e}")
 
 def write_status():
-    """Writes the Notifier's own heartbeat."""
+    """Writes the HealthChecker's own heartbeat."""
     try:
         import psutil
         data = {
-            "service": "notifier",
+            "service": "healthchecker",
             "timestamp": time.time(),
             "status": "Running",
             "cpu_percent": psutil.cpu_percent(),
             "memory_usage_mb": psutil.Process(os.getpid()).memory_info().rss / 1024 / 1024,
             "pid": os.getpid()
         }
-        status_file = f"{STATUS_DIR}/notifier.json"
+        status_file = f"{STATUS_DIR}/healthchecker.json"
         
         tmp_file = f"{status_file}.tmp"
         with open(tmp_file, 'w') as f:
             json.dump(data, f)
         os.rename(tmp_file, status_file)
     except Exception as e:
-        logger.error(f"Failed to write notifier status: {e}")
+        logger.error(f"Failed to write healthchecker status: {e}")
 
 def main():
-    logger.info("--- Silvasonic Watchdog Started ---")
+    logger.info("--- Silvasonic HealthChecker Started ---")
     ensure_dirs()
     mailer = Mailer()
     
@@ -146,7 +146,7 @@ def main():
             check_services_status(mailer)
             check_error_drops(mailer)
         except Exception as e:
-            logger.exception("Watchdog loop crashed:")
+            logger.exception("HealthChecker loop crashed:")
         
         time.sleep(CHECK_INTERVAL)
 
