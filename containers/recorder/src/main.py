@@ -107,6 +107,8 @@ def start_recording(profile, device, output_dir):
     cmd = [
         "ffmpeg",
         "-f", "alsa",
+        "-ac", str(profile.audio.channels),
+        "-ar", str(profile.audio.sample_rate),
         "-i", device.hw_address,
         
         # Audio Filtering (Optional: Highpass/Denoise? No, keep it raw for analysis)

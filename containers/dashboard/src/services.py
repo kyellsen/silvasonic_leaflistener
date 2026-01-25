@@ -433,16 +433,7 @@ class BirdNetService:
                     
         except Exception as e:
             print(f"Enrichment error for {sci_name}: {e}")
-            
-                if wiki_data:
-                    info['german_name'] = wiki_data.get('german_name')
-                    info['image_url'] = wiki_data.get('image_url')
-                    info['description'] = wiki_data.get('description')
-                    info['wikipedia_url'] = wiki_data.get('wikipedia_url')
-                    
-        except Exception as e:
-            print(f"Enrichment error for {sci_name}: {e}")
-            
+
         return info
 
     @staticmethod

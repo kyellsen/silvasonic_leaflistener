@@ -14,6 +14,7 @@ class Config:
     
     # Default to Postgres if host is 'db' (from compose)
     if _pg_host:
+        DB_PATH = None
         DB_URL = f"postgresql://{_pg_user}:{_pg_pass}@{_pg_host}:5432/{_pg_db}"
     else:
         DB_PATH = os.getenv("DB_PATH", "/data/db/brain.sqlite")
@@ -32,6 +33,7 @@ class Config:
         if cls.EXPORT_JSON_METADATA:
             cls.METADATA_DIR.mkdir(parents=True, exist_ok=True)
         # DB Dir is handled by engine but parent must exist
-        Path(cls.DB_PATH).parent.mkdir(parents=True, exist_ok=True)
+        if cls.DB_PATH:
+            Path(cls.DB_PATH).parent.mkdir(parents=True, exist_ok=True)
 
 config = Config()

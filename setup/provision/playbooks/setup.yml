@@ -83,7 +83,6 @@
       loop:
         - /mnt/data/dev
         - /mnt/data/containers
-        - /mnt/data/services/silvasonic/recordings
         - /mnt/data/backups
         - /mnt/data/services/silvasonic/logs
         - /mnt/data/services/silvasonic/config

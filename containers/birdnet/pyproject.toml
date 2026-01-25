@@ -13,7 +13,8 @@ dependencies = [
     "birdnet-analyzer @ git+https://github.com/birdnet-team/BirdNET-Analyzer.git",
     "PyYAML",
     "sqlalchemy",
-    "psycopg2-binary"
+    "psycopg2-binary",
+    "psutil"
 ]
 
 [project.optional-dependencies]
