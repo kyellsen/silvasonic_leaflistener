@@ -35,6 +35,8 @@ AUDIO_DIR = "/data/recording"
 LOG_DIR = "/var/log/silvasonic"
 ARTIFACTS_DIR = "/data/processed/artifacts"
 
+VERSION = "0.1.0"
+
 app = FastAPI(title="Silvasonic Dashboard")
 templates = Jinja2Templates(directory=TEMPLATES_DIR)
 
@@ -54,6 +56,9 @@ def render(request: Request, template: str, context: dict):
         context["base"] = "partials/empty_base.html" 
     else:
         context["base"] = "base.html"
+    
+    # Inject Global Context
+    context["version"] = VERSION
         
     return templates.TemplateResponse(template, context)
 
@@ -193,7 +198,31 @@ async def settings_save(request: Request, auth=Depends(require_auth)):
 
     if "location" not in settings: settings["location"] = {}
     settings["location"]["latitude"] = latitude
+    settings["location"]["latitude"] = latitude
     settings["location"]["longitude"] = longitude
+
+    # BirdNET Form Parsing
+    try:
+        settings.setdefault("birdnet", {})
+        settings["birdnet"]["min_confidence"] = float(form.get("birdnet_min_confidence", 0.7))
+        settings["birdnet"]["sensitivity"] = float(form.get("birdnet_sensitivity", 1.0))
+        settings["birdnet"]["overlap"] = float(form.get("birdnet_overlap", 0.0))
+    except (ValueError, TypeError):
+        # Fallback to existing or defaults if bad input
+        pass
+
+    # Service Timeouts Parsing
+    settings.setdefault("healthchecker", {}).setdefault("service_timeouts", {})
+    # Default list of services to check for
+    services = ["recorder", "birdnet", "sound_analyser", "weather", "carrier"]
+    for svc in services:
+        key = f"timeout_{svc}"
+        val = form.get(key)
+        if val:
+            try:
+                settings["healthchecker"]["service_timeouts"][svc] = int(val)
+            except ValueError:
+                pass # Keep previous or default
     
     # Save
     msg = None

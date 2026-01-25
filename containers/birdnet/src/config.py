@@ -1,4 +1,5 @@
 import os
+import json
 import logging
 import yaml
 from pathlib import Path
@@ -31,18 +32,30 @@ class Config:
     def birdnet_settings(self):
         """
         Returns a dictionary of BirdNET settings, merging defaults, 
-        env vars, and YAML config (YAML executes highest precedence).
+        env vars, and YAML config.
+        Priority: settings.json > config.yaml > Environment > Default
         """
         yaml_conf = self._load_yaml().get('birdnet', {})
+        json_conf = self._load_settings_json()
         
-        # Helper to get value from YAML -> Env -> Default
+        # Helper to get value from JSON -> YAML -> Env -> Default
         def get_val(key, env_key, default, type_cast):
+            # 1. Dashboard Settings (JSON)
+            val = json_conf.get(key)
+            if val is not None:
+                return type_cast(val)
+                
+            # 2. Static Config (YAML)
             val = yaml_conf.get(key)
             if val is not None:
                 return type_cast(val)
+                
+            # 3. Environment Variable
             val = os.getenv(env_key)
             if val is not None:
                 return type_cast(val)
+                
+            # 4. Default
             return default
 
         return {
@@ -54,6 +67,17 @@ class Config:
             'sensitivity': get_val('sensitivity', 'SENSITIVITY', 1.0, float),
             'threads': get_val('threads', 'THREADS', 1, int),
         }
+
+    def _load_settings_json(self):
+        """Loads the shared JSON settings file."""
+        settings_path = Path("/config/settings.json")
+        if settings_path.exists():
+            try:
+                with open(settings_path, 'r') as f:
+                    return json.load(f).get("birdnet", {})
+            except Exception as e:
+                logger.error(f"Failed to load settings.json: {e}")
+        return {}
 
     # Backward compatibility properties (proxies to fresh settings)
     @property

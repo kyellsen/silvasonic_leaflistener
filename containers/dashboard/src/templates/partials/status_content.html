@@ -9,7 +9,7 @@
   </div>
   <span
     class="font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide text-[10px]"
-    >System</span
+    >{{ status_label | default('System') }}</span
   >
   <span
     class="font-bold {{ status_color | default('text-gray-700 dark:text-green-400') }}"

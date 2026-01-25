@@ -1,5 +1,5 @@
 from pydantic import BaseModel, Field, AnyUrl, ValidationError, validator
-from typing import List, Optional
+from typing import List, Optional, Dict
 import os
 import json
 import logging
@@ -10,12 +10,28 @@ logger = logging.getLogger("Dashboard.Settings")
 
 CONFIG_PATH = "/config/settings.json"
 
+from typing import List, Optional, Dict
+
+# ... imports ...
+
 class LocaleSettings(BaseModel):
     use_german_names: bool = False
+
+class BirdNETSettings(BaseModel):
+    min_confidence: float = Field(default=0.7, ge=0.01, le=0.99, description="Minimum confidence score (0.01-0.99)")
+    sensitivity: float = Field(default=1.0, ge=0.5, le=1.5, description="Detection sensitivity (0.5-1.5)")
+    overlap: float = Field(default=0.0, ge=0.0, le=2.5, description="Overlap in seconds (0.0-2.5)")
 
 class HealthCheckerSettings(BaseModel):
     recipient_email: Optional[str] = Field(default="") # Empty allowed, falls back to env
     apprise_urls: List[str] = Field(default_factory=list)
+    service_timeouts: Dict[str, int] = Field(default_factory=lambda: {
+        "carrier": 3600,
+        "recorder": 120,
+        "birdnet": 300,
+        "sound_analyser": 300,
+        "weather": 300
+    })
 
     @validator('recipient_email')
     def validate_email(cls, v):
@@ -33,6 +49,7 @@ class Settings(BaseModel):
     locale: LocaleSettings = Field(default_factory=LocaleSettings)
     healthchecker: HealthCheckerSettings = Field(default_factory=HealthCheckerSettings)
     location: LocationSettings = Field(default_factory=LocationSettings)
+    birdnet: BirdNETSettings = Field(default_factory=BirdNETSettings)
 
 DEFAULT_SETTINGS = Settings().dict()
 

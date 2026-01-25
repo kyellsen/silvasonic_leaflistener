@@ -146,6 +146,117 @@
       </p>
     </div>
 
+    <!-- BirdNET Analysis -->
+    <div
+      class="glass-panel p-6 rounded-2xl border border-gray-200 dark:border-white/5"
+    >
+      <h3
+        class="font-bold text-lg text-gray-900 dark:text-white mb-4 border-b border-gray-200 dark:border-white/10 pb-2"
+      >
+        BirdNET Analysis
+      </h3>
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div>
+          <label
+            for="birdnet_min_confidence"
+            class="block font-medium text-gray-700 dark:text-gray-300 mb-2"
+            >Minimum Confidence</label
+          >
+          <input
+            type="number"
+            step="0.01"
+            min="0.01"
+            max="0.99"
+            name="birdnet_min_confidence"
+            id="birdnet_min_confidence"
+            value="{{ settings.birdnet.min_confidence }}"
+            class="w-full bg-gray-50 dark:bg-gray-900 border {% if field_errors and field_errors.birdnet_min_confidence %}border-red-500{% else %}border-gray-300 dark:border-gray-700{% endif %} text-gray-900 dark:text-white text-sm rounded-lg focus:ring-silva-500 focus:border-silva-500 block p-2.5"
+          />
+          {% if field_errors and field_errors.birdnet_min_confidence %}
+          <p class="mt-1 text-sm text-red-500">
+            {{ field_errors.birdnet_min_confidence }}
+          </p>
+          {% endif %}
+          <p class="mt-1 text-xs text-gray-500">
+            Threshold for valid detections (0.01-0.99).
+          </p>
+        </div>
+        <div>
+          <label
+            for="birdnet_sensitivity"
+            class="block font-medium text-gray-700 dark:text-gray-300 mb-2"
+            >Sensitivity</label
+          >
+          <input
+            type="number"
+            step="0.1"
+            min="0.5"
+            max="1.5"
+            name="birdnet_sensitivity"
+            id="birdnet_sensitivity"
+            value="{{ settings.birdnet.sensitivity }}"
+            class="w-full bg-gray-50 dark:bg-gray-900 border {% if field_errors and field_errors.birdnet_sensitivity %}border-red-500{% else %}border-gray-300 dark:border-gray-700{% endif %} text-gray-900 dark:text-white text-sm rounded-lg focus:ring-silva-500 focus:border-silva-500 block p-2.5"
+          />
+          <p class="mt-1 text-xs text-gray-500">
+            Detection sensitivity (0.5-1.5). Higher = more detections.
+          </p>
+        </div>
+        <div>
+          <label
+            for="birdnet_overlap"
+            class="block font-medium text-gray-700 dark:text-gray-300 mb-2"
+            >Overlap (s)</label
+          >
+          <input
+            type="number"
+            step="0.1"
+            min="0.0"
+            max="2.5"
+            name="birdnet_overlap"
+            id="birdnet_overlap"
+            value="{{ settings.birdnet.overlap }}"
+            class="w-full bg-gray-50 dark:bg-gray-900 border {% if field_errors and field_errors.birdnet_overlap %}border-red-500{% else %}border-gray-300 dark:border-gray-700{% endif %} text-gray-900 dark:text-white text-sm rounded-lg focus:ring-silva-500 focus:border-silva-500 block p-2.5"
+          />
+          <p class="mt-1 text-xs text-gray-500">
+            Overlap between analysis chunks (0.0-2.5s).
+          </p>
+        </div>
+      </div>
+    </div>
+
+    <!-- HealthChecker Timeouts -->
+    <div
+      class="glass-panel p-6 rounded-2xl border border-gray-200 dark:border-white/5"
+    >
+      <h3
+        class="font-bold text-lg text-gray-900 dark:text-white mb-4 border-b border-gray-200 dark:border-white/10 pb-2"
+      >
+        Service Timeouts (Seconds)
+      </h3>
+      <p class="mb-4 text-sm text-gray-500 dark:text-gray-400">
+        Time allowed without a heartbeat before a service is marked as Down.
+      </p>
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        {% for service, default_timeout in
+        settings.healthchecker.service_timeouts.items() %}
+        <div>
+          <label
+            for="timeout_{{ service }}"
+            class="capitalize block font-medium text-gray-700 dark:text-gray-300 mb-2"
+            >{{ service }}</label
+          >
+          <input
+            type="number"
+            name="timeout_{{ service }}"
+            id="timeout_{{ service }}"
+            value="{{ default_timeout }}"
+            class="w-full bg-gray-50 dark:bg-gray-900 border border-gray-300 dark:border-gray-700 text-gray-900 dark:text-white text-sm rounded-lg focus:ring-silva-500 focus:border-silva-500 block p-2.5"
+          />
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+
     <!-- HealthChecker Settings -->
     <div
       class="glass-panel p-6 rounded-2xl border border-gray-200 dark:border-white/5"
