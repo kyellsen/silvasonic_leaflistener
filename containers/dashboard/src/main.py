@@ -54,10 +54,23 @@ async def logout():
 
 # --- Protected Routes ---
 
+from src.services import SystemService, BirdNetService
+
 @app.get("/dashboard", response_class=HTMLResponse)
 async def dashboard(request: Request, auth=Depends(require_auth)):
     if isinstance(auth, RedirectResponse): return auth
-    return templates.TemplateResponse("index.html", {"request": request, "page": "home"})
+    
+    stats = SystemService.get_stats()
+    detections = BirdNetService.get_recent_detections(limit=5)
+    birdnet_stats = BirdNetService.get_stats()
+    
+    return templates.TemplateResponse("index.html", {
+        "request": request, 
+        "page": "home",
+        "stats": stats,
+        "detections": detections,
+        "birdnet_stats": birdnet_stats
+    })
 
 @app.get("/logs", response_class=HTMLResponse)
 async def logs_page(request: Request, auth=Depends(require_auth)):
@@ -67,7 +80,16 @@ async def logs_page(request: Request, auth=Depends(require_auth)):
 @app.get("/birdnet", response_class=HTMLResponse)
 async def birdnet_page(request: Request, auth=Depends(require_auth)):
     if isinstance(auth, RedirectResponse): return auth
-    return templates.TemplateResponse("birdnet.html", {"request": request, "page": "birdnet"})
+    
+    detections = BirdNetService.get_recent_detections(limit=50) # More for browser
+    stats = BirdNetService.get_stats()
+    
+    return templates.TemplateResponse("birdnet.html", {
+        "request": request, 
+        "page": "birdnet",
+        "detections": detections,
+        "stats": stats
+    })
 
 # --- API / HTMX Partials ---
 

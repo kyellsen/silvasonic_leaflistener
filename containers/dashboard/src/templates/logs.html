@@ -1,0 +1,60 @@
+{% extends "base.html" %} {% block content %}
+<div class="flex flex-col h-full">
+  <!-- Tab Bar -->
+  <div class="flex gap-2 mb-4">
+    {% for svc in ['recorder', 'uploader', 'birdnet', 'sound_analyser'] %}
+    <button
+      class="px-4 py-2 rounded-lg bg-gray-800 hover:bg-gray-700 border border-gray-700 text-sm font-bold uppercase transition focus:ring-2 ring-green-500"
+      onclick="connectLog('{{ svc }}')"
+    >
+      {{ svc }}
+    </button>
+    {% endfor %}
+  </div>
+
+  <!-- Terminal Window -->
+  <div
+    class="flex-1 bg-black rounded-xl border border-gray-700 p-4 font-mono text-xs overflow-auto relative shadow-inner"
+    id="terminal"
+  >
+    <div class="text-gray-500 mb-2">Select a service to view logs...</div>
+    <div id="log-output" class="whitespace-pre-wrap text-gray-300"></div>
+  </div>
+</div>
+
+<script>
+  let eventSource = null;
+
+  function connectLog(service) {
+    const output = document.getElementById("log-output");
+    const term = document.getElementById("terminal");
+
+    if (eventSource) {
+      eventSource.close();
+    }
+
+    output.innerHTML = ""; // Clear
+    output.innerHTML += `<span class="text-green-500">Connecting to ${service} logs...</span>\n`;
+
+    eventSource = new EventSource(`/api/logs/${service}`);
+
+    eventSource.onmessage = function (event) {
+      output.innerText += event.data + "\n";
+      term.scrollTop = term.scrollHeight; // Auto-scroll
+    };
+
+    eventSource.onerror = function () {
+      output.innerHTML += `<span class="text-red-500">Connection lost. Reconnecting...</span>\n`;
+      eventSource.close();
+    };
+  }
+</script>
+{% endblock %} {% block inspector %}
+<div class="text-gray-400 text-sm p-4">
+  <h3 class="font-bold text-white mb-2">Log Viewer Help</h3>
+  <p class="mb-2">Select a service tab to stream logs in real-time.</p>
+  <p>
+    Logs are read from the shared volume at <code>/var/log/silvasonic/</code>.
+  </p>
+</div>
+{% endblock %}
