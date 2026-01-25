@@ -54,3 +54,4 @@ setup/bootstrap/2025-12-04-raspios-trixie-arm64-lite.img.xz
 
 tmp_rec
 setup/config/config.env
+test_data/
