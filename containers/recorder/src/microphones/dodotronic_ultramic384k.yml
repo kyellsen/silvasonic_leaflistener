@@ -23,7 +23,7 @@ audio:
 
 # Recording settings
 recording:
-  chunk_duration_seconds: 60 # File rotation interval
+  chunk_duration_seconds: 30 # File rotation interval
   output_format: "flac" # Output codec (flac recommended)
   compression_level: 5 # FLAC compression (0-8, 5 is balanced)
 

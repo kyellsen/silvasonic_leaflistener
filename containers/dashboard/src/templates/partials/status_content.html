@@ -1,0 +1,10 @@
+<div id="status-line-container" class="contents">
+  <span
+    >Server:
+    <span
+      class="{{ status_color | default('text-green-600 dark:text-green-400') }}"
+    >
+      {{ status_value | default('Online') }}
+    </span>
+  </span>
+</div>

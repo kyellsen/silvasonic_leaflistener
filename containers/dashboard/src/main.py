@@ -95,13 +95,22 @@ async def dashboard(request: Request, auth=Depends(require_auth)):
         "detections": detections,
         "birdnet_stats": birdnet_stats,
         "carrier_stats": carrier_stats,
-        "recorder_stats": recorder_stats
+        "recorder_stats": recorder_stats,
+        "status_label": "System:",
+        "status_value": "Online",
+        "status_color": "text-green-600 dark:text-green-400"
     })
 
 @app.get("/logs", response_class=HTMLResponse)
 async def logs_page(request: Request, auth=Depends(require_auth)):
     if isinstance(auth, RedirectResponse): return auth
-    return render(request, "logs.html", {"request": request, "page": "logs"})
+    return render(request, "logs.html", {
+        "request": request, 
+        "page": "logs",
+        "status_label": "System:",
+        "status_value": "Logging",
+        "status_color": "text-gray-500 dark:text-gray-400"
+    })
 
 @app.get("/birdnet", response_class=HTMLResponse)
 async def birdnet_page(request: Request, auth=Depends(require_auth)):
@@ -114,7 +123,10 @@ async def birdnet_page(request: Request, auth=Depends(require_auth)):
         "request": request, 
         "page": "birdnet",
         "detections": detections,
-        "stats": stats
+        "stats": stats,
+        "status_label": "BirdNET:",
+        "status_value": stats.get("status", "Active"),
+        "status_color": "text-green-600 dark:text-green-400"
     })
 
 @app.get("/birdnet/discover", response_class=HTMLResponse)
@@ -126,7 +138,10 @@ async def birdnet_discover_page(request: Request, auth=Depends(require_auth)):
     return render(request, "birdnet_discover.html", {
         "request": request,
         "page": "birdnet_discover",
-        "species_list": species_list
+        "species_list": species_list,
+        "status_label": "BirdNET:",
+        "status_value": "Discover",
+        "status_color": "text-amber-500 dark:text-amber-400"
     })
 
 @app.get("/birdnet/discover/{species_name}", response_class=HTMLResponse)
@@ -142,7 +157,10 @@ async def birdnet_species_page(request: Request, species_name: str, auth=Depends
         "page": "birdnet_discover",
         "species": data["info"],
         "recent": data["recent"],
-        "hourly": data["hourly"]
+        "hourly": data["hourly"],
+        "status_label": "BirdNET:",
+        "status_value": species_name,
+        "status_color": "text-amber-500 dark:text-amber-400"
     })
 
 @app.get("/stats", response_class=HTMLResponse)
@@ -156,7 +174,10 @@ async def stats_page(request: Request, auth=Depends(require_auth)):
         "page": "stats",
         "daily": stats_data["daily"],
         "hourly": stats_data["hourly"],
-        "top": stats_data["top"]
+        "top": stats_data["top"],
+        "status_label": "Statistics:",
+        "status_value": "Overview",
+        "status_color": "text-blue-500 dark:text-blue-400"
     })
 
 @app.get("/recorder", response_class=HTMLResponse)
@@ -171,7 +192,10 @@ async def recorder_page(request: Request, auth=Depends(require_auth)):
         "request": request, 
         "page": "recorder",
         "stats": stats,
-        "sys_stats": sys_stats
+        "sys_stats": sys_stats,
+        "status_label": "Recorder:",
+        "status_value": stats.get("status", "Unknown"),
+        "status_color": "text-green-600 dark:text-green-400" if stats.get("status") == "Running" else "text-red-600 dark:text-red-400"
     })
 
 @app.get("/uploader", response_class=HTMLResponse)
@@ -183,7 +207,10 @@ async def uploader_page(request: Request, auth=Depends(require_auth)):
     return render(request, "uploader.html", {
         "request": request, 
         "page": "uploader",
-        "stats": stats
+        "stats": stats,
+        "status_label": "Uploader:",
+        "status_value": stats.get("status", "Idle"),
+        "status_color": "text-cyan-600 dark:text-cyan-400"
     })
 
 @app.get("/analyzer", response_class=HTMLResponse)
@@ -197,7 +224,11 @@ async def analyzer_page(request: Request, auth=Depends(require_auth)):
     return render(request, "analyzer.html", {
         "request": request, 
         "page": "analyzer",
-        "stats": stats
+        "page": "analyzer",
+        "stats": stats,
+        "status_label": "Analyzer:",
+        "status_value": "Monitoring",
+        "status_color": "text-purple-600 dark:text-purple-400"
     })
 
 # --- API / HTMX Partials ---

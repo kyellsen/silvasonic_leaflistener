@@ -7,3 +7,8 @@ update the inspector if provided #}
   {% block inspector %}{% endblock %}
 </div>
 {% endif %}
+
+<!-- oob swap for status line -->
+<div hx-swap-oob="innerHTML:#status-line-container">
+  {% include "partials/status_content.html" %}
+</div>

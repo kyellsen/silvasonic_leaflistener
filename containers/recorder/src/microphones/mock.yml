@@ -17,7 +17,7 @@ audio:
   format: "S16_LE"
 
 recording:
-  chunk_duration_seconds: 10 # Short chunks for faster testing
+  chunk_duration_seconds: 30 # Short chunks for faster testing
   output_format: "flac"
   compression_level: 1 # Fast compression for dev
 
