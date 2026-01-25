@@ -1,0 +1,8 @@
+birdnet:
+  min_confidence: 0.7
+  latitude: -1
+  longitude: -1
+  week: -1
+  overlap: 0.0
+  sensitivity: 1.0
+  threads: 1

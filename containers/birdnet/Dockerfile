@@ -25,6 +25,10 @@ RUN uv pip compile pyproject.toml -o requirements.txt && \
 # Copy source code
 COPY src/ src/
 
+# Copy default config
+RUN mkdir -p /etc/birdnet
+COPY config.yml /etc/birdnet/config.yml
+
 # Set environment variables
 ENV PYTHONUNBUFFERED=1
 ENV PYTHONPATH=/app

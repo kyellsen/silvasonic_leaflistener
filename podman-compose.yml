@@ -102,14 +102,41 @@ services:
       - DB_PATH=/data/db/brain.sqlite
       - RECURSIVE_WATCH=true
 
+    # Low priority to prevent starvation of recorder/birdnet
+    cpu_shares: 128
+    deploy:
+      resources:
+        limits:
+          cpus: "0.5"
+          memory: 512M
+
     volumes:
       # Read-only access to recordings
       - /mnt/data/services/silvasonic/recorder/recordings:/data/recording:ro
-      # Isolated DB
+      # Isolated DB (Legacy SQLite)
       - /mnt/data/services/silvasonic/sound_analyser/db:/data/db:z
       # Artifacts (Spectrograms etc)
       - /mnt/data/services/silvasonic/sound_analyser/artifacts:/data/processed/artifacts:z
       # Metadata (JSON Exports)
       - /mnt/data/services/silvasonic/sound_analyser/metadata:/data/processed/metadata:z
 
+    restart: always
+
+  # ---------------------------------------------------------------------------
+  # Database (PostgreSQL) - Central Storage
+  # ---------------------------------------------------------------------------
+  db:
+    image: postgres:15-alpine
+    container_name: silvasonic_db
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-silvasonic}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-silvasonic}
+      POSTGRES_DB: ${POSTGRES_DB:-silvasonic}
+    volumes:
+      - /mnt/data/services/silvasonic/db/data:/var/lib/postgresql/data:z
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U silvasonic"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
     restart: always

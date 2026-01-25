@@ -1,32 +1,79 @@
 import os
+import logging
+import yaml
 from pathlib import Path
 
-class Config:
-    # Paths
-    INPUT_DIR = Path(os.getenv("INPUT_DIR", "/data/recording"))
-    RESULTS_DIR = Path(os.getenv("RESULTS_DIR", "/data/db/results"))
-    
-    # Watcher
-    RECURSIVE_WATCH = os.getenv("RECURSIVE_WATCH", "true").lower() == "true"
-    
-    # BirdNET Settings
-    # Minimum confidence to store a detection (0.0 - 1.0)
-    MIN_CONFIDENCE = float(os.getenv("MIN_CONFIDENCE", "0.7"))
-    
-    # Threads - BirdNET Analyzer can use multi-threading
-    THREADS = int(os.getenv("THREADS", "1"))
-    
-    # Location (Optional - defaults to -1 for global if not set)
-    # Using defaults similar to BirdNET-Pi or Global
-    _lat = os.getenv("LATITUDE")
-    LATITUDE = float(_lat) if _lat else -1
-    
-    _lon = os.getenv("LONGITUDE")
-    LONGITUDE = float(_lon) if _lon else -1
-    
-    WEEK = int(os.getenv("WEEK", "-1"))
-    OVERLAP = float(os.getenv("OVERLAP", "0.0"))
-    SENSITIVITY = float(os.getenv("SENSITIVITY", "1.0"))
+logger = logging.getLogger("Config")
 
+class Config:
+    def __init__(self):
+        # Paths
+        self.INPUT_DIR = Path(os.getenv("INPUT_DIR", "/data/recording"))
+        self.RESULTS_DIR = Path(os.getenv("RESULTS_DIR", "/data/db/results"))
+        self.CONFIG_FILE = Path(os.getenv("CONFIG_FILE", "/etc/birdnet/config.yml"))
+
+        # Watcher
+        self.RECURSIVE_WATCH = os.getenv("RECURSIVE_WATCH", "true").lower() == "true"
+
+    def _load_yaml(self):
+        """Loads the YAML config file if it exists, otherwise returns empty dict."""
+        if self.CONFIG_FILE.exists():
+            try:
+                with open(self.CONFIG_FILE, 'r') as f:
+                    return yaml.safe_load(f) or {}
+            except Exception as e:
+                logger.error(f"Failed to load config file {self.CONFIG_FILE}: {e}")
+                return {}
+        return {}
+
+    @property
+    def birdnet_settings(self):
+        """
+        Returns a dictionary of BirdNET settings, merging defaults, 
+        env vars, and YAML config (YAML executes highest precedence).
+        """
+        yaml_conf = self._load_yaml().get('birdnet', {})
+        
+        # Helper to get value from YAML -> Env -> Default
+        def get_val(key, env_key, default, type_cast):
+            val = yaml_conf.get(key)
+            if val is not None:
+                return type_cast(val)
+            val = os.getenv(env_key)
+            if val is not None:
+                return type_cast(val)
+            return default
+
+        return {
+            'min_conf': get_val('min_confidence', 'MIN_CONFIDENCE', 0.7, float),
+            'lat': get_val('latitude', 'LATITUDE', -1, float),
+            'lon': get_val('longitude', 'LONGITUDE', -1, float),
+            'week': get_val('week', 'WEEK', -1, int),
+            'overlap': get_val('overlap', 'OVERLAP', 0.0, float),
+            'sensitivity': get_val('sensitivity', 'SENSITIVITY', 1.0, float),
+            'threads': get_val('threads', 'THREADS', 1, int),
+        }
+
+    # Backward compatibility properties (proxies to fresh settings)
+    @property
+    def MIN_CONFIDENCE(self): return self.birdnet_settings['min_conf']
+    
+    @property
+    def LATITUDE(self): return self.birdnet_settings['lat']
+    
+    @property
+    def LONGITUDE(self): return self.birdnet_settings['lon']
+    
+    @property
+    def WEEK(self): return self.birdnet_settings['week']
+    
+    @property
+    def OVERLAP(self): return self.birdnet_settings['overlap']
+    
+    @property
+    def SENSITIVITY(self): return self.birdnet_settings['sensitivity']
+    
+    @property
+    def THREADS(self): return self.birdnet_settings['threads']
 
 config = Config()

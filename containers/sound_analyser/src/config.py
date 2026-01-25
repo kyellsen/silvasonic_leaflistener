@@ -7,8 +7,17 @@ class Config:
     RECURSIVE_WATCH = os.getenv("RECURSIVE_WATCH", "true").lower() == "true"
     
     # Storage
-    DB_PATH = os.getenv("DB_PATH", "/data/db/brain.sqlite")
-    DB_URL = f"sqlite:///{DB_PATH}"
+    _pg_user = os.getenv("POSTGRES_USER", "silvasonic")
+    _pg_pass = os.getenv("POSTGRES_PASSWORD", "silvasonic")
+    _pg_host = os.getenv("POSTGRES_HOST", "db")
+    _pg_db = os.getenv("POSTGRES_DB", "silvasonic")
+    
+    # Default to Postgres if host is 'db' (from compose)
+    if _pg_host:
+        DB_URL = f"postgresql://{_pg_user}:{_pg_pass}@{_pg_host}:5432/{_pg_db}"
+    else:
+        DB_PATH = os.getenv("DB_PATH", "/data/db/brain.sqlite")
+        DB_URL = f"sqlite:///{DB_PATH}"
     
     # Processing
     ARTIFACTS_DIR = Path(os.getenv("ARTIFACTS_DIR", "/data/processed/artifacts"))

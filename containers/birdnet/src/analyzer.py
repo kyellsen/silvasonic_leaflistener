@@ -11,6 +11,7 @@ except ImportError:
     bn_analyze = None
 
 from src.config import config
+from src.database import db
 
 logger = logging.getLogger("Analyzer")
 
@@ -22,6 +23,10 @@ class BirdNETAnalyzer:
             
         # Ensure results dir exists
         config.RESULTS_DIR.mkdir(parents=True, exist_ok=True)
+        
+        # Initialize Database
+        logger.info("Connecting to Database...")
+        db.connect()
 
     def process_file(self, file_path: str):
         """
@@ -49,16 +54,17 @@ class BirdNETAnalyzer:
         
         try:
             logger.info(f"Running analysis on {temp_resampled.name}...")
+            settings = config.birdnet_settings
             if bn_analyze:
                 bn_analyze(
                     audio_input=str(temp_resampled),
-                    min_conf=config.MIN_CONFIDENCE,
-                    lat=config.LATITUDE,
-                    lon=config.LONGITUDE,
-                    week=config.WEEK,
-                    overlap=config.OVERLAP,
-                    sensitivity=config.SENSITIVITY,
-                    threads=config.THREADS,
+                    min_conf=settings['min_conf'],
+                    lat=settings['lat'],
+                    lon=settings['lon'],
+                    week=settings['week'],
+                    overlap=settings['overlap'],
+                    sensitivity=settings['sensitivity'],
+                    threads=settings['threads'],
                     sf_thresh=0.0001,
                     output=str(temp_output_dir),
                     rtype='csv'
@@ -85,17 +91,42 @@ class BirdNETAnalyzer:
                 
                 # Verify content and log detection count
                 try:
-                    with open(final_output_file, 'r') as f:
-                        lines = f.readlines()
-                        # Subtract header
-                        detection_count = max(0, len(lines) - 1)
+                    import csv
+                    detection_count = 0
+                    
+                    with open(final_output_file, 'r', encoding='utf-8') as f:
+                        reader = csv.reader(f)
+                        header = next(reader, None) # Skip header usage
                         
+                        for row in reader:
+                            detection_count += 1
+                            if len(row) < 5: 
+                                continue
+                                
+                            # Parse Row: Start (s), End (s), Scientific name, Common name, Confidence
+                            try:
+                                detection = {
+                                    'filename': path.name,
+                                    'filepath': str(path),
+                                    'start_time': float(row[0]),
+                                    'end_time': float(row[1]),
+                                    'scientific_name': row[2],
+                                    'common_name': row[3],
+                                    'confidence': float(row[4]),
+                                    'lat': config.LATITUDE,
+                                    'lon': config.LONGITUDE
+                                }
+                                db.save_detection(detection)
+                            except ValueError:
+                                logger.warning(f"Skipping invalid row in {final_output_file}")
+
                     if detection_count == 0:
                         logger.warning(f"Analysis produced 0 detections for {path.name}.")
                     else:
-                        logger.info(f"Analysis finished for {path.name}: Found {detection_count} detections.")
+                        logger.info(f"Analysis finished for {path.name}: Found {detection_count} detections. Saved to DB.")
+                        
                 except Exception as e:
-                    logger.error(f"Failed to read result file for verification: {e}")
+                    logger.error(f"Failed to read result file for verification/DB: {e}")
 
             except Exception as e:
                 logger.error(f"Failed to save results: {e}")
