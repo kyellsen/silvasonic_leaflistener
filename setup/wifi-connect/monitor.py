@@ -15,38 +15,54 @@ logger = logging.getLogger("wifi_monitor")
 class WifiMonitor:
     def __init__(self):
         self.manager = WifiManager()
-        self.flask_process = None
-        self.ap_active = False
-        self.check_interval = 10 # Check every 10 seconds
+        self.current_process = None
+        self.mode = "none" # none, setup, redirect
+        self.check_interval = 10 
         self.disconnection_counter = 0
-        self.disconnection_threshold = 3 # 3 checks = 30 seconds wait before AP
+        self.disconnection_threshold = 3 
 
-    def start_flask(self):
-        if self.flask_process is None:
-            logger.info("Starting Web Config Portal...")
-            # Run flask app as a subprocess
+    def start_service(self, service_name):
+        """Start a web service (app.py or redirect.py)"""
+        script_map = {
+            "setup": "app.py",
+            "redirect": "redirect.py"
+        }
+        
+        if service_name not in script_map:
+            return
+
+        # Stop existing if different
+        if self.mode != service_name:
+            self.stop_service()
+
+        if self.current_process is None:
+            logger.info(f"Starting {service_name} service...")
             env = os.environ.copy()
-            script_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "app.py")
-            self.flask_process = subprocess.Popen(
-                ["python3", script_path],
-                env=env,
-                preexec_fn=os.setsid # Create new session group for easy killing
-            )
-
-    def stop_flask(self):
-        if self.flask_process:
-            logger.info("Stopping Web Config Portal...")
+            script_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), script_map[service_name])
+            
             try:
-                os.killpg(os.getpgid(self.flask_process.pid), signal.SIGTERM)
-                self.flask_process.wait(timeout=5)
+                self.current_process = subprocess.Popen(
+                    ["python3", script_path],
+                    env=env,
+                    preexec_fn=os.setsid
+                )
+                self.mode = service_name
             except Exception as e:
-                logger.warning(f"Error killing flask: {e}")
-            self.flask_process = None
+                logger.error(f"Failed to start {service_name}: {e}")
+
+    def stop_service(self):
+        if self.current_process:
+            logger.info(f"Stopping {self.mode} service...")
+            try:
+                os.killpg(os.getpgid(self.current_process.pid), signal.SIGTERM)
+                self.current_process.wait(timeout=5)
+            except Exception as e:
+                logger.warning(f"Error killing process: {e}")
+            self.current_process = None
+            self.mode = "none"
 
     def run(self):
         logger.info("WiFi Monitor Service Started")
-        
-        # Initial wait to let boot finish and existing connections establish
         time.sleep(15) 
 
         while True:
@@ -54,28 +70,32 @@ class WifiMonitor:
                 connected = self.manager.is_connected()
                 
                 if connected:
-                    logger.debug("System online.")
+                    # SYSTEM ONLINE
                     self.disconnection_counter = 0
                     
-                    if self.ap_active:
-                        logger.info("Connection detected! Stopping AP mode.")
+                    # Ensure AP is off
+                    if self.manager.is_ap_running():
+                        logger.info("Connection detected! Stopping AP.")
                         self.manager.stop_ap()
-                        self.stop_flask()
-                        self.ap_active = False
+                    
+                    # Ensure Redirector is running
+                    if self.mode != "redirect":
+                        self.start_service("redirect")
                 
                 else:
+                    # SYSTEM OFFLINE
                     self.disconnection_counter += 1
                     logger.debug(f"System offline. Counter: {self.disconnection_counter}")
                     
                     if self.disconnection_counter >= self.disconnection_threshold:
-                        if not self.ap_active:
-                            logger.info("Offline timeout reached. Enabling AP mode.")
-                            try:
-                                self.manager.start_ap()
-                                self.start_flask()
-                                self.ap_active = True
-                            except Exception as e:
-                                logger.error(f"Failed to start AP: {e}")
+                        # Ensure AP is on
+                        if not self.manager.is_ap_running():
+                            logger.info("Offline timeout. Starting AP.")
+                            self.manager.start_ap()
+                        
+                        # Ensure Setup App is running
+                        if self.mode != "setup":
+                            self.start_service("setup")
             
             except Exception as e:
                 logger.error(f"Error in monitor loop: {e}")

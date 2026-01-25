@@ -112,6 +112,13 @@ class WifiManager:
         # Activate it
         self.run_command(f"nmcli connection up '{self.AP_SSID}'")
 
-    def stop_ap(self):
-        """Stop the Access Point"""
-        self.run_command(f"nmcli connection down '{self.AP_SSID}'")
+    def is_ap_running(self):
+        """Check if the Access Point is currently active"""
+        # List active connections and look for our SSID
+        cmd = "nmcli -t -f NAME connection show --active"
+        output = self.run_command(cmd)
+        if output:
+            for line in output.split('\n'):
+                if line.strip() == self.AP_SSID:
+                    return True
+        return False
