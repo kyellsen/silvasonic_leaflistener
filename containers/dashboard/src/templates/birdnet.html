@@ -105,7 +105,7 @@
             <!-- Play Button -->
             <button
               class="p-2 rounded-full hover:bg-silva-100 dark:hover:bg-gray-600 text-silva-600 dark:text-silva-400 transition"
-              onclick="event.stopPropagation(); playGlobalAudio('{{ d.filename }}', '{{ d.display_name }}', '{{ d.confidence }}')"
+              onclick="event.stopPropagation(); playGlobalAudio('{{ d.audio_relative_path|replace('\\', '/') }}', '{{ d.display_name|replace('\'', '\\\'') }}', '{{ d.confidence }}')"
               title="Play Audio"
             >
               <svg
@@ -132,7 +132,7 @@
             <!-- Details Trigger (Hidden/Visible) -->
             <button
               class="details-btn p-2 rounded-full hover:bg-blue-50 dark:hover:bg-gray-600 text-blue-500 dark:text-blue-400 transition opacity-0 group-hover:opacity-100"
-              hx-get="/api/details/birdnet/{{ d.filename }}"
+              hx-get="/api/details/birdnet/{{ d.audio_relative_path|replace('\\', '/') }}"
               hx-target="#inspector-content"
               hx-swap="innerHTML"
               onclick="ensureInspectorOpen()"
