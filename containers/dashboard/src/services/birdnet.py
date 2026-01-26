@@ -25,7 +25,9 @@ class BirdNetService:
                         d.scientific_name as sci_name, 
                         d.timestamp,
                         d.filename,
-                        s.german_name
+                        s.german_name,
+                        s.image_url,
+                        s.description
                     FROM birdnet.detections d
                     LEFT JOIN birdnet.species_info s ON d.scientific_name = s.scientific_name
                     ORDER BY d.timestamp DESC 
@@ -54,12 +56,46 @@ class BirdNetService:
 
                     # Audio Path Logic
                     fp = d.get('filepath')
-                    if fp and fp.startswith(REC_DIR):
-                        d['audio_relative_path'] = fp[len(REC_DIR):].lstrip('/')
-                    else:
-                        d['audio_relative_path'] = d.get('filename') # Fallback
+                    # Image Logic (Fallback & Enrichment Trigger)
+                    if not d.get('image_url'):
+                        d['image_url'] = None
+                        # We should try to enrich this species so next time it has an image
+                        if d.get('sci_name'):
+                            # Fire and forget / Background task?
+                            # Or just await it? For "Recent Detections" on dashboard, speed matters.
+                            # But if we don't await, we won't show it THIS time.
+                            # Let's await for the first few (limit is small, 5).
+                            # Check if we already have it in a local cache to avoid DB hits? 
+                            # limit is small, so we can afford to check.
+                            pass # We will collect distinct species to enrich below
 
                     detections.append(d)
+
+                # Enrichment Step
+                # Collect unique scientific names that are missing images
+                missing_images = {}
+                for d in detections:
+                    if not d.get('image_url') and d.get('sci_name'):
+                        missing_images[d['sci_name']] = d
+
+                if missing_images:
+                    # Enrich unique species found
+                    for sci_name in missing_images:
+                        # Create a dummy dict to pass to enricher (it expects dict with sci_name)
+                        info = {'sci_name': sci_name, 'com_name': missing_images[sci_name].get('com_name')}
+                        updated_info = await BirdNetService.enrich_species_data(info)
+                        
+                        # Update all detections with this sci_name
+                        if updated_info.get('image_url'):
+                            for d in detections:
+                                if d.get('sci_name') == sci_name:
+                                    d['image_url'] = updated_info.get('image_url')
+                                    d['description'] = updated_info.get('description')
+                                    # Update German name if we found one
+                                    if updated_info.get('german_name'):
+                                         d['german_name'] = updated_info.get('german_name') 
+                                         # Re-evaluate display name
+                                         if use_german: d['display_name'] = d['german_name']
 
                 return detections
         except Exception as e:

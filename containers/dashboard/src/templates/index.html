@@ -320,75 +320,92 @@
   </h2>
 
   <div
-    class="glass-panel rounded-2xl overflow-hidden shadow-lg border border-gray-200 dark:border-white/5 overflow-x-auto"
+    class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4"
   >
-    <table class="w-full text-left text-sm whitespace-nowrap">
-      <thead
-        class="bg-gray-50/50 dark:bg-white/5 text-gray-500 dark:text-gray-400 uppercase font-bold text-[10px] tracking-wider"
+    {% for d in detections %}
+    <div
+      class="group relative bg-white dark:bg-white/5 rounded-2xl overflow-hidden shadow-sm hover:shadow-md transition-all border border-gray-200 dark:border-white/5 flex flex-col"
+    >
+      <!-- Image / Placeholder -->
+      <div
+        class="h-32 w-full bg-gray-100 dark:bg-gray-800 relative overflow-hidden"
       >
-        <tr>
-          <th class="p-5 font-bold">Time</th>
-          <th class="p-5 font-bold">Common Name</th>
-          <th class="p-5 font-bold">Confidence</th>
-          <th class="p-5 font-bold text-right">Action</th>
-        </tr>
-      </thead>
-      <tbody class="divide-y divide-gray-200 dark:divide-gray-800">
-        {% for d in detections %}
-        <tr
-          class="hover:bg-silva-50 dark:hover:bg-white/5 transition duration-200 cursor-pointer group"
+        {% if d.image_url %}
+        <img
+          src="{{ d.image_url }}"
+          alt="{{ d.display_name }}"
+          class="w-full h-full object-cover transform group-hover:scale-110 transition-transform duration-500"
+        />
+        {% else %}
+        <div
+          class="flex items-center justify-center h-full text-silva-200 dark:text-gray-700"
         >
-          <td
-            class="p-5 font-mono text-gray-400 group-hover:text-silva-600 dark:group-hover:text-silva-400 transition-colors"
-          >
-            <span
-              class="local-time opacity-0 transition-opacity duration-300"
-              data-timestamp="{{ d.iso_timestamp }}"
-              >...</span
-            >
-          </td>
-          <td class="p-5">
-            <span
-              class="font-bold text-gray-900 dark:text-white text-base block"
-              >{{ d.display_name }}</span
-            >
-            <span class="text-xs text-gray-400 italic block mt-0.5"
-              >{{ d.sci_name }}</span
-            >
-          </td>
-          <td class="p-5">
-            <div class="flex items-center gap-2">
-              <div
-                class="w-24 h-1.5 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden"
-              >
-                <div
-                  class="h-full bg-gradient-to-r from-silva-500 to-green-400"
-                  style="width: {{ (d.confidence * 100)|round(1) }}%"
-                ></div>
-              </div>
-              <span class="font-bold text-silva-600 dark:text-silva-400"
-                >{{ (d.confidence * 100)|round(1) }}%</span
-              >
-            </div>
-          </td>
-          <td class="p-5 text-right">
-            <button
-              class="px-4 py-2 rounded-lg bg-silva-100 dark:bg-silva-900/30 text-silva-700 dark:text-silva-300 font-bold text-xs hover:bg-silva-200 dark:hover:bg-silva-900/50 transition shadow-sm"
-              onclick="playGlobalAudio('{{ d.audio_relative_path }}', '{{ d.display_name }}', '{{ d.confidence }}')"
-            >
-              Play
-            </button>
-          </td>
-        </tr>
-        {% endfor %} {% if not detections %}
-        <tr>
-          <td colspan="4" class="p-10 text-center text-gray-500 italic">
-            No detections found in DB yet.
-          </td>
-        </tr>
+          <svg class="w-12 h-12" fill="currentColor" viewBox="0 0 24 24">
+            <path
+              d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 17.93c-3.95-.49-7-3.85-7-7.93 0-.62.08-1.21.21-1.79L9 15v1c0 1.1.9 2 2 2v1.93zm6.9-2.54c-.26-.81-1-1.39-1.9-1.39h-1v-3c0-.55-.45-1-1-1H8v-2h2c.55 0 1-.45 1-1V7h2c1.1 0 2-.9 2-2v-.41c2.93 1.19 5 4.06 5 7.41 0 2.08-.8 3.97-2.1 5.39z"
+            />
+          </svg>
+        </div>
         {% endif %}
-      </tbody>
-    </table>
+
+        <!-- Confidence Badge -->
+        <div
+          class="absolute top-2 right-2 px-2 py-0.5 rounded-full bg-black/60 backdrop-blur-md border border-white/10 text-[10px] font-bold text-white shadow-sm"
+        >
+          {{ (d.confidence * 100)|round(0)|int }}%
+        </div>
+
+        <!-- Play Overlay -->
+        <div
+          class="absolute inset-0 flex items-center justify-center bg-black/30 opacity-0 group-hover:opacity-100 transition-opacity"
+        >
+          <button
+            class="p-2 bg-white/20 backdrop-blur-md rounded-full text-white hover:bg-white/40 transition hover:scale-105"
+            onclick="playGlobalAudio('{{ d.audio_relative_path }}', '{{ d.display_name }}', '{{ d.confidence }}')"
+          >
+            <svg class="w-8 h-8" fill="currentColor" viewBox="0 0 24 24">
+              <path d="M8 5v14l11-7z" />
+            </svg>
+          </button>
+        </div>
+      </div>
+
+      <div class="p-4 flex flex-col flex-1 relative">
+        <h3
+          class="font-bold text-gray-900 dark:text-white text-sm truncate"
+          title="{{ d.display_name }}"
+        >
+          {{ d.display_name }}
+        </h3>
+        <p class="text-[10px] text-gray-500 italic mb-2 truncate">
+          {{ d.sci_name }}
+        </p>
+
+        <div
+          class="mt-auto flex items-center justify-between pt-2 border-t border-gray-100 dark:border-white/5"
+        >
+          <div class="flex flex-col">
+            <span
+              class="local-date text-[10px] font-mono text-gray-400"
+              data-timestamp="{{ d.iso_timestamp }}"
+              >--</span
+            >
+            <span
+              class="local-time-only text-[10px] font-mono text-gray-300"
+              data-timestamp="{{ d.iso_timestamp }}"
+              >--</span
+            >
+          </div>
+        </div>
+      </div>
+    </div>
+    {% endfor %} {% if not detections %}
+    <div
+      class="col-span-full p-10 text-center text-gray-500 italic bg-gray-50/50 dark:bg-white/5 rounded-2xl border border-dashed border-gray-300 dark:border-gray-700"
+    >
+      No recent detections found. Wait for the birds to sing! 🐦
+    </div>
+    {% endif %}
   </div>
 </div>
 {% endblock %} {% block inspector %}

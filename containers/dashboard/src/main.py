@@ -483,6 +483,35 @@ async def birdnet_species_page(request: Request, species_name: str, auth=Depends
         "status_color": "text-amber-500 dark:text-amber-400"
     })
 
+@app.get("/birdnet/export/csv", name="birdnet_export_csv")
+async def birdnet_export_csv(auth=Depends(require_auth)):
+    if isinstance(auth, RedirectResponse): return auth
+
+    async def iter_csv():
+        yield "Selection,View,Channel,Begin File,Begin Time (s),End Time (s),Low Freq (Hz),High Freq (Hz),Species Code,Common Name,Confidence,Date,Time,File Name\n"
+        import csv
+        import io
+        output = io.StringIO()
+        writer = csv.writer(output)
+        idx = 1
+        async for row in BirdNetStatsService.get_all_detections_cursor():
+            ts = row.get('timestamp')
+            writer.writerow([
+                idx, "Spectrogram", 1, row.get('filename'), row.get('start_time'), row.get('end_time'), 
+                0, 0, row.get('scientific_name'), row.get('common_name'), row.get('confidence'), 
+                ts.strftime("%Y-%m-%d") if ts else "", ts.strftime("%H:%M:%S") if ts else "", row.get('filename')
+            ])
+            output.seek(0)
+            data = output.read()
+            output.seek(0)
+            output.truncate(0)
+            yield data
+            idx += 1
+
+    filename = f"birdnet_export_{datetime.datetime.now().strftime('%Y%m%d_%H%M%S')}.csv"
+    return StreamingResponse(iter_csv(), media_type="text/csv", headers={"Content-Disposition": f"attachment; filename={filename}"})
+
+
 @app.get("/stats", response_class=HTMLResponse)
 async def stats_page(request: Request, auth=Depends(require_auth)):
     if isinstance(auth, RedirectResponse): return auth
