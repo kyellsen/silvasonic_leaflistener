@@ -16,6 +16,9 @@ DB_PATH = "/data/birdnet_db/birdnet.sqlite"
 REC_DIR = "/data/recording"
 LOG_DIR = "/var/log/silvasonic"
 
+import logging
+logger = logging.getLogger("Dashboard.Services")
+
 class DatabaseHandler:
     def __init__(self):
         self.user = os.getenv("POSTGRES_USER", "silvasonic")
