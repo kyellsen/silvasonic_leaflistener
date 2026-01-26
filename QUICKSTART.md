@@ -144,9 +144,22 @@ journalctl -fu silvasonic
 > **Dashboard aufrufen:**
 > Öffne `http://silvasonic.local:8080` in deinem Browser.
 
+
+
+# Neuladen
+
+```bash
+sudo docker compose up -d --build
+```
+
+
 # Löscht alle ungenutzten Images, Container und Netzwerke
 
+```bash
 sudo podman system prune
+```
 
 Die Atombombe:
+```bash
 sudo podman system prune -a --volumes
+```
