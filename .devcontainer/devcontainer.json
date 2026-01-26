@@ -5,8 +5,9 @@
     "context": ".."
   },
   // Nur noch privileged für Hardware-Zugriff, keine Plattform-Einschränkung mehr
-  "runArgs": [
-    "--privileged"
+"runArgs": [
+    "--privileged",
+    "--tmpfs", "/tmp"
   ],
   "customizations": {
     "vscode": {
@@ -35,7 +36,10 @@
       "upgradePackages": true
     },
     "ghcr.io/devcontainers/features/git:1": {},
-    "ghcr.io/devcontainers/features/node:1": {}
+    "ghcr.io/devcontainers/features/node:1": {
+        "installYarnUsingApt": false, 
+        "version": "lts"
+    }
   },
   "postCreateCommand": "bash .devcontainer/post-create.sh",
   "remoteUser": "vscode",

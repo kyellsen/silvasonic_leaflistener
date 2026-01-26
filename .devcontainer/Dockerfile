@@ -9,18 +9,19 @@ RUN groupadd -g 999 podman && \
     groupadd -f audio
 
 # 1. Install System Dependencies
-# Jetzt können wir podman installieren, es wird die existierende Gruppe (999) nutzen.
+# Wir hängen "chmod 1777 /tmp" an, damit apt-key später funktioniert!
 RUN apt-get update && apt-get install -y \
-    tree git btop rsync fzf ripgrep nano ncdu tmux \
-    usbutils pciutils sox ffmpeg stress \
-    podman podman-compose curl sudo lsb-release \
+    tree git rsync nano \
+    sox ffmpeg stress \
+    curl sudo lsb-release \
     # Playwright Dependencies
     libwoff1 libopus0 libwebp7 libwebpdemux2 libenchant-2-2 \
     libsecret-1-0 libhyphen0 libgdk-pixbuf2.0-0 libegl1 \
     libnotify4 libxslt1.1 libevent-2.1-7 libgles2 libvpx7 \
     libxcomposite1 libatk1.0-0 libatk-bridge2.0-0 libepoxy0 \
     libgtk-3-0 libharfbuzz-icu0 \
-    && apt-get clean && rm -rf /var/lib/apt/lists/*
+    && apt-get clean && rm -rf /var/lib/apt/lists/* \
+    && chmod 1777 /tmp
 
 # 2. Install 'uv'
 ENV UV_INSTALL_DIR="/usr/local/bin"
