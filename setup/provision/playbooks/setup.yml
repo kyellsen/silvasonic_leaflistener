@@ -92,9 +92,6 @@
         - /mnt/data/services/silvasonic/recorder/recordings
         - /mnt/data/services/silvasonic/uploader/config
         - /mnt/data/services/silvasonic/birdnet/results
-        - /mnt/data/services/silvasonic/sound_analyser/db
-        - /mnt/data/services/silvasonic/sound_analyser/artifacts
-        - /mnt/data/services/silvasonic/sound_analyser/metadata
         - /mnt/data/services/silvasonic/db/data
 
     # Storage-Link Fix for Podman (ROOT-Level)
