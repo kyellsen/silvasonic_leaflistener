@@ -121,40 +121,32 @@ services:
     restart: always
 
   # ---------------------------------------------------------------------------
-  # SoundAnalyser (formerly Brain) - Edge Analysis
+  # Livesound (formerly SoundAnalyser/Brain) - Live Streaming
   # ---------------------------------------------------------------------------
-  sound_analyser:
+  livesound:
     build:
-      context: containers/sound_analyser
-    image: silvasonic-sound-analyser:latest
-    container_name: silvasonic_sound_analyser
+      context: containers/livesound
+    image: silvasonic-livesound:latest
+    container_name: silvasonic_livesound
 
     environment:
       - PYTHONUNBUFFERED=1
-      - INPUT_DIR=/data/recording
-      - DB_PATH=/data/db/brain.sqlite
-      - RECURSIVE_WATCH=true
+      # No INPUT_DIR needed for pure live streaming usually, unless processor needs it?
+      # Keeping it minimally if code expects it, but plan says remove unused.
+      # - INPUT_DIR=/data/recording
+      # - DB_PATH=/data/db/brain.sqlite
+      # - RECURSIVE_WATCH=true
 
     ports:
       - "8000:8000"
 
-    # Low priority to prevent starvation of recorder/birdnet
-    cpu_shares: 128
-    # deploy:
-    #   resources:
-    #     limits:
-    #       cpus: "0.5"
-    #       memory: 512M
+    # Live streaming needs responsive CPU, but shouldn't eat 100%
+    cpu_shares: 512
 
     volumes:
-      # Read-only access to recordings
+      # Read-only access to recordings (if needed for live stream backfill?)
+      # processor.py listens to UDP, but maybe we keep it for now just in case
       - /mnt/data/services/silvasonic/recorder/recordings:/data/recording:ro
-      # Isolated DB (Legacy SQLite)
-      - /mnt/data/services/silvasonic/sound_analyser/db:/data/db:z
-      # Artifacts (Spectrograms etc)
-      - /mnt/data/services/silvasonic/sound_analyser/artifacts:/data/processed/artifacts:z
-      # Metadata (JSON Exports)
-      - /mnt/data/services/silvasonic/sound_analyser/metadata:/data/processed/metadata:z
       # Shared Logs
       - /mnt/data/services/silvasonic/logs:/var/log/silvasonic:z
       # Shared Status
@@ -205,8 +197,6 @@ services:
       - /mnt/data/services/silvasonic/logs:/var/log/silvasonic:z
       # Shared Status
       - /mnt/data/services/silvasonic/status:/mnt/data/services/silvasonic/status:ro
-      # Spectrograms from Brain (Read/Write for lazy generation)
-      - /mnt/data/services/silvasonic/sound_analyser/artifacts:/data/processed/artifacts:z
       # System Stats (Optional, depends on host)
       # - /etc/localtime:/etc/localtime:ro
 

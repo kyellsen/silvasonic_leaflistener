@@ -1,18 +1,14 @@
 [project]
-name = "silvasonic-brain"
+name = "silvasonic-livesound"
 version = "0.1.0"
-description = "Silvasonic Brain - Audio Analysis and Processing"
+description = "Silvasonic Livesound - Live Audio Streaming and Visualization"
 requires-python = "==3.11.*"
 dependencies = [
-    "sqlalchemy==2.0.25",
-    "watchdog==3.0.0",
     "librosa==0.10.1",
     "soundfile==0.12.1",
     "numpy<2.0.0",
 
     "pydantic==2.5.3",
-    "pydub==0.25.1",
-    "psycopg2-binary",
     "fastapi>=0.109.0",
     "uvicorn[standard]>=0.27.0",
     "websockets>=12.0",

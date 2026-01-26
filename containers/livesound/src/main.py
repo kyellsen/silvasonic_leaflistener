@@ -1,12 +1,6 @@
 import logging
 
-# Setup logging to stdout
-import logging.handlers
-import sys
-import threading
 
-from src.core.database import init_db
-from src.core.watcher import WatcherService
 
 logging.basicConfig(
     level=logging.INFO,
@@ -26,19 +20,9 @@ logging.basicConfig(
 logger = logging.getLogger("Main")
 
 def main():
-    logger.info("Starting Silvasonic Brain...")
+    logger.info("Starting Silvasonic Livesound...")
 
-    # 1. Init Database
-    logger.info("Initializing Database...")
-    init_db()
-
-    # 2. Start Watcher (Daemon Thread)
-    logger.info("Starting Watcher Service in background...")
-    watcher = WatcherService()
-    watcher_thread = threading.Thread(target=watcher.run, daemon=True)
-    watcher_thread.start()
-
-    # 3. Start Live Server (Blocking Main Process)
+    # Start Live Server (Blocking Main Process)
     logger.info("Starting Live Server (Uvicorn)...")
     import uvicorn
     # Loading via string to allow reload support if mapped, though we run direct here

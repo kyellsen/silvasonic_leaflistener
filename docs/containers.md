@@ -2,7 +2,7 @@
 
 The Silvasonic architecture is designed around resiliency. The system is split into logical blocks, each isolated in its own container to ensure that critical functions (recording) are not affected by secondary tasks (UI, Uploads).
 
-## 1. The Recorder ("The Ear")
+## 1. Recorder
 
 **Role:** Critical Audio Capture
 **Status:** Privileged / Real-time priority
@@ -13,7 +13,7 @@ The Silvasonic architecture is designed around resiliency. The system is split i
   - Writes compressed **.flac** files to the NVMe SSD (`/mnt/data/services/silvasonic/recorder/recordings`).
 - **Why separate?**: This container is "sacred". It must never crash or be stopped, even if the dashboard fails or the network hangs.
 
-## 2. The Uploader ("The Carrier")
+## 2. Carrier
 
 **Role:** Data Sync & Transport
 **Status:** Low priority background process
@@ -23,7 +23,14 @@ The Silvasonic architecture is designed around resiliency. The system is split i
 - **Mounts**: Mounts the storage directory with managed access to prevent accidental deletion or corruption by the sync process.
 - **Why separate?**: Network operations can be resource-intensive or hang. Isolating this ensures that a stuck upload doesn't block the recording loop.
 
-## 3. BirdNET ("The Brain")
+## 3. LiveSound
+
+**Role:** Specialized Analysis
+**Status:** Standard priority
+
+- **Function**: Framework for running additional or custom acoustic analysis beyond BirdNET (e.g., bats).
+
+## 4. Birdnet
 
 **Role:** Species Classification
 **Status:** Standard priority
@@ -35,19 +42,24 @@ The Silvasonic architecture is designed around resiliency. The system is split i
   - Stores results in the internal database.
 - **Why separate?**: Inference is CPU/RAM heavy. It must run decoupled from the recording loop.
 
-## 4. The Dashboard ("The Face")
+## 5. Weather
 
-**Role:** Local Status & Diagnostics
-**Status:** Standard priority
+**Role:** Environmental Monitoring
+**Status:** Background Service
 
-- **Function**: User interface for checking the device status locally and exploring data.
-- **Tech Stack**: Modern Web App (Python/FastAPI).
-- **Modules**:
-  - **BirdStats**: Statistics on detected species.
-  - **BirdDiscover**: Gallery and details of detected birds.
-  - **System Status**: Disk usage, uptime, service health.
+- **Function**: Fetches local weather data (temperature, humidity, wind) to provide context for detections.
+- **Operation**:
+  - Periodically polls external APIs or local sensors.
+  - Stores historical weather data for correlation analysis.
 
-## 5. The HealthChecker ("The Watchdog")
+## 6. PostgressDB
+
+**Role:** Central Storage
+**Status:** Service
+
+- **Function**: PostgreSQL database storing detection results and structured data for the Dashboard and analysis tools.
+
+## 7. HealthChecker
 
 **Role:** Monitoring & Alerts
 **Status:** High Availability / Watchdog
@@ -59,16 +71,14 @@ The Silvasonic architecture is designed around resiliency. The system is split i
   - **Alerting**: Sends notifications on critical failures.
 - **Why separate?**: Monitoring must be independent of the monitored services.
 
-## 6. SoundAnalyser (Custom/Experimental)
+## 8. The Dashboard ("The Face")
 
-**Role:** Specialized Analysis
+**Role:** Local Status & Diagnostics
 **Status:** Standard priority
 
-- **Function**: Framework for running additional or custom acoustic analysis beyond BirdNET (e.g., bats).
-
-## 7. The Database
-
-**Role:** Central Storage
-**Status:** Service
-
-- **Function**: PostgreSQL database storing detection results and structured data for the Dashboard and analysis tools.
+- **Function**: User interface for checking the device status locally and exploring data.
+- **Tech Stack**: Modern Web App (Python/FastAPI).
+- **Modules**:
+  - **BirdStats**: Statistics on detected species.
+  - **BirdDiscover**: Gallery and details of detected birds.
+  - **System Status**: Disk usage, uptime, service health.

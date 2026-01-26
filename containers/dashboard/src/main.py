@@ -134,7 +134,56 @@ async def dashboard(request: Request, auth=Depends(require_auth)):
     birdnet_stats = await BirdNetService.get_stats()
     carrier_stats = CarrierService.get_status()
     recorder_stats = RecorderService.get_status()
-    containers = HealthCheckerService.get_system_metrics()
+    raw_containers = HealthCheckerService.get_system_metrics()
+
+    # Define Sort Order & Display Names
+    # Order: Recorder, Carrier, LiveSound, Birdnet, Weather, PostgressDB, HealthChecker
+    container_config = [
+        {"key": "recorder", "name": "Recorder"},
+        {"key": "uploader", "name": "Carrier"},
+        {"key": "sound_analyser", "name": "LiveSound"},
+        {"key": "birdnet", "name": "Birdnet"},
+        {"key": "weather", "name": "Weather"},
+        {"key": "postgres", "name": "PostgressDB"},
+        {"key": "healthchecker", "name": "HealthChecker"},
+    ]
+    
+    containers = []
+    
+    # helper to find container by fuzzy key
+    def find_container(key_fragment, source_dict):
+        for k, v in source_dict.items():
+            if key_fragment in k:
+                return v
+        return None
+
+    for config in container_config:
+        # Try exact match first, then fuzzy
+        c = raw_containers.get(config["key"])
+        if not c:
+            c = find_container(config["key"], raw_containers)
+        
+        if c:
+            # Clone to avoid mutating original if cached
+            c_copy = c.copy()
+            c_copy["display_name"] = config["name"]
+            containers.append(c_copy)
+        else:
+            # Optional: Add placeholder if missing? Or skip.
+            # User wants specific order, maybe show even if missing/unknown status?
+            # For now, let's add a placeholder to ensure the grid structure is preserved if that's desired,
+            # but usually we only show what's reported.
+            # However, looking at the template, it iterates what's there.
+            # Let's try to simulate a 'down' state if missing?
+            # actually, if HealthChecker doesn't report it, it might not exist. 
+            # safe to skip or add as 'Unknown'.
+            pass
+
+    # Add any others that weren't in the config?
+    # Logic: simple Reorder.
+    
+    # Let's just pass the sorted list.
+    containers_sorted = containers
 
     return render(request, "index.html", {
         "request": request,
@@ -144,7 +193,7 @@ async def dashboard(request: Request, auth=Depends(require_auth)):
         "birdnet_stats": birdnet_stats,
         "carrier_stats": carrier_stats,
         "recorder_stats": recorder_stats,
-        "containers": containers,
+        "containers": containers_sorted,
         "status_label": "System:",
         "status_value": "Online",
         "status_color": "text-green-600 dark:text-green-400",
