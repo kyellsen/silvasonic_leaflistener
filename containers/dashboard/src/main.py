@@ -389,11 +389,17 @@ async def uploader_page(request: Request, auth=Depends(require_auth)):
     if isinstance(auth, RedirectResponse): return auth
     
     stats = CarrierService.get_status()
+    upload_stats = await CarrierService.get_upload_stats()
+    recent_uploads = await CarrierService.get_recent_uploads(limit=100)
+    failed_uploads = await CarrierService.get_failed_uploads(limit=50)
     
     return render(request, "uploader.html", {
         "request": request, 
         "page": "uploader",
         "stats": stats,
+        "upload_stats": upload_stats,
+        "recent_uploads": recent_uploads,
+        "failed_uploads": failed_uploads,
         "status_label": "Uploader:",
         "status_value": stats.get("status", "Idle"),
         "status_color": "text-cyan-600 dark:text-cyan-400",

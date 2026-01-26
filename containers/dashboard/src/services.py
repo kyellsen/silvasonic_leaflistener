@@ -710,6 +710,10 @@ class CarrierService:
         except Exception as e:
             print(f"Carrier status error: {e}")
             
+        return {
+            "status": "Unknown", 
+            "last_upload_str": "Unknown", 
+            "last_upload_ago": "",
             "queue_size": -1,
             "disk_usage": 0
         }
