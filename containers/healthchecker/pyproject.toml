@@ -2,7 +2,7 @@
 name = "silvasonic-healthchecker"
 version = "0.1.0"
 description = "Healthchecker for Silvasonic"
-requires-python = ">=3.13"
+requires-python = ">=3.11, <3.13"
 dependencies = [
     "apprise",
     "psutil"

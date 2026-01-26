@@ -18,7 +18,7 @@ COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
 COPY pyproject.toml .
 ENV VIRTUAL_ENV=/app/.venv
 ENV PATH="/app/.venv/bin:$PATH"
-RUN uv venv && \
+RUN uv venv --python /usr/local/bin/python && \
     uv pip compile pyproject.toml -o requirements.txt && \
     uv pip install --no-cache -r requirements.txt
 
