@@ -198,15 +198,15 @@
         const commonLayout = {
             paper_bgcolor: 'rgba(0,0,0,0)',
             plot_bgcolor: 'rgba(0,0,0,0)',
-            font: { color: '#9ca3af', family: 'Inter, sans-serif' },
+            font: { color: document.documentElement.classList.contains('dark') ? '#9ca3af' : '#4b5563', family: 'Inter, sans-serif' },
             margin: { t: 10, b: 30, l: 40, r: 40 }, // r:40 for dual axis
             xaxis: {
-                gridcolor: 'rgba(255,255,255,0.05)',
-                zerolinecolor: 'rgba(255,255,255,0.05)'
+                gridcolor: document.documentElement.classList.contains('dark') ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)',
+                zerolinecolor: document.documentElement.classList.contains('dark') ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)'
             },
             yaxis: {
-                gridcolor: 'rgba(255,255,255,0.05)',
-                zerolinecolor: 'rgba(255,255,255,0.05)'
+                gridcolor: document.documentElement.classList.contains('dark') ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)',
+                zerolinecolor: document.documentElement.classList.contains('dark') ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)'
             }
         };
 
@@ -251,7 +251,7 @@
                     tickfont: { color: '#3b82f6' },
                     overlaying: 'y',
                     side: 'right',
-                    gridcolor: 'rgba(255,255,255,0.05)'
+                    gridcolor: document.documentElement.classList.contains('dark') ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)'
                 }
             };
 

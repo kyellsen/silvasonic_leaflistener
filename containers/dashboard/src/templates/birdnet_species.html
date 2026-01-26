@@ -4,7 +4,7 @@
   <div class="text-sm text-gray-400 flex items-center gap-2">
     <button
       onclick="history.back()"
-      class="hover:text-amber-400 transition flex items-center gap-1 border-r border-gray-700 pr-3 mr-1"
+      class="hover:text-amber-500 dark:hover:text-amber-400 transition flex items-center gap-1 border-r border-gray-300 dark:border-gray-700 pr-3 mr-1"
     >
       &larr; Back
     </button>
@@ -29,15 +29,15 @@
       >Discover</a
     >
     <span>/</span>
-    <span class="text-gray-200">{{ species.com_name }}</span>
+    <span class="text-gray-900 dark:text-gray-200">{{ species.com_name }}</span>
   </div>
 
   <!-- Header Card -->
   <div
-    class="bg-gray-800 rounded-xl overflow-hidden border border-gray-700 shadow-2xl"
+    class="bg-white dark:bg-gray-800 rounded-xl overflow-hidden border border-gray-200 dark:border-gray-700 shadow-2xl"
   >
     <div
-      class="h-[48rem] bg-gray-900 relative flex items-end overflow-hidden group"
+      class="h-[48rem] bg-gray-100 dark:bg-gray-900 relative flex items-end overflow-hidden group"
     >
       <!-- Background Image -->
       {% if species.image_url %}
@@ -50,7 +50,7 @@
       ></div>
       {% else %}
       <div
-        class="absolute inset-0 bg-gradient-to-r from-gray-900 to-gray-800"
+        class="absolute inset-0 bg-gradient-to-r from-gray-200 to-gray-100 dark:from-gray-900 dark:to-gray-800"
       ></div>
       {% endif %}
 
@@ -65,13 +65,21 @@
         </div>
         {% endif %}
 
-        <h1 class="text-5xl font-bold text-white mb-2 drop-shadow-lg">
+        <h1
+          class="text-5xl font-bold text-gray-900 dark:text-white mb-2 drop-shadow-lg"
+        >
           {{ species.german_name or species.com_name }}
         </h1>
-        <p class="text-xl text-amber-400 font-medium flex items-center gap-3">
+        <p
+          class="text-xl text-amber-600 dark:text-amber-400 font-medium flex items-center gap-3"
+        >
           <span>{{ species.com_name }}</span>
-          <span class="w-1.5 h-1.5 bg-gray-500 rounded-full"></span>
-          <span class="italic text-gray-300">{{ species.sci_name }}</span>
+          <span
+            class="w-1.5 h-1.5 bg-gray-400 dark:bg-gray-500 rounded-full"
+          ></span>
+          <span class="italic text-gray-500 dark:text-gray-300"
+            >{{ species.sci_name }}</span
+          >
         </p>
 
         <div class="flex gap-4 mt-6">
@@ -98,7 +106,7 @@
           <a
             href="https://ebird.org/species/{{ species.sci_name|replace(' ', '-')|lower }}"
             target="_blank"
-            class="px-4 py-2 bg-green-500/10 hover:bg-green-500/20 rounded-lg text-sm text-green-400 backdrop-blur border border-green-500/20 transition flex items-center gap-2"
+            class="px-4 py-2 bg-green-500/10 hover:bg-green-500/20 rounded-lg text-sm text-green-600 dark:text-green-400 backdrop-blur border border-green-500/20 transition flex items-center gap-2"
           >
             <svg
               class="w-4 h-4"
@@ -121,13 +129,13 @@
 
     <!-- Key Stats Bar -->
     <div
-      class="grid grid-cols-2 md:grid-cols-4 border-t border-gray-700 divide-x divide-gray-700 bg-gray-800/50"
+      class="grid grid-cols-2 md:grid-cols-4 border-t border-gray-200 dark:border-gray-700 divide-x divide-gray-200 dark:divide-gray-700 bg-gray-50 dark:bg-gray-800/50"
     >
       <div class="p-6 text-center">
         <div class="text-xs text-gray-500 uppercase tracking-widest mb-1">
           Total Detections
         </div>
-        <div class="text-2xl font-bold text-white">
+        <div class="text-2xl font-bold text-gray-900 dark:text-white">
           {{ species.total_count }}
         </div>
       </div>
@@ -135,7 +143,7 @@
         <div class="text-xs text-gray-500 uppercase tracking-widest mb-1">
           Max Confidence
         </div>
-        <div class="text-2xl font-bold text-green-400">
+        <div class="text-2xl font-bold text-green-600 dark:text-green-400">
           {{ (species.max_conf * 100)|round(1) }}%
         </div>
       </div>
@@ -143,7 +151,7 @@
         <div class="text-xs text-gray-500 uppercase tracking-widest mb-1">
           First Seen
         </div>
-        <div class="text-lg font-bold text-gray-300">
+        <div class="text-lg font-bold text-gray-700 dark:text-gray-300">
           <span
             class="local-date opacity-0 transition-opacity"
             data-timestamp="{{ species.first_seen_iso }}"
@@ -155,7 +163,7 @@
         <div class="text-xs text-gray-500 uppercase tracking-widest mb-1">
           Last Seen
         </div>
-        <div class="text-lg font-bold text-amber-300">
+        <div class="text-lg font-bold text-amber-600 dark:text-amber-300">
           <span
             class="local-date opacity-0 transition-opacity"
             data-timestamp="{{ species.last_seen_iso }}"
@@ -169,17 +177,23 @@
   <!-- Description -->
   {% if species.description %}
   <div
-    class="bg-gray-800 rounded-xl p-6 border border-gray-700 shadow-lg relative overflow-hidden"
+    class="bg-white dark:bg-gray-800 rounded-xl p-6 border border-gray-200 dark:border-gray-700 shadow-lg relative overflow-hidden"
   >
     <div class="absolute top-0 right-0 p-4 opacity-5">
-      <svg class="w-32 h-32 text-white" fill="currentColor" viewBox="0 0 24 24">
+      <svg
+        class="w-32 h-32 text-gray-900 dark:text-white"
+        fill="currentColor"
+        viewBox="0 0 24 24"
+      >
         <path
           d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z"
         />
       </svg>
     </div>
     <div class="relative z-10">
-      <h3 class="text-lg font-bold text-white mb-3 flex items-center gap-2">
+      <h3
+        class="text-lg font-bold text-gray-900 dark:text-white mb-3 flex items-center gap-2"
+      >
         <svg
           class="w-5 h-5 text-amber-500"
           fill="none"
@@ -195,7 +209,9 @@
         </svg>
         About This Species
       </h3>
-      <p class="text-gray-300 leading-relaxed">{{ species.description }}</p>
+      <p class="text-gray-600 dark:text-gray-300 leading-relaxed">
+        {{ species.description }}
+      </p>
       {% if species.wikipedia_url %}
       <a
         href="{{ species.wikipedia_url }}"
@@ -225,9 +241,11 @@
   <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
     <!-- Activity Chart -->
     <div
-      class="lg:col-span-2 bg-gray-800 rounded-xl p-6 border border-gray-700 shadow-lg"
+      class="lg:col-span-2 bg-white dark:bg-gray-800 rounded-xl p-6 border border-gray-200 dark:border-gray-700 shadow-lg"
     >
-      <h3 class="text-lg font-bold text-white mb-6 flex items-center gap-2">
+      <h3
+        class="text-lg font-bold text-gray-900 dark:text-white mb-6 flex items-center gap-2"
+      >
         <svg
           class="w-5 h-5 text-amber-500"
           fill="none"
@@ -250,13 +268,15 @@
 
     <!-- Recent Sightings List -->
     <div
-      class="bg-gray-800 rounded-xl p-6 border border-gray-700 shadow-lg flex flex-col h-[500px]"
+      class="bg-white dark:bg-gray-800 rounded-xl p-6 border border-gray-200 dark:border-gray-700 shadow-lg flex flex-col h-[500px]"
     >
-      <h3 class="text-lg font-bold text-white mb-4">Recent Sightings</h3>
+      <h3 class="text-lg font-bold text-gray-900 dark:text-white mb-4">
+        Recent Sightings
+      </h3>
       <div class="flex-1 overflow-y-auto space-y-3 pr-2 scrollbar-thin">
         {% for item in recent %}
         <div
-          class="bg-gray-900/50 p-3 rounded-lg border border-gray-700 flex justify-between items-center group hover:bg-gray-750 transition cursor-pointer"
+          class="bg-gray-50 dark:bg-gray-900/50 p-3 rounded-lg border border-gray-200 dark:border-gray-700 flex justify-between items-center group hover:bg-gray-100 dark:hover:bg-gray-750 transition cursor-pointer"
           hx-get="/api/details/birdnet/{{ item.audio_relative_path|replace('\\', '/') }}"
           hx-target="#inspector-content"
           onclick="
@@ -284,7 +304,7 @@
           {% if item.audio_relative_path %}
           <button
             onclick="event.stopPropagation(); playGlobalAudio('{{ item.audio_relative_path|replace('\\', '/') }}', '{{ item.common_name|replace('\'', '\\\'') }}', {{ item.confidence }})"
-            class="p-2 rounded-full bg-gray-800 hover:bg-green-600 text-gray-400 hover:text-white transition shadow-sm border border-gray-700"
+            class="p-2 rounded-full bg-white dark:bg-gray-800 hover:bg-green-100 dark:hover:bg-green-600 text-gray-400 hover:text-green-600 dark:hover:text-white transition shadow-sm border border-gray-200 dark:border-gray-700"
           >
             <svg
               class="w-4 h-4"
@@ -353,17 +373,17 @@
           const layout = {
               paper_bgcolor: 'rgba(0,0,0,0)',
               plot_bgcolor: 'rgba(0,0,0,0)',
-              font: { color: '#9ca3af', family: 'Inter, sans-serif' },
+              font: { color: document.documentElement.classList.contains('dark') ? '#9ca3af' : '#4b5563', family: 'Inter, sans-serif' },
               margin: { t: 10, b: 30, l: 30, r: 10 },
               xaxis: {
-                  gridcolor: 'rgba(255,255,255,0.05)',
-                  zerolinecolor: 'rgba(255,255,255,0.05)',
+                  gridcolor: document.documentElement.classList.contains('dark') ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)',
+                  zerolinecolor: document.documentElement.classList.contains('dark') ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)',
                   tickmode: 'linear',
                   dtick: 4 // Show every 4th hour to prevent clutter
               },
               yaxis: {
-                  gridcolor: 'rgba(255,255,255,0.05)',
-                  zerolinecolor: 'rgba(255,255,255,0.05)'
+                  gridcolor: document.documentElement.classList.contains('dark') ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)',
+                  zerolinecolor: document.documentElement.classList.contains('dark') ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)'
               },
               responsive: true,
               showlegend: false

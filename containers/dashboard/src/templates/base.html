@@ -55,10 +55,10 @@
         },
       };
     </script>
-    <!-- Plotly.js (CDN) -->
-    <script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
-    <!-- HTMX -->
-    <script src="https://unpkg.com/htmx.org@1.9.10"></script>
+    <!-- Plotly.js (Local) -->
+    <script src="/static/js/plotly.min.js"></script>
+    <!-- HTMX (Local) -->
+    <script src="/static/js/htmx.min.js"></script>
     <style>
       /* Custom Scrollbar */
       ::-webkit-scrollbar {
@@ -147,10 +147,11 @@
           hx-push-url="true"
         >
           <img
-            src="/static/images/logo.webp"
+            src="/static/images/logo_no_text.webp"
             alt="Silvasonic Logo"
             class="h-10 w-auto hover:opacity-90 transition-opacity"
           />
+          <span class="text-xl font-heading font-bold text-gray-900 dark:text-white tracking-tight">Silvasonic</span>
         </a>
       </div>
 
