@@ -626,12 +626,12 @@
         >
           <div class="flex items-center gap-3">
             <div class="flex items-center gap-2">
-              <div
-                class="w-2 h-2 rounded-full bg-green-500 animate-pulse"
-              ></div>
+              <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+              </svg>
               <span
                 class="text-xs font-bold uppercase text-gray-400 tracking-wider"
-                >Live Logs</span
+                >System Logs</span
               >
             </div>
             <div class="h-4 w-px bg-gray-700"></div>
@@ -642,6 +642,15 @@
             >
           </div>
           <div class="flex gap-2">
+            <button
+              onclick="refreshLogs()"
+              class="text-gray-400 hover:text-white transition p-1 hover:bg-white/10 rounded group"
+              title="Refresh Logs"
+            >
+               <svg class="w-4 h-4 group-hover:rotate-180 transition-transform duration-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
+               </svg>
+            </button>
             <button
               onclick="toggleLogs()"
               class="text-gray-400 hover:text-white transition p-1 hover:bg-white/10 rounded"
@@ -663,12 +672,12 @@
           </div>
         </div>
         <div
-          class="flex-1 overflow-auto p-4 font-mono text-xs text-gray-700 dark:text-blue-100/80 bg-gray-50 dark:bg-black/20"
+          class="flex-1 overflow-auto p-4 font-mono text-xs text-gray-700 dark:text-blue-100/80 bg-gray-50 dark:bg-black/20 whitespace-pre-wrap"
           id="log-terminal"
         >
           <!-- Logs stream here -->
           <div class="text-gray-500 italic opacity-50">
-            Waiting for log stream connection...
+            Select a module to view logs...
           </div>
         </div>
       </div>
@@ -751,9 +760,9 @@
           onclick="toggleLogs()"
           class="group flex items-center gap-2 px-3 py-1 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 border border-transparent hover:border-gray-200 dark:hover:border-gray-700 transition duration-200"
         >
-          <div
-            class="w-1.5 h-1.5 rounded-full bg-gray-400 group-hover:bg-silva-500 transition-colors"
-          ></div>
+          <svg class="w-3 h-3 text-gray-400 group-hover:text-silva-500 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+          </svg>
           <span
             class="font-medium text-gray-700 dark:text-gray-300 group-hover:text-silva-600 dark:group-hover:text-silva-400"
             >System Logs</span
@@ -783,7 +792,6 @@
 
     <script>
       // Log Viewer Logic
-      let logEventSource = null;
       let currentLogContext = null;
 
       function toggleLogs() {
@@ -797,8 +805,7 @@
           if (!currentLogContext) {
             updateLogContextFromUrl();
           }
-          connectLogStream(currentLogContext);
-          term.scrollTop = term.scrollHeight;
+          refreshLogs();
         } else {
           viewer.classList.add("translate-y-[150%]");
         }
@@ -809,7 +816,7 @@
         let context = "healthchecker";
 
         if (path.includes("/recorder")) context = "recorder";
-        else if (path.includes("/uploader")) context = "uploader";
+        else if (path.includes("/uploader")) context = "carrier";
         else if (path.includes("/livesound")) context = "livesound";
         else if (path.includes("/birdnet")) context = "birdnet";
 
@@ -817,7 +824,7 @@
       }
 
       function setLogContext(context) {
-        if (currentLogContext === context && logEventSource) return;
+        if (currentLogContext === context) return;
 
         currentLogContext = context;
         document.getElementById("log-context-label").innerText =
@@ -826,43 +833,36 @@
         const viewer = document.getElementById("log-viewer");
         // Check using the new class
         if (!viewer.classList.contains("translate-y-[150%]")) {
-          connectLogStream(context);
+            refreshLogs();
         }
       }
 
-      function connectLogStream(context) {
-        if (logEventSource) {
-          logEventSource.close();
-        }
-
-        const term = document.getElementById("log-terminal");
-        term.innerHTML = `<div class="text-gray-500">Connecting to ${context}...</div>`;
-
-        logEventSource = new EventSource(`/api/logs/${context}`);
-
-        logEventSource.onmessage = function (event) {
-          const div = document.createElement("div");
-          div.textContent = event.data;
-          term.appendChild(div);
-
-          if (term.scrollHeight - term.scrollTop - term.clientHeight < 100) {
-            term.scrollTop = term.scrollHeight;
+      async function refreshLogs() {
+          if (!currentLogContext) return;
+          
+          const term = document.getElementById("log-terminal");
+          // Optional: Add loading indicator opacity
+          term.classList.add("opacity-50");
+          
+          try {
+              const res = await fetch(`/api/logs/${currentLogContext}`);
+              if (!res.ok) throw new Error("Failed to load logs");
+              const data = await res.json();
+              
+              if (data.content) {
+                  term.innerText = data.content;
+              } else {
+                  term.innerText = "[No Content]";
+              }
+              
+              // Scroll to bottom
+              term.scrollTop = term.scrollHeight;
+              
+          } catch (err) {
+              term.innerText = `Error loading logs: ${err.message}`;
+          } finally {
+              term.classList.remove("opacity-50");
           }
-
-          if (term.childElementCount > 500) {
-            term.removeChild(term.firstChild);
-          }
-        };
-
-        logEventSource.onerror = function (err) {
-          console.error("SSE Error:", err);
-          const div = document.createElement("div");
-          div.className = "text-red-500";
-          div.textContent = `[Connection Lost. Reconnecting...]`;
-          term.appendChild(div);
-          logEventSource.close();
-          logEventSource = null;
-        };
       }
 
       document.body.addEventListener("htmx:afterSwap", function (evt) {

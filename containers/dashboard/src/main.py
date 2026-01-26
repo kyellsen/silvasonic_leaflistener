@@ -623,56 +623,42 @@ async def get_birdnet_details(request: Request, filename: str, auth=Depends(requ
 # --- API / HTMX Partials ---
 
 @app.get("/api/logs/{service}")
-async def stream_logs(service: str, auth=Depends(require_auth)):
-    """SSE Stream for logs"""
+async def get_logs(service: str, lines: int = 200, auth=Depends(require_auth)):
+    """Get last N lines of logs"""
     if isinstance(auth, RedirectResponse): raise HTTPException(401)
 
     log_file = os.path.join(LOG_DIR, f"{service}.log")
-    # Do NOT try to create file (RO Volume violation)
+    
+    if not os.path.exists(log_file):
+        return {"content": f"Log file for {service} not found so far (waiting for creation)..."}
 
-    async def log_generator():
-        import asyncio
+    try:
+        # Simple tail implementation
+        # For very large files, this might be inefficient, but log rotation keeps them sane (10MB-ish?)
+        # Actually TimedRotatingFileHandler doesn't guarantee size, but we can assume reasonable checks.
+        # Efficient tailing using seek is better.
+        
         import aiofiles
+        async with aiofiles.open(log_file, mode='r') as f:
+            # Quick & Dirty: Read all lines? No, might be huge.
+            # Seek to end and back up? 
+            # Subprocess tail is actually safest for large files on Linux.
+            
+            # Using tail command is robust
+            proc = await asyncio.create_subprocess_exec(
+                "tail", "-n", str(lines), log_file,
+                stdout=asyncio.subprocess.PIPE,
+                stderr=asyncio.subprocess.PIPE
+            )
+            stdout, stderr = await proc.communicate()
+            
+            if proc.returncode != 0:
+                 return {"content": f"Error reading logs: {stderr.decode()}"}
+            
+            return {"content": stdout.decode(errors='replace')}
 
-        # Wait for file to exist
-        while not os.path.exists(log_file):
-            yield f"data: Waiting for {service} logs...\n\n"
-            await asyncio.sleep(2)
-
-        try:
-            async with aiofiles.open(log_file) as f:
-                # --- Initial Tail (Last 8KB) ---
-                file_size = os.path.getsize(log_file)
-                tail_size = 8192 # 8KB
-                
-                if file_size > 0:
-                    seek_pos = max(0, file_size - tail_size)
-                    await f.seek(seek_pos)
-                    
-                    # If we seeked to middle, skip partial line
-                    if seek_pos > 0:
-                        await f.readline() 
-                    
-                    # Read remaining existing content
-                    while True:
-                        line = await f.readline()
-                        if not line: break
-                        yield f"data: {line}\n\n"
-                        
-                # --- Continuous Tail ---
-                # Ensure we are at the end (though reading to end above should have done it)
-                await f.seek(0, 2)
-                
-                while True:
-                    line = await f.readline()
-                    if line:
-                        yield f"data: {line}\n\n"
-                    else:
-                        await asyncio.sleep(0.5)
-        except Exception as e:
-            yield f"data: Error reading logs: {e}\n\n"
-
-    return StreamingResponse(log_generator(), media_type="text/event-stream")
+    except Exception as e:
+        return {"content": f"Error accessing logs: {str(e)}"}
 
 @app.get("/api/audio/{filename:path}")
 async def stream_audio(filename: str, auth=Depends(require_auth)):
