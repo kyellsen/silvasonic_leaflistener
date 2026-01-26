@@ -44,132 +44,141 @@
       };
     </script>
     <style>
-      .bg-custom {
-        background-image: url("/static/images/login_bg_no_text.webp");
-        background-size: cover;
-        background-repeat: no-repeat;
-        background-position: center;
-        background-color: #ffffff;
-      }
-      .glass-card {
-        background: rgba(255, 255, 255, 0.85);
-        backdrop-filter: blur(16px);
-        -webkit-backdrop-filter: blur(16px);
-        border: 1px solid rgba(255, 255, 255, 0.5);
-        box-shadow:
-          0 10px 15px -3px rgba(0, 0, 0, 0.1),
-          0 4px 6px -2px rgba(0, 0, 0, 0.05),
-          0 0 40px rgba(16, 185, 129, 0.15);
-      }
+      /* Custom styles if needed */
     </style>
   </head>
-  <body
-    class="bg-white text-gray-900 min-h-screen w-full flex items-center justify-center relative overflow-hidden font-sans bg-custom py-10 px-4"
-  >
-    <!-- Main Card -->
-    <div
-      class="glass-card p-6 md:p-12 rounded-3xl w-full max-w-md relative z-10 transform transition-all hover:scale-[1.01] duration-500 shadow-silva-500/10"
-    >
-      <!-- Logo / Header -->
-      <div class="text-center mb-10">
-        <div class="mb-6 flex justify-center">
-          <img
-            src="/static/images/logo_not_text.webp"
-            alt="Silvasonic Logo"
-            class="h-24 w-auto drop-shadow-md"
-          />
+  <body class="bg-white min-h-screen w-full font-sans text-gray-900">
+    <div class="flex min-h-screen flex-row">
+      <!-- Left Side: Image / Atmospheric (Hidden on Mobile) -->
+      <div class="hidden lg:flex lg:w-1/2 relative bg-gray-900 overflow-hidden">
+        <div
+          class="absolute inset-0 bg-cover bg-center transition-transform duration-[20s] hover:scale-105"
+          style="
+            background-image: url(&quot;/static/images/login_bg_no_text.webp&quot;);
+          "
+        ></div>
+        <div
+          class="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-black/20"
+        ></div>
+
+        <!-- Text Overlay on Image -->
+        <div class="relative z-10 flex flex-col justify-end p-16 text-white">
+          <h2 class="text-4xl font-bold font-heading mb-4">
+            Listen to the Pulse of Nature
+          </h2>
+          <p class="text-lg text-gray-200 max-w-md">
+            Advanced bioacoustic monitoring and analysis station for real-time
+            ecosystem insights.
+          </p>
         </div>
-        <h1
-          class="text-4xl font-heading font-bold text-gray-900 tracking-tight mb-2"
-        >
-          Silvasonic
-        </h1>
-        <p
-          class="text-silva-600 text-sm font-medium tracking-widest uppercase opacity-90"
-        >
-          Bioacoustic Station
-        </p>
       </div>
 
-      {% if error %}
+      <!-- Right Side: Login Form -->
       <div
-        class="animate-pulse bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded-xl mb-8 text-sm text-center"
+        class="w-full lg:w-1/2 flex items-center justify-center p-8 relative"
       >
-        ⚠️ {{ error }}
-      </div>
-      {% endif %}
+        <div class="w-full max-w-[420px] space-y-10">
+          <!-- Header -->
+          <div class="text-center">
+            <div class="flex justify-center mb-6">
+              <img
+                src="/static/images/logo_no_text.webp"
+                alt="Silvasonic Logo"
+                class="h-20 w-auto"
+              />
+            </div>
+            <h1
+              class="text-3xl font-bold font-heading text-gray-900 tracking-tight"
+            >
+              Welcome back
+            </h1>
+            <p class="mt-2 text-sm text-gray-500">
+              Please enter your credentials to access the station.
+            </p>
+          </div>
 
-      <form action="/auth/login" method="POST" class="space-y-6">
-        <div class="space-y-2">
-          <label
-            class="text-xs font-bold text-gray-500 uppercase tracking-wider ml-1"
-            >Identity</label
+          {% if error %}
+          <div
+            class="bg-red-50 border-l-4 border-red-500 text-red-700 p-4 rounded-r shadow-sm"
+            role="alert"
           >
-          <div class="relative group">
-            <input
-              type="text"
-              name="username"
-              required
-              class="w-full bg-white border border-gray-200 rounded-xl px-4 py-3.5 text-gray-900 placeholder-gray-400 focus:bg-white focus:border-silva-500 focus:ring-4 focus:ring-silva-500/10 focus:outline-none transition-all duration-300 shadow-sm"
-              placeholder="Username"
-            />
+            <p class="font-bold text-sm">Authentication Failed</p>
+            <p class="text-sm">{{ error }}</p>
+          </div>
+          {% endif %}
+
+          <form action="/auth/login" method="POST" class="space-y-6">
+            <div class="space-y-2">
+              <label
+                for="username"
+                class="block text-sm font-medium text-gray-700"
+                >Identity</label
+              >
+              <input
+                id="username"
+                type="text"
+                name="username"
+                required
+                class="block w-full rounded-lg border-gray-300 bg-gray-50 border px-4 py-3 text-gray-900 focus:border-silva-500 focus:bg-white focus:ring-silva-500 transition-colors"
+                placeholder="Enter your username"
+              />
+            </div>
+
+            <div class="space-y-2">
+              <label
+                for="password"
+                class="block text-sm font-medium text-gray-700"
+                >Access Key</label
+              >
+              <input
+                id="password"
+                type="password"
+                name="password"
+                required
+                class="block w-full rounded-lg border-gray-300 bg-gray-50 border px-4 py-3 text-gray-900 focus:border-silva-500 focus:bg-white focus:ring-silva-500 transition-colors"
+                placeholder="••••••••"
+              />
+            </div>
+
+            <button
+              type="submit"
+              class="w-full flex justify-center py-3.5 px-4 border border-transparent rounded-lg shadow-sm text-sm font-bold text-white bg-silva-600 hover:bg-silva-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-silva-500 transition-all transform hover:-translate-y-0.5"
+            >
+              Initialize Session
+            </button>
+          </form>
+
+          <!-- Footer -->
+          <div
+            class="pt-6 border-t border-gray-100 flex flex-col items-center gap-4"
+          >
+            <div
+              class="flex items-center gap-2 text-xs text-gray-400 uppercase tracking-widest font-medium"
+            >
+              <span>Silvasonic v1.0</span>
+              <span class="w-1 h-1 rounded-full bg-gray-300"></span>
+              <span>Authorized Use Only</span>
+            </div>
+
+            <!-- GitHub Link -->
+            <a
+              href="https://github.com/kyellsen/silvasonic_leaflistener"
+              target="_blank"
+              class="text-gray-400 hover:text-gray-600 transition-colors"
+              aria-label="View Source on GitHub"
+            >
+              <svg
+                viewBox="0 0 24 24"
+                class="h-5 w-5 fill-current"
+                aria-hidden="true"
+              >
+                <path
+                  d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"
+                />
+              </svg>
+            </a>
           </div>
         </div>
-
-        <div class="space-y-2">
-          <label
-            class="text-xs font-bold text-gray-500 uppercase tracking-wider ml-1"
-            >Access Key</label
-          >
-          <div class="relative group">
-            <input
-              type="password"
-              name="password"
-              required
-              class="w-full bg-white border border-gray-200 rounded-xl px-4 py-3.5 text-gray-900 placeholder-gray-400 focus:bg-white focus:border-silva-500 focus:ring-4 focus:ring-silva-500/10 focus:outline-none transition-all duration-300 shadow-sm"
-              placeholder="••••••••"
-            />
-          </div>
-        </div>
-
-        <button
-          type="submit"
-          class="w-full mt-4 bg-gradient-to-r from-silva-600 to-silva-500 hover:from-silva-500 hover:to-silva-400 text-white font-bold py-4 rounded-xl transition-all duration-300 shadow-lg shadow-silva-500/30 hover:shadow-silva-500/50 hover:-translate-y-0.5"
-        >
-          Initialize Session
-        </button>
-      </form>
-
-      <!-- Footer -->
-      <div
-        class="mt-10 flex items-center justify-center gap-2 text-[10px] text-gray-400 uppercase tracking-widest font-medium"
-      >
-        <span>Protected System</span>
-        <span class="w-1 h-1 rounded-full bg-gray-300"></span>
-        <span>Authorized Use Only</span>
-      </div>
-
-      <!-- GitHub Link -->
-      <div class="mt-4 flex justify-center">
-        <a
-          href="https://github.com/kyellsen/silvasonic_leaflistener"
-          target="_blank"
-          class="text-gray-400 hover:text-silva-600 transition-colors duration-300 transform hover:scale-110"
-          title="View on GitHub"
-        >
-          <svg
-            class="w-6 h-6"
-            fill="currentColor"
-            viewBox="0 0 24 24"
-            aria-hidden="true"
-          >
-            <path
-              fill-rule="evenodd"
-              d="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.531 1.027 1.531 1.027.892 1.524 2.341 1.084 2.91.828.092-.643.35-1.083.636-1.332-2.22-.251-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0112 6.844c.85.004 1.705.115 2.504.337 1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.019 10.019 0 0022 12.017C22 6.484 17.522 2 12 2z"
-              clip-rule="evenodd"
-            />
-          </svg>
-        </a>
       </div>
     </div>
   </body>

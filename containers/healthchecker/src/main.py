@@ -263,6 +263,9 @@ def main():
 
     while True:
         try:
+            # Re-initialize Mailer to pick up dynamic settings changes (e.g. email)
+            mailer = Mailer() 
+            
             write_status() # Heartbeat
             check_services_status(mailer)
             check_error_drops(mailer)
