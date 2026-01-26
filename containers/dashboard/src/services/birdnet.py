@@ -70,6 +70,10 @@ class BirdNetService:
     async def get_detection(filename: str):
         try:
             async with db.get_connection() as conn:
+                # Reconstruct absolute path from relative path input
+                # The input 'filename' might be "date_folder/file.wav"
+                target_filepath = os.path.join(REC_DIR, filename)
+
                 query = text("""
                     SELECT 
                         d.filepath, 
@@ -86,9 +90,9 @@ class BirdNetService:
                         s.wikipedia_url
                     FROM birdnet.detections d
                     LEFT JOIN birdnet.species_info s ON d.scientific_name = s.scientific_name
-                    WHERE d.filename = :filename
+                    WHERE d.filepath = :filepath OR d.filename = :filename
                 """)
-                row = (await conn.execute(query, {"filename": filename})).fetchone()
+                row = (await conn.execute(query, {"filepath": target_filepath, "filename": filename})).fetchone()
 
                 if not row:
                     return None

@@ -26,16 +26,21 @@ logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s [%(levelname)s] %(message)s',
     handlers=[
-        logging.StreamHandler(sys.stdout),
-        logging.handlers.TimedRotatingFileHandler(
-            "/var/log/silvasonic/recorder.log",
-            when='midnight',
-            interval=1,
-            backupCount=30,
-            encoding='utf-8'
-        )
+        logging.StreamHandler(sys.stdout)
     ]
 )
+
+try:
+    file_handler = logging.handlers.TimedRotatingFileHandler(
+        "/var/log/silvasonic/recorder.log",
+        when='midnight',
+        interval=1,
+        backupCount=30,
+        encoding='utf-8'
+    )
+    logging.getLogger().addHandler(file_handler)
+except Exception as e:
+    logging.getLogger().warning(f"Failed to setup file logging: {e}")
 logger = logging.getLogger("recorder")
 
 # --- Configuration ---

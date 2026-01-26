@@ -3,7 +3,7 @@ name = "silvasonic"
 version = "0.1.0"
 description = "Bioacoustic recording station for Raspberry Pi 5"
 readme = "README.md"
-requires-python = ">=3.13"
+requires-python = ">=3.11"
 dependencies = [
     "pydantic>=2.0",
 ]
@@ -37,7 +37,7 @@ default-groups = ["dev"]
 
 [tool.ruff]
 line-length = 100
-target-version = "py313"
+target-version = "py311"
 
 [tool.ruff.lint]
 select = [
@@ -59,6 +59,6 @@ ignore = [
 convention = "google"
 
 [tool.mypy]
-python_version = "3.13"
+python_version = "3.11"
 strict = true
 ignore_missing_imports = true
