@@ -1,404 +1,463 @@
 {% extends base %} {% block content %}
-<div id="weather-content" hx-get="/weather" hx-trigger="every {{ auto_refresh_interval }}s" hx-swap="outerHTML">
-<div class="space-y-6">
-  <!-- Header -->
-  <div class="flex items-center justify-between">
-    <div>
-      <h1 class="text-3xl font-heading font-bold text-gray-900 dark:text-white">
-        Weather
-      </h1>
-      <p class="text-gray-500 dark:text-gray-400 mt-1">
-        Local conditions from DWD Station {{ current.station_id if current else
-        'Unknown' }}
-      </p>
-    </div>
-    <div
-      class="flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/50 dark:bg-white/5 border border-gray-200 dark:border-white/10"
-    >
+<div
+  id="weather-content"
+  hx-get="/weather"
+  hx-trigger="every {{ auto_refresh_interval }}s"
+  hx-swap="outerHTML"
+>
+  <div class="space-y-6">
+    <!-- Header -->
+    <div class="flex items-center justify-between">
+      <div>
+        <h1
+          class="text-3xl font-heading font-bold text-gray-900 dark:text-white"
+        >
+          Weather
+        </h1>
+        <p class="text-gray-500 dark:text-gray-400 mt-1">
+          Local conditions from DWD Station {{ current.station_id if current
+          else 'Unknown' }}
+        </p>
+      </div>
       <div
-        class="w-2 h-2 rounded-full {{ 'bg-green-500 animate-pulse' if status_value == 'Running' else 'bg-red-500' }}"
-      ></div>
-      <span class="text-xs font-mono font-medium {{ status_color }}"
-        >{{ status_value }}</span
+        class="flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/50 dark:bg-white/5 border border-gray-200 dark:border-white/10"
       >
+        <div
+          class="w-2 h-2 rounded-full {{ 'bg-green-500 animate-pulse' if status_value == 'Running' else 'bg-red-500' }}"
+        ></div>
+        <span class="text-xs font-mono font-medium {{ status_color }}"
+          >{{ status_value }}</span
+        >
+      </div>
+    </div>
+
+    <!-- Current Conditions Grid -->
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+      <!-- Temperature -->
+      <div
+        class="glass-panel p-6 rounded-2xl border border-gray-200 dark:border-white/5 relative overflow-hidden group"
+      >
+        <div
+          class="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity"
+        >
+          <span class="text-6xl">🌡️</span>
+        </div>
+        <div class="relative z-10">
+          <div
+            class="text-sm font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-1"
+          >
+            Temperature
+          </div>
+          <div class="text-3xl font-bold text-gray-900 dark:text-white">
+            {% if current %}{{ "%.1f"|format(current.temperature_c) }}°C{% else
+            %}--{% endif %}
+          </div>
+        </div>
+      </div>
+
+      <!-- Humidity -->
+      <div
+        class="glass-panel p-6 rounded-2xl border border-gray-200 dark:border-white/5 relative overflow-hidden group"
+      >
+        <div
+          class="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity"
+        >
+          <span class="text-6xl">💧</span>
+        </div>
+        <div class="relative z-10">
+          <div
+            class="text-sm font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-1"
+          >
+            Humidity
+          </div>
+          <div class="text-3xl font-bold text-gray-900 dark:text-white">
+            {% if current %}{{ "%.1f"|format(current.humidity_percent) }}%{%
+            else %}--{% endif %}
+          </div>
+        </div>
+      </div>
+
+      <!-- Precipitation -->
+      <div
+        class="glass-panel p-6 rounded-2xl border border-gray-200 dark:border-white/5 relative overflow-hidden group"
+      >
+        <div
+          class="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity"
+        >
+          <span class="text-6xl">☔</span>
+        </div>
+        <div class="relative z-10">
+          <div
+            class="text-sm font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-1"
+          >
+            Rain (10m)
+          </div>
+          <div class="text-3xl font-bold text-gray-900 dark:text-white">
+            {% if current %}{{ "%.1f"|format(current.precipitation_mm) }} mm{%
+            else %}--{% endif %}
+          </div>
+        </div>
+      </div>
+
+      <!-- Wind -->
+      <div
+        class="glass-panel p-6 rounded-2xl border border-gray-200 dark:border-white/5 relative overflow-hidden group"
+      >
+        <div
+          class="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity"
+        >
+          <span class="text-6xl">💨</span>
+        </div>
+        <div class="relative z-10">
+          <div
+            class="text-sm font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-1"
+          >
+            Wind
+          </div>
+          <div class="text-3xl font-bold text-gray-900 dark:text-white">
+            {% if current %}{{ "%.1f"|format(current.wind_speed_ms) }} m/s{%
+            else %}--{% endif %}
+          </div>
+          <div class="text-xs text-gray-500 mt-1">
+            Cloud Cover: {% if current %}{{
+            "%.0f"|format(current.cloud_cover_percent) }}%{% else %}--{% endif
+            %}
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Charts -->
+    <div
+      class="glass-panel p-6 rounded-2xl border border-gray-200 dark:border-white/5"
+    >
+      <h3 class="font-bold text-lg text-gray-900 dark:text-white mb-6">
+        24h History
+      </h3>
+      <div class="relative h-64 w-full">
+        <div id="weatherChart" class="w-full h-full"></div>
+      </div>
     </div>
   </div>
-
-  <!-- Current Conditions Grid -->
-  <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-    <!-- Temperature -->
-    <div
-      class="glass-panel p-6 rounded-2xl border border-gray-200 dark:border-white/5 relative overflow-hidden group"
-    >
-      <div
-        class="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity"
-      >
-        <span class="text-6xl">🌡️</span>
-      </div>
-      <div class="relative z-10">
-        <div
-          class="text-sm font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-1"
-        >
-          Temperature
-        </div>
-        <div class="text-3xl font-bold text-gray-900 dark:text-white">
-          {% if current %}{{ "%.1f"|format(current.temperature_c) }}°C{% else
-          %}--{% endif %}
-        </div>
-      </div>
-    </div>
-
-    <!-- Humidity -->
-    <div
-      class="glass-panel p-6 rounded-2xl border border-gray-200 dark:border-white/5 relative overflow-hidden group"
-    >
-      <div
-        class="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity"
-      >
-        <span class="text-6xl">💧</span>
-      </div>
-      <div class="relative z-10">
-        <div
-          class="text-sm font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-1"
-        >
-          Humidity
-        </div>
-        <div class="text-3xl font-bold text-gray-900 dark:text-white">
-          {% if current %}{{ "%.1f"|format(current.humidity_percent) }}%{% else
-          %}--{% endif %}
-        </div>
-      </div>
-    </div>
-
-    <!-- Precipitation -->
-    <div
-      class="glass-panel p-6 rounded-2xl border border-gray-200 dark:border-white/5 relative overflow-hidden group"
-    >
-      <div
-        class="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity"
-      >
-        <span class="text-6xl">☔</span>
-      </div>
-      <div class="relative z-10">
-        <div
-          class="text-sm font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-1"
-        >
-          Rain (10m)
-        </div>
-        <div class="text-3xl font-bold text-gray-900 dark:text-white">
-          {% if current %}{{ "%.1f"|format(current.precipitation_mm) }} mm{%
-          else %}--{% endif %}
-        </div>
-      </div>
-    </div>
-
-    <!-- Wind -->
-    <div
-      class="glass-panel p-6 rounded-2xl border border-gray-200 dark:border-white/5 relative overflow-hidden group"
-    >
-      <div
-        class="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity"
-      >
-        <span class="text-6xl">💨</span>
-      </div>
-      <div class="relative z-10">
-        <div
-          class="text-sm font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-1"
-        >
-          Wind
-        </div>
-        <div class="text-3xl font-bold text-gray-900 dark:text-white">
-          {% if current %}{{ "%.1f"|format(current.wind_speed_ms) }} m/s{% else
-          %}--{% endif %}
-        </div>
-        <div class="text-xs text-gray-500 mt-1">
-          Cloud Cover: {% if current %}{{
-          "%.0f"|format(current.cloud_cover_percent) }}%{% else %}--{% endif %}
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <!-- Charts -->
-  <div
-    class="glass-panel p-6 rounded-2xl border border-gray-200 dark:border-white/5"
-  >
-    <h3 class="font-bold text-lg text-gray-900 dark:text-white mb-6">
-      24h History
-    </h3>
-    <div class="relative h-64 w-full">
-      <canvas id="weatherChart"></canvas>
-    </div>
-  </div>
-</div>
 
   <!-- Correlation Charts -->
-  <div class="glass-panel p-6 rounded-2xl border border-gray-200 dark:border-white/5 mt-6">
+  <div
+    class="glass-panel p-6 rounded-2xl border border-gray-200 dark:border-white/5 mt-6"
+  >
     <h3 class="font-bold text-lg text-gray-900 dark:text-white mb-6">
       Ecological Correlations (Last 30 Days)
     </h3>
     <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <!-- Temperature vs Activity (Scatter) -->
-        <div class="space-y-2">
-            <h4 class="text-sm font-medium text-gray-500 uppercase tracking-wider text-center">Temperature Impact</h4>
-            <div class="relative h-64 w-full">
-                <canvas id="scatterTempChart"></canvas>
-            </div>
+      <!-- Temperature vs Activity (Scatter) -->
+      <div class="space-y-2">
+        <h4
+          class="text-sm font-medium text-gray-500 uppercase tracking-wider text-center"
+        >
+          Temperature Impact
+        </h4>
+        <div class="relative h-64 w-full">
+          <div id="scatterTempChart" class="w-full h-full"></div>
         </div>
-        
-        <!-- Rain vs Activity (Overlay) -->
-        <div class="space-y-2">
-            <h4 class="text-sm font-medium text-gray-500 uppercase tracking-wider text-center">Rain Impact</h4>
-            <div class="relative h-64 w-full">
-                <canvas id="rainOverlayChart"></canvas>
-            </div>
+      </div>
+
+      <!-- Rain vs Activity (Overlay) -->
+      <div class="space-y-2">
+        <h4
+          class="text-sm font-medium text-gray-500 uppercase tracking-wider text-center"
+        >
+          Rain Impact
+        </h4>
+        <div class="relative h-64 w-full">
+          <div id="rainOverlayChart" class="w-full h-full"></div>
         </div>
+      </div>
     </div>
   </div>
 
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-<script>
-  // Initialize Chart
-  var ctx = document.getElementById('weatherChart').getContext('2d');
-  var gradientTemp = ctx.createLinearGradient(0, 0, 0, 300);
-  var weatherChart = new Chart(ctx, {
-      type: 'line',
-      data: {
-          labels: {{ history.labels | tojson }},
-          datasets: [
-              {
-                  label: 'Temperature (°C)',
-                  data: {{ history.temp | tojson }},
-                  borderColor: '#ef4444', 
-                  backgroundColor: gradientTemp,
-                  borderWidth: 2,
-                  tension: 0.4,
-                  fill: true,
-                  yAxisID: 'y'
-              },
-              {
-                  label: 'Humidity (%)',
-                  data: {{ history.humidity | tojson }},
-                  borderColor: '#3b82f6', 
-                  borderWidth: 2,
-                  tension: 0.4,
-                  pointRadius: 0,
-                  yAxisID: 'y1'
-              }
-          ]
-      },
-      options: {
-          responsive: true,
-          maintainAspectRatio: false,
-          interaction: {
-              mode: 'index',
-              intersect: false,
-          },
-          plugins: {
-              legend: {
-                  labels: { color: '#9ca3af' }
-              }
-          },
-          scales: {
-              x: {
-                  grid: { color: 'rgba(255, 255, 255, 0.1)' },
-                  ticks: { color: '#9ca3af', maxTicksLimit: 8 }
-              },
-              y: {
-                  type: 'linear',
-                  display: true,
-                  position: 'left',
-                  grid: { color: 'rgba(255, 255, 255, 0.1)' },
-                  ticks: { color: '#ef4444' }
-              },
-              y1: {
-                  type: 'linear',
-                  display: true,
-                  position: 'right',
-                  grid: { drawOnChartArea: false },
-                  ticks: { color: '#3b82f6' }
-              }
-          }
-      }
-  });
+  <script>
+    // Robust Loading Check
+    if (typeof Plotly === 'undefined') {
+        document.querySelectorAll('[id$="Chart"]').forEach(el => {
+            el.innerHTML = ""; // Clear
+            const err = document.createElement('div');
+            err.className = "flex items-center justify-center h-full text-red-500 text-xs text-center p-2 border border-red-500/20 rounded bg-red-500/10";
+            err.innerText = "Plotly failed to load. Check internet.";
+            el.appendChild(err);
+        });
+    }
 
-  // --- Correlations ---
-  var corrData = {{ correlations | tojson }};
+    document.addEventListener('DOMContentLoaded', function() {
+        if (typeof Plotly === 'undefined') return;
 
-  // 1. Scatter Temp
-  var ctxScatter = document.getElementById('scatterTempChart').getContext('2d');
-  new Chart(ctxScatter, {
-      type: 'scatter',
-      data: {
-          datasets: [{
-              label: 'Detection Count vs Temp',
-              data: corrData.scatter_temp,
-              backgroundColor: 'rgba(239, 68, 68, 0.6)'
-          }]
-      },
-      options: {
-          responsive: true, 
-          maintainAspectRatio: false,
-          plugins: { legend: { display: false } },
-          scales: {
-              x: { 
-                  title: { display: true, text: 'Temperature (°C)', color: '#6b7280' },
-                  grid: { color: 'rgba(255,255,255,0.05)' },
-                  ticks: { color: '#9ca3af' }
-              },
-              y: { 
-                  title: { display: true, text: 'Detections (Count)', color: '#6b7280' },
-                  grid: { color: 'rgba(255,255,255,0.05)' },
-                  ticks: { color: '#9ca3af' }
-              }
-          }
-      }
-  });
+        // --- Common Config ---
+        const commonConfig = {
+            displayModeBar: false,
+            responsive: true
+        };
 
-  // 2. Rain Overlay
-  var ctxRain = document.getElementById('rainOverlayChart').getContext('2d');
-  new Chart(ctxRain, {
-      type: 'bar',
-      data: {
-          labels: corrData.labels,
-          datasets: [
-              {
-                  label: 'Rain (mm)',
-                  data: corrData.series_rain,
-                  backgroundColor: 'rgba(59, 130, 246, 0.5)',
-                  yAxisID: 'yRain',
-                  order: 2
-              },
-              {
-                  label: 'Detections',
-                  data: corrData.series_count,
-                  borderColor: '#10b981', 
-                  backgroundColor: 'rgba(16, 185, 129, 0.1)',
-                  type: 'line',
-                  tension: 0.3,
-                  yAxisID: 'yCount',
-                  order: 1
-              }
-          ]
-      },
-      options: {
-          responsive: true, 
-          maintainAspectRatio: false,
-          interaction: { mode: 'index', intersect: false },
-          scales: {
-              x: { 
-                  grid: { display: false },
-                  ticks: { display: false }
-              },
-              yRain: {
-                  type: 'linear', position: 'right',
-                  grid: { display: false },
-                  title: { display: true, text: 'Rain (mm)', color: '#3b82f6' }
-              },
-              yCount: {
-                  type: 'linear', position: 'left',
-                  grid: { color: 'rgba(255,255,255,0.05)' },
-                  title: { display: true, text: 'Detections', color: '#10b981' }
-              }
-          }
-      }
-  });
+        const commonLayout = {
+            paper_bgcolor: 'rgba(0,0,0,0)',
+            plot_bgcolor: 'rgba(0,0,0,0)',
+            font: { color: '#9ca3af', family: 'Inter, sans-serif' },
+            margin: { t: 10, b: 30, l: 40, r: 40 }, // r:40 for dual axis
+            xaxis: {
+                gridcolor: 'rgba(255,255,255,0.05)',
+                zerolinecolor: 'rgba(255,255,255,0.05)'
+            },
+            yaxis: {
+                gridcolor: 'rgba(255,255,255,0.05)',
+                zerolinecolor: 'rgba(255,255,255,0.05)'
+            }
+        };
 
-</div>
-{% endblock %} {% block inspector %}
-<div class="flex flex-col h-full space-y-6">
+        // --- 24h History Chart ---
+        const historyLabels = {{ history.labels | tojson }};
+        const historyTemp = {{ history.temp | tojson }};
+        const historyHum = {{ history.humidity | tojson }};
 
-  <!-- Station Info -->
-  <div class="glass-panel p-6 rounded-2xl">
-      <h3 class="font-bold text-gray-900 dark:text-white uppercase tracking-wider text-xs mb-4 border-b border-gray-200 dark:border-white/10 pb-2">
+        if(document.getElementById('weatherChart')) {
+            const traceTemp = {
+                x: historyLabels,
+                y: historyTemp,
+                name: 'Temperature (°C)',
+                type: 'scatter',
+                mode: 'lines',
+                line: { color: '#ef4444', width: 2 },
+                fill: 'tozeroy',
+                fillcolor: 'rgba(239, 68, 68, 0.1)'
+            };
+
+            const traceHum = {
+                x: historyLabels,
+                y: historyHum,
+                name: 'Humidity (%)',
+                type: 'scatter',
+                mode: 'lines',
+                line: { color: '#3b82f6', width: 2 },
+                yaxis: 'y2'
+            };
+
+            const layout = {
+                ...commonLayout,
+                showlegend: true,
+                legend: { orientation: 'h', y: 1.1, x: 0.5, xanchor: 'center' },
+                yaxis: {
+                    ...commonLayout.yaxis,
+                    title: { text: 'Temp (°C)', font: { color: '#ef4444' } },
+                    tickfont: { color: '#ef4444' }
+                },
+                yaxis2: {
+                    title: { text: 'Humidity (%)', font: { color: '#3b82f6' } },
+                    tickfont: { color: '#3b82f6' },
+                    overlaying: 'y',
+                    side: 'right',
+                    gridcolor: 'rgba(255,255,255,0.05)'
+                }
+            };
+
+            Plotly.newPlot('weatherChart', [traceTemp, traceHum], layout, commonConfig);
+        }
+
+        // --- Correlations ---
+        const corrData = {{ correlations | tojson }};
+
+        // 1. Scatter Temp
+        // ChartJS had {x,y}, Plotly needs arrays
+        if(document.getElementById('scatterTempChart') && corrData.scatter_temp) {
+            const xData = corrData.scatter_temp.map(p => p.x);
+            const yData = corrData.scatter_temp.map(p => p.y);
+
+            const traceScatter = {
+                x: xData,
+                y: yData,
+                mode: 'markers',
+                type: 'scatter',
+                marker: {
+                    color: 'rgba(239, 68, 68, 0.6)',
+                    size: 8,
+                    line: { color: '#ef4444', width: 1 }
+                },
+                name: 'Detections'
+            };
+
+            const layoutScatter = {
+                ...commonLayout,
+                margin: { t: 10, b: 40, l: 50, r: 10 },
+                xaxis: {
+                    ...commonLayout.xaxis,
+                    title: { text: 'Temperature (°C)', font: { size: 12 } }
+                },
+                yaxis: {
+                    ...commonLayout.yaxis,
+                    title: { text: 'Detections', font: { size: 12 } }
+                }
+            };
+
+            Plotly.newPlot('scatterTempChart', [traceScatter], layoutScatter, commonConfig);
+        }
+
+        // 2. Rain Overlay (Bar + Line)
+        if(document.getElementById('rainOverlayChart')) {
+            const traceRain = {
+                x: corrData.labels,
+                y: corrData.series_rain,
+                name: 'Rain (mm)',
+                type: 'bar',
+                marker: { color: 'rgba(59, 130, 246, 0.5)' },
+                yaxis: 'y2'
+            };
+
+            const traceCount = {
+                x: corrData.labels,
+                y: corrData.series_count,
+                name: 'Detections',
+                type: 'scatter',
+                mode: 'lines',
+                line: { color: '#10b981', width: 2 },
+                fill: 'tozeroy',
+                fillcolor: 'rgba(16, 185, 129, 0.1)'
+            };
+
+            const layoutRain = {
+                ...commonLayout,
+                legend: { orientation: 'h', y: 1.1, x: 0.5, xanchor: 'center' },
+                xaxis: { ...commonLayout.xaxis, showticklabels: false }, // Hide dense time labels
+                yaxis: {
+                    ...commonLayout.yaxis,
+                    title: { text: 'Detections', font: { color: '#10b981' } },
+                    tickfont: { color: '#10b981' }
+                },
+                yaxis2: {
+                    title: { text: 'Rain (mm)', font: { color: '#3b82f6' } },
+                    tickfont: { color: '#3b82f6' },
+                    overlaying: 'y',
+                    side: 'right'
+                }
+            };
+
+            Plotly.newPlot('rainOverlayChart', [traceCount, traceRain], layoutRain, commonConfig);
+        }
+    });
+  </script>
+  {% endblock %} {% block inspector %}
+  <div class="flex flex-col h-full space-y-6">
+    <!-- Station Info -->
+    <div class="glass-panel p-6 rounded-2xl">
+      <h3
+        class="font-bold text-gray-900 dark:text-white uppercase tracking-wider text-xs mb-4 border-b border-gray-200 dark:border-white/10 pb-2"
+      >
         Station Details
       </h3>
       <div class="space-y-3">
         {% if current %}
         <div class="flex justify-between items-center">
-            <span class="text-xs text-gray-500 uppercase">ID</span>
-            <span class="font-mono text-sm dark:text-gray-300">{{ current.station_id }}</span>
+          <span class="text-xs text-gray-500 uppercase">ID</span>
+          <span class="font-mono text-sm dark:text-gray-300"
+            >{{ current.station_id }}</span
+          >
         </div>
         <div class="flex justify-between items-center">
-            <span class="text-xs text-gray-500 uppercase">Last Update</span>
-            <span class="font-mono text-sm dark:text-gray-300">{{ current.timestamp.strftime('%H:%M:%S') if current.timestamp else '-' }}</span>
+          <span class="text-xs text-gray-500 uppercase">Last Update</span>
+          <span class="font-mono text-sm dark:text-gray-300"
+            >{{ current.timestamp.strftime('%H:%M:%S') if current.timestamp else
+            '-' }}</span
+          >
         </div>
         <div class="mt-2 pt-2 border-t border-gray-200 dark:border-white/5">
-             <div class="text-xs text-gray-500 uppercase mb-1">Summary</div>
-             <div class="text-sm dark:text-gray-300 font-medium">
-                {% if current.precipitation_mm > 0 %} 
-                    🌧️ Raining ({{ current.precipitation_mm }}mm) 
-                {% elif current.cloud_cover_percent > 80 %} 
-                    ☁️ Overcast 
-                {% elif current.cloud_cover_percent > 50 %} 
-                    ⛅ Cloudy 
-                {% else %} 
-                    ☀️ Clear/Partly Cloudy 
-                {% endif %}
-             </div>
+          <div class="text-xs text-gray-500 uppercase mb-1">Summary</div>
+          <div class="text-sm dark:text-gray-300 font-medium">
+            {% if current.precipitation_mm > 0 %} 🌧️ Raining ({{
+            current.precipitation_mm }}mm) {% elif current.cloud_cover_percent >
+            80 %} ☁️ Overcast {% elif current.cloud_cover_percent > 50 %} ⛅
+            Cloudy {% else %} ☀️ Clear/Partly Cloudy {% endif %}
+          </div>
         </div>
         {% else %}
         <div class="text-sm text-gray-500">No data available</div>
         {% endif %}
       </div>
-  </div>
+    </div>
 
-  <!-- Sun Cycle Visualizer (Mocked/Static for now) -->
-  <div class="glass-panel p-6 rounded-2xl relative overflow-hidden">
-       <h3 class="font-bold text-gray-900 dark:text-white uppercase tracking-wider text-xs mb-4">
+    <!-- Sun Cycle Visualizer (Mocked/Static for now) -->
+    <div class="glass-panel p-6 rounded-2xl relative overflow-hidden">
+      <h3
+        class="font-bold text-gray-900 dark:text-white uppercase tracking-wider text-xs mb-4"
+      >
         Sun Cycle
       </h3>
       <!-- Semicircle Arc -->
       <div class="relative h-20 w-full flex items-end justify-center">
-           <div class="absolute w-40 h-40 rounded-full border-2 border-dashed border-gray-300 dark:border-gray-600 top-4"></div>
-           <!-- Sun Position (Calculated roughly by time of day) -->
-           {% set hour = current.timestamp.hour if current and current.timestamp else 12 %}
-           {% set pct = (hour - 6) / 12 * 100 %} <!-- 6am to 6pm -->
-           {% if pct < 0 %}{% set pct = 0 %}{% endif %}
-           {% if pct > 100 %}{% set pct = 100 %}{% endif %}
-           
-           <div class="w-full h-full relative overflow-hidden">
-                <div class="absolute bottom-0 left-0 w-full h-1 bg-gray-200 dark:bg-gray-700"></div>
-                <!-- Sun Icon -->
-                <div class="absolute bottom-0 left-0 w-6 h-6 bg-yellow-400 rounded-full shadow-[0_0_15px_rgba(250,204,21,0.6)] transform -translate-x-1/2 translate-y-1/2 transition-all duration-1000"
-                     style="left: {{ pct }}%; bottom: {{ 100 * (1 - ((pct-50)/50)**2) }}%">
-                </div>
-           </div>
-      </div>
-      <div class="flex justify-between text-[10px] text-gray-400 mt-2 font-mono">
-           <span>06:00</span>
-           <span>12:00</span>
-           <span>18:00</span>
-      </div>
-  </div>
+        <div
+          class="absolute w-40 h-40 rounded-full border-2 border-dashed border-gray-300 dark:border-gray-600 top-4"
+        ></div>
+        <!-- Sun Position (Calculated roughly by time of day) -->
+        {% set hour = current.timestamp.hour if current and current.timestamp
+        else 12 %} {% set pct = (hour - 6) / 12 * 100 %}
+        <!-- 6am to 6pm -->
+        {% if pct < 0 %}{% set pct = 0 %}{% endif %} {% if pct > 100 %}{% set
+        pct = 100 %}{% endif %}
 
-  <!-- Wind Compass -->
-  <div class="glass-panel p-6 rounded-2xl">
-      <h3 class="font-bold text-gray-900 dark:text-white uppercase tracking-wider text-xs mb-4">
+        <div class="w-full h-full relative overflow-hidden">
+          <div
+            class="absolute bottom-0 left-0 w-full h-1 bg-gray-200 dark:bg-gray-700"
+          ></div>
+          <!-- Sun Icon -->
+          <div
+            class="absolute bottom-0 left-0 w-6 h-6 bg-yellow-400 rounded-full shadow-[0_0_15px_rgba(250,204,21,0.6)] transform -translate-x-1/2 translate-y-1/2 transition-all duration-1000"
+            style="left: {{ pct }}%; bottom: {{ 100 * (1 - ((pct-50)/50)**2) }}%"
+          ></div>
+        </div>
+      </div>
+      <div
+        class="flex justify-between text-[10px] text-gray-400 mt-2 font-mono"
+      >
+        <span>06:00</span>
+        <span>12:00</span>
+        <span>18:00</span>
+      </div>
+    </div>
+
+    <!-- Wind Compass -->
+    <div class="glass-panel p-6 rounded-2xl">
+      <h3
+        class="font-bold text-gray-900 dark:text-white uppercase tracking-wider text-xs mb-4"
+      >
         Wind Direction
       </h3>
-      
+
       <div class="flex justify-center my-2">
-          <div class="relative w-24 h-24 rounded-full border-2 border-gray-200 dark:border-gray-700 flex items-center justify-center">
-              <span class="absolute top-1 text-[10px] font-bold text-gray-400">N</span>
-              <span class="absolute bottom-1 text-[10px] font-bold text-gray-400">S</span>
-              <span class="absolute left-1 text-[10px] font-bold text-gray-400">W</span>
-              <span class="absolute right-1 text-[10px] font-bold text-gray-400">E</span>
-              
-              <!-- Arrow -->
-              <div class="w-1 h-10 bg-blue-500 rounded-full origin-bottom transform transition-transform duration-1000 relative" style="transform: rotate({{ current.wind_direction or 0 }}deg) translateY(-50%)">
-                    <div class="absolute -top-1 -left-1 w-3 h-3 border-l-2 border-t-2 border-blue-500 transform rotate-45"></div>
-              </div>
+        <div
+          class="relative w-24 h-24 rounded-full border-2 border-gray-200 dark:border-gray-700 flex items-center justify-center"
+        >
+          <span class="absolute top-1 text-[10px] font-bold text-gray-400"
+            >N</span
+          >
+          <span class="absolute bottom-1 text-[10px] font-bold text-gray-400"
+            >S</span
+          >
+          <span class="absolute left-1 text-[10px] font-bold text-gray-400"
+            >W</span
+          >
+          <span class="absolute right-1 text-[10px] font-bold text-gray-400"
+            >E</span
+          >
+
+          <!-- Arrow -->
+          <div
+            class="w-1 h-10 bg-blue-500 rounded-full origin-bottom transform transition-transform duration-1000 relative"
+            style="transform: rotate({{ current.wind_direction or 0 }}deg) translateY(-50%)"
+          >
+            <div
+              class="absolute -top-1 -left-1 w-3 h-3 border-l-2 border-t-2 border-blue-500 transform rotate-45"
+            ></div>
           </div>
+        </div>
       </div>
       <div class="text-center text-xs text-gray-500">
-           {% if current.wind_direction %}
-             {{ current.wind_direction }}°
-           {% else %}
-             Unknown
-           {% endif %}
+        {% if current.wind_direction %} {{ current.wind_direction }}° {% else %}
+        Unknown {% endif %}
       </div>
+    </div>
   </div>
-
+  {% endblock %}
 </div>
-{% endblock %}

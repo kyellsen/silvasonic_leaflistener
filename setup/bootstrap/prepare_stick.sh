@@ -3,7 +3,7 @@ set -euo pipefail
 
 # ===================== CONFIG =====================
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-CONFIG_FILE="$SCRIPT_DIR/../config/config.env"
+CONFIG_FILE="$SCRIPT_DIR/../config/bootstrap.env"
 STICK_USER="pi"
 
 # Load Config
@@ -11,7 +11,7 @@ if [[ ! -f "$CONFIG_FILE" ]]; then
     if [[ -f "$SCRIPT_DIR/config.env" ]]; then
          CONFIG_FILE="$SCRIPT_DIR/config.env"
     else
-         echo "ERROR: Config file not found. setup/config.example.env -> setup/config/config.env"
+         echo "ERROR: Config file not found. setup/config.example.env -> setup/config/bootstrap.env"
          exit 1
     fi
 fi
@@ -301,7 +301,7 @@ log "=============================================="
 
 # ===================== CLEANUP =====================
 if [[ "$AUTO_MOUNTED" == "true" ]]; then
-    log "Unmounting..."
+    log "Unmounting... Please wait!"
     sudo umount "$BOOT_MNT"
     sudo umount "$ROOT_MNT"
     rmdir "$BOOT_MNT" "$ROOT_MNT" "$MNT_BASE"

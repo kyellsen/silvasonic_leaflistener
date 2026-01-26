@@ -10,25 +10,6 @@ from janitor import StorageJanitor
 from rclone_wrapper import RcloneWrapper
 
 # Configure Logging
-os.makedirs("/var/log/silvasonic", exist_ok=True)
-
-import logging.handlers
-
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s [%(levelname)s] %(message)s',
-    datefmt='%Y-%m-%d %H:%M:%S',
-    handlers=[
-        logging.StreamHandler(sys.stdout),
-        logging.handlers.TimedRotatingFileHandler(
-            "/var/log/silvasonic/uploader.log",
-            when='midnight',
-            interval=1,
-            backupCount=30,
-            encoding='utf-8'
-        )
-    ]
-)
 logger = logging.getLogger("Carrier")
 
 # Configuration from Env
@@ -44,9 +25,29 @@ CLEANUP_THRESHOLD = int(os.getenv("UPLOADER_CLEANUP_THRESHOLD", 70))
 CLEANUP_TARGET = int(os.getenv("UPLOADER_CLEANUP_TARGET", 60))
 MIN_AGE = os.getenv("UPLOADER_MIN_AGE", "1m")
 
-# Ensure directories exist
-os.makedirs(os.path.dirname(STATUS_FILE), exist_ok=True)
-os.makedirs(ERROR_DIR, exist_ok=True)
+def setup_environment():
+    """Setup logging and directories."""
+    os.makedirs("/var/log/silvasonic", exist_ok=True)
+    
+    logging.basicConfig(
+        level=logging.INFO,
+        format='%(asctime)s [%(levelname)s] %(message)s',
+        datefmt='%Y-%m-%d %H:%M:%S',
+        handlers=[
+            logging.StreamHandler(sys.stdout),
+            logging.handlers.TimedRotatingFileHandler(
+                "/var/log/silvasonic/uploader.log",
+                when='midnight',
+                interval=1,
+                backupCount=30,
+                encoding='utf-8'
+            )
+        ]
+    )
+    
+    # Ensure directories exist
+    os.makedirs(os.path.dirname(STATUS_FILE), exist_ok=True)
+    os.makedirs(ERROR_DIR, exist_ok=True)
 
 def calculate_queue_size(directory, db):
     """Calculate pending files (local files - uploaded files)."""
@@ -121,6 +122,7 @@ def signal_handler(sig, frame):
     sys.exit(0)
 
 def main():
+    setup_environment()
     signal.signal(signal.SIGTERM, signal_handler)
     signal.signal(signal.SIGINT, signal_handler)
 

@@ -62,7 +62,7 @@ sudo ./setup/bootstrap/prepare_stick.sh
 
 1. Stecke die SD-Karte in den Pi.
 2. Schalte den Pi ein.
-3. Verbinde dich per SSH (Passwort 'raspberry' oder wie im Imager gesetzt):
+3. Verbinde dich per SSH user `pi` (Passwort 'raspberry' oder wie im Imager gesetzt):
    ```bash
    ssh pi@silvasonic.local
    ```

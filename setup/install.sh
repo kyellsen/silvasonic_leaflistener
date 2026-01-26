@@ -14,8 +14,8 @@ if [[ ! -f "$BOOTSTRAP_FILE" ]]; then
     fi
 fi
 
-echo "Loading configuration from $CONFIG_FILE..."
-source "$CONFIG_FILE"
+echo "Loading configuration from $BOOTSTRAP_FILE..."
+source "$BOOTSTRAP_FILE"
 
 # ===================== WORKSTATION-ONLY CHECK =====================
 # This script MUST run from workstation, not on the Pi!

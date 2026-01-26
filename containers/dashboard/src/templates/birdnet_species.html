@@ -244,7 +244,7 @@
         Daily Activity Pattern
       </h3>
       <div class="h-64 relative">
-        <canvas id="hourlyChart"></canvas>
+        <div id="hourlyChart" class="w-full h-full"></div>
       </div>
     </div>
 
@@ -315,44 +315,67 @@
 </div>
 
 {% endblock %} {% block scripts %}
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="/static/js/plotly.min.js"></script>
 <script>
-  document.addEventListener('DOMContentLoaded', function() {
-      const ctx = document.getElementById('hourlyChart').getContext('2d');
-      const hourlyData = {{ hourly|tojson }};
+  // Robust Loading Check
+  if (typeof Plotly === 'undefined') {
+      const el = document.getElementById('hourlyChart');
+      if(el) {
+          el.innerHTML = "";
+          const err = document.createElement('div');
+          err.className = "flex items-center justify-center h-full text-red-500 text-xs text-center p-2 border border-red-500/20 rounded bg-red-500/10";
+          err.innerText = "Plotly failed to load. Check internet.";
+          el.appendChild(err);
+      }
+  }
 
-      new Chart(ctx, {
-          type: 'bar',
-          data: {
-              labels: Array.from({length: 24}, (_, i) => i + ":00"),
-              datasets: [{
-                  label: 'Detections',
-                  data: hourlyData,
-                  backgroundColor: 'rgba(245, 158, 11, 0.5)', // Amber-500
-                  borderColor: 'rgba(245, 158, 11, 1)',
-                  borderWidth: 1,
-                  borderRadius: 4
-              }]
-          },
-          options: {
-              responsive: true,
-              maintainAspectRatio: false,
-              scales: {
-                  y: {
-                      beginAtZero: true,
-                      grid: { color: 'rgba(255, 255, 255, 0.1)' },
-                      ticks: { color: '#9ca3af' }
-                  },
-                  x: {
-                      grid: { display: false },
-                      ticks: { color: '#9ca3af', maxTicksLimit: 12 }
+  document.addEventListener('DOMContentLoaded', function() {
+      if (typeof Plotly === 'undefined') return;
+
+      const hourlyData = {{ hourly|tojson }};
+      const hourlyLabels = Array.from({length: 24}, (_, i) => i + ":00");
+
+      if(document.getElementById('hourlyChart')) {
+          const trace1 = {
+              x: hourlyLabels,
+              y: hourlyData,
+              type: 'bar',
+              marker: {
+                  color: 'rgba(245, 158, 11, 0.6)', // Amber-500 with opacity
+                  line: {
+                      color: 'rgba(245, 158, 11, 1)',
+                      width: 1
                   }
               },
-              plugins: {
-                  legend: { display: false }
-              }
-          }
-      });
+              name: 'Detections'
+          };
+
+          const layout = {
+              paper_bgcolor: 'rgba(0,0,0,0)',
+              plot_bgcolor: 'rgba(0,0,0,0)',
+              font: { color: '#9ca3af', family: 'Inter, sans-serif' },
+              margin: { t: 10, b: 30, l: 30, r: 10 },
+              xaxis: {
+                  gridcolor: 'rgba(255,255,255,0.05)',
+                  zerolinecolor: 'rgba(255,255,255,0.05)',
+                  tickmode: 'linear',
+                  dtick: 4 // Show every 4th hour to prevent clutter
+              },
+              yaxis: {
+                  gridcolor: 'rgba(255,255,255,0.05)',
+                  zerolinecolor: 'rgba(255,255,255,0.05)'
+              },
+              responsive: true,
+              showlegend: false
+          };
+
+          const config = {
+              displayModeBar: false,
+              responsive: true
+          };
+
+          Plotly.newPlot('hourlyChart', [trace1], layout, config);
+      }
   });
 </script>
 {% endblock %}
