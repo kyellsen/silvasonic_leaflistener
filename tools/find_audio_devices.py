@@ -35,8 +35,6 @@ def get_alsa_devices():
     #   Subdevices: 1/1
     #   Subdevice #0: subdevice #0
 
-
-
     lines = output.split("\n")
     for line in lines:
         line = line.strip()

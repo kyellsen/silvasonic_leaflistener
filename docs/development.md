@@ -15,8 +15,7 @@ You **must** have these tools installed on your host:
     curl -LsSf https://astral.sh/uv/install.sh | sh
     ```
 2.  **Podman**: The container engine.
-    - **Linux**: `sudo apt install podman podman-compose`
-    - **Mac**: `brew install podman podman-compose`
+    - **Linux**: `sudo dnf5 install podman podman-compose`
 
 ---
 

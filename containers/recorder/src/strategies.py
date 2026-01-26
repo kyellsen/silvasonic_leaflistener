@@ -30,13 +30,13 @@ class AudioStrategy(ABC):
         """Return the input source string (the value for -i)."""
         pass
 
-    def start_background_tasks(self, process: subprocess.Popen) -> None:
+    def start_background_tasks(self, process: subprocess.Popen) -> None:  # noqa: B027
         """Hook to start any background threads (e.g. file reading) after FFmpeg starts."""
-        pass  # noqa: B027
+        pass
 
-    def stop(self) -> None:
+    def stop(self) -> None:  # noqa: B027
         """Hook to clean up resources."""
-        pass  # noqa: B027
+        pass
 
 
 class AlsaStrategy(AudioStrategy):

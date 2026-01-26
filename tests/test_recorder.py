@@ -22,7 +22,7 @@ class TestRecorder(unittest.TestCase):
 
     def setUp(self) -> None:
         """Set up test fixtures."""
-        
+
         # Mock profile
         self.profile = MagicMock()
         self.profile.audio.channels = 1
@@ -36,7 +36,7 @@ class TestRecorder(unittest.TestCase):
         self.device.hw_address = "hw:0,0"
 
         self.output_dir = "/tmp/test_rec"
-        
+
         # Mock Strategy
         self.strategy = MagicMock()
         self.strategy.get_ffmpeg_input_args.return_value = ["-f", "alsa", "-test_arg"]
@@ -61,10 +61,10 @@ class TestRecorder(unittest.TestCase):
 
         # Check essential flags
         self.assertIn("ffmpeg", cmd)
-        self.assertIn("-test_arg", cmd) # From strategy
+        self.assertIn("-test_arg", cmd)  # From strategy
         self.assertIn(self.device.hw_address, cmd)
         self.assertIn("flac", cmd)
-        
+
         # Check background tasks call
         self.strategy.start_background_tasks.assert_called_once_with(process_mock)
 
@@ -74,10 +74,10 @@ class TestRecorder(unittest.TestCase):
         self, mock_makedirs: typing.Any, mock_popen: typing.Any
     ) -> None:
         """Test with different strategy args."""
-        
+
         self.strategy.get_ffmpeg_input_args.return_value = ["-f", "s16le", "-input_mock"]
         self.strategy.get_input_source.return_value = "pipe:0"
-        
+
         main.start_recording(self.profile, self.device, self.output_dir, self.strategy)
 
         args, kwargs = mock_popen.call_args

@@ -84,7 +84,6 @@
       loop:
         - /mnt/data/dev
         - /mnt/data/containers
-        - /mnt/data/backups
         - "{{ silvasonic_data_dir }}/logs"
         - "{{ silvasonic_data_dir }}/config"
         - "{{ silvasonic_data_dir }}/status"
