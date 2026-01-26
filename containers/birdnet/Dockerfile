@@ -6,6 +6,8 @@ RUN apt-get update && apt-get install -y \
     libsndfile1 \
     ffmpeg \
     git \
+    gcc \
+    libpq-dev \
     && rm -rf /var/lib/apt/lists/*
 
 # Set work directory
