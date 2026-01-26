@@ -5,7 +5,7 @@ from pathlib import Path
 
 import psutil
 
-from .common import REC_DIR
+from .common import REC_DIR, logger
 
 
 class SystemService:
@@ -16,7 +16,8 @@ class SystemService:
             cpu_cores = psutil.cpu_percent(interval=None, percpu=True)
             # Average for backward compatibility/summary
             cpu = round(sum(cpu_cores) / len(cpu_cores), 1) if cpu_cores else 0
-        except:
+        except Exception as e:
+            logger.error(f"Error getting CPU stats: {e}", exc_info=True)
             cpu = 0
             cpu_cores = []
 
@@ -26,7 +27,8 @@ class SystemService:
             # RAM in GB
             ram_used_gb = round(mem.used / (1024**3), 1)
             ram_total_gb = round(mem.total / (1024**3), 1)
-        except:
+        except Exception as e:
+            logger.error(f"Error getting Memory stats: {e}", exc_info=True)
             class MockMem:
                 percent = 0
                 used = 0
@@ -43,7 +45,8 @@ class SystemService:
             disk_percent = (disk.used / disk.total) * 100
             disk_used_gb = round(disk.used / (1024**3), 0)
             disk_total_gb = round(disk.total / (1024**3), 0)
-        except:
+        except Exception as e:
+            logger.error(f"Error getting Disk stats: {e}", exc_info=True)
             disk_percent = 0
             disk_used_gb = 0
             disk_total_gb = 0
@@ -52,7 +55,8 @@ class SystemService:
         try:
             boot_time = datetime.datetime.fromtimestamp(psutil.boot_time())
             uptime = datetime.datetime.now() - boot_time
-        except:
+        except Exception as e:
+            logger.error(f"Error getting Boot stats: {e}", exc_info=True)
             uptime = "Unknown"
 
         # Last Recording
@@ -63,9 +67,8 @@ class SystemService:
             if files:
                 last_rec_ts = files[0].stat().st_mtime
                 last_rec = datetime.datetime.fromtimestamp(last_rec_ts).strftime("%H:%M:%S")
-        except:
-            pass
-
+        except Exception as e:
+            logger.error(f"Error getting Last Recording: {e}", exc_info=True)
             pass
 
         # CPU Temperature
@@ -74,7 +77,8 @@ class SystemService:
             with open("/sys/class/thermal/thermal_zone0/temp") as f:
                 temp_c = int(f.read().strip()) / 1000.0
                 cpu_temp = f"{temp_c:.1f}°C"
-        except:
+        except Exception as e:
+            logger.error(f"Error getting CPU Temp: {e}", exc_info=True)
             pass
 
         return {
