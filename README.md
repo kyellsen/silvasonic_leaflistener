@@ -74,7 +74,7 @@ All contributors (human and AI) must follow the strict rules defined in our agen
 
 ## Development
 
-[View Development Guide & DevContainer Setup](docs/DEVELOPMENT.md)
+[View Unified Development Guide (Local & DevContainer)](docs/DEVELOPMENT.md)
 
 ## License
 

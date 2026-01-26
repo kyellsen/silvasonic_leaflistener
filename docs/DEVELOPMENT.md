@@ -1,111 +1,106 @@
 # Silvasonic Development Guide
 
-Welcome to the Silvasonic development documentation. This project uses a **Native DevContainer** approach on Fedora/Podman to ensure high performance (x86_64) while maintaining compatibility with the production Raspberry Pi environment via standard Python libraries.
+Welcome to the Silvasonic development documentation. This project uses a **Unified Development Workflow** powered by `uv` and `podman`. Whether you are inside a **DevContainer** or working **Locally**, the tools and commands are identical.
 
-## 🚀 Quick Start (DevContainer)
+## 🛠️ Prerequisites
 
-The recommended way to develop Silvasonic is using **VS Code DevContainers**.
+To develop Silvasonic, you **must** have the following tools installed on your host system:
 
-### 1. Host Machine Setup (Fedora Workstation)
+1.  **uv**: Fast Python package installer and resolver.
+    - Install: `curl -LsSf https://astral.sh/uv/install.sh | sh`
+2.  **Podman**: Daemonless container engine (Docker compatible).
+3.  **Podman Compose**: For managing multi-container applications.
 
-Since we use Podman with specific bind mounts for data persistence, you must create the storage directory on your host once. This separates your code from heavy recording data.
+> [!IMPORTANT]
+> **Why Podman locally?**
+> Even for local development, we use containers to build and run the actual services (`recorder`, `birdnet`, etc.). Your local environment is primarily for running tests, linters, and managing the code.
+
+## 🚀 Setup & Workflow
+
+### 1. Environment Setup (Universal)
+
+Run this once to create your virtual environment and install dependencies. This works effectively the same on your Local Host and inside the DevContainer.
 
 ```bash
-# Create the local data storage directory on your Host
+# 1. Create/Sync Virtual Environment
+uv sync
+
+# 2. Activate Virtual Environment
+source .venv/bin/activate
+```
+
+### 2. Dependency Management
+
+We use `uv` exclusively. Do not use `pip` manually.
+
+- **Add a library**: `uv add <package>` (e.g., `uv add requests`)
+- **Add a dev tool**: `uv add --dev <package>` (e.g., `uv add --dev pytest`)
+- **Sync after git pull**: `uv sync`
+
+### 3. Running Services (Podman)
+
+Start the full stack (requires `.env` file):
+
+```bash
+# 1. Create Config
+cp config.example.env .env
+
+# 2. Start System
+podman-compose up -d --build
+
+# 3. View Logs
+podman-compose logs -f
+```
+
+### 4. Development & Testing
+
+Since `uv` manages the environment, you can run tools directly if the venv is activated, or via `uv run`.
+
+#### Code Quality (Strict Gates)
+
+```bash
+# Run all checks (Lint, Format, Types)
+./scripts/run_checks.sh
+
+# Or individually:
+uv run ruff check .
+uv run ruff format .
+uv run mypy .
+```
+
+#### Running Tests
+
+```bash
+# Run all unit tests
+uv run pytest
+
+# Run specific service tests
+uv run pytest containers/birdnet
+```
+
+## 📂 Architecture & Data Persistence
+
+We strictly separate Code from Data.
+
+| Scope | Host Path (Fedora/Linux)              | Container Path                  | Description                                                    |
+| ----- | ------------------------------------- | ------------------------------- | -------------------------------------------------------------- |
+| Code  | `./` (Project Root)                   | `/workspace`                    | Live-synced. Changes apply immediately to services on restart. |
+| Data  | `/mnt/data/dev_workspaces/silvasonic` | `/mnt/data/services/silvasonic` | Persistent storage (DB, Audio). Survives container rebuilds.   |
+
+### Setup Data Storage (Host)
+
+You must create this directory on your host machine to ensure persistence:
+
+```bash
 sudo mkdir -p /mnt/data/dev_workspaces/silvasonic
 sudo chown -R $USER:$USER /mnt/data/dev_workspaces/silvasonic
 ```
 
-### 2. Launching the Environment
+## 🐳 VS Code DevContainers
 
-1. Open this folder in VS Code.
-2. Press `F1` (or `Ctrl+Shift+P`) and select: `> Dev Containers: Reopen in Container`
+This project supports VS Code DevContainers for a pre-configured environment.
 
-The build is native and fast (running on your local architecture).
+1.  Open folder in VS Code.
+2.  `F1` -> `Dev Containers: Reopen in Container`.
 
-## 📂 Architecture & Data Flow
-
-We strictly separate Code from Data to simulate the production environment and keep the Git repository clean:
-
-| Scope | Host Path (Fedora) | Container Path | Description |
-|---|---|---|---|
-| Code | `./` (Project Root) | `/workspace` | Live-synced. Changes apply immediately to services. |
-| Data | `/mnt/data/dev_workspaces/silvasonic` | `/mnt/data/services/silvasonic` | Persistent storage (DB, Audio). Survives container rebuilds. |
-
-### Live Reloading
-
-The `podman-compose.yml` mounts the source code (`./containers/*/src`) directly into the running services. If you modify a Python file, simply restart the specific service inside the DevContainer terminal to apply changes:
-
-```bash
-# Example: Restart recorder after code changes
-podman-compose restart recorder
-```
-
-## 🛠️ Toolchain & Workflow
-
-We use `uv` for high-speed dependency management inside the container.
-
-### Dependency Management
-
-- **Sync Environment**: `uv sync` (Restores all dependencies in `/workspace/.venv`)
-- **Add Dependency**: `uv add <package>`
-- **Run Scripts**: `uv run <script.py>`
-
-### Testing
-
-#### 1. Unit Tests
-
-Run fast logic tests (mocked hardware):
-
-```bash
-uv run pytest
-```
-
-#### 2. Service Tests
-
-To test specific container logic (e.g. BirdNET):
-
-```bash
-cd containers/birdnet
-uv run --extra test pytest
-```
-
-### Code Quality
-
-We enforce strict quality gates:
-
-```bash
-uv run ruff check .   # Linting
-uv run ruff format .  # Formatting
-uv run mypy .         # Type Checking
-```
-
-## 🐳 Podman-in-Podman
-
-The DevContainer has access to the host's Podman socket. You can manage the "inner" production containers just like on the Raspberry Pi.
-
-Standard Dev Stack Start:
-
-```bash
-# Inside VS Code Terminal
-cp config.example.env .env
-podman-compose up -d --build
-```
-
-Check Status:
-
-```bash
-podman-compose ps
-```
-
-View Logs:
-
-```bash
-podman-compose logs -f
-```
-
-Cleanup:
-
-```bash
-podman-compose down
-```
+The DevContainer uses the **Host's Podman Socket**. This means `podman ps` inside the DevContainer sees the containers running on your host machine.
