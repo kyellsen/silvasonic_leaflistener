@@ -26,6 +26,27 @@ RUN apt-get update && apt-get install -y \
     # Added for development convenience
     sudo \
     lsb-release \
+    # Playwright/Chromium Dependencies
+    libwoff1 \
+    libopus0 \
+    libwebp7 \
+    libwebpdemux2 \
+    libenchant-2-2 \
+    libsecret-1-0 \
+    libhyphen0 \
+    libgdk-pixbuf2.0-0 \
+    libegl1 \
+    libnotify4 \
+    libxslt1.1 \
+    libevent-2.1-7 \
+    libgles2 \
+    libvpx7 \
+    libxcomposite1 \
+    libatk1.0-0 \
+    libatk-bridge2.0-0 \
+    libepoxy0 \
+    libgtk-3-0 \
+    libharfbuzz-icu0 \
     && apt-get clean && rm -rf /var/lib/apt/lists/*
 
 # 2. Install 'uv'
