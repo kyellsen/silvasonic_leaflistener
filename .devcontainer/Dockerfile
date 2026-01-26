@@ -2,7 +2,14 @@ FROM python:3.11-bookworm
 
 ENV DEBIAN_FRONTEND=noninteractive
 
+# --- WICHTIG: IDs ZUERST reservieren ---
+# Wir legen die Gruppen an, BEVOR wir Pakete installieren.
+# So verhindern wir, dass apt-get sich die ID 1000 schnappt.
+RUN groupadd -g 999 podman && \
+    groupadd -f audio
+
 # 1. Install System Dependencies
+# Jetzt können wir podman installieren, es wird die existierende Gruppe (999) nutzen.
 RUN apt-get update && apt-get install -y \
     tree git btop rsync fzf ripgrep nano ncdu tmux \
     usbutils pciutils sox ffmpeg stress \
@@ -19,19 +26,14 @@ RUN apt-get update && apt-get install -y \
 ENV UV_INSTALL_DIR="/usr/local/bin"
 RUN curl -LsSf https://astral.sh/uv/install.sh | sh
 
-# 3. Fix GID Collision
-# Wir schieben die Gruppe 'podman' (oder docker) auf 999,
-# damit das Feature 'common-utils' die ID 1000 für 'vscode' nutzen kann.
-RUN groupadd -f audio && \
-    groupadd -g 999 -f podman
-
-# 4. Set Workspace Directory (Konsistent mit devcontainer.json)
-# Bereite den Ordner vor, damit Rechte stimmen
+# 3. Set Workspace Directory & Permissions
+# Wir bereiten den Ordner vor. chown 1000:1000 funktioniert auch,
+# wenn der User 'vscode' erst später durch das Feature erstellt wird.
 RUN mkdir -p /mnt/data/services/silversonic && \
     chown 1000:1000 /mnt/data/services/silversonic
 
 WORKDIR /mnt/data/services/silversonic
 
-# 5. Environment Variables
+# 4. Environment Variables
 ENV PYTHONUNBUFFERED=1
 ENV PYTHONDONTWRITEBYTECODE=1
