@@ -361,7 +361,7 @@
         >
           <button
             class="p-2 bg-white/20 backdrop-blur-md rounded-full text-white hover:bg-white/40 transition hover:scale-105"
-            onclick="playGlobalAudio('{{ d.audio_relative_path }}', '{{ d.display_name }}', '{{ d.confidence }}')"
+            onclick='playGlobalAudio("{{ d.audio_relative_path|replace("\\", "/") }}", "{{ d.display_name|replace("\"", "\\\"") }}", "{{ d.confidence }}")'
           >
             <svg class="w-8 h-8" fill="currentColor" viewBox="0 0 24 24">
               <path d="M8 5v14l11-7z" />
