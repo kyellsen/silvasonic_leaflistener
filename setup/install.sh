@@ -85,6 +85,7 @@ ansible-playbook "$SCRIPT_DIR/provision/main.yml" \
     -e "wifi_psk=$WIFI_PSK" \
     -e "wifi_country=$WIFI_COUNTRY" \
     -e "user=$USER_NAME" \
+    -e "local_repo_root=$(dirname "$SCRIPT_DIR")" \
     $CONN_ARGS
 
 echo "=========================================="

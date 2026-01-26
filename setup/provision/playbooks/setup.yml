@@ -110,14 +110,23 @@
         creates: "/home/{{ user }}/.local/share/containers/storage"
 
     # --- 5. CLONE REPOSITORY FROM GITHUB ---
-    - name: Clone Silvasonic Repository
+    # --- 5. SYNC REPOSITORY FROM LOCALHOST ---
+    - name: Sync Silvasonic Repository (Local -> Remote)
       become: true
       become_user: "{{ user }}"
-      git:
-        repo: "{{ repo_url }}"
+      synchronize:
+        src: "{{ local_repo_root }}/"
         dest: "{{ repo_dest }}"
-        version: main
-        update: yes
+        recursive: yes
+        delete: yes
+        rsync_opts:
+          - "--exclude=.venv"
+          # - "--exclude=.git/objects" # Full sync requested
+          - "--exclude=__pycache__"
+          - "--exclude=*.pyc"
+          - "--exclude=.pytest_cache"
+          - "--exclude=.ruff_cache"
+          - "--exclude=recordings" # Don't sync local recordings if they exist
       tags: [repo]
 
     # --- 6. COPY HELPER SCRIPTS ---
@@ -140,6 +149,14 @@
         mode: "0755"
         remote_src: yes
       tags: [tools, audio]
+
+    # --- 6.5. BUILD IMAGES ---
+    - name: Build Silvasonic Images
+      become: true
+      command: podman-compose build
+      args:
+        chdir: "{{ repo_dest }}"
+      tags: [build, upgrade]
 
     # --- 7. SERVICE INSTALLATION ---
     - name: Install Silvasonic Service
