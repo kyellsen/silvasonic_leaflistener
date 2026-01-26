@@ -35,7 +35,7 @@ def get_alsa_devices():
     #   Subdevices: 1/1
     #   Subdevice #0: subdevice #0
 
-    current_card = None
+
 
     lines = output.split("\n")
     for line in lines:
@@ -47,10 +47,10 @@ def get_alsa_devices():
         match = re.search(r"card (\d+): (.*?) \[(.*?)\], device (\d+): (.*?) \[(.*?)\]", line)
         if match:
             card_id = match.group(1)
-            card_name = match.group(2)
+            _ = match.group(2)
             card_desc = match.group(3)
             dev_id = match.group(4)
-            dev_name = match.group(5)
+            _ = match.group(5)
             dev_desc = match.group(6)
 
             hw_address = f"hw:{card_id},{dev_id}"

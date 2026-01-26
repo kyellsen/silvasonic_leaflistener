@@ -100,3 +100,11 @@ If you prefer VS Code DevContainers:
 2.  Reopen in Container.
 
 **Under the hood**: The DevContainer mounts the **Host's Podman Socket**. This means when you run `podman ps` inside VS Code, you are seeing the actual containers running on your host OS. This provides "Native Performance" with "Containerized Tooling".
+
+---
+
+## ⚡ Native / Hybrid Development
+
+If you prefer to run Python natively on your host (e.g., for direct PyCharm/VSCode integration without DevContainers) while keeping services in containers:
+
+👉 **See [Native Podman Guide](native_podman_dev.md)**

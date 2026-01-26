@@ -2,7 +2,7 @@ version: "3.8"
 
 services:
   recorder:
-    build: 
+    build:
       context: containers/recorder
     image: silvasonic-recorder:latest
     container_name: silvasonic_recorder
@@ -19,7 +19,7 @@ services:
     restart: always
 
   uploader:
-    build: 
+    build:
       context: containers/uploader
     image: silvasonic-uploader:latest
     container_name: silvasonic_uploader
@@ -37,7 +37,7 @@ services:
     restart: always
 
   healthchecker:
-    build: 
+    build:
       context: containers/healthchecker
     image: silvasonic-healthchecker:latest
     container_name: silvasonic_healthchecker
@@ -52,7 +52,7 @@ services:
       - ${SILVASONIC_DATA_DIR}/logs:/var/log/silvasonic:z
 
   birdnet:
-    build: 
+    build:
       context: containers/birdnet
     image: silvasonic-birdnet:latest
     container_name: silvasonic_birdnet
@@ -73,7 +73,7 @@ services:
     restart: always
 
   livesound:
-    build: 
+    build:
       context: containers/livesound
     image: silvasonic-livesound:latest
     container_name: silvasonic_livesound
@@ -91,7 +91,7 @@ services:
     restart: always
 
   dashboard:
-    build: 
+    build:
       context: containers/dashboard
     image: silvasonic-dashboard:latest
     container_name: silvasonic_dashboard
@@ -110,7 +110,7 @@ services:
       - ${SILVASONIC_DATA_DIR}/status:/mnt/data/services/silvasonic/status:z
 
   weather:
-    build: 
+    build:
       context: containers/weather
     image: silvasonic-weather:latest
     container_name: silvasonic_weather
@@ -129,6 +129,8 @@ services:
       POSTGRES_USER: ${POSTGRES_USER:-silvasonic}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-silvasonic}
       POSTGRES_DB: ${POSTGRES_DB:-silvasonic}
+    ports:
+      - "127.0.0.1:5432:5432"
     volumes:
       - ${SILVASONIC_DATA_DIR}/db/data:/var/lib/postgresql/data:z
     healthcheck:

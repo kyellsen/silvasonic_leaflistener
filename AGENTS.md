@@ -32,12 +32,12 @@ Silvasonic is a recording station, not just an analytics cluster. The primary di
 
 **Priority Levels:**
 
-1.  **The Ear (Recorder)**: [CRITICAL] Must **never** be blocked or interrupted. It buffers in RAM and writes to NVMe.
-2.  **The Carrier (Uploader)**: [HIGH] Syncs data to the central server. Must run independently.
+1.  **Recorder**: [CRITICAL] Must **never** be blocked or interrupted. It buffers in RAM and writes to NVMe.
+2.  **Uploader**: [HIGH] Syncs data to the central server. Must run independently.
 3.  **The HealthChecker**: [HIGH] Monitors system health and alerts on failure.
-4.  **The Brain (BirdNET/SoundAnalyser)** & **The Face (Dashboard)**: [STANDARD] Supplemental. See [docs/containers.md](docs/containers.md) for full role definitions.
+4.  **BirdNET** & **Dashboard**: [STANDARD] Supplemental. See [docs/containers.md](docs/containers.md) for full role definitions.
 
-**Rule**: Any operation that risks the continuity of "The Ear" is forbidden.
+**Rule**: Any operation that risks the continuity of "Recorder" is forbidden.
 
 ### 2. File System & Persistence
 
@@ -72,11 +72,11 @@ Code is not "done" until it passes:
 2. `uv run mypy .`
 3. `uv run pytest`
 
-### 4. Application Constraints (Dashboard/Face)
+### 4. Application Constraints (Dashboard)
 
 - **Goal**: Provides device status, statistics, and exploration tools.
 - **Technology**: FastAPI.
-- **Interaction**: Users may explore data (BirdDiscover) and view stats (BirdStats). Heavy analysis must be handled by the specialized containers (BirdNET/SoundAnalyser), not the Dashboard itself.
+- **Interaction**: Users may explore data (BirdDiscover) and view stats (BirdStats). Heavy analysis must be handled by the specialized containers (BirdNET), not the Dashboard itself.
 
 ---
 

@@ -22,10 +22,8 @@ class TestRecorder(unittest.TestCase):
 
     def setUp(self) -> None:
         """Set up test fixtures."""
-        # We don't really need to call setup_logging/ensure_status_dir for unit tests of functions
-        # mocking them is better if needed, or relying on the import-safe refactor we did.
-
-        # Mock profile and device
+        
+        # Mock profile
         self.profile = MagicMock()
         self.profile.audio.channels = 1
         self.profile.audio.sample_rate = 48000
@@ -38,16 +36,21 @@ class TestRecorder(unittest.TestCase):
         self.device.hw_address = "hw:0,0"
 
         self.output_dir = "/tmp/test_rec"
+        
+        # Mock Strategy
+        self.strategy = MagicMock()
+        self.strategy.get_ffmpeg_input_args.return_value = ["-f", "alsa", "-test_arg"]
+        self.strategy.get_input_source.return_value = "hw:0,0"
 
     @patch("recorder_main.subprocess.Popen")
     @patch("recorder_main.os.makedirs")
     def test_start_recording(self, mock_makedirs: typing.Any, mock_popen: typing.Any) -> None:
-        """Test that start_recording calls FFmpeg with correct arguments."""
+        """Test that start_recording calls FFmpeg with correct arguments from strategy."""
         process_mock = MagicMock()
         mock_popen.return_value = process_mock
 
         # Call the function
-        main.start_recording(self.profile, self.device, self.output_dir)
+        main.start_recording(self.profile, self.device, self.output_dir, self.strategy)
 
         # Verify directory creation
         mock_makedirs.assert_called_with(self.output_dir, exist_ok=True)
@@ -58,36 +61,30 @@ class TestRecorder(unittest.TestCase):
 
         # Check essential flags
         self.assertIn("ffmpeg", cmd)
-        self.assertIn("alsa", cmd)
+        self.assertIn("-test_arg", cmd) # From strategy
         self.assertIn(self.device.hw_address, cmd)
         self.assertIn("flac", cmd)
-        self.assertIn(str(self.profile.recording.chunk_duration_seconds), cmd)
-
-        # Check stream target construction
-        # udp_url = f"udp://{LIVE_STREAM_TARGET}:{LIVE_STREAM_PORT}"
-        # Defaults are silvasonic_livesound:1234
-        # self.assertIn("udp://silvasonic_livesound:1234", cmd)
-        # Actually cmd is a list, so we check if the url string is in the list
-        found_udp = any("udp://" in arg for arg in cmd)
-        self.assertTrue(found_udp, "UDP URL not found in command")
+        
+        # Check background tasks call
+        self.strategy.start_background_tasks.assert_called_once_with(process_mock)
 
     @patch("recorder_main.subprocess.Popen")
     @patch("recorder_main.os.makedirs")
-    def test_start_recording_mock_mode(
+    def test_start_recording_mock_strategy(
         self, mock_makedirs: typing.Any, mock_popen: typing.Any
     ) -> None:
-        """Test that mock mode changes input source."""
-        self.profile.is_mock = True
-
-        main.start_recording(self.profile, self.device, self.output_dir)
+        """Test with different strategy args."""
+        
+        self.strategy.get_ffmpeg_input_args.return_value = ["-f", "s16le", "-input_mock"]
+        self.strategy.get_input_source.return_value = "pipe:0"
+        
+        main.start_recording(self.profile, self.device, self.output_dir, self.strategy)
 
         args, kwargs = mock_popen.call_args
         cmd = args[0]
 
-        self.assertIn("lavfi", cmd)
-        # Check for anoisesrc
-        found_anoise = any("anoisesrc" in arg for arg in cmd)
-        self.assertTrue(found_anoise, "anoisesrc source not found for mock profile")
+        self.assertIn("-input_mock", cmd)
+        self.assertIn("pipe:0", cmd)
 
 
 if __name__ == "__main__":

@@ -32,11 +32,11 @@ class AudioStrategy(ABC):
 
     def start_background_tasks(self, process: subprocess.Popen) -> None:
         """Hook to start any background threads (e.g. file reading) after FFmpeg starts."""
-        pass
+        pass  # noqa: B027
 
     def stop(self) -> None:
         """Hook to clean up resources."""
-        pass
+        pass  # noqa: B027
 
 
 class AlsaStrategy(AudioStrategy):

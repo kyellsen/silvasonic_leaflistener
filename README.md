@@ -8,24 +8,24 @@ Status: **Active Development**
 
 ## 🚀 Quick Links
 
-| Goal                        | Resource                                                        |
-| :-------------------------- | :-------------------------------------------------------------- |
-| **I want to build one**     | 👉 **[Getting Started Guide](docs/getting_started.md)**         |
-| **I want to contribute**    | 💻 **[Developer Guide](docs/development.md)**                   |
-| **I want to understand it** | 🏗️ **[Architecture Overview](docs/architecture/containers.md)** |
+| Goal                        | Resource                                                                                                   |
+| :-------------------------- | :--------------------------------------------------------------------------------------------------------- |
+| **I want to build one**     | 👉 **[Getting Started Guide](docs/getting_started.md)**                                                    |
+| **I want to contribute**    | 💻 **[Developer Guide](docs/development.md)** <br> ⚡ **[Native Podman Setup](docs/native_podman_dev.md)** |
+| **I want to understand it** | 🏗️ **[Architecture Overview](docs/architecture/containers.md)**                                            |
 
 ---
 
 ## 💡 What is it?
 
-Silvasonic transforms a Raspberry Pi 5 into a professional-grade acoustic recorder ("The Ear") and analyzer ("The Brain").
+Silvasonic transforms a Raspberry Pi 5 into a professional-grade acoustic recorder ("Recorder") and analyzer ("BirdNET").
 
 **Key Capabilities:**
 
-- **The Ear**: Uninterrupted audio recording (Ultrasonic capable).
-- **The Carrier**: Resilient upload/sync to cloud (Nextcloud, S3).
-- **The Brain**: On-device analysis (BirdNET) for species classification.
-- **The Face**: Interactive local Dashboard.
+- **Recorder**: Uninterrupted audio recording (Ultrasonic capable).
+- **Uploader**: Resilient upload/sync to cloud (Nextcloud, S3).
+- **BirdNET**: On-device analysis (BirdNET) for species classification.
+- **Dashboard**: Interactive local Dashboard.
 
 > [!NOTE]
 > This project follows strict "Agents & Automation" rules defined in **[AGENTS.md](AGENTS.md)**.
