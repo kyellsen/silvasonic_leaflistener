@@ -18,7 +18,7 @@ ENV PATH="/app/.venv/bin:$PATH"
 
 RUN uv venv && \
     uv lock && \
-    uv export --frozen --no-dev --format requirements-txt > requirements.txt && \
+    uv export --frozen --no-emit-project --no-dev --format requirements-txt > requirements.txt && \
     uv pip install --no-cache -r requirements.txt
 
 
