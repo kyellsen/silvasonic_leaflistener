@@ -58,3 +58,4 @@ setup/config/bootstrap.env
 config.env
 
 *.flac
+*.jpg
