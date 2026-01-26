@@ -102,7 +102,7 @@ class StorageJanitor:
             f"({deleted_size / 1024 / 1024:.2f} MB)."
         )
 
-    def _list_local_files(self) -> list[dict]:
+    def _list_local_files(self) -> list[dict[str, typing.Any]]:
         """Returns a list of local files with metadata."""
         files = []
         for root, _, filenames in os.walk(self.source_dir):

@@ -22,11 +22,11 @@ def get_ip() -> str:
         ip_addr = "127.0.0.1"
     finally:
         s.close()
-    return ip_addr
+    return str(ip_addr)
 
 
-@app.route("/", defaults={"path": ""})
-@app.route("/<path:path>")
+@app.route("/", defaults={"path": ""})  # type: ignore
+@app.route("/<path:path>")  # type: ignore
 def catch_all(path: str) -> typing.Any:
     """Handle all requests and redirect to the captive portal."""
     # Determine Hostname or IP to redirect to

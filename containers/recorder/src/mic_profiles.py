@@ -50,7 +50,7 @@ class MicrophoneProfile:
     priority: int = 50
     is_mock: bool = False
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         """Clean up data after initialization."""
         if not self.slug:
             # Generate slug from name

@@ -10,7 +10,7 @@ logger = logging.getLogger("Config")
 
 
 class Config:
-    def __init__(self):
+    def __init__(self) -> None:
         # Paths
         self.INPUT_DIR = Path(os.getenv("INPUT_DIR", "/data/recording"))
         self.RESULTS_DIR = Path(os.getenv("RESULTS_DIR", "/data/db/results"))

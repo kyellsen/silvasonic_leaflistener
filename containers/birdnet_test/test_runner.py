@@ -21,7 +21,7 @@ except ImportError as e:
     sys.exit(1)
 
 
-def run_ffmpeg_resampling(input_path: Path, output_path: Path):
+def run_ffmpeg_resampling(input_path: Path, output_path: Path) -> bool:
     """Resample to 48kHz mono using ffmpeg (robust against formats)"""
     try:
         cmd = [
@@ -45,7 +45,7 @@ def run_ffmpeg_resampling(input_path: Path, output_path: Path):
         return False
 
 
-def analyze_file(input_path: Path, results_dir: Path):
+def analyze_file(input_path: Path, results_dir: Path) -> None:
     """Process a single file using BirdNET-Analyzer"""
     logger.info(f"Processing: {input_path.name}")
 
@@ -131,7 +131,7 @@ def analyze_file(input_path: Path, results_dir: Path):
         pass
 
 
-def main():
+def main() -> None:
     logger.info("--- Starting Standalone BirdNET Test Runner ---")
 
     # Define directories

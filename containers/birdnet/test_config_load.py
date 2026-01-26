@@ -15,7 +15,7 @@ except ImportError:
 sys.path.insert(0, str(Path.cwd()))
 
 
-def test_config_load():
+def test_config_load() -> None:
     # 1. Create a temp config file
     config_data = {
         "birdnet": {

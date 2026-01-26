@@ -85,7 +85,7 @@ class ProcessedFile(Base):  # type: ignore
 
 
 class DatabaseHandler:
-    def __init__(self):
+    def __init__(self) -> None:
         self.user = os.getenv("POSTGRES_USER", "silvasonic")
         self.password = os.getenv("POSTGRES_PASSWORD", "silvasonic")
         self.db_name = os.getenv("POSTGRES_DB", "silvasonic")
@@ -182,7 +182,8 @@ class DatabaseHandler:
             return []
         session = self.Session()
         try:
-            return session.query(Watchlist).filter_by(enabled=1).all()
+            result: list[Watchlist] = session.query(Watchlist).filter_by(enabled=1).all()
+            return result
         finally:
             session.close()
 
@@ -221,12 +222,12 @@ class DatabaseHandler:
         session = self.Session()
         try:
             # We trust scientific name to be stable
-            return (
+            count: int = (
                 session.query(Watchlist)
                 .filter_by(scientific_name=scientific_name, enabled=1)
                 .count()
-                > 0
             )
+            return count > 0
         finally:
             session.close()
 

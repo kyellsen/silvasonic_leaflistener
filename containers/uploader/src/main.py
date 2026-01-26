@@ -186,7 +186,7 @@ def main() -> None:
         logger.warning("Environment variables missing. Assuming config file already exists.")
 
     # 2. Main Loop
-    last_upload_success = 0
+    last_upload_success: float = 0.0
 
     while True:
         try:

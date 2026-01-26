@@ -36,6 +36,8 @@ dev = [
     "PyYAML",
     "psutil",
     "psycopg2-binary",
+    "types-PyYAML",
+    "types-aiofiles",
 ]
 
 [tool.uv]

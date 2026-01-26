@@ -13,14 +13,14 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("webapp")
 
 
-@app.route("/")
+@app.route("/")  # type: ignore
 def index() -> str:
     """Render the index page with listed networks."""
     networks = manager.scan_networks()
     return render_template("index.html", networks=networks)
 
 
-@app.route("/connect", methods=["POST"])
+@app.route("/connect", methods=["POST"])  # type: ignore
 def connect() -> str | tuple[str, int]:
     """Handle the connection request to a WiFi network."""
     data = request.form

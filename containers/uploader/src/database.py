@@ -23,7 +23,7 @@ class DatabaseHandler:
             f"postgresql://{self.user}:{self.password}@{self.host}:{self.port}/{self.db_name}"
         )
         self.engine: typing.Any | None = None
-        self.Session: sessionmaker | None = None
+        self.Session: sessionmaker[typing.Any] | None = None
 
     def connect(self) -> bool:
         """Connect to the database and create tables."""
@@ -118,6 +118,8 @@ class DatabaseHandler:
                 return set()
             if not filenames:
                 return set()
+
+        assert self.Session is not None
 
         session = self.Session()
         uploaded = set()

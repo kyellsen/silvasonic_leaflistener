@@ -2,8 +2,8 @@
 set -e
 
 # setup.sh
-# Central Setup & Maintenance Script for Silvasonic
-# Based on docs/DEVELOPMENT.md
+# Local Development Setup & Maintenance Script
+# Based on docs/development.md
 
 # Colors
 GREEN='\033[0;32m'
@@ -13,11 +13,11 @@ RED='\033[0;31m'
 NC='\033[0m' # No Color
 
 function echo_task() {
-    echo -e "${BLUE}🔨 $1...${NC}"
+    echo -e "${BLUE}▶ $1...${NC}"
 }
 
 function echo_success() {
-    echo -e "${GREEN}✅ $1${NC}"
+    echo -e "${GREEN}✔ $1${NC}"
 }
 
 function echo_warn() {
@@ -27,8 +27,10 @@ function echo_warn() {
 function show_help() {
     echo "Usage: ./setup.sh [OPTIONS]"
     echo ""
+    echo "This script manages your LOCAL development environment."
+    echo ""
     echo "Options:"
-    echo "  --clean      Clean cleanup (remove .venv, cache, temporary files)"
+    echo "  --clean      Clean cleanup (remove .venv, cache, temporary files, stopped containers)"
     echo "  --rebuild    Rebuild containers (podman-compose build)"
     echo "  --help       Show this help message"
     echo ""
@@ -61,107 +63,101 @@ for arg in "$@"; do
     esac
 done
 
+# --- 1. CLEANUP (Optional) ---
 if [ "$CLEAN" = true ]; then
-    echo -e "${RED}🧹 Cleaning up environment...${NC}"
+    echo_task "Cleaning up environment"
     
-    if [ -d ".venv" ]; then
-        echo "Removing .venv..."
-        rm -rf .venv
+    rm -rf .venv .ruff_cache .mypy_cache .pytest_cache
+    find . -type d -name "__pycache__" -exec rm -rf {} +
+    
+    echo_success "Cache and venv removed."
+    
+    # Optional: Podman cleanup
+    if command -v podman &> /dev/null; then
+         echo_task "Pruning stopped containers"
+         podman container prune -f
     fi
-    
-    if [ -d ".ruff_cache" ]; then
-        rm -rf .ruff_cache
-    fi
-    
-    if [ -d ".mypy_cache" ]; then
-        rm -rf .mypy_cache
-    fi
-    
-    if [ -d ".pytest_cache" ]; then
-        rm -rf .pytest_cache
-    fi
-    
-    # Optional: Clean podman resources if desired, but maybe too aggressive for default check?
-    # Keeping it to local dev files for now.
-    
-    echo_success "Cleanup complete."
 fi
 
-# 1. Check for 'uv'
+# --- 2. DEPENDENCIES (uv) ---
 if ! command -v uv &> /dev/null; then
-    echo_warn "'uv' not found!"
-    echo "   Please install it: curl -LsSf https://astral.sh/uv/install.sh | sh"
+    echo -e "${RED}Error: 'uv' is not installed.${NC}"
+    echo "Install it: curl -LsSf https://astral.sh/uv/install.sh | sh"
     exit 1
 fi
-echo_success "'uv' is installed."
 
-# 2. Virtual Environment & Dependencies
-echo_task "Syncing dependencies with uv"
+echo_task "Syncing dependencies (uv)"
 uv sync
 echo_success "Dependencies synced."
 
-# 3. Configuration (.env)
+# --- 3. CONFIGURATION (.env) ---
 if [ ! -f ".env" ]; then
     echo_task "Creating .env from config.example.env"
     cp config.example.env .env
-    echo_warn "Created .env file. Please check and update it with your secrets/settings!"
+    echo_warn "Created .env file. Please check and update it with your secrets!"
 else
     echo_success ".env file exists."
 fi
 
-# 3.5 Data Directories (Volumes)
-# Load .env variables if present
+# --- 4. DATA DIRECTORIES ---
+# Load .env variables (if present) to find SILVASONIC_DATA_DIR
 if [ -f ".env" ]; then
     export $(grep -v '^#' .env | xargs)
 fi
 
-# Default to production path if not set
-SILVASONIC_DATA_DIR=${SILVASONIC_DATA_DIR:-/mnt/data/services/silvasonic}
+# Default to local dev path if not set (Safe default for workstation)
+target_data_dir=${SILVASONIC_DATA_DIR:-/mnt/data/dev_workspaces/silvasonic}
 
-echo_task "Ensuring required data directories exist at ${SILVASONIC_DATA_DIR}..."
+echo_task "Verifying data directories at $target_data_dir"
+
+# Define critical paths based on containers.md
 REQUIRED_DIRS=(
-    "${SILVASONIC_DATA_DIR}/recorder/recordings"
-    "${SILVASONIC_DATA_DIR}/logs"
-    "${SILVASONIC_DATA_DIR}/status"
-    "${SILVASONIC_DATA_DIR}/uploader/config"
-    "${SILVASONIC_DATA_DIR}/errors"
-    "${SILVASONIC_DATA_DIR}/config"
-    "${SILVASONIC_DATA_DIR}/notifications"
-    "${SILVASONIC_DATA_DIR}/birdnet/results"
-    "${SILVASONIC_DATA_DIR}/db/data"
+    "$target_data_dir/recorder/recordings"
+    "$target_data_dir/logs"
+    "$target_data_dir/status"
+    "$target_data_dir/uploader/config"
+    "$target_data_dir/errors"
+    "$target_data_dir/config"
+    "$target_data_dir/notifications"
+    "$target_data_dir/birdnet/results"
+    "$target_data_dir/db/data"
 )
 
 for DIR in "${REQUIRED_DIRS[@]}"; do
     if [ ! -d "$DIR" ]; then
-        echo "Creating $DIR..."
-        mkdir -p "$DIR"
+        # On local workstation, we might need sudo for /mnt/data
+        if mkdir -p "$DIR" 2>/dev/null; then
+             :
+        else
+             echo_warn "Using sudo to create $DIR"
+             sudo mkdir -p "$DIR"
+             sudo chown -R $USER:$USER "$DIR"
+        fi
     fi
 done
 echo_success "Data directories verified."
 
-# 4. Container Management (if requested)
+
+# --- 5. CONTAINER MANAGEMENT ---
 if [ "$REBUILD" = true ]; then
-    echo_task "Rebuilding containers (podman-compose)"
+    echo_task "Rebuilding containers"
+    
     if command -v podman-compose &> /dev/null; then
-        podman-compose down
+        # Ensure we have a valid .env before starting
+        podman-compose down || true
         podman-compose up -d --build
         echo_success "Containers rebuilt and started."
     else
-        echo_warn "podman-compose not found. Skipping container rebuild."
+        echo -e "${RED}Error: podman-compose not found.${NC}"
+        exit 1
     fi
 fi
 
-# 5. Final Report & Recommendations
+# --- 6. SUMMARY ---
 echo ""
-echo -e "${GREEN}🎉 Setup Complete!${NC}"
+echo -e "${GREEN}✨ Development Environment Ready!${NC}"
 echo "---------------------------------------------------"
-echo "Recommended Next Steps:"
-echo "1. Activate Virtual Env:  ${YELLOW}source .venv/bin/activate${NC}"
-echo "2. Run Code Checks:       ${YELLOW}./scripts/run_checks.sh${NC}"
-echo "3. Start Services:        ${YELLOW}podman-compose up -d${NC}"
-echo "4. View Logs:             ${YELLOW}podman-compose logs -f${NC}"
-echo ""
-echo "Development Workflow:"
-echo "- To run tests:           ${YELLOW}uv run pytest${NC}"
-echo "- To restart a service:   ${YELLOW}podman-compose restart <service_name>${NC}"
+echo "To activate venv:   ${YELLOW}source .venv/bin/activate${NC}"
+echo "To run tests:       ${YELLOW}uv run pytest${NC}"
+echo "To start stack:     ${YELLOW}podman-compose up -d${NC}"
 echo "---------------------------------------------------"

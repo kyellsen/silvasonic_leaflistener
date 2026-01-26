@@ -23,7 +23,7 @@ def setup_logging() -> None:
         # For now, let's proceed with just basicConfig using StreamHandler if file fails or just standard behavior.
         # But for the specific error reported, moving it to main()/setup_logging() solves the import time crash.
 
-    handlers = [logging.StreamHandler(sys.stdout)]
+    handlers: list[logging.Handler] = [logging.StreamHandler(sys.stdout)]
 
     log_file = os.path.join(log_dir, "birdnet.log")
     try:

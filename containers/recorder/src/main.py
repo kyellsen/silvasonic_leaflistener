@@ -34,7 +34,7 @@ def setup_logging() -> None:
     except OSError:
         pass  # Ignore if we can't create it (e.g. tests)
 
-    handlers = [logging.StreamHandler(sys.stdout)]
+    handlers: list[logging.Handler] = [logging.StreamHandler(sys.stdout)]
 
     log_file = os.path.join(log_dir, "recorder.log")
     try:
@@ -101,7 +101,9 @@ def write_status(
         logger.error(f"Failed to write status: {e}")
 
 
-def start_recording(profile: typing.Any, device: typing.Any, output_dir: str) -> subprocess.Popen:
+def start_recording(
+    profile: typing.Any, device: typing.Any, output_dir: str
+) -> subprocess.Popen[bytes]:
     """Starts the continuous FFmpeg process."""
     global ffmpeg_process
 

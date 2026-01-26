@@ -89,7 +89,7 @@ class SettingsService:
             # Deep merge helper
             current = Settings().dict()
 
-            def deep_update(target: dict, source: dict) -> None:
+            def deep_update(target: dict[str, typing.Any], source: dict[str, typing.Any]) -> None:
                 for k, v in source.items():
                     if isinstance(v, dict) and k in target and isinstance(target[k], dict):
                         deep_update(target[k], v)
@@ -105,7 +105,7 @@ class SettingsService:
             return Settings()
 
     @staticmethod
-    def save_settings(new_settings: dict) -> bool:
+    def save_settings(new_settings: dict[str, typing.Any]) -> bool:
         """Save settings (dict) to JSON, with validation."""
         try:
             # Validate via model

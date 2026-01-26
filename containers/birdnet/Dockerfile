@@ -17,16 +17,13 @@ WORKDIR /app
 COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
 
 # Create venv and install dependencies
-COPY pyproject.toml .
+# Install dependencies
+COPY pyproject.toml uv.lock ./
 ENV VIRTUAL_ENV=/app/.venv
 ENV PATH="/app/.venv/bin:$PATH"
 
-# Install numpy first to avoid build isolation issues
 RUN uv venv && \
-    uv pip install --no-cache numpy
-
-# Compile and install rest
-RUN uv pip compile pyproject.toml -o requirements.txt && \
+    uv export --frozen --no-dev --format requirements-txt > requirements.txt && \
     uv pip install --no-cache -r requirements.txt
 
 

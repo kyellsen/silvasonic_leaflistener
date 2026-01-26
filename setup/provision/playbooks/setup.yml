@@ -25,8 +25,6 @@
       - podman-compose
       - cockpit
       - cockpit-podman
-      - python3-venv
-      - python3-pip
       - python3-flask
     # Repository settings
     repo_url: "https://github.com/kyellsen/silvasonic.git"
@@ -162,20 +160,20 @@
       tags: [repo]
 
     # --- 6. COPY HELPER SCRIPTS ---
-    - name: Copy Health Check Script
+    - name: Copy Hardware Verification Script
       copy:
-        src: "{{ repo_dest }}/scripts/check.sh"
-        dest: "/home/{{ user }}/check.sh"
+        src: "{{ repo_dest }}/scripts/verify_hardware.sh"
+        dest: "/home/{{ user }}/verify_hardware.sh"
         owner: "{{ user }}"
         group: "{{ user }}"
         mode: "0755"
         remote_src: yes
       tags: [tools, health]
 
-    - name: Copy Sound-Lab Script
+    - name: Copy Audio Verification Script
       copy:
-        src: "{{ repo_dest }}/scripts/sound_check.sh"
-        dest: "/home/{{ user }}/sound_check.sh"
+        src: "{{ repo_dest }}/scripts/verify_audio.sh"
+        dest: "/home/{{ user }}/verify_audio.sh"
         owner: "{{ user }}"
         group: "{{ user }}"
         mode: "0755"

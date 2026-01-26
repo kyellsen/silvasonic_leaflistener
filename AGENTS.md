@@ -16,8 +16,8 @@ Silvasonic is a **robust, autonomous bioacoustic monitoring device** (Raspberry 
 
 All product meaning lives **only** in the documentation tree below. Nothing normative may be duplicated elsewhere.
 
-- **Architecture & Containers** → [docs/containers.md](docs/containers.md)
-- **Data Flow & Storage** → [docs/data_flow.md](docs/data_flow.md)
+- **Architecture & Containers** → [docs/architecture/containers.md](docs/architecture/containers.md)
+- **Data Flow & Storage** → [docs/architecture/data_flow.md](docs/architecture/data_flow.md)
 - **Hardware & Wiring** → [docs/hardware.md](docs/hardware.md)
 
 If behavior is not specified there, it must not be implemented.
@@ -43,7 +43,7 @@ Silvasonic is a recording station, not just an analytics cluster. The primary di
 
 The system uses a strict directory structure on the NVMe drive (`/mnt/data`).
 
-**Rule**: Use only the canonical paths defined in [docs/data_flow.md](docs/data_flow.md#file-system-layout).
+**Rule**: Use only the canonical paths defined in [docs/data_flow.md](docs/architecture/data_flow.md#file-system-layout).
 
 **Transient Scripts**:
 Any temporary, investigative, or verification scripts (e.g. `verify_audio.py`) must be placed in `scripts/temp/`. They must **never** be placed in the project root.

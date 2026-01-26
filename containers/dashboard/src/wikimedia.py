@@ -1,4 +1,5 @@
 import logging
+import typing
 
 import httpx
 
@@ -10,7 +11,7 @@ class WikimediaService:
     USER_AGENT = "Silvasonic/1.0 (https://github.com/kyellsen/silvasonic; contact@example.com)"
 
     @staticmethod
-    async def fetch_species_data(scientific_name: str):
+    async def fetch_species_data(scientific_name: str) -> dict[str, typing.Any] | None:
         """Fetches metadata for a species from Wikimedia API.
         Returns a dict with keys matching SpeciesInfo model or None if failed.
         """

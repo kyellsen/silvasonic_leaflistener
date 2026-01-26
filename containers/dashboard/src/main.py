@@ -123,7 +123,7 @@ async def startup_event() -> None:
 app.mount("/static", StaticFiles(directory=os.path.join(BASE_DIR, "static")), name="static")
 
 
-@app.middleware("http")
+@app.middleware("http")  # type: ignore
 async def add_security_headers(
     request: Request, call_next: typing.Callable[[Request], typing.Awaitable[typing.Any]]
 ) -> typing.Any:

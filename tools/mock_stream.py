@@ -1,6 +1,7 @@
 import socket
 import sys
 import time
+import typing
 from pathlib import Path
 
 import numpy as np
@@ -46,7 +47,7 @@ def process_track(file_path: Path) -> np.ndarray | None:
         data = np.clip(data, -1.0, 1.0)
         audio_int16 = (data * 32767).astype(np.int16)
 
-        return audio_int16
+        return typing.cast(np.ndarray, audio_int16)
     except Exception as e:
         print(f"Error loading {file_path}: {e}")
         return None

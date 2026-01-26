@@ -19,7 +19,7 @@ spec.loader.exec_module(main)
 class TestRecorder(unittest.TestCase):
     """Test the Recorder module."""
 
-    def setUp(self):
+    def setUp(self) -> None:
         """Set up test fixtures."""
         # We don't really need to call setup_logging/ensure_status_dir for unit tests of functions
         # mocking them is better if needed, or relying on the import-safe refactor we did.
@@ -40,7 +40,7 @@ class TestRecorder(unittest.TestCase):
 
     @patch("recorder_main.subprocess.Popen")
     @patch("recorder_main.os.makedirs")
-    def test_start_recording(self, mock_makedirs, mock_popen):
+    def test_start_recording(self, mock_makedirs, mock_popen) -> None:
         """Test that start_recording calls FFmpeg with correct arguments."""
         process_mock = MagicMock()
         mock_popen.return_value = process_mock
@@ -72,7 +72,7 @@ class TestRecorder(unittest.TestCase):
 
     @patch("recorder_main.subprocess.Popen")
     @patch("recorder_main.os.makedirs")
-    def test_start_recording_mock_mode(self, mock_makedirs, mock_popen):
+    def test_start_recording_mock_mode(self, mock_makedirs, mock_popen) -> None:
         """Test that mock mode changes input source."""
         self.profile.is_mock = True
 
