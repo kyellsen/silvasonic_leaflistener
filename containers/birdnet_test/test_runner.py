@@ -1,9 +1,7 @@
-import sys
-import os
-import datetime
 import logging
+import os
 import subprocess
-import csv
+import sys
 from pathlib import Path
 
 # Configure Logging
@@ -26,10 +24,10 @@ def run_ffmpeg_resampling(input_path: Path, output_path: Path):
     """Resample to 48kHz mono using ffmpeg (robust against formats)"""
     try:
         cmd = [
-            "ffmpeg", "-y", 
-            "-i", str(input_path.absolute()), 
-            "-ar", "48000", 
-            "-ac", "1", 
+            "ffmpeg", "-y",
+            "-i", str(input_path.absolute()),
+            "-ar", "48000",
+            "-ac", "1",
             "-c:a", "pcm_s16le",
             str(output_path)
         ]
@@ -43,12 +41,12 @@ def run_ffmpeg_resampling(input_path: Path, output_path: Path):
 def analyze_file(input_path: Path, results_dir: Path):
     """Process a single file using BirdNET-Analyzer"""
     logger.info(f"Processing: {input_path.name}")
-    
+
     # Setup temp paths
     temp_dir = Path("/tmp/birdnet_processing")
     temp_dir.mkdir(parents=True, exist_ok=True)
     temp_resampled = temp_dir / f"{input_path.stem}_48k.wav"
-    
+
     # 1. Resample
     if not run_ffmpeg_resampling(input_path, temp_resampled):
         return
@@ -57,7 +55,7 @@ def analyze_file(input_path: Path, results_dir: Path):
     # We configure it to output to a temp directory first
     temp_output_dir = temp_dir / "results"
     temp_output_dir.mkdir(parents=True, exist_ok=True)
-    
+
     try:
         logger.info(f"Running analysis on {temp_resampled.name}...")
         bn_analyze(
@@ -79,7 +77,7 @@ def analyze_file(input_path: Path, results_dir: Path):
     # BirdNET v2.4+ creates <filename>.BirdNET.results.csv
     expected_result_name = f"{temp_resampled.stem}.BirdNET.results.csv"
     temp_result_path = temp_output_dir / expected_result_name
-    
+
     if not temp_result_path.exists():
         logger.warning(f"No result file found at {temp_result_path}. Input might be silent or too short.")
         # Debug listing
@@ -90,23 +88,23 @@ def analyze_file(input_path: Path, results_dir: Path):
 
     # Move to final destination with clean name
     final_output_file = results_dir / f"{input_path.name}.csv"
-    
+
     try:
-        # We read the BirdNET CSV and write a cleaner one to final dir, 
+        # We read the BirdNET CSV and write a cleaner one to final dir,
         # or just copy it. Let's strictly move it to match user request.
         # But maybe we want to keep the content format identical?
         # User said: "Ergebnisse einfach als csv in /results!"
-        
+
         # Let's just move/rename it.
         # However, the BirdNET CSV has columns: Start (s), End (s), Scientific name, Common name, Confidence
         # We might want to ensure the target directory exists.
         results_dir.mkdir(parents=True, exist_ok=True)
-        
+
         # We simply move the generated CSV to the final output path
         import shutil
         shutil.move(str(temp_result_path), str(final_output_file))
         logger.info(f"Saved results to: {final_output_file}")
-        
+
     except Exception as e:
         logger.error(f"Failed to save results: {e}")
 
@@ -118,19 +116,19 @@ def analyze_file(input_path: Path, results_dir: Path):
 
 def main():
     logger.info("--- Starting Standalone BirdNET Test Runner ---")
-    
+
     # Define directories
     input_dir = Path("/app/test_data")
     results_dir = Path("/data/db/results") # Mapped to local ./results in run_test.sh
-    
+
     if not input_dir.exists():
         logger.error(f"Input directory not found: {input_dir}")
         sys.exit(1)
-        
+
     # Find files
     files = list(input_dir.glob("*.flac")) + list(input_dir.glob("*.wav"))
     logger.info(f"Found {len(files)} audio files.")
-    
+
     if not files:
         logger.warning(f"No .flac or .wav files found in {input_dir}")
         return
@@ -138,7 +136,7 @@ def main():
     # Process
     for f in files:
         analyze_file(f, results_dir)
-        
+
     logger.info("--- All done ---")
 
 if __name__ == "__main__":

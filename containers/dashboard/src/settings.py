@@ -1,16 +1,14 @@
-from pydantic import BaseModel, Field, AnyUrl, ValidationError, validator
-from typing import List, Optional, Dict
-import os
 import json
 import logging
-import copy
+import os
 import re
+
+from pydantic import BaseModel, Field, ValidationError, validator
 
 logger = logging.getLogger("Dashboard.Settings")
 
 CONFIG_PATH = "/config/settings.json"
 
-from typing import List, Optional, Dict
 
 # ... imports ...
 
@@ -23,9 +21,9 @@ class BirdNETSettings(BaseModel):
     overlap: float = Field(default=0.0, ge=0.0, le=2.5, description="Overlap in seconds (0.0-2.5)")
 
 class HealthCheckerSettings(BaseModel):
-    recipient_email: Optional[str] = Field(default="") # Empty allowed, falls back to env
-    apprise_urls: List[str] = Field(default_factory=list)
-    service_timeouts: Dict[str, int] = Field(default_factory=lambda: {
+    recipient_email: str | None = Field(default="") # Empty allowed, falls back to env
+    apprise_urls: list[str] = Field(default_factory=list)
+    service_timeouts: dict[str, int] = Field(default_factory=lambda: {
         "carrier": 3600,
         "recorder": 120,
         "birdnet": 300,
@@ -64,29 +62,29 @@ class SettingsService:
         """Load settings as Pydantic model."""
         if not os.path.exists(CONFIG_PATH):
             return Settings()
-            
+
         try:
-            with open(CONFIG_PATH, 'r') as f:
+            with open(CONFIG_PATH) as f:
                 data = json.load(f)
             # Use parse_obj to validate and merge with defaults
-            # However, partial updates need care. 
+            # However, partial updates need care.
             # Pydantic replaces whole sub-models usually.
             # Best strategy: Load default, update dict, then parse.
-            
+
             # Deep merge helper
             current = Settings().dict()
-            
+
             def deep_update(target, source):
                 for k, v in source.items():
                     if isinstance(v, dict) and k in target and isinstance(target[k], dict):
                         deep_update(target[k], v)
                     else:
                         target[k] = v
-            
+
             deep_update(current, data)
-            
+
             return Settings(**current)
-            
+
         except Exception as e:
             logger.error(f"Failed to load settings: {e}")
             return Settings()
@@ -97,7 +95,7 @@ class SettingsService:
         try:
             # Validate via model
             model = Settings(**new_settings)
-            
+
             # Ensure directory exists
             if not os.path.exists(os.path.dirname(CONFIG_PATH)):
                 try:

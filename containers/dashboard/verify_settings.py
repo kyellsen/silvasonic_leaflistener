@@ -1,21 +1,22 @@
 
-import sys
 import os
+import sys
+
 # Add src to path
 sys.path.append(os.path.join(os.getcwd(), 'src'))
 
+
 from fastapi.testclient import TestClient
 from src.main import app
-from src.settings import SettingsService, CONFIG_PATH
-import json
+from src.settings import CONFIG_PATH
 
 client = TestClient(app)
 
 # Mock Auth
-from src.auth import verify_credentials
-# We need to bypass auth or mock it. 
+# We need to bypass auth or mock it.
 # fastest way: Dependency override
 from src.auth import require_auth
+
 app.dependency_overrides[require_auth] = lambda: True
 
 def test_validation():
@@ -37,7 +38,7 @@ def test_validation():
     # 2. Test Invalid Coordinates (Latitude > 90)
     print("2. Testing Invalid Latitude (>90)...", end="")
     response = client.post("/settings", data={
-        "latitude": "91.0", 
+        "latitude": "91.0",
         "longitude": "13.40",
         "notifier_email": "test@example.com"
     })
@@ -51,19 +52,19 @@ def test_validation():
     print(" OK")
 
     # 3. Test Invalid Email (if validated)
-    # Note: Our simple validator just returns value if string, but if Pydantic EmailStr was used and installed it would fail. 
+    # Note: Our simple validator just returns value if string, but if Pydantic EmailStr was used and installed it would fail.
     # In my code I used `Optional[str]` but added `validate_email` which currently just returns valid.
-    # Wait, I commented out EmailStr import or usage? 
+    # Wait, I commented out EmailStr import or usage?
     # In `settings.py` I blindly imported `EmailStr`. If `email-validator` is missing, `main.py` import will fail.
     # Verification will catch this import error if it exists!
-    
+
     print("All Tests Passed!")
 
 if __name__ == "__main__":
     # Backup existing settings if any
     if os.path.exists(CONFIG_PATH):
         os.rename(CONFIG_PATH, CONFIG_PATH + ".bak")
-    
+
     try:
         test_validation()
     finally:

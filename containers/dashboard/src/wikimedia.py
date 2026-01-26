@@ -1,6 +1,6 @@
-import httpx
 import logging
-import asyncio
+
+import httpx
 
 logger = logging.getLogger("Wikimedia")
 
@@ -10,8 +10,7 @@ class WikimediaService:
 
     @staticmethod
     async def fetch_species_data(scientific_name: str):
-        """
-        Fetches metadata for a species from Wikimedia API.
+        """Fetches metadata for a species from Wikimedia API.
         Returns a dict with keys matching SpeciesInfo model or None if failed.
         """
         try:
@@ -28,22 +27,22 @@ class WikimediaService:
                     "lllang": "de", # Get German link
                     "redirects": True
                 }
-                
+
                 response = await client.get(WikimediaService.BASE_URL, params=params, timeout=10.0)
                 data = response.json()
-                
+
                 pages = data.get("query", {}).get("pages", {})
                 if not pages or "-1" in pages:
                     logger.warning(f"No Wikipedia page found for {scientific_name}")
                     return None
-                
+
                 # Get the first page result
                 page = next(iter(pages.values()))
-                
+
                 # Extract Data
                 image_url = page.get("thumbnail", {}).get("source")
                 description = page.get("extract")
-                
+
                 # German Name from Langlinks
                 german_name = None
                 if "langlinks" in page:
@@ -51,7 +50,7 @@ class WikimediaService:
                         if link.get("lang") == "de":
                             german_name = link.get("*")
                             break
-                            
+
                 # Construct result
                 return {
                     "scientific_name": scientific_name, # PK

@@ -1,5 +1,4 @@
-"""
-The Ear - Audio Recorder for Silvasonic
+"""The Ear - Audio Recorder for Silvasonic
 
 Records audio from USB microphones using a single continuous FFmpeg process.
 Outputs:
@@ -7,25 +6,24 @@ Outputs:
 2. Raw PCM stream via UDP to Sound Analyser (Live Stream)
 """
 
-import os
-import sys
-import subprocess
-import time
-import datetime
-import signal
-import logging
-import psutil
 import json
-import socket
+import logging
+import os
+import signal
+import subprocess
+import sys
 import threading
+import time
 from dataclasses import asdict
+
+import psutil
 
 # --- Logging ---
 os.makedirs("/var/log/silvasonic", exist_ok=True)
 import logging.handlers
 
 logging.basicConfig(
-    level=logging.INFO, 
+    level=logging.INFO,
     format='%(asctime)s [%(levelname)s] %(message)s',
     handlers=[
         logging.StreamHandler(sys.stdout),
@@ -79,36 +77,35 @@ def write_status(status: str, profile=None, device=None, last_file: str = None):
 
 
 def start_recording(profile, device, output_dir):
-    """
-    Starts the continuous FFmpeg process.
+    """Starts the continuous FFmpeg process.
     """
     global ffmpeg_process
-    
+
     # Ensure output dir
     os.makedirs(output_dir, exist_ok=True)
-    
+
     # 1. Input: ALSA Device
     # 2. Output 1: Segment Muxer (FLAC files)
     # 3. Output 2: UDP Stream (Raw PCM)
-    
+
     # Filename Pattern for strftime
     # We use %Y-%m-%d_%H-%M-%S.flac
     # Note: We must escape % for python string formatting if needed, but here it's fine.
-    
+
     file_pattern = os.path.join(output_dir, "%Y-%m-%d_%H-%M-%S.flac")
-    
+
     # Use hostname directly, let FFmpeg resolve it
     udp_url = f"udp://{LIVE_STREAM_TARGET}:{LIVE_STREAM_PORT}"
-    
+
     cmd = [
         "ffmpeg",
         "-f", "alsa",
         "-ac", str(profile.audio.channels),
         "-ar", str(profile.audio.sample_rate),
         "-i", device.hw_address,
-        
+
         # Audio Filtering (Optional: Highpass/Denoise? No, keep it raw for analysis)
-        
+
         # --- Output 1: Files (Segment Muxer) ---
         "-f", "segment",
         "-segment_time", str(profile.recording.chunk_duration_seconds), # Should be 30
@@ -116,14 +113,14 @@ def start_recording(profile, device, output_dir):
         "-c:a", "flac",
         "-compression_level", str(profile.recording.compression_level),
         file_pattern,
-        
+
         # --- Output 2: Live Stream (UDP) ---
         "-f", "s16le",       # Raw PCM
         "-ac", "1",          # Force Mono for analysis simplicity
         "-ar", str(profile.audio.sample_rate),
         udp_url
     ]
-    
+
     if profile.is_mock:
          # Replace input with lavfi noise
          cmd[1] = "lavfi"
@@ -135,19 +132,18 @@ def start_recording(profile, device, output_dir):
     logger.debug(f"CMD: {' '.join(cmd)}")
     logger.info(f"CMD_DEBUG: {' '.join(cmd)}") # Temporary Debug
     logger.info(f"PROFILE_DEBUG: Channels={profile.audio.channels} Rate={profile.audio.sample_rate}")
-    
+
     # Use Popen
     ffmpeg_process = subprocess.Popen(
         cmd,
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE
     )
-    
+
     return ffmpeg_process
 
 def consume_stderr(proc):
-    """
-    Reads stderr in a separate thread to prevent buffer deadlock.
+    """Reads stderr in a separate thread to prevent buffer deadlock.
     """
     try:
         for line in iter(proc.stderr.readline, b''):
@@ -165,16 +161,16 @@ def consume_stderr(proc):
 
 def main():
     global running, ffmpeg_process
-    
+
     from mic_profiles import get_active_profile
     profile, device = get_active_profile()
-    
+
     if not profile:
         logger.critical("No profile found.")
         sys.exit(1)
-        
+
     output_dir = os.path.join(BASE_OUTPUT_DIR, profile.slug)
-    
+
     # Signal Handlers
     def stop(sig, frame):
         global running
@@ -182,17 +178,17 @@ def main():
         running = False
         if ffmpeg_process:
             ffmpeg_process.terminate()
-            
+
     signal.signal(signal.SIGINT, stop)
     signal.signal(signal.SIGTERM, stop)
 
     write_status("Starting", profile, device)
-    
+
     while running:
         logger.info("Launching FFmpeg...")
         proc = start_recording(profile, device, output_dir)
         write_status("Recording", profile, device)
-        
+
         # Monitor Loop
         # Start log consumer thread
         log_thread = threading.Thread(target=consume_stderr, args=(proc,), daemon=True)
@@ -206,17 +202,17 @@ def main():
 
         except Exception as e:
             logger.error(f"Monitor Loop Error: {e}")
-            
+
         if not running:
             break
-            
+
         if not running:
             break
-            
+
         # Cleanup
-        if running: 
+        if running:
             logger.warning(f"FFmpeg exited with code {proc.returncode}. Restarting in 5s...")
-        
+
         # Determine if we should print stderr manually (only if thread missed it/implementation changed)
         # But our thread covers it.
 

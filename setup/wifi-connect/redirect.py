@@ -1,6 +1,7 @@
-from flask import Flask, redirect
 import logging
 import socket
+
+from flask import Flask, redirect
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -29,7 +30,7 @@ def catch_all(path):
     host = request.headers.get('Host', '').split(':')[0]
     if not host:
         host = get_ip()
-    
+
     target = f"http://{host}:8080/{path}"
     logger.info(f"Redirecting to {target}")
     return redirect(target, code=302)

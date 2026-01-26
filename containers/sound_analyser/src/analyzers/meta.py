@@ -1,6 +1,9 @@
-import soundfile as sf
 import os
+
+import soundfile as sf
+
 from .base import BaseAnalyzer
+
 
 class MetaAnalyzer(BaseAnalyzer):
     @property
@@ -10,10 +13,10 @@ class MetaAnalyzer(BaseAnalyzer):
     def analyze(self, filepath: str):
         # Check file size first
         size_bytes = os.path.getsize(filepath)
-        
+
         # Read header via soundfile (fast, no full load)
         info = sf.info(filepath)
-        
+
         return {
             "duration_sec": info.duration,
             "sample_rate": info.samplerate,

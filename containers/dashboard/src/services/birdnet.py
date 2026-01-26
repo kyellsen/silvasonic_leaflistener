@@ -1,130 +1,12 @@
+import asyncio
 import datetime
-import json
-import os
-import shutil
-import time
-from pathlib import Path
 
-import psutil
 from sqlalchemy import text
-from sqlalchemy.ext.asyncio import create_async_engine
 from src.settings import SettingsService
 
-# Paths
-DB_PATH = "/data/birdnet_db/birdnet.sqlite"
-REC_DIR = "/data/recording"
-LOG_DIR = "/var/log/silvasonic"
+from .common import REC_DIR
+from .database import db
 
-import logging
-
-logger = logging.getLogger("Dashboard.Services")
-
-class DatabaseHandler:
-    def __init__(self):
-        self.user = os.getenv("POSTGRES_USER", "silvasonic")
-        self.password = os.getenv("POSTGRES_PASSWORD", "silvasonic")
-        self.db_name = os.getenv("POSTGRES_DB", "silvasonic")
-        self.host = os.getenv("POSTGRES_HOST", "db")
-        self.port = os.getenv("POSTGRES_PORT", "5432")
-
-        self.db_url = f"postgresql+asyncpg://{self.user}:{self.password}@{self.host}:{self.port}/{self.db_name}"
-        self.engine = create_async_engine(self.db_url, pool_pre_ping=True)
-        # self.Session = sessionmaker(bind=self.engine) # We primarily use direct connection in this legacy code
-
-    def get_connection(self):
-        return self.engine.connect()
-
-db = DatabaseHandler()
-
-class SystemService:
-    @staticmethod
-    def get_stats():
-        try:
-            # CPU Cores
-            cpu_cores = psutil.cpu_percent(interval=None, percpu=True)
-            # Average for backward compatibility/summary
-            cpu = round(sum(cpu_cores) / len(cpu_cores), 1) if cpu_cores else 0
-        except Exception as e:
-            logger.error(f"Error getting CPU stats: {e}", exc_info=True)
-            cpu = 0
-            cpu_cores = []
-
-        try:
-            mem = psutil.virtual_memory()
-            mem_percent = mem.percent
-            # RAM in GB
-            ram_used_gb = round(mem.used / (1024**3), 1)
-            ram_total_gb = round(mem.total / (1024**3), 1)
-        except Exception as e:
-            logger.error(f"Error getting Memory stats: {e}", exc_info=True)
-            class MockMem:
-                percent = 0
-                used = 0
-                total = 16 * (1024**3)
-            mem = MockMem()
-            mem_percent = 0
-            ram_used_gb = 0
-            ram_total_gb = 16
-
-        # Disk usage for /mnt/data (mapped to /data/recording usually or root)
-        # using /data/recording as proxy for NVMe
-        try:
-            disk = shutil.disk_usage("/data/recording")
-            disk_percent = (disk.used / disk.total) * 100
-            disk_used_gb = round(disk.used / (1024**3), 0)
-            disk_total_gb = round(disk.total / (1024**3), 0)
-        except Exception as e:
-            logger.error(f"Error getting Disk stats: {e}", exc_info=True)
-            disk_percent = 0
-            disk_used_gb = 0
-            disk_total_gb = 0
-
-        # Boot time
-        try:
-            boot_time = datetime.datetime.fromtimestamp(psutil.boot_time())
-            uptime = datetime.datetime.now() - boot_time
-        except Exception as e:
-            logger.error(f"Error getting Boot stats: {e}", exc_info=True)
-            uptime = "Unknown"
-
-        # Last Recording
-        last_rec = "Unknown"
-        last_rec_ts = 0
-        try:
-            files = sorted(Path(REC_DIR).glob("**/*.flac"), key=os.path.getmtime, reverse=True)
-            if files:
-                last_rec_ts = files[0].stat().st_mtime
-                last_rec = datetime.datetime.fromtimestamp(last_rec_ts).strftime("%H:%M:%S")
-        except Exception as e:
-            logger.error(f"Error getting Last Recording: {e}", exc_info=True)
-            pass
-
-            pass
-
-        # CPU Temperature
-        cpu_temp = "N/A"
-        try:
-            with open("/sys/class/thermal/thermal_zone0/temp") as f:
-                temp_c = int(f.read().strip()) / 1000.0
-                cpu_temp = f"{temp_c:.1f}°C"
-        except Exception as e:
-            logger.error(f"Error getting CPU Temp: {e}", exc_info=True)
-            pass
-
-        return {
-            "cpu": cpu,
-            "cpu_cores": cpu_cores,
-            "cpu_temp": cpu_temp,
-            "ram_percent": mem_percent,
-            "ram_used_gb": ram_used_gb,
-            "ram_total_gb": ram_total_gb,
-            "disk_percent": round(disk_percent, 1),
-            "disk_used_gb": int(disk_used_gb),
-            "disk_total_gb": int(disk_total_gb),
-            "uptime_str": str(uptime).split('.')[0] if isinstance(uptime, datetime.timedelta) else str(uptime),
-            "last_recording": last_rec,
-            "last_recording_ago": int(datetime.datetime.now().timestamp() - last_rec_ts) if last_rec_ts > 0 else -1
-        }
 
 class BirdNetService:
     @staticmethod
@@ -181,7 +63,7 @@ class BirdNetService:
 
                 return detections
         except Exception as e:
-            logger.error(f"DB Error (get_recent_detections): {e}", exc_info=True)
+            print(f"DB Error (get_recent_detections): {e}")
             return []
 
     @staticmethod
@@ -236,7 +118,7 @@ class BirdNetService:
 
                 return d
         except Exception as e:
-            logger.error(f"DB Error (get_detection): {e}", exc_info=True)
+            print(f"DB Error (get_detection): {e}")
             return None
 
     @staticmethod
@@ -268,14 +150,12 @@ class BirdNetService:
                     "total": total_count,
                     "top_species": top_species
                 }
-        except Exception as e:
-            logger.error(f"Error getting BirdNet Stats: {e}", exc_info=True)
+        except:
             return {"today": 0, "total": 0, "top_species": []}
 
     @staticmethod
     async def get_all_species():
         """Returns all species with their counts and last seen date. Enriches with images if missing."""
-        import asyncio
         try:
             async with db.get_connection() as conn:
                 query = text("""
@@ -340,7 +220,7 @@ class BirdNetService:
 
                 return species
         except Exception as e:
-            logger.error(f"Error get_all_species: {e}", exc_info=True)
+            print(f"Error get_all_species: {e}")
             return []
 
     @staticmethod
@@ -438,7 +318,7 @@ class BirdNetService:
                     "hourly": hourly_data
                 }
         except Exception as e:
-            logger.error(f"Error get_species_stats: {e}", exc_info=True)
+            print(f"Error get_species_stats: {e}")
             return None
 
     @staticmethod
@@ -499,7 +379,7 @@ class BirdNetService:
                     info['wikipedia_url'] = wiki_data.get('wikipedia_url')
 
         except Exception as e:
-            logger.error(f"Enrichment error for {sci_name}: {e}", exc_info=True)
+            print(f"Enrichment error for {sci_name}: {e}")
 
         return info
 
@@ -525,7 +405,7 @@ class BirdNetService:
                 await conn.commit()
                 return True
         except Exception as e:
-            logger.error(f"Watchlist toggle error: {e}", exc_info=True)
+            print(f"Watchlist toggle error: {e}")
             return False
 
     @staticmethod
@@ -546,7 +426,7 @@ class BirdNetService:
 
                 return {name: (name in watched) for name in sci_names}
         except Exception as e:
-            logger.error(f"Watchlist status error: {e}", exc_info=True)
+            print(f"Watchlist status error: {e}")
             return {}
 
     @staticmethod
@@ -668,7 +548,7 @@ class BirdNetService:
                     "rarest": rarest_list
                 }
         except Exception as e:
-            logger.error(f"Error get_advanced_stats: {e}", exc_info=True)
+            print(f"Error get_advanced_stats: {e}")
             empty_chart = {"labels": [], "values": []}
             return {
                 "daily": empty_chart,
@@ -680,442 +560,3 @@ class BirdNetService:
                 "histogram": empty_chart,
                 "rarest": []
             }
-
-STATUS_DIR = "/mnt/data/services/silvasonic/status"
-
-class CarrierService:
-    @staticmethod
-    def get_status():
-        try:
-            status_file = os.path.join(STATUS_DIR, "carrier.json")
-            if os.path.exists(status_file):
-                with open(status_file) as f:
-                    data = json.load(f)
-
-                    # Convert last_upload ts to readable
-                    last_upload = data.get("meta", {}).get("last_upload", 0)
-                    if last_upload == 0:
-                        # Fallback to top level if older format or transition
-                        last_upload = data.get("last_upload", 0)
-
-                    if last_upload > 0:
-                        dt = datetime.datetime.fromtimestamp(last_upload)
-                        data["last_upload_str"] = dt.strftime("%H:%M:%S")
-
-                        # Add relative time
-                        ago = time.time() - last_upload
-                        if ago < 60:
-                            data["last_upload_ago"] = "Just now"
-                        elif ago < 3600:
-                            data["last_upload_ago"] = f"{int(ago/60)}m ago"
-                        else:
-                            data["last_upload_ago"] = f"{int(ago/3600)}h ago"
-                    else:
-                        data["last_upload_str"] = "Never"
-                        data["last_upload_ago"] = ""
-
-                    data["queue_size"] = data.get("meta", {}).get("queue_size", -1)
-                    data["disk_usage"] = round(data.get("meta", {}).get("disk_usage_percent", 0), 1)
-                    return data
-        except Exception as e:
-            logger.error(f"Carrier status error: {e}", exc_info=True)
-
-        return {
-            "status": "Unknown",
-            "last_upload_str": "Unknown",
-            "last_upload_ago": "",
-            "queue_size": -1,
-            "disk_usage": 0
-        }
-
-    @staticmethod
-    async def get_recent_uploads(limit=100):
-        """Fetch recent successful uploads."""
-        try:
-            async with db.get_connection() as conn:
-                query = text("""
-                    SELECT filename, remote_path, size_bytes, upload_time 
-                    FROM carrier.uploads 
-                    WHERE status = 'success' 
-                    ORDER BY upload_time DESC 
-                    LIMIT :limit
-                """)
-                result = await conn.execute(query, {"limit": limit})
-                items = []
-                for row in result:
-                    d = dict(row._mapping)
-                    if d.get('upload_time'):
-                         if d['upload_time'].tzinfo is None: d['upload_time'] = d['upload_time'].replace(tzinfo=datetime.UTC)
-                         d['upload_time_str'] = d['upload_time'].strftime("%Y-%m-%d %H:%M:%S")
-
-                    d['size_mb'] = round((d.get('size_bytes') or 0) / (1024*1024), 2)
-                    items.append(d)
-                return items
-        except Exception as e:
-            logger.error(f"Carrier recent uploads error: {e}", exc_info=True)
-            return []
-
-    @staticmethod
-    async def get_failed_uploads(limit=50):
-        """Fetch recent failed uploads."""
-        try:
-            async with db.get_connection() as conn:
-                query = text("""
-                    SELECT filename, error_message, upload_time 
-                    FROM carrier.uploads 
-                    WHERE status = 'failed' 
-                    ORDER BY upload_time DESC 
-                    LIMIT :limit
-                """)
-                result = await conn.execute(query, {"limit": limit})
-                items = []
-                for row in result:
-                    d = dict(row._mapping)
-                    if d.get('upload_time'):
-                         if d['upload_time'].tzinfo is None: d['upload_time'] = d['upload_time'].replace(tzinfo=datetime.UTC)
-                         d['upload_time_str'] = d['upload_time'].strftime("%Y-%m-%d %H:%M:%S")
-                    items.append(d)
-                return items
-        except Exception as e:
-            logger.error(f"Carrier failed uploads error: {e}", exc_info=True)
-            return []
-
-    @staticmethod
-    async def get_upload_stats():
-        """Fetch upload counts for different time ranges."""
-        try:
-            async with db.get_connection() as conn:
-                # We can do this in one query with FILTER or multiple.
-                # Postgres FILTER is elegant.
-                query = text("""
-                    SELECT 
-                        COUNT(*) FILTER (WHERE upload_time >= NOW() - INTERVAL '1 HOUR') as last_1h,
-                        COUNT(*) FILTER (WHERE upload_time >= NOW() - INTERVAL '24 HOURS') as last_24h,
-                        COUNT(*) FILTER (WHERE upload_time >= NOW() - INTERVAL '7 DAYS') as last_7d,
-                        COUNT(*) FILTER (WHERE upload_time >= NOW() - INTERVAL '30 DAYS') as last_30d
-                    FROM carrier.uploads
-                    WHERE status = 'success'
-                """)
-                row = (await conn.execute(query)).fetchone()
-                if row:
-                    return dict(row._mapping)
-        except Exception as e:
-            logger.error(f"Carrier stats error: {e}", exc_info=True)
-
-        return {"last_1h": 0, "last_24h": 0, "last_7d": 0, "last_30d": 0}
-
-class RecorderService:
-    @staticmethod
-    def get_status():
-        try:
-            status_file = os.path.join(STATUS_DIR, "recorder.json")
-            if os.path.exists(status_file):
-                with open(status_file) as f:
-                    data = json.load(f)
-
-                    # Flatten meta for compatibility or just return rich data
-                    meta = data.get("meta", {})
-                    data["profile"] = meta.get("profile", "Unknown")
-                    data["device"] = meta.get("device", "Unknown")
-
-                    return data
-        except Exception as e:
-            logger.error(f"Recorder status error: {e}", exc_info=True)
-
-        return {"status": "Unknown", "profile": "Unknown", "device": "Unknown"}
-
-    @staticmethod
-    async def get_recent_recordings(limit=20):
-        try:
-             async with db.get_connection() as conn:
-                query = text("""
-                    SELECT 
-                        filename,
-                        duration_sec,
-                        file_size_bytes,
-                        created_at
-                    FROM brain.audio_files
-                    ORDER BY created_at DESC
-                    LIMIT :limit
-                """)
-                result = await conn.execute(query, {"limit": limit})
-                items = []
-                for row in result:
-                    d = dict(row._mapping)
-                    if d.get('created_at'):
-                        if d['created_at'].tzinfo is None:
-                             d['created_at'] = d['created_at'].replace(tzinfo=datetime.UTC)
-                        d['created_at_iso'] = d['created_at'].isoformat()
-                        d['formatted_time'] = d['created_at'].strftime("%Y-%m-%d %H:%M:%S")
-                    else:
-                        d['created_at_iso'] = ""
-                        d['formatted_time'] = "Unknown"
-
-                    # Calculate Size in MB
-                    d['size_mb'] = round((d.get('file_size_bytes') or 0) / (1024*1024), 2)
-                    d['duration_str'] = f"{d.get('duration_sec', 0):.1f}s"
-
-                    # Audio Path Logic (Recorder usually stores just filename in filename column, or full path?)
-                    # brain.audio_files table usually is populated by Carrier/Recorder.
-                    # If filename is just "file.flac", it's relative to REC_DIR?
-                    # Let's assume filename IS the relative path or base name.
-                    # But we should try to be smart.
-
-                    # Ideally we have a filepath column in audio_files too?
-                    # The query selects: filename.
-                    fname = d.get('filename')
-                    # If it's a full path
-                    if fname and fname.startswith(REC_DIR):
-                        d['audio_relative_path'] = fname[len(REC_DIR):].lstrip('/')
-                    else:
-                        d['audio_relative_path'] = fname
-
-                    items.append(d)
-                return items
-        except Exception as e:
-            logger.error(f"Recorder History Error: {e}", exc_info=True)
-            return []
-
-class HealthCheckerService:
-    @staticmethod
-    def get_status():
-        try:
-            status_file = os.path.join(STATUS_DIR, "healthchecker.json")
-            if os.path.exists(status_file):
-                with open(status_file) as f:
-                     # Check freshness
-                     data = json.load(f)
-
-                     # Check if stale (> 2 mins)
-                     if time.time() - data.get("timestamp", 0) > 120:
-                         data["status"] = "Stalled"
-
-                     return data
-        except Exception as e:
-            logger.error(f"HealthChecker status error: {e}", exc_info=True)
-
-        return {"status": "Unknown"}
-
-    @staticmethod
-    def get_system_metrics():
-        """Reads the consolidated system status generated by HealthChecker."""
-        try:
-            status_file = os.path.join(STATUS_DIR, "system_status.json")
-            if os.path.exists(status_file):
-                with open(status_file) as f:
-                     return json.load(f)
-        except Exception as e:
-            logger.error(f"System metrics error: {e}", exc_info=True)
-
-        return {}
-
-class AnalyzerService:
-    @staticmethod
-    async def get_recent_analysis(limit=20):
-        try:
-            async with db.get_connection() as conn:
-                query = text("""
-                    SELECT 
-                        af.filename,
-                        af.duration_sec,
-                        af.file_size_bytes,
-                        af.created_at,
-                        am.rms_loudness,
-                        am.peak_frequency_hz,
-                        art.filepath as spec_path
-                    FROM brain.audio_files af
-                    LEFT JOIN brain.analysis_metrics am ON af.id = am.audio_file_id
-                    LEFT JOIN brain.artifacts art ON af.id = art.audio_file_id AND art.artifact_type = 'spectrogram'
-                    ORDER BY af.created_at DESC
-                    LIMIT :limit
-                """)
-                result = await conn.execute(query, {"limit": limit})
-                items = []
-                for row in result:
-                    d = dict(row._mapping)
-                    if d.get('created_at'):
-                        if d['created_at'].tzinfo is None:
-                            d['created_at'] = d['created_at'].replace(tzinfo=datetime.UTC)
-                        d['created_at_iso'] = d['created_at'].isoformat()
-                    else:
-                        d['created_at_iso'] = ""
-
-                    # Fix spec path
-                    if d.get('spec_path'):
-                         fname = os.path.basename(d['spec_path'])
-                         d['spec_url'] = f"/api/spectrogram/{fname}"
-                    else:
-                         d['spec_url'] = None
-
-                    # Format size
-                    if d.get('file_size_bytes'):
-                        d['size_mb'] = round(d['file_size_bytes'] / (1024*1024), 2)
-                    else:
-                        d['size_mb'] = 0
-
-                    # Round metrics
-                    if d.get('rms_loudness'): d['rms_loudness'] = round(d['rms_loudness'], 1)
-                    if d.get('peak_frequency_hz'): d['peak_frequency_hz'] = int(d['peak_frequency_hz'])
-
-                    items.append(d)
-                return items
-        except Exception as e:
-            logger.error(f"Analyzer Error: {e}", exc_info=True)
-            return []
-
-    @staticmethod
-    async def get_stats():
-         try:
-            async with db.get_connection() as conn:
-                query = text("""
-                    SELECT 
-                        COUNT(*) as total_files,
-                        COALESCE(SUM(duration_sec), 0) as total_duration,
-                        AVG(duration_sec) as avg_duration,
-                        AVG(file_size_bytes) as avg_size
-                    FROM brain.audio_files
-                """)
-                res = (await conn.execute(query)).fetchone()
-                if res:
-                    d = dict(res._mapping)
-                    d['total_duration_hours'] = round(d['total_duration'] / 3600, 2)
-                    d['avg_size_mb'] = round((d['avg_size'] or 0) / (1024*1024), 2)
-                    d['avg_duration'] = round(d.get('avg_duration') or 0, 1)
-                    return d
-                return {}
-         except Exception as e:
-             logger.error(f"Analyzer Stats Error: {e}", exc_info=True)
-             return {}
-class WeatherService:
-    @staticmethod
-    async def get_current_weather():
-        """Get the latest weather measurement."""
-        try:
-            async with db.get_connection() as conn:
-                query = text("""
-                    SELECT * FROM weather.measurements 
-                    ORDER BY timestamp DESC 
-                    LIMIT 1
-                """)
-                row = (await conn.execute(query)).fetchone()
-                if row:
-                    d = dict(row._mapping)
-                    if d.get('timestamp') and d['timestamp'].tzinfo is None:
-                        d['timestamp'] = d['timestamp'].replace(tzinfo=datetime.UTC)
-                    return d
-        except Exception as e:
-            logger.error(f"Weather DB Error: {e}", exc_info=True)
-        return None
-
-    @staticmethod
-    async def get_history(hours=24):
-        """Get weather history for charts."""
-        try:
-            async with db.get_connection() as conn:
-                query = text("""
-                    SELECT * FROM weather.measurements 
-                    WHERE timestamp >= NOW() - INTERVAL ':hours HOURS'
-                    ORDER BY timestamp ASC
-                """)
-                # Bind param properly or safe f-string for int
-                query = text(f"SELECT * FROM weather.measurements WHERE timestamp >= NOW() - INTERVAL '{int(hours)} HOURS' ORDER BY timestamp ASC")
-
-                result = await conn.execute(query)
-                data = {
-                    "labels": [],
-                    "temp": [],
-                    "humidity": [],
-                    "rain": [],
-                    "wind": []
-                }
-
-                for row in result:
-                    d = dict(row._mapping)
-                    ts = d['timestamp']
-                    if ts.tzinfo is None: ts = ts.replace(tzinfo=datetime.UTC)
-
-                    data["labels"].append(ts.strftime("%H:%M"))
-                    data["temp"].append(d.get("temperature_c"))
-                    data["humidity"].append(d.get("humidity_percent"))
-                    data["rain"].append(d.get("precipitation_mm"))
-                    data["wind"].append(d.get("wind_speed_ms"))
-
-                return data
-        except Exception as e:
-            logger.error(f"Weather History Error: {e}", exc_info=True)
-            return {"labels": [], "temp": [], "humidity": [], "rain": [], "wind": []}
-
-    @staticmethod
-    async def get_correlations(days=30):
-        """Get correlation stats for charts (Hourly buckets)."""
-        try:
-            async with db.get_connection() as conn:
-                # Fetch aggregated stats from weather.bird_stats
-                # We order by timestamp ASC for the time series
-                query = text(f"""
-                    SELECT * 
-                    FROM weather.bird_stats 
-                    WHERE timestamp >= NOW() - INTERVAL '{int(days)} DAYS'
-                    ORDER BY timestamp ASC
-                """)
-
-                result = await conn.execute(query)
-
-                data = {
-                    "labels": [],
-                    "scatter_temp": [], # {x: temp, y: count}
-                    "scatter_rain": [],
-                    "scatter_wind": [],
-                    "series_temp": [],
-                    "series_count": [],
-                    "series_rain": []
-                }
-
-                for row in result:
-                    d = dict(row._mapping)
-                    ts = d['timestamp']
-                    if ts.tzinfo is None: ts = ts.replace(tzinfo=datetime.UTC)
-
-                    label = ts.strftime("%d.%m %H:00")
-                    count = d.get("detection_count", 0)
-                    temp = d.get("temperature_c", 0)
-                    rain = d.get("precipitation_mm", 0)
-                    wind = d.get("wind_speed_ms", 0)
-
-                    data["labels"].append(label)
-
-                    # Series (for Overlay Chart)
-                    data["series_temp"].append(temp)
-                    data["series_count"].append(count)
-                    data["series_rain"].append(rain)
-
-                    # Scatter (Correlation)
-                    # ChartJS scatter format: {x: val, y: val}
-                    data["scatter_temp"].append({"x": temp, "y": count})
-                    if rain > 0:
-                        data["scatter_rain"].append({"x": rain, "y": count})
-
-                return data
-        except Exception as e:
-            logger.error(f"Weather Correlation Error: {e}", exc_info=True)
-            return {
-                "labels": [],
-                "scatter_temp": [], "scatter_rain": [],
-                "series_temp": [], "series_count": [], "series_rain": []
-            }
-
-    @staticmethod
-    def get_status():
-        """Get service status from JSON file."""
-        try:
-            status_file = os.path.join(STATUS_DIR, "weather.json")
-            if os.path.exists(status_file):
-                with open(status_file) as f:
-                    data = json.load(f)
-                    # Check staleness (20 mins schedule, so maybe 25 min stale check)
-                    if time.time() - data.get("timestamp", 0) > 1500:
-                        data["status"] = "Stalen"
-                    return data
-        except Exception as e:
-             logger.error(f"Weather Status Error: {e}", exc_info=True)
-        return {"status": "Unknown"}

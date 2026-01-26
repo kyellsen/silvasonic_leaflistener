@@ -1,8 +1,9 @@
-import os
 import json
 import logging
-import yaml
+import os
 from pathlib import Path
+
+import yaml
 
 logger = logging.getLogger("Config")
 
@@ -21,7 +22,7 @@ class Config:
         """Loads the YAML config file if it exists, otherwise returns empty dict."""
         if self.CONFIG_FILE.exists():
             try:
-                with open(self.CONFIG_FILE, 'r') as f:
+                with open(self.CONFIG_FILE) as f:
                     return yaml.safe_load(f) or {}
             except Exception as e:
                 logger.error(f"Failed to load config file {self.CONFIG_FILE}: {e}")
@@ -30,31 +31,30 @@ class Config:
 
     @property
     def birdnet_settings(self):
-        """
-        Returns a dictionary of BirdNET settings, merging defaults, 
+        """Returns a dictionary of BirdNET settings, merging defaults,
         env vars, and YAML config.
         Priority: settings.json > config.yaml > Environment > Default
         """
         yaml_conf = self._load_yaml().get('birdnet', {})
         json_conf = self._load_settings_json()
-        
+
         # Helper to get value from JSON -> YAML -> Env -> Default
         def get_val(key, env_key, default, type_cast):
             # 1. Dashboard Settings (JSON)
             val = json_conf.get(key)
             if val is not None:
                 return type_cast(val)
-                
+
             # 2. Static Config (YAML)
             val = yaml_conf.get(key)
             if val is not None:
                 return type_cast(val)
-                
+
             # 3. Environment Variable
             val = os.getenv(env_key)
             if val is not None:
                 return type_cast(val)
-                
+
             # 4. Default
             return default
 
@@ -73,7 +73,7 @@ class Config:
         settings_path = Path("/config/settings.json")
         if settings_path.exists():
             try:
-                with open(settings_path, 'r') as f:
+                with open(settings_path) as f:
                     return json.load(f).get("birdnet", {})
             except Exception as e:
                 logger.error(f"Failed to load settings.json: {e}")
@@ -82,22 +82,22 @@ class Config:
     # Backward compatibility properties (proxies to fresh settings)
     @property
     def MIN_CONFIDENCE(self): return self.birdnet_settings['min_conf']
-    
+
     @property
     def LATITUDE(self): return self.birdnet_settings['lat']
-    
+
     @property
     def LONGITUDE(self): return self.birdnet_settings['lon']
-    
+
     @property
     def WEEK(self): return self.birdnet_settings['week']
-    
+
     @property
     def OVERLAP(self): return self.birdnet_settings['overlap']
-    
+
     @property
     def SENSITIVITY(self): return self.birdnet_settings['sensitivity']
-    
+
     @property
     def THREADS(self): return self.birdnet_settings['threads']
 

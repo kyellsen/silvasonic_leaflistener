@@ -1,8 +1,8 @@
-import os
-import shutil
 import logging
+import shutil
 import subprocess
 from pathlib import Path
+
 import soundfile as sf
 
 try:
@@ -20,17 +20,16 @@ class BirdNETAnalyzer:
         logger.info("Initializing BirdNET Analyzer (Simple Mode)...")
         if bn_analyze is None:
             logger.error("BirdNET-Analyzer module not found!")
-            
+
         # Ensure results dir exists
         config.RESULTS_DIR.mkdir(parents=True, exist_ok=True)
-        
+
         # Initialize Database
         logger.info("Connecting to Database...")
         db.connect()
 
     def process_file(self, file_path: str):
-        """
-        Analyze a single audio file and save CSV results.
+        """Analyze a single audio file and save CSV results.
         """
         path = Path(file_path)
         if not path.exists():
@@ -38,12 +37,12 @@ class BirdNETAnalyzer:
             return
 
         logger.info(f"Processing: {path.name}")
-        
+
         # Setup temp paths
         temp_dir = Path("/tmp/birdnet_processing")
         temp_dir.mkdir(parents=True, exist_ok=True)
         temp_resampled = temp_dir / f"{path.stem}_48k.wav"
-        
+
         # 1. Resample (Robustness)
         if not self._run_ffmpeg_resampling(path, temp_resampled):
             return
@@ -51,7 +50,7 @@ class BirdNETAnalyzer:
         # 2. Run BirdNET Analysis
         temp_output_dir = temp_dir / "results"
         temp_output_dir.mkdir(parents=True, exist_ok=True)
-        
+
         try:
             logger.info(f"Running analysis on {temp_resampled.name}...")
             settings = config.birdnet_settings
@@ -72,7 +71,7 @@ class BirdNETAnalyzer:
             else:
                 logger.error("BirdNET Analyzer not loaded, skipping analysis.")
                 return
-                
+
         except Exception as e:
             logger.error(f"BirdNET analysis crashed: {e}")
             return
@@ -80,39 +79,39 @@ class BirdNETAnalyzer:
         # 3. Locate and Move/Rename Result File
         expected_result_name = f"{temp_resampled.stem}.BirdNET.results.csv"
         temp_result_path = temp_output_dir / expected_result_name
-        
+
         final_output_file = config.RESULTS_DIR / f"{path.name}.csv"
-        
+
         if temp_result_path.exists():
             # Move to final destination
             try:
                 shutil.move(str(temp_result_path), str(final_output_file))
                 logger.info(f"Saved results to: {final_output_file}")
-                
+
                 # Verify content and log detection count
                 try:
                     import csv
                     detection_count = 0
-                    
-                    with open(final_output_file, 'r', encoding='utf-8') as f:
+
+                    with open(final_output_file, encoding='utf-8') as f:
                         reader = csv.reader(f)
                         header = next(reader, None) # Skip header usage
-                        
+
                         for row in reader:
                             detection_count += 1
-                            if len(row) < 5: 
+                            if len(row) < 5:
                                 continue
-                                
+
                             # Parse Row: Start (s), End (s), Scientific name, Common name, Confidence
                             try:
                                 start_t = float(row[0])
                                 end_t = float(row[1])
                                 conf = float(row[4])
                                 common_name = row[3]
-                                
+
                                 # Save Clip
                                 clip_path = self._save_clip(temp_resampled, start_t, end_t, common_name)
-                                
+
                                 detection = {
                                     'filename': path.name,
                                     'filepath': str(path),
@@ -126,11 +125,11 @@ class BirdNETAnalyzer:
                                     'clip_path': clip_path
                                 }
                                 db.save_detection(detection)
-                                
+
                                 # Check Watchlist & Alert
                                 if db.is_watched(row[2]):
                                     self._trigger_alert(detection)
-                                    
+
                             except ValueError:
                                 logger.warning(f"Skipping invalid row in {final_output_file}")
 
@@ -138,14 +137,14 @@ class BirdNETAnalyzer:
                         logger.warning(f"Analysis produced 0 detections for {path.name}.")
                     else:
                         logger.info(f"Analysis finished for {path.name}: Found {detection_count} detections. Saved to DB.")
-                        
+
                 except Exception as e:
                     logger.error(f"Failed to read result file for verification/DB: {e}")
 
             except Exception as e:
                 logger.error(f"Failed to save results: {e}")
         else:
-            logger.warning(f"No result file found. Input might be silent or too short.")
+            logger.warning("No result file found. Input might be silent or too short.")
 
         # Cleanup
         try:
@@ -154,8 +153,7 @@ class BirdNETAnalyzer:
         except:
             pass
     def _save_clip(self, audio_path: Path, start_time: float, end_time: float, species: str) -> str:
-        """
-        Extracts and saves the audio clip for a detection.
+        """Extracts and saves the audio clip for a detection.
         Returns the relative path to the clip or None if failed.
         """
         try:
@@ -172,9 +170,9 @@ class BirdNETAnalyzer:
             # We use soundfile for precision reading
             # Note: start/end are in seconds
             data, samplerate = sf.read(str(audio_path), start=int(start_time * 48000), stop=int(end_time * 48000), always_2d=True)
-            
+
             sf.write(str(clip_path), data, samplerate)
-            
+
             # Return path relative to RESULTS_DIR for portability if needed, or just absolute string
             # Returning absolute path as string for now to match DB schema
             return str(clip_path)
@@ -186,10 +184,10 @@ class BirdNETAnalyzer:
         """Resample to 48kHz mono using ffmpeg (robust against formats)"""
         try:
             cmd = [
-                "ffmpeg", "-y", 
-                "-i", str(input_path.absolute()), 
-                "-ar", "48000", 
-                "-ac", "1", 
+                "ffmpeg", "-y",
+                "-i", str(input_path.absolute()),
+                "-ar", "48000",
+                "-ac", "1",
                 "-c:a", "pcm_s16le",
                 str(output_path)
             ]
@@ -209,23 +207,23 @@ class BirdNETAnalyzer:
             # Using /data/notifications (mapped volume)
             queue_dir = Path("/data/notifications")
             queue_dir.mkdir(parents=True, exist_ok=True)
-            
+
             import json
             import time
-            
+
             event_id = f"{int(time.time()*1000)}_{detection['scientific_name'].replace(' ', '_')}"
             event_path = queue_dir / f"{event_id}.json"
-            
+
             payload = {
                 "type": "bird_detection",
                 "timestamp": time.time(),
                 "data": detection
             }
-            
+
             with open(event_path, "w") as f:
                 json.dump(payload, f)
-                
+
             logger.info(f"Triggered notification alert for {detection['common_name']}")
-            
+
         except Exception as e:
             logger.error(f"Failed to trigger alert: {e}")

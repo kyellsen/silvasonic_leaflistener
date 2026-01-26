@@ -1,9 +1,10 @@
 import logging
-import sys
-from src.watcher import WatcherService
 
 # Setup logging to stdout
 import logging.handlers
+import sys
+
+from src.watcher import WatcherService
 
 logging.basicConfig(
     level=logging.INFO,
@@ -11,9 +12,9 @@ logging.basicConfig(
     handlers=[
         logging.StreamHandler(sys.stdout),
         logging.handlers.TimedRotatingFileHandler(
-            "/var/log/silvasonic/birdnet.log", 
-            when='midnight', 
-            interval=1, 
+            "/var/log/silvasonic/birdnet.log",
+            when='midnight',
+            interval=1,
             backupCount=30,
             encoding='utf-8'
         )
@@ -24,7 +25,7 @@ logger = logging.getLogger("Main")
 
 def main():
     logger.info("Starting Silvasonic BirdNET (Ornithologist)...")
-    
+
     # Start Watcher (Blocking)
     logger.info("Starting Watcher Service...")
     service = WatcherService()

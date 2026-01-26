@@ -1,5 +1,6 @@
 from abc import ABC, abstractmethod
-from typing import Dict, Any, Optional
+from typing import Any
+
 
 class BaseAnalyzer(ABC):
     @property
@@ -8,9 +9,8 @@ class BaseAnalyzer(ABC):
         pass
 
     @abstractmethod
-    def analyze(self, filepath: str) -> Dict[str, Any]:
-        """
-        Process a file and return a dictionary of results.
+    def analyze(self, filepath: str) -> dict[str, Any]:
+        """Process a file and return a dictionary of results.
         Raises exceptions on failure.
         """
         pass

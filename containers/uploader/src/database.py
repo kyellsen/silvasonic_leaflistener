@@ -1,6 +1,6 @@
-import os
 import logging
-import time
+import os
+
 from sqlalchemy import create_engine, text
 from sqlalchemy.orm import sessionmaker
 
@@ -13,7 +13,7 @@ class DatabaseHandler:
         self.db_name = os.getenv("POSTGRES_DB", "silvasonic")
         self.host = os.getenv("POSTGRES_HOST", "db")
         self.port = os.getenv("POSTGRES_PORT", "5432")
-        
+
         self.db_url = f"postgresql://{self.user}:{self.password}@{self.host}:{self.port}/{self.db_name}"
         self.engine = None
         self.Session = None
@@ -23,7 +23,7 @@ class DatabaseHandler:
         try:
             self.engine = create_engine(self.db_url, pool_pre_ping=True)
             self.Session = sessionmaker(bind=self.engine)
-            
+
             # Create schema and table
             with self.engine.begin() as conn:
                 conn.execute(text("CREATE SCHEMA IF NOT EXISTS carrier;"))
@@ -41,7 +41,7 @@ class DatabaseHandler:
                 """))
                 conn.execute(text("CREATE INDEX IF NOT EXISTS idx_uploads_time ON carrier.uploads(upload_time DESC);"))
                 conn.execute(text("CREATE INDEX IF NOT EXISTS idx_uploads_status ON carrier.uploads(status);"))
-                
+
             logger.info("Database initialized successfully.")
             return True
         except Exception as e:

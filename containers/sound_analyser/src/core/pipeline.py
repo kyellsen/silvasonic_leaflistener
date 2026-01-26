@@ -1,14 +1,14 @@
+import json
 import logging
 import traceback
-import json
 from datetime import datetime
-from sqlalchemy.orm import Session
-from src.core.database import SessionLocal, AudioFile, AnalysisMetrics, Artifact, init_db
-from src.config import config
-from src.analyzers.meta import MetaAnalyzer
-from src.analyzers.loudness import LoudnessAnalyzer
-from src.analyzers.frequency import FrequencyAnalyzer
 
+from sqlalchemy.orm import Session
+from src.analyzers.frequency import FrequencyAnalyzer
+from src.analyzers.loudness import LoudnessAnalyzer
+from src.analyzers.meta import MetaAnalyzer
+from src.config import config
+from src.core.database import AnalysisMetrics, Artifact, AudioFile, SessionLocal
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("Pipeline")
@@ -20,11 +20,11 @@ class AnalysisPipeline:
             LoudnessAnalyzer(),
             FrequencyAnalyzer()
         ]
-        
+
     def process_file(self, filepath: str):
         logger.info(f"Starting processing for: {filepath}")
         db: Session = SessionLocal()
-        
+
         try:
             # 1. Check if exists
             existing = db.query(AudioFile).filter_by(filepath=filepath).first()
@@ -40,7 +40,7 @@ class AnalysisPipeline:
             if not existing:
                 db.add(audio_file)
                 db.commit() # Get ID
-            
+
             # 3. Run Analyzers
             results = {}
             for analyzer in self.analyzers:
@@ -51,14 +51,14 @@ class AnalysisPipeline:
                 except Exception as e:
                     logger.error(f"Analyzer {analyzer.name} failed: {e}")
                     traceback.print_exc()
-            
+
             # 4. Save Results
             # Update AudioFile Meta
             audio_file.duration_sec = results.get("duration_sec")
             audio_file.sample_rate = results.get("sample_rate")
             audio_file.channels = results.get("channels")
             audio_file.file_size_bytes = results.get("file_size_bytes")
-            
+
             # Save Metrics
             metrics = AnalysisMetrics(
                 audio_file_id=audio_file.id,
@@ -67,7 +67,7 @@ class AnalysisPipeline:
                 is_active=results.get("is_active", False)
             )
             db.add(metrics)
-            
+
             # Save Artifacts
             if "spectrogram_path" in results:
                 spec = Artifact(
@@ -76,7 +76,7 @@ class AnalysisPipeline:
                     filepath=results["spectrogram_path"]
                 )
                 db.add(spec)
-                
+
             audio_file.processed_at = datetime.utcnow()
             db.commit()
 
@@ -84,7 +84,7 @@ class AnalysisPipeline:
             if config.EXPORT_JSON_METADATA:
                 try:
                     json_path = config.METADATA_DIR / f"{audio_file.filename}.json"
-                    
+
                     # Construct JSON payload
                     payload = {
                         "filename": audio_file.filename,
@@ -102,10 +102,10 @@ class AnalysisPipeline:
                         },
                         "artifacts": results.get("spectrogram_path")
                     }
-                    
+
                     with open(json_path, "w") as f:
                         json.dump(payload, f, indent=2)
-                        
+
                     logger.info(f"Exported JSON metadata to {json_path}")
                 except Exception as e:
                     logger.error(f"Failed to export JSON metadata: {e}")

@@ -1,8 +1,5 @@
-import subprocess
 import logging
-import time
-import json
-import re
+import subprocess
 
 logger = logging.getLogger("wifi_manager")
 
@@ -59,13 +56,13 @@ class WifiManager:
                     # Clean up escaping if any (nmcli sometimes escapes colons)
                     ssid = ssid.replace('\\:', ':')
                     seen.add(ssid)
-                    
+
                     signal = 0
                     if len(parts) >= 2 and parts[1].isdigit():
                         signal = int(parts[1])
-                    
+
                     security = parts[2] if len(parts) >= 3 else ""
-                    
+
                     networks.append({
                         "ssid": ssid,
                         "signal": signal,
@@ -78,14 +75,14 @@ class WifiManager:
     def connect_wifi(self, ssid, password):
         """Attempt to connect to a network. Deletes old connection if exists."""
         logger.info(f"Attempting to connect to {ssid}")
-        
+
         # Delete existing connection profile if it exists to avoid duplicates
         self.run_command(f"nmcli connection delete id '{ssid}'")
-        
+
         cmd = f"nmcli dev wifi connect '{ssid}' password '{password}'"
         if not password:
              cmd = f"nmcli dev wifi connect '{ssid}'"
-             
+
         result = self.run_command(cmd)
         if result:
             logger.info(f"Successfully connected to {ssid}")
@@ -99,7 +96,7 @@ class WifiManager:
         check = self.run_command(f"nmcli connection show '{self.AP_SSID}'")
         if not check:
             # Create it
-            # auto-connect=no because we want to control when it starts usually, 
+            # auto-connect=no because we want to control when it starts usually,
             # but for this script we might want manual control.
             cmd = (
                 f"nmcli con add type wifi ifname {self.INTERFACE} con-name '{self.AP_SSID}' "
@@ -108,7 +105,7 @@ class WifiManager:
             )
             # Default password 'silvasonic' to modify if needed
             self.run_command(cmd)
-        
+
         # Activate it
         self.run_command(f"nmcli connection up '{self.AP_SSID}'")
 

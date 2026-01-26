@@ -1,6 +1,7 @@
-import os
-import logging
 import json
+import logging
+import os
+
 import apprise
 
 logger = logging.getLogger("HealthChecker.Notifier")
@@ -14,7 +15,7 @@ class Mailer:
         """Configures Apprise with URLs from env vars or settings."""
         # 1. Load from settings.json (Preferred)
         config_path = "/config/settings.json"
-        
+
         # We'll collect all valid URLs here
         urls = []
 
@@ -27,14 +28,14 @@ class Mailer:
 
         if os.path.exists(config_path):
             try:
-                with open(config_path, 'r') as f:
+                with open(config_path) as f:
                     settings = json.load(f)
                     hc_settings = settings.get("healthchecker", {})
-                    
+
                     # Allow overriding recipient from settings
                     if hc_settings.get("recipient_email"):
                         recipient = hc_settings.get("recipient_email")
-                    
+
                     # Allow adding generic Apprise URLs from settings
                     if hc_settings.get("apprise_urls"):
                         urls.extend(hc_settings.get("apprise_urls"))
@@ -46,20 +47,20 @@ class Mailer:
             # Construct apprise mailto:// URL
             # Format: mailto://user:pass@domain:port?to=recipient
             # We need to extract domain from server if possible, or just use the server as is.
-            # Apprise mailto parser is flexible. 
-            # If server is smtp.gmail.com, domain is gmail.com. 
+            # Apprise mailto parser is flexible.
+            # If server is smtp.gmail.com, domain is gmail.com.
             # But we can just pass the server as the domain for custom SMTP usually.
-            
+
             # Simplified logic: use the full server as the host.
             # Scheme: mailtos:// for SSL (465), mailto:// for others (TLs is context dependent but apprise handles likely)
             scheme = "mailtos" if str(smtp_port) == "465" else "mailto"
-            
+
             # Encode special chars in user/pass if needed? Apprise handles basic, but let's just construct carefully.
             # Assuming standard chars for now.
             url = f"{scheme}://{smtp_user}:{smtp_password}@{smtp_server}:{smtp_port}/?to={recipient}"
             urls.append(url)
             logger.info(f"Added legacy SMTP notification for {recipient}")
-        
+
         # Check for generic APPRISE_URLS env var (Comma separated)
         env_urls = os.getenv("APPRISE_URLS")
         if env_urls:
@@ -90,12 +91,12 @@ class Mailer:
                 body=body,
                 title=f"[Silvasonic] {subject}",
             )
-            
+
             if status:
                 logger.info(f"Notification sent: {subject}")
             else:
                 logger.error(f"Failed to send notification: {subject}")
-            
+
             return status
         except Exception as e:
             logger.error(f"Error sending notification: {e}")

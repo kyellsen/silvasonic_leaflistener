@@ -1,6 +1,5 @@
-import os
 import logging
-from typing import List, Dict, Optional
+import os
 
 logger = logging.getLogger("Janitor")
 
@@ -10,9 +9,8 @@ class StorageJanitor:
         self.threshold_percent = threshold_percent
         self.target_percent = target_percent
 
-    def check_and_clean(self, remote_files: Optional[Dict[str, int]], get_usage_callback) -> None:
-        """
-        Checks disk usage and deletes old files if threshold is exceeded.
+    def check_and_clean(self, remote_files: dict[str, int] | None, get_usage_callback) -> None:
+        """Checks disk usage and deletes old files if threshold is exceeded.
         
         Args:
             remote_files: Dict of {relative_path: size} from the remote, or None if network failed.
@@ -23,7 +21,7 @@ class StorageJanitor:
             return
 
         current_usage = get_usage_callback(self.source_dir)
-        
+
         if current_usage < self.threshold_percent:
             logger.info(f"Disk usage {current_usage:.1f}% is below threshold {self.threshold_percent}%. No cleanup needed.")
             return
@@ -32,35 +30,35 @@ class StorageJanitor:
 
         # 1. List all local files
         local_files = self._list_local_files()
-        
+
         # 2. Sort by age (oldest first)
         local_files.sort(key=lambda x: x['mtime'])
-        
+
         deleted_count = 0
         deleted_size = 0
-        
+
         for file in local_files:
             # Check if we've reached the target
             if get_usage_callback(self.source_dir) <= self.target_percent:
                 logger.info(f"Target usage {self.target_percent}% reached. Stopping cleanup.")
                 break
-                
+
             rel_path = os.path.relpath(file['path'], self.source_dir)
-            
+
             # 3. VERIFY: Exists on remote?
             if rel_path not in remote_files:
                 logger.warning(f"Skipping {rel_path}: Not found on remote.")
                 continue
-                
+
             # 4. VERIFY: Size matches?
             # Note: Remote might report different size if compressed/encrypted, but for basic copy it should match.
-            # We allow small variance if needed, but for now strict check or skip check if size is drastically different 
-            # (e.g. if we suspect partial upload). 
+            # We allow small variance if needed, but for now strict check or skip check if size is drastically different
+            # (e.g. if we suspect partial upload).
             # Ideally we trust rclone's verification during copy, so if it's in the list it's likely good.
             # But let's check size to be extra safe against 0-byte uploads.
             remote_size = remote_files[rel_path]
             local_size = file['size']
-            
+
             if remote_size == 0 and local_size > 0:
                  logger.warning(f"Skipping {rel_path}: Remote size is 0.")
                  continue
@@ -76,7 +74,7 @@ class StorageJanitor:
 
         logger.info(f"Cleanup finished. Deleted {deleted_count} files ({deleted_size / 1024 / 1024:.2f} MB).")
 
-    def _list_local_files(self) -> List[Dict]:
+    def _list_local_files(self) -> list[dict]:
         """Returns a list of local files with metadata."""
         files = []
         for root, _, filenames in os.walk(self.source_dir):

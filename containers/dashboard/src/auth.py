@@ -1,7 +1,7 @@
 import os
 import secrets
-from fastapi import Depends, HTTPException, status, Request
-from fastapi.security import HTTPBasic, HTTPBasicCredentials
+
+from fastapi import HTTPException, Request, status
 from starlette.responses import RedirectResponse
 
 # Simple Env-based Auth

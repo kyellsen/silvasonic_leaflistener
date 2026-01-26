@@ -1,12 +1,12 @@
 import logging
-import sys
-from src.core.database import init_db
-from src.core.database import init_db
-from src.core.watcher import WatcherService
-import threading
 
 # Setup logging to stdout
 import logging.handlers
+import sys
+import threading
+
+from src.core.database import init_db
+from src.core.watcher import WatcherService
 
 logging.basicConfig(
     level=logging.INFO,
@@ -27,11 +27,11 @@ logger = logging.getLogger("Main")
 
 def main():
     logger.info("Starting Silvasonic Brain...")
-    
+
     # 1. Init Database
     logger.info("Initializing Database...")
     init_db()
-    
+
     # 2. Start Watcher (Daemon Thread)
     logger.info("Starting Watcher Service in background...")
     watcher = WatcherService()

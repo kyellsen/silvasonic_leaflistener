@@ -1,9 +1,11 @@
-import time
 import logging
-from watchdog.observers import Observer
+import time
+
 from watchdog.events import FileSystemEventHandler
-from src.config import config
+from watchdog.observers import Observer
+
 from src.analyzer import BirdNETAnalyzer
+from src.config import config
 
 logger = logging.getLogger("Watcher")
 
@@ -18,7 +20,7 @@ class AudioFileHandler(FileSystemEventHandler):
         # Support common audio formats
         if not (event.src_path.endswith('.flac') or event.src_path.endswith('.wav')):
             return
-            
+
         logger.info(f"New audio file detected: {event.src_path}")
         # Give a small grace period just in case
         time.sleep(0.5)
@@ -28,18 +30,18 @@ class WatcherService:
     def __init__(self):
         self.analyzer = BirdNETAnalyzer()
         self.observer = Observer()
-        
+
     def run(self):
-        # Scan existing files first? 
-        # Often good to process backlog, but BirdNET is heavy. 
+        # Scan existing files first?
+        # Often good to process backlog, but BirdNET is heavy.
         # Let's verify backlog only if not huge or we can rely on manual trigger.
         # For now, we will scan existing to catch up on missed files during restart.
         logger.info("Scanning existing files...")
         self.scan_existing()
-        
+
         # Start Watcher
         logger.info(f"Starting Watchdog on {config.INPUT_DIR} (Recursive: {config.RECURSIVE_WATCH})")
-        
+
         # Ensure input dir exists
         while not config.INPUT_DIR.exists():
             logger.warning(f"Input dir {config.INPUT_DIR} not found, waiting...")
@@ -48,7 +50,7 @@ class WatcherService:
         event_handler = AudioFileHandler(self.analyzer)
         self.observer.schedule(event_handler, str(config.INPUT_DIR), recursive=config.RECURSIVE_WATCH)
         self.observer.start()
-        
+
         try:
             while True:
                 self.write_status("Idle (Watching)")
@@ -59,10 +61,11 @@ class WatcherService:
 
     def write_status(self, status: str):
         try:
-            import psutil
             import json
             import os
-            
+
+            import psutil
+
             data = {
                 "service": "birdnet",
                 "timestamp": time.time(),
@@ -75,10 +78,10 @@ class WatcherService:
                 },
                 "pid": os.getpid()
             }
-            
+
             status_file = "/mnt/data/services/silvasonic/status/birdnet.json"
             os.makedirs(os.path.dirname(status_file), exist_ok=True)
-            
+
             tmp_file = f"{status_file}.tmp"
             with open(tmp_file, 'w') as f:
                 json.dump(data, f)
@@ -90,8 +93,8 @@ class WatcherService:
         self.write_status("Scanning")
         if not config.INPUT_DIR.exists():
             return
-            
-        # Simplistic approach: Just list all files. 
+
+        # Simplistic approach: Just list all files.
         # Ideally we check DB if already analyzed to avoid re-work.
         # Implementation of "Check DB" logic:
         # For this MVP, we might skip full re-scan or just rely on 'new' files.
@@ -99,7 +102,7 @@ class WatcherService:
         # Processing ALL existing files on every startup is dangerous if there are thousands.
         # Users requested "pull current files", implying real-time focus.
         # Let's skip scanning OLD files for now to avoid CPU storm, unless the folder is small.
-        # Or better: Only process if we want to catch up. 
+        # Or better: Only process if we want to catch up.
         # Given the "Current files from recorder" request: "Er soll sich immer die aktuellen files vom recorder ziehen"
-        # I will assume "Watch new files" is the priority. 
-        pass 
+        # I will assume "Watch new files" is the priority.
+        pass

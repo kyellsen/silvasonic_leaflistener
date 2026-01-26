@@ -1,11 +1,12 @@
 import logging
 import os
 import time
-from sqlalchemy import create_engine, Column, String, Integer, Float, DateTime, Text, text
+from datetime import UTC, datetime
+
+from sqlalchemy import Column, DateTime, Float, Integer, String, Text, create_engine
+from sqlalchemy.exc import OperationalError, ProgrammingError
 from sqlalchemy.orm import declarative_base, sessionmaker
 from sqlalchemy.schema import CreateSchema
-from sqlalchemy.exc import ProgrammingError, OperationalError
-from datetime import datetime, timezone
 
 # Setup logging
 logger = logging.getLogger("Database")
@@ -17,12 +18,12 @@ class BirdNETDetection(Base):
     __table_args__ = {'schema': 'birdnet'}
 
     id = Column(Integer, primary_key=True, autoincrement=True)
-    timestamp = Column(DateTime, default=lambda: datetime.now(timezone.utc))
-    
+    timestamp = Column(DateTime, default=lambda: datetime.now(UTC))
+
     # File Info
     filename = Column(String(255), nullable=False)
     filepath = Column(String(1024), nullable=False)
-    
+
     # Detection Info (Raw)
     start_time = Column(Float, nullable=False)
     end_time = Column(Float, nullable=False)
@@ -30,7 +31,7 @@ class BirdNETDetection(Base):
     species_code = Column(String(50), nullable=True) # e.g. "Turdus merula"
     common_name = Column(String(255), nullable=True)
     scientific_name = Column(String(255), nullable=True)
-    
+
     # Metadata
     latitude = Column(Float, nullable=True)
     longitude = Column(Float, nullable=True)
@@ -50,7 +51,7 @@ class SpeciesInfo(Base):
     image_license = Column(String(255), nullable=True)
     description = Column(Text, nullable=True)
     wikipedia_url = Column(String(1024), nullable=True)
-    last_updated = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    last_updated = Column(DateTime, default=lambda: datetime.now(UTC))
 
 class Watchlist(Base):
     __tablename__ = 'watchlist'
@@ -61,7 +62,7 @@ class Watchlist(Base):
     common_name = Column(String(255), nullable=True) # Cache for display if needed
     enabled = Column(Integer, default=1) # 1=Enabled, 0=Disabled. Using Integer for SQLite/PG compat just in case, though Boolean is fine in PG.
     last_notification = Column(DateTime, nullable=True)
-    
+
     # Notification Settings (Future Proofing)
     min_confidence = Column(Float, default=0.0) # 0.0 = Use global default
 
@@ -72,7 +73,7 @@ class DatabaseHandler:
         self.db_name = os.getenv("POSTGRES_DB", "silvasonic")
         self.host = os.getenv("POSTGRES_HOST", "db")
         self.port = os.getenv("POSTGRES_PORT", "5432")
-        
+
         self.db_url = f"postgresql://{self.user}:{self.password}@{self.host}:{self.port}/{self.db_name}"
         self.engine = None
         self.Session = None
@@ -84,7 +85,7 @@ class DatabaseHandler:
             try:
                 logger.info(f"Connecting to Database {self.host}...")
                 self.engine = create_engine(self.db_url, pool_pre_ping=True)
-                
+
                 # Check connection
                 with self.engine.connect() as conn:
                     # Create Schema 'birdnet' if not exists
@@ -99,11 +100,11 @@ class DatabaseHandler:
 
                 # Create Tables
                 Base.metadata.create_all(self.engine)
-                
+
                 self.Session = sessionmaker(bind=self.engine)
                 logger.info("Database connected and initialized.")
                 return True
-                
+
             except OperationalError as e:
                 logger.warning(f"Database not ready ({e}). Retrying in 5s... ({retries} left)")
                 time.sleep(5)
@@ -111,12 +112,11 @@ class DatabaseHandler:
             except Exception as e:
                 logger.error(f"Critical DB connection error: {e}")
                 return False
-        
+
         return False
 
     def save_detection(self, detection_dict: dict):
-        """
-        Save a single detection to the database.
+        """Save a single detection to the database.
         
         Args:
             detection_dict: {
@@ -146,7 +146,7 @@ class DatabaseHandler:
                 latitude=detection_dict.get('lat'),
                 longitude=detection_dict.get('lon'),
                 clip_path=detection_dict.get('clip_path'),
-                timestamp=datetime.now(timezone.utc)
+                timestamp=datetime.now(UTC)
             )
             session.add(det)
             session.commit()

@@ -1,12 +1,13 @@
-import os
-import time
+import json
 import logging
+import os
 import signal
 import sys
-import json
+import time
+
 import psutil
-from rclone_wrapper import RcloneWrapper
 from janitor import StorageJanitor
+from rclone_wrapper import RcloneWrapper
 
 # Configure Logging
 os.makedirs("/var/log/silvasonic", exist_ok=True)
@@ -80,14 +81,14 @@ def write_status(status: str, last_upload: float = 0, queue_size: int = -1, disk
             json.dump(data, f)
         os.rename(tmp_file, STATUS_FILE)
     except Exception as e:
-        logger.error(f"Failed to write status: {e}") 
+        logger.error(f"Failed to write status: {e}")
 
 def report_error(context: str, error: Exception):
     """Write critical error to shared error directory for the Watchdog."""
     try:
         timestamp = int(time.time())
         filename = f"{ERROR_DIR}/error_carrier_{timestamp}.json"
-        
+
         data = {
             "service": "carrier",
             "timestamp": timestamp,
@@ -95,13 +96,13 @@ def report_error(context: str, error: Exception):
             "error": str(error),
             "pid": os.getpid()
         }
-        
+
         with open(filename, 'w') as f:
             json.dump(data, f)
-            
+
         logger.error(f"Critical error reported to {filename}")
     except Exception as ie:
-         logger.error(f"Failed to report error: {ie}") 
+         logger.error(f"Failed to report error: {ie}")
 
 
 def signal_handler(sig, frame):
@@ -111,12 +112,12 @@ def signal_handler(sig, frame):
 def main():
     signal.signal(signal.SIGTERM, signal_handler)
     signal.signal(signal.SIGINT, signal_handler)
-    
+
     logger.info("--- Silvasonic Carrier (Python Edition) ---")
 
     wrapper = RcloneWrapper()
     janitor = StorageJanitor(SOURCE_DIR, threshold_percent=CLEANUP_THRESHOLD, target_percent=CLEANUP_TARGET)
-    
+
     # Database Setup
     from src.database import DatabaseHandler
     db = DatabaseHandler()
@@ -134,7 +135,7 @@ def main():
                         size = os.path.getsize(full_path)
                 except:
                     pass
-            
+
             db.log_upload(
                 filename=filename,
                 remote_path=f"{TARGET_DIR}/{filename}",
@@ -158,36 +159,36 @@ def main():
 
     # 2. Main Loop
     last_upload_success = 0
-    
+
     while True:
         try:
             if os.path.exists(SOURCE_DIR):
                 # Gather Metrics
                 queue_size = count_files(SOURCE_DIR)
                 disk_usage = wrapper.get_disk_usage_percent(SOURCE_DIR)
-                
+
                 # --- PHASE 1: UPLOAD ---
                 write_status("Syncing", last_upload_success, queue_size, disk_usage)
-                
+
                 # Use COPY instead of SYNC to prevent deleting files on remote if they are missing locally
                 # Use MIN_AGE to avoid uploading files currently being written by the recorder
                 success = wrapper.copy(SOURCE_DIR, f"remote:{TARGET_DIR}", min_age=MIN_AGE, callback=upload_callback)
-                
+
                 # Update metrics after upload attempt
                 queue_size = count_files(SOURCE_DIR)
                 disk_usage = wrapper.get_disk_usage_percent(SOURCE_DIR)
-                
+
                 if success:
                     last_upload_success = time.time()
                     write_status("Idle", last_upload_success, queue_size, disk_usage)
 
                     # --- PHASE 2: CLEANUP ---
                     write_status("Cleaning", last_upload_success, queue_size, disk_usage)
-                    
+
                     # Fetch remote file list for safe deletion verification
                     # We do this AFTER upload to ensure the list is fresh
                     remote_files = wrapper.list_files(f"remote:{TARGET_DIR}")
-                    
+
                     # Run cleanup
                     janitor.check_and_clean(remote_files, wrapper.get_disk_usage_percent)
 
@@ -204,14 +205,14 @@ def main():
             else:
                 logger.error(f"Source directory {SOURCE_DIR} does not exist!")
                 write_status("Error: No Source", last_upload_success)
-            
+
             logger.info(f"Sleeping for {SYNC_INTERVAL} seconds...")
             write_status("Sleeping", last_upload_success, count_files(SOURCE_DIR), wrapper.get_disk_usage_percent(SOURCE_DIR) if os.path.exists(SOURCE_DIR) else 0)
-            
+
             # Smart Sleep (interruptible)
             for _ in range(SYNC_INTERVAL):
                 time.sleep(1)
-                
+
         except Exception as e:
             logger.exception("Unexpected error in main loop:")
             report_error("main_loop_crash", e)

@@ -1,13 +1,13 @@
-import os
-import time
 import json
 import logging
-import schedule
+import os
+import time
 from datetime import datetime
+
+import schedule
 from sqlalchemy import create_engine, text
-from wetterdienst.provider.dwd.observation import DwdObservationRequest
-from wetterdienst import Settings
 from wetterdienst.metadata.parameter import Parameter
+from wetterdienst.provider.dwd.observation import DwdObservationRequest
 
 # Setup Logging
 logging.basicConfig(
@@ -62,7 +62,7 @@ def get_location():
     """Read location from settings or default."""
     try:
         if os.path.exists(CONFIG_PATH):
-            with open(CONFIG_PATH, 'r') as f:
+            with open(CONFIG_PATH) as f:
                 data = json.load(f)
                 loc = data.get("location", {})
                 lat = loc.get("latitude", DEFAULT_LAT)
@@ -84,17 +84,17 @@ def find_station(lat, lon):
         )
         # Using built-in filter
         result = request.filter_by_rank(
-            latlon=(lat, lon), 
+            latlon=(lat, lon),
             rank=1
         )
-        
+
         # Wetterdienst filter_by_rank returns a values result actually?
-        # Check docs or inspect. 
+        # Check docs or inspect.
         # Actually filter_by_rank returns a filtered request/stations df.
-        
+
         # Let's use filter_by_distance if Rank is not returning exactly what we expect immediately.
         # But filter_by_rank is good.
-        
+
         df = result.df
         if not df.empty:
             station_id = df.iloc[0]['station_id']
@@ -108,14 +108,14 @@ def fetch_weather():
     """Fetch weather data and store it."""
     logger.info("Fetching weather data...")
     lat, lon = get_location()
-    
-    # We ideally want a 'current' reading. 
+
+    # We ideally want a 'current' reading.
     # DWD 'observation' '10_minutes' resolution is best for 'current'.
     try:
         # We need to find the station first or let Wetterdienst handle it via rank?
         # Ideally we cache the station ID, but for simplicity let's resolve it.
         # Actually, query_by_rank is nicer.
-        
+
         request = DwdObservationRequest(
             parameter=[
                 Parameter.TEMPERATURE_AIR_MEAN_200,
@@ -126,15 +126,15 @@ def fetch_weather():
             ],
             resolution="10_minutes",
         ).filter_by_rank(latlon=(lat, lon), rank=1)
-        
+
         # Value extraction
         # values() fetches the data
         values = request.values.all().df
-        
+
         # We want the LATEST value for each parameter
         # Pivot or just iterate?
         # The DF has columns: station_id, dataset, parameter, date, value, quality
-        
+
         if values.empty:
             logger.warning("No data received.")
             return
@@ -142,28 +142,28 @@ def fetch_weather():
         # Get the latest timestamp
         latest_ts = values['date'].max()
         current = values[values['date'] == latest_ts]
-        
+
         # Map parameters to our schema
         # Parameter names in wetterdienst can be specific string keys.
-        # We need to check what they are. 
+        # We need to check what they are.
         # Usually: 'temperature_air_mean_200', 'humidity', etc.
-        
+
         data_map = {}
         station_id = None
-        
+
         for _, row in current.iterrows():
             param = row['parameter']
             val = row['value']
             station_id = row['station_id']
-            
+
             if param == "temperature_air_mean_200":
-                data_map['temperature_c'] = val - 273.15 # It's Kelvin usually? 
-                # DWD 10 min usually Celsius? 
-                # Checking docs: DWD observation is usually K for creating consistent units? 
-                # Wetterdienst tries to be SI compliant. 
+                data_map['temperature_c'] = val - 273.15 # It's Kelvin usually?
+                # DWD 10 min usually Celsius?
+                # Checking docs: DWD observation is usually K for creating consistent units?
+                # Wetterdienst tries to be SI compliant.
                 # Kelvin = True is default.
                 pass
-                
+
             elif param == "humidity":
                  data_map['humidity_percent'] = val
             elif param == "precipitation_height":
@@ -180,11 +180,11 @@ def fetch_weather():
              # Safe check or assume K as per library default.
              if data_map['temperature_c'] > 200:
                  data_map['temperature_c'] -= 273.15
-                 
+
         if not station_id:
              logger.warning("No station ID found in data.")
              return
-             
+
         # Insert into DB
         with get_db_connection() as conn:
             stmt = text("""
@@ -205,7 +205,7 @@ def fetch_weather():
                 "cloud": data_map.get('cloud_cover_percent')
             })
             conn.commit()
-            
+
         logger.info(f"Stored weather data for {latest_ts} (Station {station_id})")
 
     except Exception as e:
@@ -213,21 +213,21 @@ def fetch_weather():
 
 if __name__ == "__main__":
     init_db()
-    
+
     # Run once on startup
     fetch_weather()
-    
+
     # Schedule every 20 minutes (DWD updates are around that)
     schedule.every(20).minutes.do(fetch_weather)
-    
+
     # Analysis aggregation (every hour)
     from src.analysis import init_analysis_db, run_analysis
     init_analysis_db()
     run_analysis() # Run once on startup
     schedule.every(1).hours.do(run_analysis)
-    
+
     logger.info("Weather service started.")
-    
+
     # Status Helper
     def write_status(status_msg, station=None):
         try:
@@ -265,7 +265,7 @@ if __name__ == "__main__":
             time.sleep(1)
         except KeyboardInterrupt:
             break
-        except Exception as e:
+        except Exception:
             logger.exception("Weather Service Crashed:")
             time.sleep(60) # Prevent tight loop
 

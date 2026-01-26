@@ -1,9 +1,12 @@
-import os
-import psutil
-import shutil
 import datetime
+import os
+import shutil
 from pathlib import Path
+
+import psutil
+
 from .common import REC_DIR
+
 
 class SystemService:
     @staticmethod
@@ -16,7 +19,7 @@ class SystemService:
         except:
             cpu = 0
             cpu_cores = []
-            
+
         try:
             mem = psutil.virtual_memory()
             mem_percent = mem.percent
@@ -32,7 +35,7 @@ class SystemService:
             mem_percent = 0
             ram_used_gb = 0
             ram_total_gb = 16
-        
+
         # Disk usage for /mnt/data (mapped to /data/recording usually or root)
         # using /data/recording as proxy for NVMe
         try:
@@ -51,7 +54,7 @@ class SystemService:
             uptime = datetime.datetime.now() - boot_time
         except:
             uptime = "Unknown"
-        
+
         # Last Recording
         last_rec = "Unknown"
         last_rec_ts = 0
@@ -62,18 +65,18 @@ class SystemService:
                 last_rec = datetime.datetime.fromtimestamp(last_rec_ts).strftime("%H:%M:%S")
         except:
             pass
-            
+
             pass
 
         # CPU Temperature
         cpu_temp = "N/A"
         try:
-            with open("/sys/class/thermal/thermal_zone0/temp", "r") as f:
+            with open("/sys/class/thermal/thermal_zone0/temp") as f:
                 temp_c = int(f.read().strip()) / 1000.0
                 cpu_temp = f"{temp_c:.1f}°C"
         except:
             pass
-            
+
         return {
             "cpu": cpu,
             "cpu_cores": cpu_cores,

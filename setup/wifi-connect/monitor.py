@@ -1,8 +1,9 @@
-import time
 import logging
-import subprocess
 import os
 import signal
+import subprocess
+import time
+
 from wifi_manager import WifiManager
 
 # Configure logging
@@ -17,9 +18,9 @@ class WifiMonitor:
         self.manager = WifiManager()
         self.current_process = None
         self.mode = "none" # none, setup, redirect
-        self.check_interval = 10 
+        self.check_interval = 10
         self.disconnection_counter = 0
-        self.disconnection_threshold = 3 
+        self.disconnection_threshold = 3
 
     def start_service(self, service_name):
         """Start a web service (app.py or redirect.py)"""
@@ -27,7 +28,7 @@ class WifiMonitor:
             "setup": "app.py",
             "redirect": "redirect.py"
         }
-        
+
         if service_name not in script_map:
             return
 
@@ -39,7 +40,7 @@ class WifiMonitor:
             logger.info(f"Starting {service_name} service...")
             env = os.environ.copy()
             script_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), script_map[service_name])
-            
+
             try:
                 self.current_process = subprocess.Popen(
                     ["python3", script_path],
@@ -63,43 +64,43 @@ class WifiMonitor:
 
     def run(self):
         logger.info("WiFi Monitor Service Started")
-        time.sleep(15) 
+        time.sleep(15)
 
         while True:
             try:
                 connected = self.manager.is_connected()
-                
+
                 if connected:
                     # SYSTEM ONLINE
                     self.disconnection_counter = 0
-                    
+
                     # Ensure AP is off
                     if self.manager.is_ap_running():
                         logger.info("Connection detected! Stopping AP.")
                         self.manager.stop_ap()
-                    
+
                     # Ensure Redirector is running
                     if self.mode != "redirect":
                         self.start_service("redirect")
-                
+
                 else:
                     # SYSTEM OFFLINE
                     self.disconnection_counter += 1
                     logger.debug(f"System offline. Counter: {self.disconnection_counter}")
-                    
+
                     if self.disconnection_counter >= self.disconnection_threshold:
                         # Ensure AP is on
                         if not self.manager.is_ap_running():
                             logger.info("Offline timeout. Starting AP.")
                             self.manager.start_ap()
-                        
+
                         # Ensure Setup App is running
                         if self.mode != "setup":
                             self.start_service("setup")
-            
+
             except Exception as e:
                 logger.error(f"Error in monitor loop: {e}")
-            
+
             time.sleep(self.check_interval)
 
 if __name__ == "__main__":

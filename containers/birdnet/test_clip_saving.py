@@ -1,11 +1,10 @@
-import unittest
-from unittest.mock import MagicMock, patch
-import code
-import sys
-import os
-from pathlib import Path
-import shutil
 import csv
+import os
+import shutil
+import sys
+import unittest
+from pathlib import Path
+from unittest.mock import MagicMock, patch
 
 # Add src to path
 sys.path.append(os.path.join(os.path.dirname(__file__), 'src'))
@@ -21,7 +20,7 @@ from src.database import db
 config.RESULTS_DIR = Path("/tmp/birdnet_test_results")
 config.CLIPS_DIR = config.RESULTS_DIR / "clips"
 config.birdnet_settings = {
-    'min_conf': 0.5, 'lat': 10, 'lon': 10, 'week': 1, 
+    'min_conf': 0.5, 'lat': 10, 'lon': 10, 'week': 1,
     'overlap': 0, 'sensitivity': 1, 'threads': 1
 }
 config.LATITUDE = 10
@@ -30,15 +29,16 @@ config.LONGITUDE = 10
 # Now import analyzer
 from src.analyzer import BirdNETAnalyzer
 
+
 class TestClipSaving(unittest.TestCase):
     def setUp(self):
         # Setup directories
         if config.RESULTS_DIR.exists():
             shutil.rmtree(config.RESULTS_DIR)
         config.RESULTS_DIR.mkdir(parents=True)
-        
+
         self.analyzer = BirdNETAnalyzer()
-        
+
         # Create a dummy audio file
         self.test_audio = Path("/tmp/test_audio.wav")
         self.create_dummy_wav(self.test_audio)
@@ -50,8 +50,8 @@ class TestClipSaving(unittest.TestCase):
             self.test_audio.unlink()
 
     def create_dummy_wav(self, path):
-        import soundfile as sf
         import numpy as np
+        import soundfile as sf
         sr = 48000
         duration = 5
         data = np.random.uniform(-1, 1, size=(sr * duration,))
@@ -71,22 +71,22 @@ class TestClipSaving(unittest.TestCase):
     def test_clip_saving(self, mock_ffmpeg, mock_bn):
         # Setup Mocks
         mock_ffmpeg.return_value = True
-        
+
         # Mock bn_analyze to write a CSV file to the output directory
         def side_effect(**kwargs):
             output_dir = kwargs.get('output')
             # Create a dummy CSV in that directory
             self.create_dummy_csv(output_dir, self.test_audio.stem + "_48k")
-            
+
         mock_bn.side_effect = side_effect
 
         # Run process
         self.analyzer.process_file(str(self.test_audio))
-        
+
         # Verify Clips
         clips = list(config.CLIPS_DIR.glob("*.wav"))
         self.assertEqual(len(clips), 2, "Should have saved 2 clips")
-        
+
         # Verify filenames
         # {original_name}_{start}_{end}_{species}.wav
         # validation for Blackbird: 1.0 - 2.0
@@ -96,7 +96,7 @@ class TestClipSaving(unittest.TestCase):
         # Verify DB calls
         # We expect 2 save_detection calls
         self.assertEqual(db.save_detection.call_count, 2)
-        
+
         # Check args of first call
         args, _ = db.save_detection.call_args_list[0]
         detection = args[0]
