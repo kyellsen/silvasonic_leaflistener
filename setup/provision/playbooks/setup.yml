@@ -153,6 +153,14 @@
           - "--exclude=recordings" # Don't sync local recordings if they exist
       tags: [repo]
 
+    - name: Configure Git Remote for Public Access (HTTPS)
+      become: true
+      become_user: "{{ user }}"
+      shell: "git remote set-url origin {{ repo_url }}"
+      args:
+        chdir: "{{ repo_dest }}"
+      tags: [repo]
+
     # --- 6. COPY HELPER SCRIPTS ---
     - name: Copy Health Check Script
       copy:
