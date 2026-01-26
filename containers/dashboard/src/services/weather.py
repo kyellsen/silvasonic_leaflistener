@@ -1,11 +1,13 @@
+import datetime
+import json
 import os
 import time
-import json
-import datetime
-from datetime import timezone
+
 from sqlalchemy import text
-from .database import db
+
 from .common import STATUS_DIR, logger
+from .database import db
+
 
 class WeatherService:
     @staticmethod
@@ -22,7 +24,7 @@ class WeatherService:
                 if row:
                     d = dict(row._mapping)
                     if d.get('timestamp') and d['timestamp'].tzinfo is None:
-                        d['timestamp'] = d['timestamp'].replace(tzinfo=timezone.utc)
+                        d['timestamp'] = d['timestamp'].replace(tzinfo=datetime.UTC)
                     return d
         except Exception as e:
 
@@ -36,7 +38,7 @@ class WeatherService:
             async with db.get_connection() as conn:
                 # Bind param properly or safe f-string for int
                 query = text(f"SELECT * FROM weather.measurements WHERE timestamp >= NOW() - INTERVAL '{int(hours)} HOURS' ORDER BY timestamp ASC")
-                
+
                 result = await conn.execute(query)
                 data = {
                     "labels": [],
@@ -45,18 +47,18 @@ class WeatherService:
                     "rain": [],
                     "wind": []
                 }
-                
+
                 for row in result:
                     d = dict(row._mapping)
                     ts = d['timestamp']
-                    if ts.tzinfo is None: ts = ts.replace(tzinfo=timezone.utc)
-                    
+                    if ts.tzinfo is None: ts = ts.replace(tzinfo=datetime.UTC)
+
                     data["labels"].append(ts.strftime("%H:%M"))
                     data["temp"].append(d.get("temperature_c"))
                     data["humidity"].append(d.get("humidity_percent"))
                     data["rain"].append(d.get("precipitation_mm"))
                     data["wind"].append(d.get("wind_speed_ms"))
-                    
+
                 return data
         except Exception as e:
 
@@ -76,9 +78,9 @@ class WeatherService:
                     WHERE timestamp >= NOW() - INTERVAL '{int(days)} DAYS'
                     ORDER BY timestamp ASC
                 """)
-                
+
                 result = await conn.execute(query)
-                
+
                 data = {
                     "labels": [],
                     "scatter_temp": [], # {x: temp, y: count}
@@ -88,38 +90,38 @@ class WeatherService:
                     "series_count": [],
                     "series_rain": []
                 }
-                
+
                 for row in result:
                     d = dict(row._mapping)
                     ts = d['timestamp']
-                    if ts.tzinfo is None: ts = ts.replace(tzinfo=timezone.utc)
-                    
+                    if ts.tzinfo is None: ts = ts.replace(tzinfo=datetime.UTC)
+
                     label = ts.strftime("%d.%m %H:00")
                     count = d.get("detection_count", 0)
                     temp = d.get("temperature_c", 0)
                     rain = d.get("precipitation_mm", 0)
                     wind = d.get("wind_speed_ms", 0)
-                    
+
                     data["labels"].append(label)
-                    
+
                     # Series (for Overlay Chart)
                     data["series_temp"].append(temp)
                     data["series_count"].append(count)
                     data["series_rain"].append(rain)
-                    
+
                     # Scatter (Correlation)
                     # ChartJS scatter format: {x: val, y: val}
                     data["scatter_temp"].append({"x": temp, "y": count})
-                    if rain > 0: 
+                    if rain > 0:
                         data["scatter_rain"].append({"x": rain, "y": count})
-                    
+
                 return data
         except Exception as e:
 
             logger.error(f"Weather Correlation Error: {e}", exc_info=True)
             return {
-                "labels": [], 
-                "scatter_temp": [], "scatter_rain": [], 
+                "labels": [],
+                "scatter_temp": [], "scatter_rain": [],
                 "series_temp": [], "series_count": [], "series_rain": []
             }
 
@@ -129,7 +131,7 @@ class WeatherService:
         try:
             status_file = os.path.join(STATUS_DIR, "weather.json")
             if os.path.exists(status_file):
-                with open(status_file, 'r') as f:
+                with open(status_file) as f:
                     data = json.load(f)
                     # Check staleness (20 mins schedule, so maybe 25 min stale check)
                     if time.time() - data.get("timestamp", 0) > 1500:

@@ -3,22 +3,22 @@ def _format_duration(seconds: float) -> str:
     """Format seconds into readable string (e.g. 2h 30m 15s)"""
     if not seconds:
         return "0s"
-    
+
     # Check for bad data (e.g. timestamps or nanoseconds)
     # If > 50 years (approx 1.5 billion seconds), assuming it's a timestamp or garbage -> 0
-    if seconds > 1577880000: 
+    if seconds > 1577880000:
         return "Invalid"
-        
+
     m, s = divmod(int(seconds), 60)
     h, m = divmod(m, 60)
     d, h = divmod(h, 24)
-    
+
     parts = []
     if d > 0: parts.append(f"{d}d")
     if h > 0: parts.append(f"{h}h")
     if m > 0: parts.append(f"{m}m")
     if s > 0 or not parts: parts.append(f"{s}s")
-    
+
     return " ".join(parts[:2]) # Return max 2 significant parts
 
 def _format_size(size_bytes: int) -> str:

@@ -21,7 +21,7 @@ def require_auth(request: Request):
         # If API request, return 401
         if request.url.path.startswith("/api"):
             raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED)
-            
+
         # Check for HTMX Request
         if request.headers.get("HX-Request"):
             from fastapi.responses import Response

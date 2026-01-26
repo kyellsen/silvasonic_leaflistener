@@ -6,4 +6,5 @@ LOG_DIR = "/var/log/silvasonic"
 STATUS_DIR = "/mnt/data/services/silvasonic/status"
 
 import logging
+
 logger = logging.getLogger("Dashboard.Services")

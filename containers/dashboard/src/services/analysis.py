@@ -1,8 +1,11 @@
 import os
+from datetime import UTC
+
 from sqlalchemy import text
-from datetime import timezone
-from .database import db
+
 from .common import logger
+from .database import db
+
 
 class AnalyzerService:
     @staticmethod
@@ -30,34 +33,34 @@ class AnalyzerService:
                     d = dict(row._mapping)
                     if d.get('created_at'):
                         if d['created_at'].tzinfo is None:
-                            d['created_at'] = d['created_at'].replace(tzinfo=timezone.utc)
+                            d['created_at'] = d['created_at'].replace(tzinfo=UTC)
                         d['created_at_iso'] = d['created_at'].isoformat()
                     else:
                         d['created_at_iso'] = ""
-                        
+
                     # Fix spec path
                     if d.get('spec_path'):
                          fname = os.path.basename(d['spec_path'])
                          d['spec_url'] = f"/api/spectrogram/{fname}"
                     else:
                          d['spec_url'] = None
-                         
+
                     # Format size
                     if d.get('file_size_bytes'):
                         d['size_fmt'] = AnalyzerService._format_size(d['file_size_bytes'])
                     else:
                         d['size_fmt'] = "0 B"
-                        
+
                     # Format duration
                     if d.get('duration_sec'):
                         d['duration_fmt'] = AnalyzerService._format_duration(d['duration_sec'])
                     else:
                         d['duration_fmt'] = "-"
-                    
+
                     # Round metrics
                     if d.get('rms_loudness'): d['rms_loudness'] = round(d['rms_loudness'], 1)
                     if d.get('peak_frequency_hz'): d['peak_frequency_hz'] = int(d['peak_frequency_hz'])
-                        
+
                     items.append(d)
                 return items
         except Exception as e:
@@ -69,22 +72,22 @@ class AnalyzerService:
         """Format seconds into readable string (e.g. 2h 30m 15s)"""
         if not seconds:
             return "0s"
-        
+
         # Check for bad data (e.g. timestamps or nanoseconds)
         # If > 50 years (approx 1.5 billion seconds), assuming it's a timestamp or garbage -> 0
-        if seconds > 1577880000: 
+        if seconds > 1577880000:
             return "Invalid"
-            
+
         m, s = divmod(int(seconds), 60)
         h, m = divmod(m, 60)
         d, h = divmod(h, 24)
-        
+
         parts = []
         if d > 0: parts.append(f"{d}d")
         if h > 0: parts.append(f"{h}h")
         if m > 0: parts.append(f"{m}m")
         if s > 0 or not parts: parts.append(f"{s}s")
-        
+
         return " ".join(parts[:2]) # Return max 2 significant parts
 
     @staticmethod
@@ -111,14 +114,14 @@ class AnalyzerService:
                 res = (await conn.execute(query)).fetchone()
                 if res:
                     d = dict(res._mapping)
-                    
+
                     raw_total = d.get('total_duration', 0)
                     raw_avg = d.get('avg_duration', 0)
-                    
+
                     d['total_duration_fmt'] = AnalyzerService._format_duration(raw_total)
                     d['avg_duration_fmt'] = AnalyzerService._format_duration(raw_avg)
                     d['avg_size_fmt'] = AnalyzerService._format_size(d.get('avg_size') or 0)
-                    
+
                     return d
                 return {}
          except Exception as e:

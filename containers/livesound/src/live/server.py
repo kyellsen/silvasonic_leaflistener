@@ -1,6 +1,5 @@
 import asyncio
 import logging
-import subprocess
 
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
@@ -95,7 +94,7 @@ async def audio_stream_generator():
     )
 
     queue = await processor.subscribe_audio()
-    
+
     # Start background task to feed input to FFmpeg
     input_task = asyncio.create_task(feed_input(proc.stdin, queue))
 
@@ -113,7 +112,7 @@ async def audio_stream_generator():
         # Cleanup
         input_task.cancel()
         processor.unsubscribe_audio(queue)
-        
+
         try:
             proc.terminate()
             await proc.wait()

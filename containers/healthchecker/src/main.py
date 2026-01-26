@@ -6,9 +6,9 @@ import logging
 import logging.handlers
 import os
 import shutil
+import socket
 import sys
 import time
-import socket
 
 from mailer import Mailer
 
@@ -108,7 +108,7 @@ def check_services_status(mailer: Mailer):
                  msg = "Postgres DB is unreachable."
                  logger.error(msg)
                  # mailer.send_alert("Postgres Down", msg) # Uncomment if desired, maybe noisy on startup
-            
+
             system_status[service_id] = service_data
             continue
 
@@ -266,8 +266,8 @@ def main():
     while True:
         try:
             # Re-initialize Mailer to pick up dynamic settings changes (e.g. email)
-            mailer = Mailer() 
-            
+            mailer = Mailer()
+
             write_status() # Heartbeat
             check_services_status(mailer)
             check_error_drops(mailer)

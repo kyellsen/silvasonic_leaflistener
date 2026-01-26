@@ -1,10 +1,10 @@
-from .database import db, DatabaseHandler
-from .system import SystemService
+from .analysis import AnalyzerService
 from .birdnet import BirdNetService
 from .birdnet_stats import BirdNetStatsService
 from .carrier import CarrierService
-from .recorder import RecorderService
+from .common import DB_PATH, LOG_DIR, REC_DIR, STATUS_DIR
+from .database import DatabaseHandler, db
 from .health import HealthCheckerService
-from .analysis import AnalyzerService
+from .recorder import RecorderService
+from .system import SystemService
 from .weather import WeatherService
-from .common import REC_DIR, LOG_DIR, DB_PATH, STATUS_DIR

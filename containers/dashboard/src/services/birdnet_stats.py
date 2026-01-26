@@ -1,8 +1,11 @@
 import datetime
+
 from sqlalchemy import text
-from .database import db
-from .common import logger, REC_DIR
 from src.settings import SettingsService
+
+from .common import REC_DIR, logger
+from .database import db
+
 
 class BirdNetStatsService:
     @staticmethod
@@ -32,7 +35,7 @@ class BirdNetStatsService:
                     LIMIT 10
                 """)
                 result_top = await conn.execute(query_top)
-                
+
                 use_german = SettingsService.is_german_names_enabled()
                 top_species = []
                 for row in result_top:
@@ -93,7 +96,7 @@ class BirdNetStatsService:
                 for r in res_hourly:
                     if r.hour is not None:
                         dist_map[int(r.hour)] = r.count
-                
+
                 hourly = {"values": [dist_map.get(h, 0) for h in range(24)]}
 
                 # 3. Top Species Distributions (Pie Charts)
@@ -129,7 +132,7 @@ class BirdNetStatsService:
                 result_today = await conn.execute(query_today_exact)
                 rows_today = result_today.fetchall()
                 dist_today = {
-                    "labels": [r.common_name for r in rows_today if r.common_name], 
+                    "labels": [r.common_name for r in rows_today if r.common_name],
                     "values": [r.count for r in rows_today if r.common_name]
                 }
 
@@ -149,7 +152,7 @@ class BirdNetStatsService:
                 res_all = await conn.execute(query_all)
                 hist_labels = []
                 hist_values = []
-                
+
                 all_rows = []
                 for row in res_all:
                     d = dict(row._mapping)
@@ -235,7 +238,7 @@ class BirdNetStatsService:
                 """)
                 res_recent = await conn.execute(query_recent, {"name": species_name})
                 recent = []
-                import os # Local import
+                import os  # Local import
 
                 for row in res_recent:
                     d = dict(row._mapping)
@@ -295,8 +298,8 @@ class BirdNetStatsService:
                 FROM birdnet.detections
                 ORDER BY timestamp DESC
             """)
-            
+
             result = await conn.stream(query)
-            
+
             async for row in result:
                 yield dict(row._mapping)

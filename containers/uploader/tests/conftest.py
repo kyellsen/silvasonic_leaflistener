@@ -1,9 +1,10 @@
 import os
+import shutil
 import sys
 import tempfile
-import shutil
-import pytest
 from unittest.mock import MagicMock
+
+import pytest
 
 # Add both project root (for src package) and src dir (for direct module imports)
 sys.path.append(os.path.join(os.path.dirname(__file__), ".."))

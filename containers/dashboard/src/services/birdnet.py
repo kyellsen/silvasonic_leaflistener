@@ -38,7 +38,7 @@ class BirdNetService:
 
                 detections = []
                 use_german = SettingsService.is_german_names_enabled()
-                import os # Ensure os is available
+                import os  # Ensure os is available
 
                 for row in result:
                     d = dict(row._mapping) # SQLAlchemy Row to dict
@@ -68,7 +68,7 @@ class BirdNetService:
                         d['playback_url'] = f"/api/clips/{os.path.basename(d['clip_path'])}"
                     else:
                         d['playback_url'] = f"/api/audio/{d.get('audio_relative_path')}"
-                    
+
                     # Image Logic (Fallback & Enrichment Trigger)
                     if not d.get('image_url'):
                         d['image_url'] = None
@@ -78,7 +78,7 @@ class BirdNetService:
                             # Or just await it? For "Recent Detections" on dashboard, speed matters.
                             # But if we don't await, we won't show it THIS time.
                             # Let's await for the first few (limit is small, 5).
-                            # Check if we already have it in a local cache to avoid DB hits? 
+                            # Check if we already have it in a local cache to avoid DB hits?
                             # limit is small, so we can afford to check.
                             pass # We will collect distinct species to enrich below
 
@@ -97,7 +97,7 @@ class BirdNetService:
                         # Create a dummy dict to pass to enricher (it expects dict with sci_name)
                         info = {'sci_name': sci_name, 'com_name': missing_images[sci_name].get('com_name')}
                         updated_info = await BirdNetService.enrich_species_data(info)
-                        
+
                         # Update all detections with this sci_name
                         if updated_info.get('image_url'):
                             for d in detections:
@@ -106,7 +106,7 @@ class BirdNetService:
                                     d['description'] = updated_info.get('description')
                                     # Update German name if we found one
                                     if updated_info.get('german_name'):
-                                         d['german_name'] = updated_info.get('german_name') 
+                                         d['german_name'] = updated_info.get('german_name')
                                          # Re-evaluate display name
                                          if use_german: d['display_name'] = d['german_name']
 
@@ -194,12 +194,12 @@ class BirdNetService:
                     FROM birdnet.processed_files 
                     WHERE processed_at >= NOW() - INTERVAL ':min MINUTES'
                 """)
-                # Parameter binding for interval string is tricky in some drivers, 
+                # Parameter binding for interval string is tricky in some drivers,
                 # safer to construct interval in python or use parameter.
-                
+
                 # Postgres logic:
                 query = text("SELECT COUNT(*) FROM birdnet.processed_files WHERE processed_at >= NOW() - make_interval(mins => :mins)")
-                
+
                 count = (await conn.execute(query, {"mins": minutes})).scalar() or 0
                 return round(count / minutes, 2)
         except Exception as e:
@@ -219,7 +219,7 @@ class BirdNetService:
                 # So MAX(filename) is best cursor.
                 query = text("SELECT MAX(filename) FROM birdnet.processed_files")
                 return (await conn.execute(query)).scalar()
-        except Exception as e:
+        except Exception:
             return None
 
     @staticmethod

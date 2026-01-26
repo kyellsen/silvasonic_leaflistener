@@ -146,7 +146,7 @@ journalctl -fu silvasonic
 
 
 
-# Neuladen
+# Neuladen und bauen 
 
 ```bash
 sudo podman compose up -d --build

@@ -55,7 +55,7 @@ class BirdNETAnalyzer:
         try:
             logger.info(f"Running analysis on {temp_resampled.name}...")
             settings = config.birdnet_settings
-            
+
             # Sanitize location (pass None if disabled/default -1)
             lat = settings['lat']
             lon = settings['lon']
@@ -198,7 +198,7 @@ class BirdNETAnalyzer:
             PADDING = 3.0
             clip_start = max(0.0, start_time - PADDING)
             clip_end = end_time + PADDING
-            
+
             data, samplerate = sf.read(str(audio_path), start=int(clip_start * 48000), stop=int(clip_end * 48000), always_2d=True)
 
             sf.write(str(clip_path), data, samplerate)

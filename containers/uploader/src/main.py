@@ -29,7 +29,7 @@ MIN_AGE = os.getenv("UPLOADER_MIN_AGE", "1m")
 def setup_environment():
     """Setup logging and directories."""
     os.makedirs("/var/log/silvasonic", exist_ok=True)
-    
+
     logging.basicConfig(
         level=logging.INFO,
         format='%(asctime)s [%(levelname)s] %(message)s',
@@ -45,7 +45,7 @@ def setup_environment():
             )
         ]
     )
-    
+
     # Ensure directories exist
     os.makedirs(os.path.dirname(STATUS_FILE), exist_ok=True)
     os.makedirs(ERROR_DIR, exist_ok=True)
@@ -67,7 +67,7 @@ def calculate_queue_size(directory, db):
 
     # Get set of files that are already uploaded
     uploaded = db.get_uploaded_filenames(files)
-    
+
     # Queue is what's left
     return len(files) - len(uploaded)
 

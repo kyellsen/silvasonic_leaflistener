@@ -1,7 +1,8 @@
+from unittest.mock import MagicMock, patch
+
 import pytest
-from unittest.mock import MagicMock, patch, ANY
-from sqlalchemy.exc import OperationalError
 from database import DatabaseHandler
+
 
 class TestDatabaseHandler:
     @pytest.fixture
@@ -13,10 +14,10 @@ class TestDatabaseHandler:
     def test_connect_success(self, mock_sessionmaker, mock_engine, db):
         mock_conn = MagicMock()
         mock_engine.return_value.begin.return_value.__enter__.return_value = mock_conn
-        
+
         assert db.connect() is True
         assert db.Session is not None
-        
+
         # Verify schema creation
         assert mock_conn.execute.call_count >= 1
 
@@ -35,7 +36,7 @@ class TestDatabaseHandler:
         mock_engine.return_value.begin.return_value.__enter__.return_value = MagicMock()
 
         db.log_upload("file.txt", "remote/file.txt", "success")
-        
+
         # Verify execution
         mock_session_inst.execute.assert_called_once()
         mock_session_inst.commit.assert_called_once()
@@ -50,9 +51,9 @@ class TestDatabaseHandler:
 
         # Simulate execute failure
         mock_session_inst.execute.side_effect = Exception("DB Error")
-        
+
         db.log_upload("file.txt", "remote/file.txt", "success")
-        
+
         mock_session_inst.rollback.assert_called_once()
         mock_session_inst.close.assert_called_once()
 
@@ -62,19 +63,19 @@ class TestDatabaseHandler:
         mock_session_inst = MagicMock()
         mock_sessionmaker.return_value = MagicMock(return_value=mock_session_inst)
         db.connect()
-        
+
         # Mock query result
         mock_session_inst.execute.return_value = [
             ("file1.txt",), ("file3.txt",)
         ]
-        
+
         input_files = ["file1.txt", "file2.txt", "file3.txt"]
         result = db.get_uploaded_filenames(input_files)
-        
+
         assert "file1.txt" in result
         assert "file3.txt" in result
         assert "file2.txt" not in result
-        
+
     def test_get_uploaded_filenames_empty(self, db):
         # Should return empty set immediately without connecting
         assert db.get_uploaded_filenames([]) == set()
@@ -90,7 +91,7 @@ class TestDatabaseHandler:
         # Ensure session is None
         db.Session = None
         mock_engine.side_effect = Exception("Conn Fail")
-        
+
         # Should return without crashing
         db.log_upload("file.txt", "remote", "success")
         assert db.Session is None

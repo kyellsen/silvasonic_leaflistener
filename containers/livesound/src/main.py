@@ -1,12 +1,12 @@
+import json
 import logging
 import logging.handlers
-import sys
 import os
-import time
-import json
+import sys
 import threading
-import psutil
+import time
 
+import psutil
 
 os.makedirs("/var/log/silvasonic", exist_ok=True)
 
@@ -36,7 +36,7 @@ def write_status():
     """Writes the Livesound's own heartbeat."""
     STATUS_FILE = "/mnt/data/services/silvasonic/status/livesound.json"
     os.makedirs(os.path.dirname(STATUS_FILE), exist_ok=True)
-    
+
     while True:
         try:
             data = {
@@ -47,19 +47,19 @@ def write_status():
                 "memory_usage_mb": psutil.Process(os.getpid()).memory_info().rss / 1024 / 1024,
                 "pid": os.getpid()
             }
-            
+
             tmp_file = f"{STATUS_FILE}.tmp"
             with open(tmp_file, 'w') as f:
                 json.dump(data, f)
             os.rename(tmp_file, STATUS_FILE)
         except Exception as e:
             logger.error(f"Failed to write livesound status: {e}")
-            
+
         time.sleep(5)
 
 def main():
     logger.info("Starting Silvasonic Livesound...")
-    
+
     # Start Status Thread
     t = threading.Thread(target=write_status, daemon=True)
     t.start()

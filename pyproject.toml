@@ -30,6 +30,8 @@ dev = [
     "sqlalchemy",
     "watchdog",
     "soundfile",
+    "pytest-playwright",
+    "playwright",
 ]
 
 [tool.uv]

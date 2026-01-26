@@ -77,8 +77,7 @@ class DatabaseHandler:
             session.close()
 
     def get_uploaded_filenames(self, filenames: list[str]) -> set[str]:
-        """
-        Check which of the provided filenames have been successfully uploaded.
+        """Check which of the provided filenames have been successfully uploaded.
         Returns a set of filenames that are marked as 'success' in the database.
         """
         if not filenames or not self.Session:
@@ -102,14 +101,14 @@ class DatabaseHandler:
                     WHERE status = 'success' 
                     AND filename IN :filenames
                 """)
-                
+
                 result = session.execute(query, {"filenames": tuple(chunk)})
                 for row in result:
                     uploaded.add(row[0])
-                    
+
         except Exception as e:
             logger.error(f"Failed to check uploaded status: {e}")
         finally:
             session.close()
-            
+
         return uploaded

@@ -75,7 +75,7 @@ class TestClipSaving(unittest.TestCase):
             output_path.parent.mkdir(parents=True, exist_ok=True)
             shutil.copy(input_path, output_path)
             return True
-        
+
         mock_ffmpeg.side_effect = ffmpeg_side_effect
 
         # Mock bn_analyze to write a CSV file to the output directory

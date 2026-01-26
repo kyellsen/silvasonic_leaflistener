@@ -1,22 +1,22 @@
+import asyncio
+import datetime
+import json
 import logging
 import logging.handlers
 import os
 
 # Setup Logging
 import sys
+import threading
+import time
 
+import psutil
 from fastapi import Depends, FastAPI, Form, HTTPException, Request
 from fastapi.responses import FileResponse, HTMLResponse, RedirectResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from src.auth import COOKIE_NAME, SESSION_SECRET, require_auth, verify_credentials
 from starlette.status import HTTP_302_FOUND
-import time
-import datetime
-import json
-import psutil
-import asyncio
-import threading
 
 os.makedirs("/var/log/silvasonic", exist_ok=True)
 logging.basicConfig(
@@ -76,7 +76,7 @@ def write_status():
     """Writes the Dashboard's own heartbeat."""
     STATUS_FILE = "/mnt/data/services/silvasonic/status/dashboard.json"
     os.makedirs(os.path.dirname(STATUS_FILE), exist_ok=True)
-    
+
     while True:
         try:
             data = {
@@ -87,14 +87,14 @@ def write_status():
                 "memory_usage_mb": psutil.Process(os.getpid()).memory_info().rss / 1024 / 1024,
                 "pid": os.getpid()
             }
-            
+
             tmp_file = f"{STATUS_FILE}.tmp"
             with open(tmp_file, 'w') as f:
                 json.dump(data, f)
             os.rename(tmp_file, STATUS_FILE)
         except Exception as e:
             logger.error(f"Failed to write dashboard status: {e}")
-            
+
         time.sleep(5) # Check every 5s
 
 @app.on_event("startup")
@@ -181,15 +181,15 @@ async def dashboard(request: Request, auth=Depends(require_auth)):
     # rec_rate = RecorderService.get_creation_rate(60) # Still useful info? User wants "concrete numbers" for lag.
     # But maybe "Recorder" status needs a metric? Maybe "Active" or files last hour.
     # Let's keep one rate for Recorder as "Heartbeat", but show Lag for others.
-    
+
     # 1. Get Cursors
     latest_processed = await BirdNetService.get_latest_processed_filename()
     latest_uploaded = await CarrierService.get_latest_uploaded_filename()
-    
+
     # 2. Calculate Lag (Files waiting)
     analyzer_lag = RecorderService.count_files_after(latest_processed)
     uploader_lag = RecorderService.count_files_after(latest_uploaded)
-    
+
     # Status Logic (Thresholds)
     # 0-2 files: OK
     # 3-10: Pending
@@ -206,7 +206,7 @@ async def dashboard(request: Request, auth=Depends(require_auth)):
         "analyzer_status": get_status(analyzer_lag),
         "uploader_status": get_status(uploader_lag)
     }
-        
+
     # Define Sort Order & Display Names
     # Order: Liveaudio, Recorder, Uploader, BirdNet, Dashboard, PostgressDB, HealthChecker
     container_config = [
@@ -218,9 +218,9 @@ async def dashboard(request: Request, auth=Depends(require_auth)):
         {"key": "postgres", "name": "PostgressDB"},
         {"key": "healthchecker", "name": "HealthChecker"},
     ]
-    
+
     containers = []
-    
+
     # helper to find container by fuzzy key
     def find_container(key_fragment, source_dict):
         for k, v in source_dict.items():
@@ -233,7 +233,7 @@ async def dashboard(request: Request, auth=Depends(require_auth)):
         c = raw_containers.get(config["key"])
         if not c:
             c = find_container(config["key"], raw_containers)
-        
+
         # If still not found, create a placeholder so the order is preserved
         if not c:
              c = {
@@ -250,7 +250,7 @@ async def dashboard(request: Request, auth=Depends(require_auth)):
 
     # Add any others that weren't in the config?
     # Logic: simple Reorder.
-    
+
     # Let's just pass the sorted list.
     containers_sorted = containers
 
@@ -271,8 +271,8 @@ async def dashboard(request: Request, auth=Depends(require_auth)):
         "status_color": "text-green-600 dark:text-green-400",
         "auto_refresh_interval": 5
     })
-    
-    
+
+
 @app.get("/api/events/system")
 async def sse_system_status(request: Request, auth=Depends(require_auth)):
     if isinstance(auth, RedirectResponse): return auth
@@ -281,10 +281,10 @@ async def sse_system_status(request: Request, auth=Depends(require_auth)):
         # Watch system_status.json for changes
         status_file = "/mnt/data/services/silvasonic/status/system_status.json"
         dashboard_stats_file = "/mnt/data/services/silvasonic/status/dashboard.json" # Watch this too as it has disk stats
-        
+
         last_mtime = 0
         last_dash_mtime = 0
-        
+
         while True:
             # Check if client disconnected
             if await request.is_disconnected():
@@ -292,26 +292,26 @@ async def sse_system_status(request: Request, auth=Depends(require_auth)):
 
             try:
                 changed = False
-                
+
                 # Check System Status File
                 if os.path.exists(status_file):
                     mtime = os.path.getmtime(status_file)
                     if mtime > last_mtime:
                         last_mtime = mtime
                         changed = True
-                
+
                 # Check Dashboard Stats File (Disk usage)
                 if os.path.exists(dashboard_stats_file):
                     mtime = os.path.getmtime(dashboard_stats_file)
                     if mtime > last_dash_mtime:
                         last_dash_mtime = mtime
                         changed = True # Update if disk stats change
-                
+
                 if changed:
                     # Logic duplicated from dashboard route (refactor ideally, but inline for now is robust)
                     stats = SystemService.get_stats() # Fresh stats
                     raw_containers = HealthChecker.get_system_metrics()
-                    
+
                     # Construct Containers List (Same logic as dashboard view)
                     container_config = [
                         {"key": "livesound", "name": "Liveaudio"},
@@ -323,7 +323,7 @@ async def sse_system_status(request: Request, auth=Depends(require_auth)):
                         {"key": "healthchecker", "name": "HealthChecker"},
                     ]
                     containers = []
-                    
+
                     for config in container_config:
                         c = raw_containers.get(config["key"])
                         if not c:
@@ -332,14 +332,14 @@ async def sse_system_status(request: Request, auth=Depends(require_auth)):
                                  if config["key"] in k:
                                      c = v
                                      break
-                        
+
                         if not c:
                              c = {"id": config["key"], "display_name": config["name"], "status": "Down", "message": "Not Reported"}
 
                         c_copy = c.copy()
                         c_copy["display_name"] = config["name"]
                         containers.append(c_copy)
-                        
+
                     # Render Partial
                     # We render the PARTIAL 'partials/system_overview.html'
                     # We must pass 'containers' and 'stats' as context
@@ -347,20 +347,20 @@ async def sse_system_status(request: Request, auth=Depends(require_auth)):
                         containers=containers,
                         stats=stats
                     )
-                    
+
                     # Remove newlines for SSE safety (one line per data) - actually spec allows multi-line data if prefixed
                     # But htmx expects the payload.
                     # SSE Format:
                     # event: message
                     # data: <html>...</html>
                     # \n
-                    
-                    # Escape newlines in data is properly handled if we prefix every line with data: 
+
+                    # Escape newlines in data is properly handled if we prefix every line with data:
                     # But simplest is to compact it or just let stream_response handle it?
                     # No, we must format manually as per SSE spec or use sse-starlette.
                     # Manual implementation:
-                    
-                    yield f"event: system-overview\n"
+
+                    yield "event: system-overview\n"
                     # Handle multiline data
                     for line in content.splitlines():
                         yield f"data: {line}\n"
@@ -368,7 +368,7 @@ async def sse_system_status(request: Request, auth=Depends(require_auth)):
 
             except Exception as e:
                 logger.error(f"SSE Error: {e}")
-                
+
             await asyncio.sleep(1) # Check frequency (Internal loop) faster than poll
 
     return StreamingResponse(event_generator(), media_type="text/event-stream")
@@ -656,7 +656,7 @@ async def livesound_page(request: Request, auth=Depends(require_auth)):
 
     # No stats needed for pure live stream page initially
     # If we want livesound container stats, we could fetch them, but for now just render UI
-    
+
     return render(request, "livesound.html", {
         "request": request,
         "page": "livesound",
@@ -733,16 +733,16 @@ async def export_birdnet_csv(auth=Depends(require_auth)):
     async def iter_csv():
         # Header
         yield "Date,Time,Scientific Name,Common Name,Confidence,Start (s),End (s),Filename\n"
-        
+
         # Rows
         iterator = BirdNetStatsService.get_all_detections_cursor()
         async for row in iterator:
             # Format fields
             ts = row.get('timestamp')
-            
+
             date_str = ts.strftime("%Y-%m-%d") if ts else ""
             time_str = ts.strftime("%H:%M:%S") if ts else ""
-            
+
             sci = (row.get('scientific_name') or '').replace(',', ' ') # Simple CSV escape
             com = (row.get('common_name') or '').replace(',', ' ')
             conf = f"{row.get('confidence', 0.0):.2f}"
@@ -769,7 +769,7 @@ async def get_logs(service: str, lines: int = 200, auth=Depends(require_auth)):
     if isinstance(auth, RedirectResponse): raise HTTPException(401)
 
     log_file = os.path.join(LOG_DIR, f"{service}.log")
-    
+
     if not os.path.exists(log_file):
         return {"content": f"Log file for {service} not found so far (waiting for creation)..."}
 
@@ -778,13 +778,13 @@ async def get_logs(service: str, lines: int = 200, auth=Depends(require_auth)):
         # For very large files, this might be inefficient, but log rotation keeps them sane (10MB-ish?)
         # Actually TimedRotatingFileHandler doesn't guarantee size, but we can assume reasonable checks.
         # Efficient tailing using seek is better.
-        
+
         import aiofiles
-        async with aiofiles.open(log_file, mode='r') as f:
+        async with aiofiles.open(log_file) as f:
             # Quick & Dirty: Read all lines? No, might be huge.
-            # Seek to end and back up? 
+            # Seek to end and back up?
             # Subprocess tail is actually safest for large files on Linux.
-            
+
             # Using tail command is robust
             proc = await asyncio.create_subprocess_exec(
                 "tail", "-n", str(lines), log_file,
@@ -792,10 +792,10 @@ async def get_logs(service: str, lines: int = 200, auth=Depends(require_auth)):
                 stderr=asyncio.subprocess.PIPE
             )
             stdout, stderr = await proc.communicate()
-            
+
             if proc.returncode != 0:
                  return {"content": f"Error reading logs: {stderr.decode()}"}
-            
+
             return {"content": stdout.decode(errors='replace')}
 
     except Exception as e:

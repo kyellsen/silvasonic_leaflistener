@@ -2,8 +2,8 @@ import logging
 
 # Setup logging to stdout
 import logging.handlers
-import sys
 import os
+import sys
 
 from src.watcher import WatcherService
 

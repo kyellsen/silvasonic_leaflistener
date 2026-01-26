@@ -1,5 +1,6 @@
-from PIL import Image
 import os
+
+from PIL import Image
 
 base_dir = "/mnt/data/dev/packages/silvasonic/containers/dashboard/src/static/images"
 # 1. Process Background Image
@@ -28,7 +29,7 @@ try:
             # Max width 500px is plenty for a 20rem or 80px display
             if img.width > 800:
                 img.thumbnail((800, 800))
-            
+
             img.save(logo_target, "WEBP", quality=95)
             print(f"Logo converted and saved to {logo_target}")
     else:

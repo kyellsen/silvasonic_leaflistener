@@ -139,6 +139,7 @@ services:
 
     ports:
       - "8000:8000"
+      - "1234:1234/udp"
 
     # Live streaming needs responsive CPU, but shouldn't eat 100%
     cpu_shares: 512

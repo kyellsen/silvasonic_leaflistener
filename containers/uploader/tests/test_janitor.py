@@ -1,8 +1,10 @@
 import os
 import time
-import pytest
 from unittest.mock import MagicMock, patch
+
+import pytest
 from janitor import StorageJanitor
+
 
 class TestStorageJanitor:
     @pytest.fixture
@@ -24,7 +26,7 @@ class TestStorageJanitor:
         janitor.check_and_clean({}, mock_usage)
         # Usage was called
         mock_usage.assert_called_once()
-        
+
     def test_cleanup_trigger(self, janitor, temp_fs):
         # Create 3 files: older, old, new
         f1 = self.create_file(temp_fs, "old.flac", age_offset=300)
@@ -76,46 +78,46 @@ class TestStorageJanitor:
 
     def test_remote_size_zero_check(self, janitor, temp_fs):
         f1 = self.create_file(temp_fs, "bad_upload.flac", size=1024, age_offset=300)
-        
+
         # Remote says size is 0
         remote_files = {
             "bad_upload.flac": 0
         }
-        
+
         mock_usage = MagicMock(return_value=90.0)
-        
+
         janitor.check_and_clean(remote_files, mock_usage)
-        
+
         assert os.path.exists(f1), "File should not be deleted if remote size is 0"
 
     def test_list_local_files_handles_file_not_found(self, janitor, temp_fs):
         # This is hard to trigger with real FS as it happens between os.walk and os.stat
         # So we mock os.walk and os.stat
-        
+
         with patch('os.walk') as mock_walk, \
              patch('os.stat') as mock_stat:
-             
+
             mock_walk.return_value = [('/root', [], ['ghost.file'])]
             mock_stat.side_effect = FileNotFoundError
-            
+
             files = janitor._list_local_files()
             assert len(files) == 0
 
     def test_exception_during_deletion(self, janitor, temp_fs, caplog):
         # Create a file
         f1 = self.create_file(temp_fs, "readonly.flac", age_offset=300)
-        
+
         remote_files = {"readonly.flac": 1024}
         mock_usage = MagicMock(return_value=90.0)
-        
+
         # Mock os.remove to fail
         with patch('os.remove') as mock_remove:
             mock_remove.side_effect = PermissionError("Access denied")
-            
+
             # Using logs to verify error logging
             with caplog.at_level('ERROR'):
                 janitor.check_and_clean(remote_files, mock_usage)
-                
+
             assert "Failed to delete" in caplog.text
             # File 'exists' (mocked remove didn't happen)
             assert os.path.exists(f1)
