@@ -18,7 +18,9 @@ COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
 COPY pyproject.toml .
 ENV VIRTUAL_ENV=/app/.venv
 ENV PATH="/app/.venv/bin:$PATH"
-RUN uv venv && uv pip install --no-cache .
+RUN uv venv && \
+    uv pip compile pyproject.toml -o requirements.txt && \
+    uv pip install --no-cache -r requirements.txt
 
 # --- Final Stage ---
 FROM python:3.11-slim-bookworm

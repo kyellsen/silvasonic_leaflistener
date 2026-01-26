@@ -96,66 +96,50 @@ sudo ./setup/bootstrap/prepare_stick.sh
 
 ---
 
-### Schritt 5: Installation & Repo (Workstation)
+### Schritt 5: Installation & Sync (Workstation)
 
-Zurück auf deinem Rechner. Dieses Script verbindet sich per SSH, **klont das Repo** und richtet alles ein.
+Zurück auf deinem Rechner. Dieses Script verbindet sich per SSH, **synchronisiert dein lokales Repository** auf den Pi und startet alles.
 
 ```bash
 cd ~/dev/silvasonic
 ./setup/install.sh
 ```
 
-_Das Script installiert Podman, richtet Verzeichnisse ein und klont den Code nach `/mnt/data/dev/silvasonic`._
+**Was passiert:**
+
+1. Installations-Pakete werden auf dem Pi eingerichtet.
+2. Dein lokaler Code wird nach `/mnt/data/dev/silvasonic` gesynct (via `rsync`).
+3. Die Container-Images werden direkt auf dem Pi gebaut (via Podman, Python 3.11).
+4. Der `silvasonic.service` wird aktiviert und gestartet.
 
 ---
 
----
+### Schritt 6: Konfiguration (Optional)
 
-### Schritt 6: Uploader (Cloud Sync) Konfiguration
-
-Damit deine Aufnahmen automatisch hochgeladen werden, musst du die `.env` Datei konfigurieren.
-
-1. **Konfigurations-Datei erstellen**:
-
-   ```bash
-   # Auf dem Pi:
-   cd /mnt/data/dev/silvasonic
-   cp config.example.env .env
-   ```
-
-2. **Zugangsdaten eintragen**:
-   Öffne die Datei und trage deine Nextcloud-URL, Benutzer und App-Passwort ein:
-
-   ```bash
-   nano .env
-   ```
-
-   ```ini
-   UPLOADER_NEXTCLOUD_URL=https://deine-nextcloud.de/remote.php/webdav/
-   UPLOADER_NEXTCLOUD_USER=dein_nutzer
-   UPLOADER_NEXTCLOUD_PASSWORD=dein_app_passwort
-   UPLOADER_TARGET_DIR=silvasonic
-   ```
-
----
-
-### 🏁 Fertig! Container starten
-
-Dein Silvasonic ist bereit.
+Da wir die Config oft schon lokal vorbereiten, ist dieser Schritt meist optional.
+Falls du Geheimnisse (Nextcloud Passwort) ändern willst:
 
 ```bash
-# 1. Auf den Pi verbinden
 ssh admin@silvasonic.local
-
-# 2. In das geklonte Repo wechseln
-cd /mnt/data/dev/silvasonic
-
-# 3. Starten
-sudo podman-compose -f podman-compose.yml up --build -d
-
-# 4. Logs prüfen
-sudo podman logs -f silvasonic_recorder
+nano /mnt/data/dev/silvasonic/.env
+sudo systemctl restart silvasonic
 ```
+
+---
+
+### 🏁 Fertig!
+
+Dein Silvasonic läuft bereits (als System-Service).
+
+**Logs prüfen:**
+
+```bash
+ssh admin@silvasonic.local
+journalctl -fu silvasonic
+```
+
+**Dashboard aufrufen:**
+Öffne `http://silvasonic.local:8080` in deinem Browser.
 
 > **Dashboard aufrufen:**
 > Öffne `http://silvasonic.local:8080` in deinem Browser.

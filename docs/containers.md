@@ -13,7 +13,7 @@ The Silvasonic architecture is designed around resiliency. The system is split i
   - Writes compressed **.flac** files to the NVMe SSD (`/mnt/data/services/silvasonic/recorder/recordings`).
 - **Why separate?**: This container is "sacred". It must never crash or be stopped, even if the dashboard fails or the network hangs.
 
-## 2. Carrier
+## 2. Uploader (formerly Carrier)
 
 **Role:** Data Sync & Transport
 **Status:** Low priority background process
@@ -23,14 +23,15 @@ The Silvasonic architecture is designed around resiliency. The system is split i
 - **Mounts**: Mounts the storage directory with managed access to prevent accidental deletion or corruption by the sync process.
 - **Why separate?**: Network operations can be resource-intensive or hang. Isolating this ensures that a stuck upload doesn't block the recording loop.
 
-## 3. LiveSound
+## 3. Livesound (formerly SoundAnalyser)
 
-**Role:** Specialized Analysis
+**Role:** Specialized Analysis & Live Streaming
 **Status:** Standard priority
 
-- **Function**: Framework for running additional or custom acoustic analysis beyond BirdNET (e.g., bats).
+- **Function**: Framework for live streaming audio and running custom acoustic analysis.
+- **Config**: Exposes port 8000 for live stream access.
 
-## 4. Birdnet
+## 4. BirdNET
 
 **Role:** Species Classification
 **Status:** Standard priority
@@ -42,17 +43,12 @@ The Silvasonic architecture is designed around resiliency. The system is split i
   - Stores results in the internal database.
 - **Why separate?**: Inference is CPU/RAM heavy. It must run decoupled from the recording loop.
 
-## 5. Weather
+## 5. Weather (Disabled)
 
 **Role:** Environmental Monitoring
-**Status:** Background Service
+**Status:** Disabled in default config.
 
-- **Function**: Fetches local weather data (temperature, humidity, wind) to provide context for detections.
-- **Operation**:
-  - Periodically polls external APIs or local sensors.
-  - Stores historical weather data for correlation analysis.
-
-## 6. PostgressDB
+## 6. Database (PostgreSQL)
 
 **Role:** Central Storage
 **Status:** Service

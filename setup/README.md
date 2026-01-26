@@ -107,9 +107,9 @@ sudo poweroff
 > [!IMPORTANT]
 > Dieses Script läuft auf deiner **Workstation** und:
 >
-> 1. Verbindet sich via SSH zum Pi
-> 2. **Klont das Repo von GitHub**
-> 3. Installiert alle Pakete und konfiguriert das System
+> 1. Verbindet sich via SSH zum Pi.
+> 2. **Synchronisiert dein lokales Repo** auf den Pi (kein Git Clone mehr!).
+> 3. Installiert Pakete, baut Images und startet den Service.
 
 ### 3.1) Install-Script ausführen
 
@@ -120,54 +120,34 @@ cd ~/dev/silvasonic
 
 **Was passiert:**
 
-- System-Update
-- Pakete installieren (Podman, Git, etc.)
-- **Repo klonen nach `/mnt/data/dev/silvasonic`**
-- Storage-Struktur anlegen
-- WiFi konfigurieren (falls in config.env gesetzt)
-
-### 3.2) Pi neustarten
-
-```bash
-ssh admin@silvasonic.local 'sudo reboot'
-```
+- System-Update & Paket-Installation.
+- **Sync**: Dein lokaler Ordner `~/dev/silvasonic` -> Pi `/mnt/data/dev/silvasonic`.
+- **Build**: Container Images werden gebaut (optimiert).
+- **Start**: `silvasonic.service` bootet den Stack.
 
 ---
 
-## Phase 4: Container starten
+## Phase 4: Überprüfung
+
+Da der Service automatisch startet:
 
 ```bash
 ssh admin@silvasonic.local
-cd /mnt/data/dev/silvasonic
-sudo podman-compose -f podman-compose.yml up --build -d
-sudo podman logs -f silvasonic_ear
-```
-
-Mehr Details: [docs/deployment.md](../docs/deployment.md)
-
----
-
-## Updates
-
-Da das Repo von GitHub geklont wurde:
-
-```bash
-cd /mnt/data/dev/silvasonic
-git pull
-sudo podman-compose down
-sudo podman-compose up --build -d
+journalctl -fu silvasonic
 ```
 
 ---
 
-## Re-Provisioning
+## Updates & Deployment
 
-Bei Änderungen an der Infrastruktur:
+Du entwickelst lokal? Einfach erneut ausführen:
 
 ```bash
 # Von der Workstation
 ./setup/install.sh
 ```
+
+Das Script synchronisiert nur die Änderungen (`rsync`), baut ggf. Container neu und startet den Service durch. **Dies ist der empfohlene Deployment-Weg.**
 
 Ansible ist idempotent – es werden nur Änderungen angewendet.
 

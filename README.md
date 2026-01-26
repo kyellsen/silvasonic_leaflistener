@@ -60,7 +60,8 @@ Silvasonic uses a containerized "Mirror Infrastructure" ensuring that audio capt
 - **healthchecker**: System Monitoring & Alerts
 - **birdnet**: Bird Species Analysis
 - **dashboard**: User Interface
-- **sound_analyser**: Specialized Acoustic Analysis
+- **livesound**: Specialized Acoustic Analysis (Live Streaming)
+- **db**: Central Database
 
 [View Container Strategy](docs/containers.md)
 [View Data Flow & Storage](docs/data_flow.md)
