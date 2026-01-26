@@ -1,6 +1,6 @@
 import os
 
-from sqlalchemy.ext.asyncio import create_async_engine
+from sqlalchemy.ext.asyncio import AsyncConnection, create_async_engine
 
 
 class DatabaseHandler:
@@ -15,7 +15,7 @@ class DatabaseHandler:
         self.engine = create_async_engine(self.db_url, pool_pre_ping=True)
         # self.Session = sessionmaker(bind=self.engine) # We primarily use direct connection in this legacy code
 
-    def get_connection(self):
+    def get_connection(self) -> AsyncConnection:
         return self.engine.connect()
 
 

@@ -1,4 +1,6 @@
 from playwright.sync_api import Page, expect
+import playwright._impl._errors
+import pytest
 
 # Config
 BASE_URL = "http://localhost:8080"  # Dashboard Port
@@ -7,9 +9,18 @@ BASE_URL = "http://localhost:8080"  # Dashboard Port
 # Credentials are in .env usually, but default is admin/silvasonic
 
 
+
+
+
 def login(page: Page):
     """Log in to the dashboard."""
-    page.goto(f"{BASE_URL}/auth/login")
+    try:
+        page.goto(f"{BASE_URL}/auth/login")
+    except playwright._impl._errors.Error as e:
+        if "ERR_CONNECTION_REFUSED" in str(e):
+            pytest.skip("Dashboard not running (Connection Refused)")
+        raise e
+
     if "login" in page.url:
         page.fill("input[name='username']", "admin")
         page.fill("input[name='password']", "silvasonic")  # Default

@@ -6,8 +6,8 @@ import unittest
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
-# Add src to path
-sys.path.append(os.path.join(os.path.dirname(__file__), "src"))
+# Add container root to path so we can do 'from src...'
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__))))
 
 # Mock config and database before importing analyzer
 sys.modules["src.database"] = MagicMock()

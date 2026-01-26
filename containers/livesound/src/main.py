@@ -33,8 +33,8 @@ logger = logging.getLogger("Main")
 
 def write_status():
     """Writes the Livesound's own heartbeat."""
-    STATUS_FILE = "/mnt/data/services/silvasonic/status/livesound.json"
-    os.makedirs(os.path.dirname(STATUS_FILE), exist_ok=True)
+    status_file = "/mnt/data/services/silvasonic/status/livesound.json"
+    os.makedirs(os.path.dirname(status_file), exist_ok=True)
 
     while True:
         try:
@@ -47,10 +47,10 @@ def write_status():
                 "pid": os.getpid(),
             }
 
-            tmp_file = f"{STATUS_FILE}.tmp"
+            tmp_file = f"{status_file}.tmp"
             with open(tmp_file, "w") as f:
                 json.dump(data, f)
-            os.rename(tmp_file, STATUS_FILE)
+            os.rename(tmp_file, status_file)
         except Exception as e:
             logger.error(f"Failed to write livesound status: {e}")
 

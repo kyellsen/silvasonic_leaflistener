@@ -8,7 +8,10 @@ logger = logging.getLogger(__name__)
 
 
 class DatabaseHandler:
+    """Handles database connections and operations for the uploader."""
+
     def __init__(self):
+        """Initialize the DatabaseHandler."""
         self.user = os.getenv("POSTGRES_USER", "silvasonic")
         self.password = os.getenv("POSTGRES_PASSWORD", "silvasonic")
         self.db_name = os.getenv("POSTGRES_DB", "silvasonic")
@@ -45,7 +48,8 @@ class DatabaseHandler:
                 )
                 conn.execute(
                     text(
-                        "CREATE INDEX IF NOT EXISTS idx_uploads_time ON carrier.uploads(upload_time DESC);"
+                        "CREATE INDEX IF NOT EXISTS idx_uploads_time ON "
+                        "carrier.uploads(upload_time DESC);"
                     )
                 )
                 conn.execute(
@@ -79,7 +83,8 @@ class DatabaseHandler:
         session = self.Session()
         try:
             query = text("""
-                INSERT INTO carrier.uploads (filename, remote_path, status, size_bytes, error_message)
+                INSERT INTO carrier.uploads
+                (filename, remote_path, status, size_bytes, error_message)
                 VALUES (:filename, :remote_path, :status, :size_bytes, :error_message)
             """)
             session.execute(
@@ -101,6 +106,7 @@ class DatabaseHandler:
 
     def get_uploaded_filenames(self, filenames: list[str]) -> set[str]:
         """Check which of the provided filenames have been successfully uploaded.
+
         Returns a set of filenames that are marked as 'success' in the database.
         """
         if not filenames or not self.Session:
@@ -121,8 +127,8 @@ class DatabaseHandler:
                     continue
 
                 query = text("""
-                    SELECT filename FROM carrier.uploads 
-                    WHERE status = 'success' 
+                    SELECT filename FROM carrier.uploads
+                    WHERE status = 'success'
                     AND filename IN :filenames
                 """)
 

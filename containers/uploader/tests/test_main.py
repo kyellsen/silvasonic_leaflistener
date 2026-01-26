@@ -1,15 +1,10 @@
 import json
 import os
-import sys
 from unittest.mock import ANY, patch
 
 import pytest
 
 # Ensure local src is used directly to avoid namespace collision with 'src' from other containers
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../src")))
-
-import main
-from main import calculate_queue_size, report_error, write_status
 
 
 class TestMain:
@@ -17,6 +12,8 @@ class TestMain:
 
     def test_calculate_queue_size(self, temp_fs, mock_db):
         """Test queue size calculation with some uploaded and some pending files."""
+        from main import calculate_queue_size
+
         # Create some files
         os.makedirs(os.path.join(temp_fs, "subdir"))
         with open(os.path.join(temp_fs, "file1.txt"), "w") as f:
@@ -38,6 +35,8 @@ class TestMain:
 
     def test_calculate_queue_size_empty(self, temp_fs, mock_db):
         """Test queue size is 0 when directory is empty."""
+        from main import calculate_queue_size
+
         queue_size = calculate_queue_size(temp_fs, mock_db)
         assert queue_size == 0
         mock_db.get_uploaded_filenames.assert_not_called()
@@ -48,6 +47,8 @@ class TestMain:
         # Or mock os.walk
         with patch("os.walk") as mock_walk:
             mock_walk.side_effect = Exception("Walk Error")
+            from main import calculate_queue_size
+
             queue_size = calculate_queue_size(temp_fs, mock_db)
             assert queue_size == 0
 
@@ -58,6 +59,8 @@ class TestMain:
         status_path = os.path.join(temp_fs, "status.json")
 
         with patch("main.STATUS_FILE", status_path):
+            from main import write_status
+
             write_status("Testing", last_upload=123.0, queue_size=5, disk_usage=45.0)
 
             assert os.path.exists(status_path)
@@ -80,6 +83,8 @@ class TestMain:
             try:
                 raise ValueError("Test Error")
             except ValueError as e:
+                from main import report_error
+
                 report_error("test_context", e)
 
             files = os.listdir(error_dir)
@@ -91,7 +96,7 @@ class TestMain:
             assert "Test Error" in data["error"]
 
     @patch("main.setup_environment")
-    @patch("database.DatabaseHandler")
+    @patch("src.database.DatabaseHandler")
     @patch("main.RcloneWrapper")
     @patch("main.StorageJanitor")
     @patch("time.sleep")
@@ -110,8 +115,12 @@ class TestMain:
 
         mock_wrapper.copy.return_value = True  # Success
 
+        mock_wrapper.copy.return_value = True  # Success
+
         # Run main
         # We need to patch SOURCE_DIR and constants locally
+        import main
+
         with (
             patch("main.SOURCE_DIR", temp_fs),
             patch("main.NEXTCLOUD_URL", "http://url"),
@@ -134,7 +143,7 @@ class TestMain:
         mock_janitor_inst.check_and_clean.assert_called()
 
     @patch("main.setup_environment")
-    @patch("database.DatabaseHandler")
+    @patch("src.database.DatabaseHandler")
     @patch("main.RcloneWrapper")
     @patch("main.StorageJanitor")
     @patch("time.sleep")
@@ -154,6 +163,8 @@ class TestMain:
             patch("main.NEXTCLOUD_PASSWORD", "pass"),
         ):
             try:
+                import main
+
                 main.main()
             except SystemExit:
                 pass
@@ -164,7 +175,7 @@ class TestMain:
     def test_upload_callback(self, mock_db):
         """Test the upload callback function logging to the database."""
         with (
-            patch("database.DatabaseHandler") as mock_db_cls,
+            patch("src.database.DatabaseHandler") as mock_db_cls,
             patch("main.RcloneWrapper") as mock_rclone,
             patch("main.StorageJanitor"),
             patch("time.sleep", side_effect=SystemExit),
@@ -172,6 +183,8 @@ class TestMain:
             patch("main.setup_environment"),
         ):
             try:
+                import main
+
                 main.main()
             except SystemExit:
                 pass
@@ -219,7 +232,7 @@ class TestMain:
         mock_logging.basicConfig.assert_called_once()
 
     @patch("main.setup_environment")
-    @patch("database.DatabaseHandler")
+    @patch("src.database.DatabaseHandler")
     @patch("main.RcloneWrapper")
     @patch("main.StorageJanitor")
     @patch("time.sleep")
@@ -240,6 +253,8 @@ class TestMain:
 
         with patch("main.SOURCE_DIR", temp_fs), patch("main.report_error") as mock_report:
             try:
+                import main
+
                 main.main()
             except SystemExit:
                 pass

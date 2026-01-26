@@ -1,17 +1,31 @@
 from unittest.mock import MagicMock, patch
 
 import pytest
-from database import DatabaseHandler
 
 
 class TestDatabaseHandler:
+    """Tests for DatabaseHandler."""
+
     @pytest.fixture
     def db(self, mock_env):
-        return DatabaseHandler()
+        """Fixture for DatabaseHandler."""
+        import importlib.util
+        import os
+        import sys
+        
+        # Load uploader/src/database.py directly
+        db_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "../src/database.py"))
+        spec = importlib.util.spec_from_file_location("uploader_database", db_path)
+        uploader_database = importlib.util.module_from_spec(spec)
+        sys.modules["uploader_database"] = uploader_database
+        spec.loader.exec_module(uploader_database)
+        
+        return uploader_database.DatabaseHandler()
 
-    @patch("database.create_engine")
-    @patch("database.sessionmaker")
+    @patch("uploader_database.create_engine")
+    @patch("uploader_database.sessionmaker")
     def test_connect_success(self, mock_sessionmaker, mock_engine, db):
+        """Test successful connection and database initialization."""
         mock_conn = MagicMock()
         mock_engine.return_value.begin.return_value.__enter__.return_value = mock_conn
 
@@ -21,15 +35,17 @@ class TestDatabaseHandler:
         # Verify schema creation
         assert mock_conn.execute.call_count >= 1
 
-    @patch("database.create_engine")
+    @patch("uploader_database.create_engine")
     def test_connect_failure(self, mock_engine, db):
+        """Test connection failure handling."""
         mock_engine.side_effect = Exception("Connection Failed")
         assert db.connect() is False
         assert db.Session is None
 
-    @patch("database.create_engine")
-    @patch("database.sessionmaker")
+    @patch("uploader_database.create_engine")
+    @patch("uploader_database.sessionmaker")
     def test_log_upload_auto_connect(self, mock_sessionmaker, mock_engine, db):
+        """Test that log_upload connects if session is missing."""
         # Ensure connect() is called if Session is None
         mock_session_inst = MagicMock()
         mock_sessionmaker.return_value = MagicMock(return_value=mock_session_inst)
@@ -42,9 +58,10 @@ class TestDatabaseHandler:
         mock_session_inst.commit.assert_called_once()
         mock_session_inst.close.assert_called_once()
 
-    @patch("database.create_engine")
-    @patch("database.sessionmaker")
+    @patch("uploader_database.create_engine")
+    @patch("uploader_database.sessionmaker")
     def test_log_upload_rollback_on_error(self, mock_sessionmaker, mock_engine, db):
+        """Test rollback on log_upload error."""
         mock_session_inst = MagicMock()
         mock_sessionmaker.return_value = MagicMock(return_value=mock_session_inst)
         db.connect()
@@ -57,9 +74,10 @@ class TestDatabaseHandler:
         mock_session_inst.rollback.assert_called_once()
         mock_session_inst.close.assert_called_once()
 
-    @patch("database.create_engine")
-    @patch("database.sessionmaker")
+    @patch("uploader_database.create_engine")
+    @patch("uploader_database.sessionmaker")
     def test_get_uploaded_filenames(self, mock_sessionmaker, mock_engine, db):
+        """Test retrieval of uploaded filenames."""
         mock_session_inst = MagicMock()
         mock_sessionmaker.return_value = MagicMock(return_value=mock_session_inst)
         db.connect()
@@ -75,17 +93,20 @@ class TestDatabaseHandler:
         assert "file2.txt" not in result
 
     def test_get_uploaded_filenames_empty(self, db):
+        """Test get_uploaded_filenames with empty list."""
         # Should return empty set immediately without connecting
         assert db.get_uploaded_filenames([]) == set()
         assert db.Session is None
 
-    @patch("database.create_engine")
+    @patch("uploader_database.create_engine")
     def test_get_uploaded_filenames_connection_fail(self, mock_engine, db):
+        """Test get_uploaded_filenames when connection fails."""
         mock_engine.side_effect = Exception("Conn Fail")
         assert db.get_uploaded_filenames(["file.txt"]) == set()
 
-    @patch("src.database.create_engine")
+    @patch("uploader_database.create_engine")
     def test_log_upload_connection_fail(self, mock_engine, db):
+        """Test log_upload when connection fails."""
         # Ensure session is None
         db.Session = None
         mock_engine.side_effect = Exception("Conn Fail")

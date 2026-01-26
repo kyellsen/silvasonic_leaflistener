@@ -3,6 +3,7 @@ import logging
 import os
 import subprocess
 import time
+from collections.abc import Callable
 
 logger = logging.getLogger(__name__)
 
@@ -15,7 +16,7 @@ class RcloneWrapper:
         # Ensure config directory exists
         os.makedirs(os.path.dirname(config_path), exist_ok=True)
 
-    def configure_webdav(self, remote_name: str, url: str, user: str, password: str):
+    def configure_webdav(self, remote_name: str, url: str, user: str, password: str) -> None:
         """Configures a remote using 'rclone config create'."""
         logger.info(f"Configuring remote '{remote_name}' for WebDAV...")
 
@@ -45,9 +46,15 @@ class RcloneWrapper:
             raise
 
     def sync(
-        self, source: str, dest: str, transfers: int = 4, checkers: int = 8, callback=None
+        self,
+        source: str,
+        dest: str,
+        transfers: int = 4,
+        checkers: int = 8,
+        callback: Callable | None = None,
     ) -> bool:
         """Runs the sync command and streams output.
+
         Returns True if successful, False otherwise.
         """
         cmd = [
@@ -72,10 +79,11 @@ class RcloneWrapper:
         dest: str,
         transfers: int = 4,
         checkers: int = 8,
-        min_age: str = None,
-        callback=None,
+        min_age: str | None = None,
+        callback: Callable | None = None,
     ) -> bool:
         """Runs the copy command (additive only) and streams output.
+
         Returns True if successful, False otherwise.
         """
         cmd = [
@@ -97,7 +105,9 @@ class RcloneWrapper:
 
         return self._run_transfer(cmd, source, dest, callback=callback)
 
-    def _run_transfer(self, cmd: list, source: str, dest: str, callback=None) -> bool:
+    def _run_transfer(
+        self, cmd: list[str], source: str, dest: str, callback: Callable | None = None
+    ) -> bool:
         """Helper to run transfer commands and stream logs. Returns True on success."""
         logger.info(f"Starting transfer: {source} -> {dest}")
         start_time = time.time()
@@ -121,34 +131,35 @@ class RcloneWrapper:
 
             output_buffer = []
 
-            # Stream logs line by line
-            for line in process.stdout:
-                line = line.strip()
-                if line:
-                    logger.debug(f"[Rclone] {line}")
-                    output_buffer.append(line)
-                    # Keep buffer size manageable (e.g., last 100 lines)
-                    if len(output_buffer) > 100:
-                        output_buffer.pop(0)
+            if process.stdout:
+                # Stream logs line by line
+                for line in process.stdout:
+                    line = line.strip()
+                    if line:
+                        logger.debug(f"[Rclone] {line}")
+                        output_buffer.append(line)
+                        # Keep buffer size manageable (e.g., last 100 lines)
+                        if len(output_buffer) > 100:
+                            output_buffer.pop(0)
 
-                    # Callback parsing
-                    if callback:
-                        try:
-                            # Check Success
-                            m_ok = re_success.search(line)
-                            if m_ok:
-                                filename = m_ok.group(1).strip()
-                                callback(filename, "success")
-                                continue
+                        # Callback parsing
+                        if callback:
+                            try:
+                                # Check Success
+                                m_ok = re_success.search(line)
+                                if m_ok:
+                                    filename = m_ok.group(1).strip()
+                                    callback(filename, "success")
+                                    continue
 
-                            # Check Error
-                            m_err = re_error.search(line)
-                            if m_err:
-                                filename = m_err.group(1).strip()
-                                err_msg = m_err.group(2).strip()
-                                callback(filename, "failed", error=err_msg)
-                        except Exception as e:
-                            logger.error(f"Callback error analyzing line '{line}': {e}")
+                                # Check Error
+                                m_err = re_error.search(line)
+                                if m_err:
+                                    filename = m_err.group(1).strip()
+                                    err_msg = m_err.group(2).strip()
+                                    callback(filename, "failed", error=err_msg)
+                            except Exception as e:
+                                logger.error(f"Callback error analyzing line '{line}': {e}")
 
             process.wait()
 
@@ -168,8 +179,9 @@ class RcloneWrapper:
             logger.error(f"Transfer execution error: {e}")
             return False
 
-    def list_files(self, remote: str) -> dict | None:
+    def list_files(self, remote: str) -> dict[str, int] | None:
         """Lists files on the remote and returns a dict {filename: size}.
+
         Returns None if listing fails.
         Uses 'rclone lsjson' for parsing.
         """

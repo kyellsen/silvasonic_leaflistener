@@ -3,6 +3,8 @@ from pathlib import Path
 
 
 class Config:
+    """Configuration for Livesound service."""
+
     # Input/Monitoring
     INPUT_DIR = Path(os.getenv("INPUT_DIR", "/data/recording"))
     RECURSIVE_WATCH = os.getenv("RECURSIVE_WATCH", "true").lower() == "true"
@@ -30,6 +32,7 @@ class Config:
 
     @classmethod
     def ensure_dirs(cls):
+        """Ensure necessary directories exist."""
         cls.ARTIFACTS_DIR.mkdir(parents=True, exist_ok=True)
         if cls.EXPORT_JSON_METADATA:
             cls.METADATA_DIR.mkdir(parents=True, exist_ok=True)

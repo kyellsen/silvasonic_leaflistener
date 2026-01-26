@@ -25,7 +25,8 @@ async def check():
             recent = (
                 await conn.execute(
                     text(
-                        "SELECT COUNT(*) FROM birdnet.detections WHERE timestamp > NOW() - INTERVAL '24 HOURS'"
+                        "SELECT COUNT(*) FROM birdnet.detections "
+                        "WHERE timestamp > NOW() - INTERVAL '24 HOURS'"
                     )
                 )
             ).scalar()

@@ -1,4 +1,5 @@
 import datetime
+import typing
 
 from sqlalchemy import text
 from src.settings import SettingsService
@@ -9,7 +10,7 @@ from .database import db
 
 class BirdNetStatsService:
     @staticmethod
-    async def get_stats():
+    async def get_stats() -> dict:
         """Get basic stats for dashboard widgets."""
         try:
             async with db.get_connection() as conn:
@@ -18,11 +19,13 @@ class BirdNetStatsService:
                 query_today = text(
                     "SELECT COUNT(*) FROM birdnet.detections WHERE timestamp >= :today"
                 )
-                today_count = (await conn.execute(query_today, {"today": today_start})).scalar()
+                today_count = (
+                    await conn.execute(query_today, {"today": today_start})
+                ).scalar() or 0
 
                 # Total
                 query_total = text("SELECT COUNT(*) FROM birdnet.detections")
-                total_count = (await conn.execute(query_total)).scalar()
+                total_count = (await conn.execute(query_total)).scalar() or 0
 
                 # Top Species
                 query_top = text("""
@@ -72,7 +75,7 @@ class BirdNetStatsService:
             return {"today": 0, "total": 0, "top_species": []}
 
     @staticmethod
-    async def get_advanced_stats():
+    async def get_advanced_stats() -> dict:
         """Get comprehensive stats for the BirdStats dashboard."""
         try:
             async with db.get_connection() as conn:
@@ -86,7 +89,7 @@ class BirdNetStatsService:
                     ORDER BY date ASC
                 """)
                 res_daily = await conn.execute(query_daily)
-                daily = {"labels": [], "values": []}
+                daily: dict = {"labels": [], "values": []}
                 for row in res_daily:
                     if row.date:
                         daily["labels"].append(row.date.strftime("%Y-%m-%d"))
@@ -108,7 +111,7 @@ class BirdNetStatsService:
                 hourly = {"values": [dist_map.get(h, 0) for h in range(24)]}
 
                 # 3. Top Species Distributions (Pie Charts)
-                async def get_top_species(interval_clause, limit=20):
+                async def get_top_species(interval_clause: str | None, limit: int = 20):
                     where_sql = "WHERE timestamp IS NOT NULL"
                     if interval_clause:
                         where_sql += f" AND timestamp >= NOW() - INTERVAL '{interval_clause}'"
@@ -190,7 +193,7 @@ class BirdNetStatsService:
                 }
         except Exception as e:
             logger.error(f"Error get_advanced_stats: {e}", exc_info=True)
-            empty_chart = {"labels": [], "values": []}
+            empty_chart: dict = {"labels": [], "values": []}
             return {
                 "daily": empty_chart,
                 "hourly": {"values": []},
@@ -206,7 +209,7 @@ class BirdNetStatsService:
             }
 
     @staticmethod
-    async def get_species_stats(species_name: str):
+    async def get_species_stats(species_name: str) -> dict | None:
         """Get detailed stats for a specific species."""
         try:
             async with db.get_connection() as conn:
@@ -289,7 +292,7 @@ class BirdNetStatsService:
             return None
 
     @staticmethod
-    async def get_all_detections_cursor():
+    async def get_all_detections_cursor() -> typing.AsyncGenerator[dict, None]:
         """Yields all detections efficiently for export."""
         async with db.get_connection() as conn:
             query = text("""

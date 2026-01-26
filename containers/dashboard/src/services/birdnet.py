@@ -1,5 +1,6 @@
 import asyncio
 import datetime
+import os
 
 from sqlalchemy import text
 from src.settings import SettingsService
@@ -10,7 +11,7 @@ from .database import db
 
 class BirdNetService:
     @staticmethod
-    async def get_recent_detections(limit=10):
+    async def get_recent_detections(limit: int = 10) -> list[dict]:
         try:
             async with db.get_connection() as conn:
                 # Query matches BirdNET schema: birdnet.detections table
@@ -38,7 +39,6 @@ class BirdNetService:
 
                 detections = []
                 use_german = SettingsService.is_german_names_enabled()
-                import os  # Ensure os is available
 
                 for row in result:
                     d = dict(row._mapping)  # SQLAlchemy Row to dict
@@ -126,7 +126,7 @@ class BirdNetService:
             return []
 
     @staticmethod
-    async def get_detection(filename: str):
+    async def get_detection(filename: str) -> dict | None:
         try:
             async with db.get_connection() as conn:
                 # Reconstruct absolute path from relative path input
@@ -198,7 +198,7 @@ class BirdNetService:
             return None
 
     @staticmethod
-    async def get_processing_rate(minutes=60):
+    async def get_processing_rate(minutes: int = 60) -> float:
         """Calculate files processed per minute over the last X minutes."""
         try:
             async with db.get_connection() as conn:
@@ -225,7 +225,8 @@ class BirdNetService:
             return 0.0
 
     @staticmethod
-    async def get_latest_processed_filename():
+    @staticmethod
+    async def get_latest_processed_filename() -> str | None:
         """Get the filename of the most recently processed file."""
         try:
             async with db.get_connection() as conn:
@@ -239,7 +240,8 @@ class BirdNetService:
             return None
 
     @staticmethod
-    async def get_all_species():
+    @staticmethod
+    async def get_all_species() -> list[dict]:
         """Returns all species with their counts and last seen date. Enriches with images if missing."""
         try:
             async with db.get_connection() as conn:
@@ -315,7 +317,7 @@ class BirdNetService:
             return []
 
     @staticmethod
-    async def enrich_species_data(info: dict):
+    async def enrich_species_data(info: dict) -> dict:
         """Enrich species info with Wikimedia data, using cache."""
         if not info or not info.get("sci_name"):
             return info
@@ -413,7 +415,7 @@ class BirdNetService:
             return False
 
     @staticmethod
-    async def get_watchlist_status(sci_names: list) -> dict:
+    async def get_watchlist_status(sci_names: list[str]) -> dict[str, bool]:
         """Get watchlist status for a list of scientific names. Returns dict {sci_name: bool}"""
         try:
             if not sci_names:

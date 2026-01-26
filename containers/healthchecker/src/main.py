@@ -1,3 +1,4 @@
+import datetime
 import glob
 import json
 import logging
@@ -53,13 +54,13 @@ ARCHIVE_DIR = f"{BASE_DIR}/errors/archive"
 CHECK_INTERVAL = 5  # Check every 5 seconds
 
 
-def ensure_dirs():
+def ensure_dirs() -> None:
     """Ensure all required directories exist."""
     for d in [STATUS_DIR, ERROR_DIR, ARCHIVE_DIR]:
         os.makedirs(d, exist_ok=True)
 
 
-def check_postgres_connection(host="silvasonic_db", port=5432):
+def check_postgres_connection(host: str = "silvasonic_db", port: int = 5432) -> bool:
     """Checks if Postgres is accepting connections."""
     try:
         with socket.create_connection((host, port), timeout=5):
@@ -68,7 +69,7 @@ def check_postgres_connection(host="silvasonic_db", port=5432):
         return False
 
 
-def check_services_status(mailer: Mailer):
+def check_services_status(mailer: Mailer) -> None:
     """Checks status files for all services and produces a consolidated system status."""
     current_time = time.time()
     system_status = {}
@@ -173,7 +174,7 @@ def check_services_status(mailer: Mailer):
         logger.error(f"Failed to write system status: {e}")
 
 
-def check_error_drops(mailer: Mailer):
+def check_error_drops(mailer: Mailer) -> None:
     """Checks for new files in the error drop directory."""
     error_files = glob.glob(f"{ERROR_DIR}/*.json")
 
@@ -199,7 +200,7 @@ def check_error_drops(mailer: Mailer):
             logger.error(f"Failed to process error file {err_file}: {e}")
 
 
-def write_status():
+def write_status() -> None:
     """Writes the HealthChecker's own heartbeat."""
     try:
         import psutil
@@ -225,7 +226,7 @@ def write_status():
 NOTIFICATION_DIR = "/data/notifications"
 
 
-def check_notification_queue(mailer: Mailer):
+def check_notification_queue(mailer: Mailer) -> None:
     """Processes notification events directly from the queue."""
     if not os.path.exists(NOTIFICATION_DIR):
         return
@@ -270,11 +271,12 @@ def check_notification_queue(mailer: Mailer):
             logger.error(f"Failed to process notification {event_file}: {e}")
             try:
                 os.remove(event_file)  # Remove bad files
-            except:
+            except OSError:
                 pass
 
 
-def main():
+def main() -> None:
+    """Start the HealthChecker service."""
     logger.info("--- Silvasonic HealthChecker Started ---")
     ensure_dirs()
     mailer = Mailer()

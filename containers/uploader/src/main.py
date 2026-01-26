@@ -88,7 +88,9 @@ def write_status(status: str, last_upload: float = 0, queue_size: int = -1, disk
                 "queue_size": queue_size,
                 "disk_usage_percent": disk_usage,
             },
-            "last_upload": last_upload,  # Keeping top-level for backwards compat if needed temporarily, but dashboard should update
+            # Keeping top-level for backwards compat if needed temporarily,
+            # but dashboard should update
+            "last_upload": last_upload,
             "pid": os.getpid(),
         }
         # Atomic write
@@ -123,6 +125,7 @@ def report_error(context: str, error: Exception):
 
 
 def signal_handler(sig, frame):
+    """Handle termination signals."""
     logger.info("Graceful shutdown received. Exiting...")
     sys.exit(0)
 
@@ -155,7 +158,7 @@ def main():
                     full_path = os.path.join(SOURCE_DIR, filename)
                     if os.path.exists(full_path):
                         size = os.path.getsize(full_path)
-                except:
+                except Exception:
                     pass
 
             db.log_upload(
@@ -192,10 +195,14 @@ def main():
                 # --- PHASE 1: UPLOAD ---
                 write_status("Syncing", last_upload_success, queue_size, disk_usage)
 
-                # Use COPY instead of SYNC to prevent deleting files on remote if they are missing locally
-                # Use MIN_AGE to avoid uploading files currently being written by the recorder
+                # Use COPY instead of SYNC to prevent deleting files on remote
+                # if they are missing locally. Use MIN_AGE to avoid uploading files
+                # currently being written by the recorder.
                 success = wrapper.copy(
-                    SOURCE_DIR, f"remote:{TARGET_DIR}", min_age=MIN_AGE, callback=upload_callback
+                    SOURCE_DIR,
+                    f"remote:{TARGET_DIR}",
+                    min_age=MIN_AGE,
+                    callback=upload_callback,
                 )
 
                 # Update metrics after upload attempt
@@ -223,7 +230,10 @@ def main():
                 else:
                     logger.error("Upload failed. Validation and cleanup skipped.")
                     write_status(
-                        "Error: Upload Failed", last_upload_success, queue_size, disk_usage
+                        "Error: Upload Failed",
+                        last_upload_success,
+                        queue_size,
+                        disk_usage,
                     )
                     # We don't write an explicit error file for transient network errors,
                     # we rely on the watchdog spotting the stale 'last_upload' timestamp.

@@ -1,19 +1,24 @@
+import importlib.util
 import os
 import sys
 import unittest
 from unittest.mock import MagicMock, patch
 
-# Adjust path to import main from containers/recorder/src
-# Use insert(0) to prioritize this path over installed packages
-sys.path.insert(
-    0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../containers/recorder/src"))
+# Load recorder/src/main.py directly by path logic
+recorder_src = os.path.abspath(
+    os.path.join(os.path.dirname(__file__), "../containers/recorder/src/main.py")
 )
-
-import main
+spec = importlib.util.spec_from_file_location("recorder_main", recorder_src)
+main = importlib.util.module_from_spec(spec)
+sys.modules["recorder_main"] = main
+spec.loader.exec_module(main)
 
 
 class TestRecorder(unittest.TestCase):
+    """Test the Recorder module."""
+
     def setUp(self):
+        """Set up test fixtures."""
         # We don't really need to call setup_logging/ensure_status_dir for unit tests of functions
         # mocking them is better if needed, or relying on the import-safe refactor we did.
 
@@ -31,8 +36,8 @@ class TestRecorder(unittest.TestCase):
 
         self.output_dir = "/tmp/test_rec"
 
-    @patch("main.subprocess.Popen")
-    @patch("main.os.makedirs")
+    @patch("recorder_main.subprocess.Popen")
+    @patch("recorder_main.os.makedirs")
     def test_start_recording(self, mock_makedirs, mock_popen):
         """Test that start_recording calls FFmpeg with correct arguments."""
         process_mock = MagicMock()
@@ -63,8 +68,8 @@ class TestRecorder(unittest.TestCase):
         found_udp = any("udp://" in arg for arg in cmd)
         self.assertTrue(found_udp, "UDP URL not found in command")
 
-    @patch("main.subprocess.Popen")
-    @patch("main.os.makedirs")
+    @patch("recorder_main.subprocess.Popen")
+    @patch("recorder_main.os.makedirs")
     def test_start_recording_mock_mode(self, mock_makedirs, mock_popen):
         """Test that mock mode changes input source."""
         self.profile.is_mock = True

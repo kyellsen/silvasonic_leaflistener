@@ -1,4 +1,4 @@
-"""Microphone Profile Loader
+"""Microphone Profile Loader.
 
 Loads and manages microphone profiles from YAML files.
 Profiles define device detection patterns and optimal audio settings.
@@ -50,6 +50,7 @@ class MicrophoneProfile:
     is_mock: bool = False
 
     def __post_init__(self):
+        """Clean up data after initialization."""
         if not self.slug:
             # Generate slug from name
             self.slug = re.sub(r"[^a-z0-9]+", "_", self.name.lower()).strip("_")

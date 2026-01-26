@@ -29,6 +29,35 @@ def mock_env(monkeypatch):
     monkeypatch.setenv("POSTGRES_PORT", "5432")
 
 
+@pytest.fixture(autouse=True)
+def clean_imports():
+    """Ensure we are using the local modules, not cached ones from other tests."""
+    # 1. Clean sys.modules
+    # Also clean 'src' prefixes left by birdnet tests
+    modules_to_clean = ["database", "main", "janitor", "rclone_wrapper"]
+
+    # Collect modules to delete first to avoid runtime error changing dict size
+    to_delete = [m for m in sys.modules if m.startswith("src.") or m in modules_to_clean]
+
+    for mod in to_delete:
+        if mod in sys.modules:
+            del sys.modules[mod]
+
+    # 2. Prioritize Uploader Path
+    # The path setup in lines 9-11 appends to end. We need it at start.
+    uploader_src = os.path.abspath(os.path.join(os.path.dirname(__file__), "../src"))
+    if uploader_src not in sys.path:
+        sys.path.insert(0, uploader_src)
+    else:
+        # Move to front
+        sys.path.remove(uploader_src)
+        sys.path.insert(0, uploader_src)
+
+    import importlib
+
+    importlib.invalidate_caches()
+
+
 @pytest.fixture
 def temp_fs():
     """Creates a temporary directory for file operations."""

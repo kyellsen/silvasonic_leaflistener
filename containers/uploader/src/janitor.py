@@ -5,7 +5,16 @@ logger = logging.getLogger("Janitor")
 
 
 class StorageJanitor:
+    """Manages local storage by deleting old files when space is low."""
+
     def __init__(self, source_dir: str, threshold_percent: int = 70, target_percent: int = 60):
+        """Initialize the StorageJanitor.
+
+        Args:
+            source_dir: Directory to clean.
+            threshold_percent: Disk usage percentage to trigger cleanup.
+            target_percent: Target disk usage percentage after cleanup.
+        """
         self.source_dir = source_dir
         self.threshold_percent = threshold_percent
         self.target_percent = target_percent
@@ -27,12 +36,14 @@ class StorageJanitor:
 
         if current_usage < self.threshold_percent:
             logger.info(
-                f"Disk usage {current_usage:.1f}% is below threshold {self.threshold_percent}%. No cleanup needed."
+                f"Disk usage {current_usage:.1f}% is below threshold {self.threshold_percent}%. "
+                "No cleanup needed."
             )
             return
 
         logger.warning(
-            f"Disk usage {current_usage:.1f}% exceeds threshold {self.threshold_percent}%. Starting cleanup..."
+            f"Disk usage {current_usage:.1f}% exceeds threshold {self.threshold_percent}%. "
+            "Starting cleanup..."
         )
 
         # 1. List all local files
@@ -58,10 +69,14 @@ class StorageJanitor:
                 continue
 
             # 4. VERIFY: Size matches?
-            # Note: Remote might report different size if compressed/encrypted, but for basic copy it should match.
-            # We allow small variance if needed, but for now strict check or skip check if size is drastically different
+            # 4. VERIFY: Size matches?
+            # Note: Remote might report different size if compressed/encrypted,
+            # but for basic copy it should match.
+            # We allow small variance if needed, but for now strict check or skip check
+            # if size is drastically different
             # (e.g. if we suspect partial upload).
-            # Ideally we trust rclone's verification during copy, so if it's in the list it's likely good.
+            # Ideally we trust rclone's verification during copy, so if it's in the list
+            # it's likely good.
             # But let's check size to be extra safe against 0-byte uploads.
             remote_size = remote_files[rel_path]
             local_size = file["size"]
@@ -80,7 +95,8 @@ class StorageJanitor:
                 logger.error(f"Failed to delete {file['path']}: {e}")
 
         logger.info(
-            f"Cleanup finished. Deleted {deleted_count} files ({deleted_size / 1024 / 1024:.2f} MB)."
+            f"Cleanup finished. Deleted {deleted_count} files "
+            f"({deleted_size / 1024 / 1024:.2f} MB)."
         )
 
     def _list_local_files(self) -> list[dict]:

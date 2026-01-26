@@ -1,5 +1,6 @@
 import asyncio
 import logging
+import typing
 
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
@@ -21,24 +22,24 @@ app.add_middleware(
 
 
 @app.on_event("startup")
-async def startup_event():
+async def startup_event() -> None:
     # Pass the running loop to the processor
     loop = asyncio.get_running_loop()
     processor.start(loop)
 
 
 @app.on_event("shutdown")
-async def shutdown_event():
+async def shutdown_event() -> None:
     processor.stop()
 
 
 @app.get("/")
-async def get():
+async def get() -> HTMLResponse:
     return HTMLResponse("<h1>Silvasonic Brain Live</h1><p>Active.</p>")
 
 
 @app.websocket("/ws/spectrogram")
-async def websocket_endpoint(websocket: WebSocket):
+async def websocket_endpoint(websocket: WebSocket) -> None:
     await websocket.accept()
     logger.debug("WS Connected")
 
@@ -59,14 +60,14 @@ async def websocket_endpoint(websocket: WebSocket):
 
 
 @app.get("/stream")
-async def stream_audio():
+async def stream_audio() -> StreamingResponse:
     """Streams audio to the browser by piping the creation of MP3."""
     return StreamingResponse(
         audio_stream_generator(), media_type="audio/mpeg", headers={"Cache-Control": "no-cache"}
     )
 
 
-async def audio_stream_generator():
+async def audio_stream_generator() -> typing.AsyncGenerator[bytes, None]:
     """1. Subscribes to Raw Audio Queue.
     2. Spawns FFmpeg process (Async).
     3. Writes Queue Data -> FFmpeg Stdin (Background Task).
@@ -100,6 +101,12 @@ async def audio_stream_generator():
         stderr=asyncio.subprocess.DEVNULL,  # Silence logs
     )
 
+    if not proc.stdin or not proc.stdout:
+        logger.error("Failed to start FFmpeg process pipes")
+        if proc.returncode is None:
+            proc.kill()
+        return
+
     queue = await processor.subscribe_audio()
 
     # Start background task to feed input to FFmpeg
@@ -123,11 +130,11 @@ async def audio_stream_generator():
         try:
             proc.terminate()
             await proc.wait()
-        except:
+        except Exception:
             pass
 
 
-async def feed_input(stdin_writer, queue):
+async def feed_input(stdin_writer: asyncio.StreamWriter, queue: asyncio.Queue[bytes]) -> None:
     """Feeds audio chunks from queue to FFmpeg stdin"""
     try:
         while True:

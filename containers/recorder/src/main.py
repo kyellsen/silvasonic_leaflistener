@@ -1,4 +1,4 @@
-"""The Ear - Audio Recorder for Silvasonic
+"""The Ear - Audio Recorder for Silvasonic.
 
 Records audio from USB microphones using a single continuous FFmpeg process.
 Outputs:
@@ -23,6 +23,7 @@ logger = logging.getLogger("recorder")
 
 
 def setup_logging():
+    """Configure logging for the recorder service."""
     log_dir = "/var/log/silvasonic"
     # Allow override for tests if needed via env, or just try/except
     # But for now, just replicate existing logic shielded by function
@@ -59,6 +60,7 @@ STATUS_FILE = "/mnt/data/services/silvasonic/status/recorder.json"
 
 
 def ensure_status_dir():
+    """Ensure the status directory exists."""
     try:
         os.makedirs(os.path.dirname(STATUS_FILE), exist_ok=True)
     except OSError:
@@ -181,11 +183,12 @@ def consume_stderr(proc):
     finally:
         try:
             proc.stderr.close()
-        except:
+        except Exception:
             pass
 
 
 def main():
+    """Start the Recorder service."""
     setup_logging()
     ensure_status_dir()
     global running, ffmpeg_process

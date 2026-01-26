@@ -2,6 +2,7 @@ import asyncio
 import logging
 import socket
 import threading
+import typing
 from dataclasses import dataclass
 
 import librosa
@@ -12,6 +13,8 @@ logger = logging.getLogger("LiveProcessor")
 
 @dataclass
 class StreamConfig:
+    """Configuration for the audio stream processing."""
+
     host: str = "0.0.0.0"
     port: int = 1234
     sample_rate: int = 48000
@@ -23,7 +26,12 @@ class StreamConfig:
 
 
 class AudioIngestor:
-    def __init__(self, config: StreamConfig = StreamConfig()):
+    """Ingests audio from UDP stream and processes it for visualization."""
+
+    def __init__(self, config: StreamConfig | None = None):
+        """Initialize the AudioIngestor."""
+        if config is None:
+            config = StreamConfig()
         self.config = config
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         self.sock.bind((self.config.host, self.config.port))
@@ -35,44 +43,50 @@ class AudioIngestor:
         self.loop: asyncio.AbstractEventLoop | None = None
 
         # Listeners for different data types
-        self._spectrogram_queues: set[asyncio.Queue] = set()
-        self._audio_queues: set[asyncio.Queue] = set()
+        self._spectrogram_queues: set[asyncio.Queue[list[int]]] = set()
+        self._audio_queues: set[asyncio.Queue[bytes]] = set()
 
         logger.info(f"AudioIngestor initialized on UDP {self.config.host}:{self.config.port}")
 
-    def start(self, loop: asyncio.AbstractEventLoop):
+    def start(self, loop: asyncio.AbstractEventLoop) -> None:
+        """Start the ingestion thread."""
         self.loop = loop
         self.running = True
         self.thread = threading.Thread(target=self._ingest_loop, daemon=True)
         self.thread.start()
         logger.info("Audio ingestion started.")
 
-    def stop(self):
+    def stop(self) -> None:
+        """Stop the ingestion thread."""
         self.running = False
         if self.sock:
             self.sock.close()
 
-    async def subscribe_spectrogram(self) -> asyncio.Queue:
-        q = asyncio.Queue()
+    async def subscribe_spectrogram(self) -> asyncio.Queue[list[int]]:
+        """Subscribe to spectrogram updates."""
+        q: asyncio.Queue[list[int]] = asyncio.Queue()
         self._spectrogram_queues.add(q)
         return q
 
-    def unsubscribe_spectrogram(self, q: asyncio.Queue):
+    def unsubscribe_spectrogram(self, q: asyncio.Queue[list[int]]) -> None:
+        """Unsubscribe from spectrogram updates."""
         if q in self._spectrogram_queues:
             self._spectrogram_queues.remove(q)
 
-    async def subscribe_audio(self) -> asyncio.Queue:
+    async def subscribe_audio(self) -> asyncio.Queue[bytes]:
+        """Subscribe to raw audio updates."""
         # Limit queue size to prevent memory explosion if client is slow
-        q = asyncio.Queue(maxsize=100)
+        q: asyncio.Queue[bytes] = asyncio.Queue(maxsize=100)
         self._audio_queues.add(q)
         return q
 
-    def unsubscribe_audio(self, q: asyncio.Queue):
+    def unsubscribe_audio(self, q: asyncio.Queue[bytes]) -> None:
+        """Unsubscribe from raw audio updates."""
         if q in self._audio_queues:
             self._audio_queues.remove(q)
 
-    def _broadcast_safe(self, queues: set[asyncio.Queue], data):
-        """Helper to put data into queues from a thread safely"""
+    def _broadcast_safe(self, queues: set[asyncio.Queue[typing.Any]], data: typing.Any) -> None:
+        """Helper to put data into queues from a thread safely."""
         if not self.loop or not self.running:
             return
 
@@ -85,7 +99,7 @@ class AudioIngestor:
             except Exception:
                 pass
 
-    def _ingest_loop(self):
+    def _ingest_loop(self) -> None:
         buffer_size = self.config.chunk_size * 2 * 2  # Safety buffer
 
         # Buffer for FFT
@@ -128,23 +142,22 @@ class AudioIngestor:
                     y = fft_buffer[: self.config.fft_window]
 
                     # Short-Time Fourier Transform
-                    D = (
-                        np.abs(
-                            librosa.stft(
-                                y, n_fft=self.config.fft_window, hop_length=self.config.hop_length
-                            )
-                        )
-                        ** 2
+                    # Calculate power spectrogram (amplitude squared)
+                    stft_matrix = librosa.stft(
+                        y, n_fft=self.config.fft_window, hop_length=self.config.hop_length
                     )
+                    power_spectrogram = np.abs(stft_matrix) ** 2
 
                     # Mel Spectrogram
-                    S = mel_basis.dot(D)
+                    mel_spec = mel_basis.dot(power_spectrogram)
 
                     # Power to dB
-                    S_dB = librosa.power_to_db(S, ref=np.max)
+                    log_mel_spec = librosa.power_to_db(mel_spec, ref=np.max)
 
                     # Normalize -80dB to 0dB -> 0 to 255
-                    S_norm = np.clip((S_dB + 80) * (255 / 80), 0, 255).astype(np.uint8)
+                    normalized_spec = np.clip((log_mel_spec + 80) * (255 / 80), 0, 255).astype(
+                        np.uint8
+                    )
 
                     # We take the mean across time columns if chunk produced multiple columns
                     # Or just send the last column.
@@ -153,15 +166,15 @@ class AudioIngestor:
 
                     # Provide a flat list of the latest spectral frame
                     # Taking the mean of the frames in this chunk to represent "now"
-                    if S_norm.shape[1] > 0:
-                        frame = np.mean(S_norm, axis=1).astype(np.uint8)
+                    if normalized_spec.shape[1] > 0:
+                        frame = np.mean(normalized_spec, axis=1).astype(np.uint8)
 
                         # Pack simple JSON-friendly struct
                         payload = frame.tolist()
                         self._broadcast_safe(self._spectrogram_queues, payload)
 
                     # Slide buffer
-                    step = self.config.chunk_size  # Advance by what we consumed?
+                    # step = self.config.chunk_size  # Advance by what we consumed?
                     # Actually, for continuous stream integration, we should keep the overlap.
                     # But for simple live viz, just sliding window is okay.
 

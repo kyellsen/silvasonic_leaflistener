@@ -1,11 +1,10 @@
 import logging
 import time
 
-from watchdog.events import FileSystemEventHandler
-from watchdog.observers import Observer
-
 from src.analyzer import BirdNETAnalyzer
 from src.config import config
+from watchdog.events import FileSystemEventHandler
+from watchdog.observers import Observer
 
 logger = logging.getLogger("Watcher")
 
