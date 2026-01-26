@@ -1,15 +1,12 @@
-from playwright.sync_api import Page, expect
 import playwright._impl._errors
 import pytest
+from playwright.sync_api import Page, expect
 
 # Config
 BASE_URL = "http://localhost:8080"  # Dashboard Port
 # We assume the user has logged in or we mock auth?
 # Dashboard redirects to /auth/login if not logged in.
 # Credentials are in .env usually, but default is admin/silvasonic
-
-
-
 
 
 def login(page: Page):

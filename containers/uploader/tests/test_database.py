@@ -12,14 +12,14 @@ class TestDatabaseHandler:
         import importlib.util
         import os
         import sys
-        
+
         # Load uploader/src/database.py directly
         db_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "../src/database.py"))
         spec = importlib.util.spec_from_file_location("uploader_database", db_path)
         uploader_database = importlib.util.module_from_spec(spec)
         sys.modules["uploader_database"] = uploader_database
         spec.loader.exec_module(uploader_database)
-        
+
         return uploader_database.DatabaseHandler()
 
     @patch("uploader_database.create_engine")
