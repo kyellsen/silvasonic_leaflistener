@@ -4,6 +4,10 @@ This guide describes how to run Silvasonic locally on Fedora using Podman/Compos
 
 ## 1. Quick Setup
 
+> **Audio & Sudo**: By default, the recorder needs `sudo` to access `/dev/snd`.
+> **Recommendation**: For local development, avoid hardware issues by enabling Mock Mode.
+> Uncomment `MOCK_HARDWARE=true` in `podman-compose.yml`.
+
 ```bash
 # 1. Configure Environment
 cp config.example.env .env

@@ -24,17 +24,17 @@ The services require specific directories on the NVMe drive.
 
 ```bash
 # Create base service directory
-sudo mkdir -p /mnt/data/services/silvasonic
+sudo mkdir -p /mnt/data/dev_workspaces/silvasonic
 
 # Create sub-directories owned by the user (or container user)
-sudo mkdir -p /mnt/data/services/silvasonic/recorder/recordings
-sudo mkdir -p /mnt/data/services/silvasonic/logs
-sudo mkdir -p /mnt/data/services/silvasonic/status
-sudo mkdir -p /mnt/data/services/silvasonic/errors
-sudo mkdir -p /mnt/data/services/silvasonic/db/data
+sudo mkdir -p /mnt/data/dev_workspaces/silvasonic/recorder/recordings
+sudo mkdir -p /mnt/data/dev_workspaces/silvasonic/logs
+sudo mkdir -p /mnt/data/dev_workspaces/silvasonic/status
+sudo mkdir -p /mnt/data/dev_workspaces/silvasonic/errors
+sudo mkdir -p /mnt/data/dev_workspaces/silvasonic/db/data
 
 # Set permissions (Adjust user if needed, assumed 'pi' or current user)
-sudo chown -R $USER:$USER /mnt/data/services/silvasonic
+sudo chown -R $USER:$USER /mnt/data/dev_workspaces/silvasonic
 ```
 
 ## 3. Configure Environment
@@ -66,7 +66,7 @@ sudo podman logs -f silvasonic_recorder
 ## 5. Verify Recordings
 
 ```bash
-ls -la /mnt/data/services/silvasonic/recorder/recordings/
+ls -la /mnt/data/dev_workspaces/silvasonic/recorder/recordings/
 ```
 
 You should see FLAC files with timestamps.
@@ -88,11 +88,11 @@ The recorder auto-detects configuration from microphone profiles. For advanced u
 
 ### Permission Denied
 
-Ensure directories in `/mnt/data/services/silvasonic` utilize the correct SELinux labels if on Fedora/CentOS, or have correct ownership.
+Ensure directories in `/mnt/data/dev_workspaces/silvasonic` utilize the correct SELinux labels if on Fedora/CentOS, or have correct ownership.
 
 ```bash
 # Force ownership
-sudo chown -R 1000:1000 /mnt/data/services/silvasonic
+sudo chown -R 1000:1000 /mnt/data/dev_workspaces/silvasonic
 ```
 
 ## Contributing Microphone Profiles

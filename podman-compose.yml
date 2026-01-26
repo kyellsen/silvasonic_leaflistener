@@ -8,6 +8,7 @@ services:
     container_name: silvasonic_recorder
     environment:
       - PYTHONUNBUFFERED=1
+      # - MOCK_HARDWARE=true  # Enable to simulate mic (no sudo needed)
     devices:
       - /dev/snd:/dev/snd
     privileged: true

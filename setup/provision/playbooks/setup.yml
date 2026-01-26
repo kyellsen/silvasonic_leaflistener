@@ -4,6 +4,7 @@
   become: true
   vars:
     # Packages list
+    # Packages list
     packages:
       - tree
       - git
@@ -29,6 +30,8 @@
     # Repository settings
     repo_url: "https://github.com/kyellsen/silvasonic.git"
     repo_dest: "/mnt/data/dev/silvasonic"
+    # Unified Data Directory (Same for Pi and Dev Workstation)
+    silvasonic_data_dir: "/mnt/data/dev_workspaces/silvasonic"
 
   tasks:
     # --- 1. SYSTEM UPDATE ---
@@ -82,15 +85,15 @@
         - /mnt/data/dev
         - /mnt/data/containers
         - /mnt/data/backups
-        - /mnt/data/services/silvasonic/logs
-        - /mnt/data/services/silvasonic/config
-        - /mnt/data/services/silvasonic/status
-        - /mnt/data/services/silvasonic/errors
-        - /mnt/data/services/silvasonic/notifications
-        - /mnt/data/services/silvasonic/recorder/recordings
-        - /mnt/data/services/silvasonic/uploader/config
-        - /mnt/data/services/silvasonic/birdnet/results
-        - /mnt/data/services/silvasonic/db/data
+        - "{{ silvasonic_data_dir }}/logs"
+        - "{{ silvasonic_data_dir }}/config"
+        - "{{ silvasonic_data_dir }}/status"
+        - "{{ silvasonic_data_dir }}/errors"
+        - "{{ silvasonic_data_dir }}/notifications"
+        - "{{ silvasonic_data_dir }}/recorder/recordings"
+        - "{{ silvasonic_data_dir }}/uploader/config"
+        - "{{ silvasonic_data_dir }}/birdnet/results"
+        - "{{ silvasonic_data_dir }}/db/data"
 
     # Storage-Link Fix for Podman (ROOT-Level)
     # Critical: Since silvasonic.service runs as root, we must move root's storage to SSD
