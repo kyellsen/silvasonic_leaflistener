@@ -46,45 +46,46 @@
     <style>
       .bg-custom {
         background-image: url("/static/images/login_bg.webp");
-        background-size: cover;
+        background-size: contain;
+        background-repeat: no-repeat;
         background-position: center;
+        background-color: #ffffff;
       }
       .glass-card {
-        background: rgba(15, 23, 42, 0.65);
+        background: rgba(255, 255, 255, 0.85);
         backdrop-filter: blur(16px);
         -webkit-backdrop-filter: blur(16px);
-        border: 1px solid rgba(255, 255, 255, 0.08);
+        border: 1px solid rgba(255, 255, 255, 0.5);
         box-shadow:
-          0 4px 6px -1px rgba(0, 0, 0, 0.1),
-          0 2px 4px -1px rgba(0, 0, 0, 0.06),
-          0 0 40px rgba(16, 185, 129, 0.1);
+          0 10px 15px -3px rgba(0, 0, 0, 0.1),
+          0 4px 6px -2px rgba(0, 0, 0, 0.05),
+          0 0 40px rgba(16, 185, 129, 0.15);
       }
     </style>
   </head>
   <body
-    class="bg-gray-900 text-gray-200 h-screen w-full flex items-center justify-center relative overflow-hidden font-sans bg-custom"
+    class="bg-white text-gray-900 h-screen w-full flex items-center justify-center relative overflow-hidden font-sans bg-custom"
   >
-    <!-- Dark overlay to ensure text readability -->
-    <div class="absolute inset-0 bg-black/40"></div>
-
     <!-- Main Card -->
     <div
-      class="glass-card p-12 rounded-3xl w-full max-w-md relative z-10 transform transition-all hover:scale-[1.01] duration-500"
+      class="glass-card p-12 rounded-3xl w-full max-w-md relative z-10 transform transition-all hover:scale-[1.01] duration-500 shadow-silva-500/10"
     >
       <!-- Logo / Header -->
       <div class="text-center mb-10">
-        <div
-          class="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-silva-500/20 mb-6 backdrop-blur-sm animate-float"
-        >
-          <span class="text-4xl filter drop-shadow-lg">🌲</span>
+        <div class="mb-6 flex justify-center">
+          <img
+            src="/static/images/logo.webp"
+            alt="Silvasonic Logo"
+            class="h-24 w-auto drop-shadow-md"
+          />
         </div>
         <h1
-          class="text-4xl font-heading font-bold text-white tracking-tight mb-2"
+          class="text-4xl font-heading font-bold text-gray-900 tracking-tight mb-2"
         >
           Silvasonic
         </h1>
         <p
-          class="text-silva-400 text-sm font-medium tracking-widest uppercase opacity-90"
+          class="text-silva-600 text-sm font-medium tracking-widest uppercase opacity-90"
         >
           Bioacoustic Station
         </p>
@@ -92,7 +93,7 @@
 
       {% if error %}
       <div
-        class="animate-pulse bg-red-500/10 border border-red-500/20 text-red-200 px-4 py-3 rounded-xl mb-8 text-sm text-center backdrop-blur-md"
+        class="animate-pulse bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded-xl mb-8 text-sm text-center"
       >
         ⚠️ {{ error }}
       </div>
@@ -101,7 +102,7 @@
       <form action="/auth/login" method="POST" class="space-y-6">
         <div class="space-y-2">
           <label
-            class="text-xs font-bold text-gray-400 uppercase tracking-wider ml-1"
+            class="text-xs font-bold text-gray-500 uppercase tracking-wider ml-1"
             >Identity</label
           >
           <div class="relative group">
@@ -109,7 +110,7 @@
               type="text"
               name="username"
               required
-              class="w-full bg-gray-900/50 border border-gray-700/50 rounded-xl px-4 py-3.5 text-white placeholder-gray-500 focus:bg-gray-900/80 focus:border-silva-500/50 focus:ring-4 focus:ring-silva-500/10 focus:outline-none transition-all duration-300"
+              class="w-full bg-white border border-gray-200 rounded-xl px-4 py-3.5 text-gray-900 placeholder-gray-400 focus:bg-white focus:border-silva-500 focus:ring-4 focus:ring-silva-500/10 focus:outline-none transition-all duration-300 shadow-sm"
               placeholder="Username"
             />
           </div>
@@ -117,7 +118,7 @@
 
         <div class="space-y-2">
           <label
-            class="text-xs font-bold text-gray-400 uppercase tracking-wider ml-1"
+            class="text-xs font-bold text-gray-500 uppercase tracking-wider ml-1"
             >Access Key</label
           >
           <div class="relative group">
@@ -125,7 +126,7 @@
               type="password"
               name="password"
               required
-              class="w-full bg-gray-900/50 border border-gray-700/50 rounded-xl px-4 py-3.5 text-white placeholder-gray-500 focus:bg-gray-900/80 focus:border-silva-500/50 focus:ring-4 focus:ring-silva-500/10 focus:outline-none transition-all duration-300"
+              class="w-full bg-white border border-gray-200 rounded-xl px-4 py-3.5 text-gray-900 placeholder-gray-400 focus:bg-white focus:border-silva-500 focus:ring-4 focus:ring-silva-500/10 focus:outline-none transition-all duration-300 shadow-sm"
               placeholder="••••••••"
             />
           </div>
@@ -133,7 +134,7 @@
 
         <button
           type="submit"
-          class="w-full mt-4 bg-gradient-to-r from-silva-600 to-silva-400 hover:from-silva-500 hover:to-silva-300 text-white font-bold py-4 rounded-xl transition-all duration-300 shadow-lg shadow-silva-500/20 hover:shadow-silva-500/40 hover:-translate-y-0.5"
+          class="w-full mt-4 bg-gradient-to-r from-silva-600 to-silva-500 hover:from-silva-500 hover:to-silva-400 text-white font-bold py-4 rounded-xl transition-all duration-300 shadow-lg shadow-silva-500/30 hover:shadow-silva-500/50 hover:-translate-y-0.5"
         >
           Initialize Session
         </button>
@@ -141,17 +142,12 @@
 
       <!-- Footer -->
       <div
-        class="mt-10 flex items-center justify-center gap-2 text-[10px] text-gray-500 uppercase tracking-widest font-medium"
+        class="mt-10 flex items-center justify-center gap-2 text-[10px] text-gray-400 uppercase tracking-widest font-medium"
       >
         <span>Protected System</span>
-        <span class="w-1 h-1 rounded-full bg-gray-600"></span>
+        <span class="w-1 h-1 rounded-full bg-gray-300"></span>
         <span>Authorized Use Only</span>
       </div>
     </div>
-
-    <!-- Decorative Bottom Gradient -->
-    <div
-      class="absolute bottom-0 left-0 right-0 h-32 bg-gradient-to-t from-black/80 to-transparent pointer-events-none"
-    ></div>
   </body>
 </html>
