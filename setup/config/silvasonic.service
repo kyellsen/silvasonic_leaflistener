@@ -1,6 +1,6 @@
 [Unit]
 Description=Silvasonic Sensor Stack
-Documentation=https://github.com/kyellsen/silvasonic_leaflistener
+Documentation=https://github.com/kyellsen/silvasonic
 Requires=network-online.target sound.target
 After=network-online.target sound.target podman.socket
 

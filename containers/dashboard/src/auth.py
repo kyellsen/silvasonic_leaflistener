@@ -21,6 +21,13 @@ def require_auth(request: Request):
         # If API request, return 401
         if request.url.path.startswith("/api"):
             raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED)
+            
+        # Check for HTMX Request
+        if request.headers.get("HX-Request"):
+            from fastapi.responses import Response
+            # Force client-side redirect
+            return Response(headers={"HX-Redirect": "/auth/login"})
+
         # If Page request, redirect to login
         return RedirectResponse(url="/auth/login", status_code=status.HTTP_302_FOUND)
     return True

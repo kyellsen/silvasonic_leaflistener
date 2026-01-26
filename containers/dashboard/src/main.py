@@ -284,6 +284,18 @@ async def settings_page(request: Request, auth=Depends(require_auth)):
         "status_color": "text-gray-500"
     })
 
+@app.get("/about", response_class=HTMLResponse)
+async def about_page(request: Request, auth=Depends(require_auth)):
+    if isinstance(auth, RedirectResponse): return auth
+
+    return render(request, "about.html", {
+        "request": request,
+        "page": "about",
+        "status_label": "System:",
+        "status_value": "About",
+        "status_color": "text-gray-500"
+    })
+
 @app.post("/settings", response_class=HTMLResponse)
 async def settings_save(request: Request, auth=Depends(require_auth)):
     if isinstance(auth, RedirectResponse): return auth
