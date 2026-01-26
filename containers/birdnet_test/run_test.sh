@@ -13,12 +13,12 @@ echo "Project Root: $PROJECT_ROOT"
 cd "$PROJECT_ROOT"
 
 echo "Building BirdNET Test Container..."
-docker build -f containers/birdnet_test/Dockerfile -t birdnet_test .
+podman build -f containers/birdnet_test/Dockerfile -t birdnet_test .
 
 echo "Running BirdNET Test Container..."
 mkdir -p "$SCRIPT_DIR/results" # Ensure local results dir exists
 
-docker run --rm \
+podman run --rm \
     -v "$SCRIPT_DIR/test_data":/app/test_data:z \
     -v "$SCRIPT_DIR/results":/data/db/results:z \
     birdnet_test

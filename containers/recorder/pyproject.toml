@@ -2,7 +2,7 @@
 name = "silvasonic-ear"
 version = "0.1.0"
 description = "Silvasonic Ear - Audio Recording Service"
-requires-python = "==3.13.*"
+requires-python = ">=3.11"
 dependencies = [
     "pyyaml",
     "psutil"
