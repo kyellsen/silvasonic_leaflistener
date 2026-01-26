@@ -5,7 +5,7 @@ import datetime
 from datetime import timezone
 from sqlalchemy import text
 from .database import db
-from .common import STATUS_DIR
+from .common import STATUS_DIR, logger
 
 class WeatherService:
     @staticmethod
@@ -25,7 +25,8 @@ class WeatherService:
                         d['timestamp'] = d['timestamp'].replace(tzinfo=timezone.utc)
                     return d
         except Exception as e:
-            print(f"Weather DB Error: {e}")
+        except Exception as e:
+            logger.error(f"Weather DB Error: {e}", exc_info=True)
         return None
 
     @staticmethod
@@ -58,7 +59,8 @@ class WeatherService:
                     
                 return data
         except Exception as e:
-            print(f"Weather History Error: {e}")
+        except Exception as e:
+            logger.error(f"Weather History Error: {e}", exc_info=True)
             return {"labels": [], "temp": [], "humidity": [], "rain": [], "wind": []}
 
     @staticmethod
@@ -113,7 +115,8 @@ class WeatherService:
                     
                 return data
         except Exception as e:
-            print(f"Weather Correlation Error: {e}")
+        except Exception as e:
+            logger.error(f"Weather Correlation Error: {e}", exc_info=True)
             return {
                 "labels": [], 
                 "scatter_temp": [], "scatter_rain": [], 
@@ -132,6 +135,6 @@ class WeatherService:
                     if time.time() - data.get("timestamp", 0) > 1500:
                         data["status"] = "Stalen"
                     return data
-        except:
-             pass
+        except Exception as e:
+             logger.error(f"Weather Status Error: {e}", exc_info=True)
         return {"status": "Unknown"}

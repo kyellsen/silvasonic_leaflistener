@@ -2,6 +2,7 @@ import os
 from sqlalchemy import text
 from datetime import timezone
 from .database import db
+from .common import logger
 
 class AnalyzerService:
     @staticmethod
@@ -54,7 +55,7 @@ class AnalyzerService:
                     items.append(d)
                 return items
         except Exception as e:
-            print(f"Analyzer Error: {e}")
+            logger.error(f"Analyzer Error: {e}", exc_info=True)
             return []
 
     @staticmethod
@@ -78,5 +79,5 @@ class AnalyzerService:
                     return d
                 return {}
          except Exception as e:
-             print(f"Analyzer Stats Error: {e}")
+             logger.error(f"Analyzer Stats Error: {e}", exc_info=True)
              return {}
