@@ -233,10 +233,10 @@
   }
 
   // Audio Player Logic
-  let isPlaying = false;
+  // We use the audio element events as the source of truth for the UI
 
   playBtn.addEventListener("click", () => {
-    if (!isPlaying) {
+    if (audioEl.paused) {
       startStream();
     } else {
       stopStream();
@@ -244,27 +244,54 @@
   });
 
   function startStream() {
+    statusText.innerText = "Connecting...";
+
+    // Always reset src for live stream to ensure we get "now"
+    // But check if already set to avoid glitch if just resuming (though for live, resuming = reconnecting usually)
     audioEl.src = streamUrl;
-    audioEl
-      .play()
-      .then(() => {
-        isPlaying = true;
-        toggleIcons(true);
-        statusText.innerText = "Streaming Audio";
-      })
-      .catch((e) => {
-        console.error(e);
-        statusText.innerText = "Stream Error";
-      });
+
+    audioEl.play().catch((e) => {
+      console.error("Play failed:", e);
+      statusText.innerText = "Stream Error";
+      // UI will remain in paused state via events
+    });
   }
 
   function stopStream() {
     audioEl.pause();
+    // For live streams, it's good practice to unload the source to stop buffering
     audioEl.src = "";
-    isPlaying = false;
+    audioEl.load();
+  }
+
+  // Update UI based on actual Audio Element state
+  audioEl.addEventListener("play", () => {
+    // Fired when play() is called and active
+    // Note: 'playing' event is better for when actual data is starting to play
+    // But 'play' is immediate feedback for "I am trying to play"
+    toggleIcons(true);
+    statusText.innerText = "Streaming Audio";
+  });
+
+  audioEl.addEventListener("playing", () => {
+    // Audio is actually playing
+    statusText.innerText = "Live";
+  });
+
+  audioEl.addEventListener("pause", () => {
     toggleIcons(false);
     statusText.innerText = "Paused";
-  }
+  });
+
+  audioEl.addEventListener("error", (e) => {
+    console.error("Audio Error", e);
+    toggleIcons(false);
+    statusText.innerText = "Error";
+  });
+
+  audioEl.addEventListener("waiting", () => {
+    statusText.innerText = "Buffering...";
+  });
 
   function toggleIcons(playing) {
     if (playing) {

@@ -69,8 +69,8 @@ async def stream_audio():
 
 async def audio_stream_generator():
     """1. Subscribes to Raw Audio Queue.
-    2. Spawns FFmpeg process.
-    3. Writes Queue Data -> FFmpeg Stdin.
+    2. Spawns FFmpeg process (Async).
+    3. Writes Queue Data -> FFmpeg Stdin (Background Task).
     4. Reads FFmpeg Stdout -> Buffer -> Yield.
     """
     # FFmpeg command: Read PCM from Pipe, Write MP3 to Pipe
@@ -86,50 +86,48 @@ async def audio_stream_generator():
         "pipe:1"             # Output to Stdout
     ]
 
-    proc = subprocess.Popen(
-        cmd,
-        stdin=subprocess.PIPE,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.DEVNULL, # Silence logs
+    # Create async subprocess
+    proc = await asyncio.create_subprocess_exec(
+        *cmd,
+        stdin=asyncio.subprocess.PIPE,
+        stdout=asyncio.subprocess.PIPE,
+        stderr=asyncio.subprocess.DEVNULL, # Silence logs
     )
 
     queue = await processor.subscribe_audio()
+    
+    # Start background task to feed input to FFmpeg
+    input_task = asyncio.create_task(feed_input(proc.stdin, queue))
 
     try:
-        # We need a non-blocking way to communicate with subprocess in asyncio.
-        # Since subprocess.Popen is blocking I/O on pipes, we should use proper async subprocess
-        # or threading.
-        # But writing to stdin can fill buffer.
-
-        # NOTE: A robust solution requires two tasks:
-        # 1. Pump Queue -> Stdin
-        # 2. Pump Stdout -> Yield
-
-        # Let's try a simpler buffer check loop
-
-        # Optimization: We can't block this generator loop waiting for queue if we also want to read stdout.
-        # But we CAN just write responsibly.
-
         while True:
-            # 1. Get audio chunks (non-blocking if possible, else wait)
-            # This is the driver. If no audio coming in, no stream going out.
-            chunk = await queue.get()
-
-            # 2. Write to FFmpeg
-            # This might block if FFmpeg buffer is full, which is good (backpressure)
-            proc.stdin.write(chunk)
-            proc.stdin.flush()
-
-            # 3. Read available output
-            # We blindly read a chunk.
-            # Ideally we read however much is available.
-            # mp3 frame is small.
-            out_data = proc.stdout.read(4096)
-            if out_data:
-                yield out_data
+            # Read output (Async non-blocking)
+            out_data = await proc.stdout.read(4096)
+            if not out_data:
+                break
+            yield out_data
 
     except Exception as e:
         logger.error(f"Stream Error: {e}")
     finally:
+        # Cleanup
+        input_task.cancel()
         processor.unsubscribe_audio(queue)
-        proc.kill()
+        
+        try:
+            proc.terminate()
+            await proc.wait()
+        except:
+            pass
+
+async def feed_input(stdin_writer, queue):
+    """Feeds audio chunks from queue to FFmpeg stdin"""
+    try:
+        while True:
+            chunk = await queue.get()
+            stdin_writer.write(chunk)
+            await stdin_writer.drain()
+    except asyncio.CancelledError:
+        pass
+    except Exception as e:
+        logger.error(f"Feed Input Error: {e}")
