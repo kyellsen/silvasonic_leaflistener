@@ -11,7 +11,6 @@ RUN apt-get update && apt-get install -y \
     tree git rsync nano \
     sox ffmpeg stress \
     curl sudo lsb-release \
-    podman \
     # Playwright Dependencies
     libwoff1 libopus0 libwebp7 libwebpdemux2 libenchant-2-2 \
     libsecret-1-0 libhyphen0 libgdk-pixbuf2.0-0 libegl1 \

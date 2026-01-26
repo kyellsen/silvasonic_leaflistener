@@ -16,16 +16,17 @@ logger = logging.getLogger("wifi_monitor")
 class WifiMonitor:
     """Monitor the WiFi connection and manage the setup/redirect services."""
 
-    def __init__(self):
+    def __init__(self) -> None:
         """Initialize the WifiMonitor."""
         self.manager = WifiManager()
-        self.current_process = None
+        self.current_process: subprocess.Popen | None = None
+
         self.mode = "none"  # none, setup, redirect
         self.check_interval = 10
         self.disconnection_counter = 0
         self.disconnection_threshold = 3
 
-    def start_service(self, service_name):
+    def start_service(self, service_name: str) -> None:
         """Start a web service (app.py or redirect.py)."""
         script_map = {"setup": "app.py", "redirect": "redirect.py"}
 
@@ -51,7 +52,7 @@ class WifiMonitor:
             except Exception as e:
                 logger.error(f"Failed to start {service_name}: {e}")
 
-    def stop_service(self):
+    def stop_service(self) -> None:
         """Stop the currently running service."""
         if self.current_process:
             logger.info(f"Stopping {self.mode} service...")
@@ -63,7 +64,7 @@ class WifiMonitor:
             self.current_process = None
             self.mode = "none"
 
-    def run(self):
+    def run(self) -> None:
         """Run the monitor loop."""
         logger.info("WiFi Monitor Service Started")
         time.sleep(15)

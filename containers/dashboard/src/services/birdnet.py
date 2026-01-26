@@ -1,6 +1,7 @@
 import asyncio
 import datetime
 import os
+import typing
 
 from sqlalchemy import text
 from src.settings import SettingsService
@@ -11,7 +12,7 @@ from .database import db
 
 class BirdNetService:
     @staticmethod
-    async def get_recent_detections(limit: int = 10) -> list[dict]:
+    async def get_recent_detections(limit: int = 10) -> list[dict[str, typing.Any]]:
         try:
             async with db.get_connection() as conn:
                 # Query matches BirdNET schema: birdnet.detections table
@@ -126,7 +127,7 @@ class BirdNetService:
             return []
 
     @staticmethod
-    async def get_detection(filename: str) -> dict | None:
+    async def get_detection(filename: str) -> dict[str, typing.Any] | None:
         try:
             async with db.get_connection() as conn:
                 # Reconstruct absolute path from relative path input
@@ -241,7 +242,7 @@ class BirdNetService:
 
     @staticmethod
     @staticmethod
-    async def get_all_species() -> list[dict]:
+    async def get_all_species() -> list[dict[str, typing.Any]]:
         """Returns all species with their counts and last seen date. Enriches with images if missing."""
         try:
             async with db.get_connection() as conn:
@@ -317,7 +318,7 @@ class BirdNetService:
             return []
 
     @staticmethod
-    async def enrich_species_data(info: dict) -> dict:
+    async def enrich_species_data(info: dict[str, typing.Any]) -> dict[str, typing.Any]:
         """Enrich species info with Wikimedia data, using cache."""
         if not info or not info.get("sci_name"):
             return info

@@ -35,7 +35,6 @@ dev = [
     "PyYAML",
     "psutil",
     "psycopg2-binary",
-    "podman-compose",
 ]
 
 [tool.uv]

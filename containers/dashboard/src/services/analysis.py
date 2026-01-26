@@ -1,4 +1,5 @@
 import os
+import typing
 from datetime import UTC
 
 from sqlalchemy import text
@@ -9,7 +10,7 @@ from .database import db
 
 class AnalyzerService:
     @staticmethod
-    async def get_recent_analysis(limit=20):
+    async def get_recent_analysis(limit: int = 20) -> list[dict[str, typing.Any]]:
         try:
             async with db.get_connection() as conn:
                 query = text("""
@@ -100,14 +101,16 @@ class AnalyzerService:
     def _format_size(size_bytes: int) -> str:
         if not size_bytes:
             return "0 B"
+
+        s: float = float(size_bytes)
         for unit in ["B", "KB", "MB", "GB"]:
-            if size_bytes < 1024:
-                return f"{size_bytes:.1f} {unit}"
-            size_bytes /= 1024
-        return f"{size_bytes:.1f} TB"
+            if s < 1024:
+                return f"{s:.1f} {unit}"
+            s /= 1024
+        return f"{s:.1f} TB"
 
     @staticmethod
-    async def get_stats():
+    async def get_stats() -> dict[str, typing.Any]:
         try:
             async with db.get_connection() as conn:
                 query = text("""

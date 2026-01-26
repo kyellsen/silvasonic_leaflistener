@@ -2,6 +2,7 @@ import datetime
 import json
 import os
 import time
+import typing
 
 from sqlalchemy import text
 
@@ -11,7 +12,7 @@ from .database import db
 
 class CarrierService:
     @staticmethod
-    def get_status():
+    def get_status() -> dict[str, typing.Any]:
         try:
             status_file = os.path.join(STATUS_DIR, "carrier.json")
             if os.path.exists(status_file):
@@ -42,7 +43,8 @@ class CarrierService:
 
                     data["queue_size"] = data.get("meta", {}).get("queue_size", -1)
                     data["disk_usage"] = round(data.get("meta", {}).get("disk_usage_percent", 0), 1)
-                    return data
+                    return typing.cast(dict[str, typing.Any], data)
+
         except Exception as e:
             print(f"Carrier status error: {e}")
 
@@ -55,7 +57,7 @@ class CarrierService:
         }
 
     @staticmethod
-    async def get_recent_uploads(limit=100):
+    async def get_recent_uploads(limit: int = 100) -> list[dict[str, typing.Any]]:
         """Fetch recent successful uploads."""
         try:
             async with db.get_connection() as conn:
@@ -85,7 +87,7 @@ class CarrierService:
             return []
 
     @staticmethod
-    async def get_failed_uploads(limit=50):
+    async def get_failed_uploads(limit: int = 50) -> list[dict[str, typing.Any]]:
         """Fetch recent failed uploads."""
         try:
             async with db.get_connection() as conn:
@@ -113,7 +115,7 @@ class CarrierService:
             return []
 
     @staticmethod
-    async def get_upload_stats():
+    async def get_upload_stats() -> dict[str, int]:
         """Fetch upload counts for different time ranges."""
         try:
             async with db.get_connection() as conn:
@@ -137,7 +139,7 @@ class CarrierService:
         return {"last_1h": 0, "last_24h": 0, "last_7d": 0, "last_30d": 0}
 
     @staticmethod
-    async def get_upload_rate(minutes=60):
+    async def get_upload_rate(minutes: int = 60) -> float:
         """Calculate files uploaded per minute over the last X minutes."""
         try:
             async with db.get_connection() as conn:
@@ -151,7 +153,7 @@ class CarrierService:
             return 0.0
 
     @staticmethod
-    async def get_latest_uploaded_filename():
+    async def get_latest_uploaded_filename() -> str | None:
         """Get the filename of the most recently uploaded file."""
         try:
             async with db.get_connection() as conn:

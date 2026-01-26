@@ -2,13 +2,19 @@
 
 Welcome to the Silvasonic development documentation. This project uses a **Native DevContainer** approach on Fedora/Podman to ensure high performance (x86_64) while maintaining compatibility with the production Raspberry Pi environment via standard Python libraries.
 
-## 🚀 Quick Start (DevContainer)
+## 🚀 Quick Start (DevContainer + Host)
 
-The recommended way to develop Silvasonic is using **VS Code DevContainers**.
+The recommended way to develop Silvasonic is using **VS Code DevContainers** for Python logic, while managing the container infrastructure directly on your **Host Machine**.
 
-### 1. Host Machine Setup (Fedora Workstation)
+### 1. Host Machine Prerequisites (Fedora Workstation)
 
-Since we use Podman with specific bind mounts for data persistence, you must create the storage directory on your host once. This separates your code from heavy recording data.
+Ensure you have `podman` and `podman-compose` installed on your host:
+
+```bash
+sudo dnf install podman podman-compose
+```
+
+Create the local data storage directory on your Host (separates code from data):
 
 ```bash
 # Create the local data storage directory on your Host
@@ -21,7 +27,18 @@ sudo chown -R $USER:$USER /mnt/data/dev_workspaces/silvasonic
 1. Open this folder in VS Code.
 2. Press `F1` (or `Ctrl+Shift+P`) and select: `> Dev Containers: Reopen in Container`
 
-The build is native and fast (running on your local architecture).
+This provides a managed Python environment (with `uv`, `mypy`, `ruff`) matching the production constraints.
+
+### 3. Starting the Services (Host Terminal)
+
+Infrastructure commands must be run from your **Host Terminal** (not inside VS Code's DevContainer terminal), as we leverage the host's native Podman for performance.
+
+```bash
+# In your project root on the Host
+podman-compose up -d --build
+```
+
+Access the dashboard at **[http://localhost:8080](http://localhost:8080)**.
 
 ## 📂 Architecture & Data Flow
 
@@ -34,10 +51,13 @@ We strictly separate Code from Data to simulate the production environment and k
 
 ### Live Reloading
 
-The `podman-compose.yml` mounts the source code (`./containers/*/src`) directly into the running services. If you modify a Python file, simply restart the specific service inside the DevContainer terminal to apply changes:
+The `podman-compose.yml` mounts the source code (`./containers/*/src`) directly into the running services. If you modify a Python file in VS Code:
+
+1. Save the file.
+2. Restart the specific service **from your Host Terminal**:
 
 ```bash
-# Example: Restart recorder after code changes
+# Host Terminal
 podman-compose restart recorder
 ```
 
@@ -80,14 +100,14 @@ uv run ruff format .  # Formatting
 uv run mypy .         # Type Checking
 ```
 
-## 🐳 Podman-in-Podman
+## 🐳 Container Management (Host Side)
 
-The DevContainer has access to the host's Podman socket. You can manage the "inner" production containers just like on the Raspberry Pi.
+Use your local terminal (outside VS Code) to control the stack.
 
 Standard Dev Stack Start:
 
 ```bash
-# Inside VS Code Terminal
+# In Host Terminal
 cp config.example.env .env
 podman-compose up -d --build
 ```

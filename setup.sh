@@ -109,6 +109,36 @@ else
     echo_success ".env file exists."
 fi
 
+# 3.5 Data Directories (Volumes)
+# Load .env variables if present
+if [ -f ".env" ]; then
+    export $(grep -v '^#' .env | xargs)
+fi
+
+# Default to production path if not set
+SILVASONIC_DATA_DIR=${SILVASONIC_DATA_DIR:-/mnt/data/services/silvasonic}
+
+echo_task "Ensuring required data directories exist at ${SILVASONIC_DATA_DIR}..."
+REQUIRED_DIRS=(
+    "${SILVASONIC_DATA_DIR}/recorder/recordings"
+    "${SILVASONIC_DATA_DIR}/logs"
+    "${SILVASONIC_DATA_DIR}/status"
+    "${SILVASONIC_DATA_DIR}/uploader/config"
+    "${SILVASONIC_DATA_DIR}/errors"
+    "${SILVASONIC_DATA_DIR}/config"
+    "${SILVASONIC_DATA_DIR}/notifications"
+    "${SILVASONIC_DATA_DIR}/birdnet/results"
+    "${SILVASONIC_DATA_DIR}/db/data"
+)
+
+for DIR in "${REQUIRED_DIRS[@]}"; do
+    if [ ! -d "$DIR" ]; then
+        echo "Creating $DIR..."
+        mkdir -p "$DIR"
+    fi
+done
+echo_success "Data directories verified."
+
 # 4. Container Management (if requested)
 if [ "$REBUILD" = true ]; then
     echo_task "Rebuilding containers (podman-compose)"

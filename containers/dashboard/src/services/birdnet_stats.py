@@ -10,7 +10,7 @@ from .database import db
 
 class BirdNetStatsService:
     @staticmethod
-    async def get_stats() -> dict:
+    async def get_stats() -> dict[str, typing.Any]:
         """Get basic stats for dashboard widgets."""
         try:
             async with db.get_connection() as conn:
@@ -75,7 +75,7 @@ class BirdNetStatsService:
             return {"today": 0, "total": 0, "top_species": []}
 
     @staticmethod
-    async def get_advanced_stats() -> dict:
+    async def get_advanced_stats() -> dict[str, typing.Any]:
         """Get comprehensive stats for the BirdStats dashboard."""
         try:
             async with db.get_connection() as conn:
@@ -89,7 +89,8 @@ class BirdNetStatsService:
                     ORDER BY date ASC
                 """)
                 res_daily = await conn.execute(query_daily)
-                daily: dict = {"labels": [], "values": []}
+                daily: dict[str, list[typing.Any]] = {"labels": [], "values": []}
+
                 for row in res_daily:
                     if row.date:
                         daily["labels"].append(row.date.strftime("%Y-%m-%d"))
@@ -111,8 +112,11 @@ class BirdNetStatsService:
                 hourly = {"values": [dist_map.get(h, 0) for h in range(24)]}
 
                 # 3. Top Species Distributions (Pie Charts)
-                async def get_top_species(interval_clause: str | None, limit: int = 20):
+                async def get_top_species(
+                    interval_clause: str | None, limit: int = 20
+                ) -> dict[str, list[typing.Any]]:
                     where_sql = "WHERE timestamp IS NOT NULL"
+
                     if interval_clause:
                         where_sql += f" AND timestamp >= NOW() - INTERVAL '{interval_clause}'"
 
@@ -193,7 +197,8 @@ class BirdNetStatsService:
                 }
         except Exception as e:
             logger.error(f"Error get_advanced_stats: {e}", exc_info=True)
-            empty_chart: dict = {"labels": [], "values": []}
+            empty_chart: dict[str, list[typing.Any]] = {"labels": [], "values": []}
+
             return {
                 "daily": empty_chart,
                 "hourly": {"values": []},
@@ -209,7 +214,7 @@ class BirdNetStatsService:
             }
 
     @staticmethod
-    async def get_species_stats(species_name: str) -> dict | None:
+    async def get_species_stats(species_name: str) -> dict[str, typing.Any] | None:
         """Get detailed stats for a specific species."""
         try:
             async with db.get_connection() as conn:
@@ -292,7 +297,7 @@ class BirdNetStatsService:
             return None
 
     @staticmethod
-    async def get_all_detections_cursor() -> typing.AsyncGenerator[dict, None]:
+    async def get_all_detections_cursor() -> typing.AsyncGenerator[dict[str, typing.Any], None]:
         """Yields all detections efficiently for export."""
         async with db.get_connection() as conn:
             query = text("""

@@ -1,6 +1,7 @@
 import json
 import logging
 import os
+import typing
 from pathlib import Path
 
 import yaml
@@ -19,7 +20,7 @@ class Config:
         # Watcher
         self.RECURSIVE_WATCH = os.getenv("RECURSIVE_WATCH", "true").lower() == "true"
 
-    def _load_yaml(self):
+    def _load_yaml(self) -> dict[str, typing.Any]:
         """Loads the YAML config file if it exists, otherwise returns empty dict."""
         if self.CONFIG_FILE.exists():
             try:
@@ -31,7 +32,7 @@ class Config:
         return {}
 
     @property
-    def birdnet_settings(self):
+    def birdnet_settings(self) -> dict[str, typing.Any]:
         """Returns a dictionary of BirdNET settings, merging defaults,
         env vars, and YAML config.
         Priority: settings.json (BirdNET) > settings.json (Global Location) > config.yaml > Environment > Default
@@ -42,7 +43,12 @@ class Config:
         location_conf = full_json.get("location", {})
 
         # Helper to get value from JSON -> YAML -> Env -> Default
-        def get_val(key, env_key, default, type_cast):
+        def get_val(
+            key: str,
+            env_key: str,
+            default: typing.Any,
+            type_cast: typing.Callable[[typing.Any], typing.Any],
+        ) -> typing.Any:
             # 1. Dashboard Settings (JSON)
             val = json_conf.get(key)
             if val is not None:
@@ -77,7 +83,7 @@ class Config:
             "threads": get_val("threads", "THREADS", 3, int),
         }
 
-    def _load_settings_json(self):
+    def _load_settings_json(self) -> dict[str, typing.Any]:
         """Loads the shared JSON settings file."""
         settings_path = Path("/config/settings.json")
         if settings_path.exists():
@@ -90,31 +96,31 @@ class Config:
 
     # Backward compatibility properties (proxies to fresh settings)
     @property
-    def MIN_CONFIDENCE(self):
+    def MIN_CONFIDENCE(self) -> float:
         return self.birdnet_settings["min_conf"]
 
     @property
-    def LATITUDE(self):
+    def LATITUDE(self) -> float:
         return self.birdnet_settings["lat"]
 
     @property
-    def LONGITUDE(self):
+    def LONGITUDE(self) -> float:
         return self.birdnet_settings["lon"]
 
     @property
-    def WEEK(self):
+    def WEEK(self) -> int:
         return self.birdnet_settings["week"]
 
     @property
-    def OVERLAP(self):
+    def OVERLAP(self) -> float:
         return self.birdnet_settings["overlap"]
 
     @property
-    def SENSITIVITY(self):
+    def SENSITIVITY(self) -> float:
         return self.birdnet_settings["sensitivity"]
 
     @property
-    def THREADS(self):
+    def THREADS(self) -> int:
         return self.birdnet_settings["threads"]
 
 

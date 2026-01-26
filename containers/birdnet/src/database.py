@@ -1,6 +1,7 @@
 import logging
 import os
 import time
+import typing
 from datetime import UTC, datetime
 
 from sqlalchemy import Column, DateTime, Float, Integer, String, Text, create_engine
@@ -97,7 +98,7 @@ class DatabaseHandler:
         self.engine = None
         self.Session = None
 
-    def connect(self):
+    def connect(self) -> bool:
         """Establish database connection and ensure schema exists."""
         retries = 10
         while retries > 0:
@@ -134,7 +135,7 @@ class DatabaseHandler:
 
         return False
 
-    def save_detection(self, detection_dict: dict):
+    def save_detection(self, detection_dict: dict[str, typing.Any]) -> None:
         """Save a single detection to the database.
 
         Args:
@@ -175,7 +176,7 @@ class DatabaseHandler:
         finally:
             session.close()
 
-    def get_watchlist(self):
+    def get_watchlist(self) -> list[Watchlist]:
         """Returns all enabled watchlist items."""
         if not self.Session:
             return []
@@ -185,7 +186,9 @@ class DatabaseHandler:
         finally:
             session.close()
 
-    def update_watchlist(self, scientific_name, common_name, enabled=True):
+    def update_watchlist(
+        self, scientific_name: str, common_name: str, enabled: bool = True
+    ) -> bool:
         """Add/Update a species in the watchlist."""
         if not self.Session:
             return False
@@ -211,7 +214,7 @@ class DatabaseHandler:
         finally:
             session.close()
 
-    def is_watched(self, scientific_name):
+    def is_watched(self, scientific_name: str) -> bool:
         """Check if a species is in the watchlist and enabled."""
         if not self.Session:
             return False
@@ -227,7 +230,7 @@ class DatabaseHandler:
         finally:
             session.close()
 
-    def log_processed_file(self, filename: str, duration: float, processing_time: float):
+    def log_processed_file(self, filename: str, duration: float, processing_time: float) -> None:
         """Log that a file was processed (regardless of detections)."""
         if not self.Session:
             return

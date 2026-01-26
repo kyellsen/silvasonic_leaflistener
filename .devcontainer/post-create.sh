@@ -25,3 +25,9 @@ sudo usermod -aG audio vscode
 
 echo "--- Setup Complete! ---"
 echo "Running natively on: $(uname -m)"
+
+# 5. Link Agent Brain for Visibility
+if [ -d "/home/vscode/.gemini/antigravity/brain" ]; then
+    echo "Linking Agent Brain..."
+    ln -sfn /home/vscode/.gemini/antigravity/brain /workspace/agent_brain
+fi

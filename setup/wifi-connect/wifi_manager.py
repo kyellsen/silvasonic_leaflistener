@@ -1,5 +1,6 @@
 import logging
 import subprocess
+import typing
 
 logger = logging.getLogger("wifi_manager")
 
@@ -12,7 +13,7 @@ class WifiManager:
     INTERFACE = "wlan0"
 
     @staticmethod
-    def run_command(cmd):
+    def run_command(cmd: str) -> str | None:
         """Execute a shell command and return the output."""
         try:
             result = subprocess.run(cmd, shell=True, check=True, capture_output=True, text=True)
@@ -21,7 +22,7 @@ class WifiManager:
             logger.error(f"Command failed: {cmd}\nError: {e.stderr}")
             return None
 
-    def is_connected(self):
+    def is_connected(self) -> bool:
         """Check if we have an active connection to the internet (or just local router)."""
         # Simple check: do we have an active connection that is NOT our AP?
         cmd = "nmcli -t -f TYPE,STATE,CONNECTION device"
@@ -40,7 +41,7 @@ class WifiManager:
                         return True
         return False
 
-    def scan_networks(self):
+    def scan_networks(self) -> list[dict[str, typing.Any]]:
         """Return list of available SSIDs."""
         cmd = "nmcli -t -f SSID,SIGNAL,SECURITY dev wifi list --rescan yes"
         output = self.run_command(cmd)
@@ -70,7 +71,7 @@ class WifiManager:
         networks.sort(key=lambda x: x["signal"], reverse=True)
         return networks
 
-    def connect_wifi(self, ssid, password):
+    def connect_wifi(self, ssid: str, password: str | None) -> bool:
         """Attempt to connect to a network. Deletes old connection if exists."""
         logger.info(f"Attempting to connect to {ssid}")
 
@@ -87,7 +88,7 @@ class WifiManager:
             return True
         return False
 
-    def start_ap(self):
+    def start_ap(self) -> None:
         """Start the Access Point."""
         logger.info("Starting Access Point...")
         # Check if AP connection exists
@@ -107,7 +108,7 @@ class WifiManager:
         # Activate it
         self.run_command(f"nmcli connection up '{self.AP_SSID}'")
 
-    def is_ap_running(self):
+    def is_ap_running(self) -> bool:
         """Check if the Access Point is currently active."""
         # List active connections and look for our SSID
         cmd = "nmcli -t -f NAME connection show --active"

@@ -2,6 +2,7 @@ import csv
 import os
 import shutil
 import sys
+import typing
 import unittest
 from pathlib import Path
 from unittest.mock import MagicMock, patch
@@ -54,7 +55,7 @@ class TestClipSaving(unittest.TestCase):
         if self.test_audio.exists():
             self.test_audio.unlink()
 
-    def create_dummy_wav(self, path):
+    def create_dummy_wav(self, path: Path) -> None:
         import numpy as np
         import soundfile as sf
 
@@ -63,7 +64,7 @@ class TestClipSaving(unittest.TestCase):
         data = np.random.uniform(-1, 1, size=(sr * duration,))
         sf.write(str(path), data, sr)
 
-    def create_dummy_csv(self, output_dir, filename):
+    def create_dummy_csv(self, output_dir: str | Path, filename: str) -> Path:
         csv_path = Path(output_dir) / f"{filename}.BirdNET.results.csv"
         with open(csv_path, "w", newline="") as f:
             writer = csv.writer(f)
@@ -77,9 +78,11 @@ class TestClipSaving(unittest.TestCase):
     @patch("src.analyzer.BirdNETAnalyzer._trigger_alert")
     @patch("src.analyzer.bn_analyze")
     @patch("src.analyzer.BirdNETAnalyzer._run_ffmpeg_resampling")
-    def test_clip_saving(self, mock_ffmpeg, mock_bn, mock_alert):
+    def test_clip_saving(
+        self, mock_ffmpeg: MagicMock, mock_bn: MagicMock, mock_alert: MagicMock
+    ) -> None:
         # Setup Mocks
-        def ffmpeg_side_effect(input_path, output_path):
+        def ffmpeg_side_effect(input_path: str, output_path: Path) -> bool:
             output_path.parent.mkdir(parents=True, exist_ok=True)
             shutil.copy(input_path, output_path)
             return True
@@ -87,7 +90,7 @@ class TestClipSaving(unittest.TestCase):
         mock_ffmpeg.side_effect = ffmpeg_side_effect
 
         # Mock bn_analyze to write a CSV file to the output directory
-        def side_effect(**kwargs):
+        def side_effect(**kwargs: typing.Any) -> None:
             output_dir = kwargs.get("output")
             # Create a dummy CSV in that directory
             self.create_dummy_csv(output_dir, self.test_audio.stem + "_48k")

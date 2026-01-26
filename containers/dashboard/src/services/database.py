@@ -4,7 +4,7 @@ from sqlalchemy.ext.asyncio import AsyncConnection, create_async_engine
 
 
 class DatabaseHandler:
-    def __init__(self):
+    def __init__(self) -> None:
         self.user = os.getenv("POSTGRES_USER", "silvasonic")
         self.password = os.getenv("POSTGRES_PASSWORD", "silvasonic")
         self.db_name = os.getenv("POSTGRES_DB", "silvasonic")

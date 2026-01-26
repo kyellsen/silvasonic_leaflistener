@@ -13,9 +13,9 @@ services:
     privileged: true
     volumes:
       - ./containers/recorder/src:/app/src:z
-      - /mnt/data/services/silvasonic/recorder/recordings:/data/recording:z
-      - /mnt/data/services/silvasonic/logs:/var/log/silvasonic:z
-      - /mnt/data/services/silvasonic/status:/mnt/data/services/silvasonic/status:z
+      - ${SILVASONIC_DATA_DIR}/recorder/recordings:/data/recording:z
+      - ${SILVASONIC_DATA_DIR}/logs:/var/log/silvasonic:z
+      - ${SILVASONIC_DATA_DIR}/status:/mnt/data/services/silvasonic/status:z
     restart: always
 
   uploader:
@@ -29,11 +29,11 @@ services:
       - PGID=1000
     volumes:
       - ./containers/uploader/src:/app/src:z
-      - /mnt/data/services/silvasonic/recorder/recordings:/data/recording:ro
-      - /mnt/data/services/silvasonic/uploader/config:/config/rclone:z
-      - /mnt/data/services/silvasonic/logs:/var/log/silvasonic:z
-      - /mnt/data/services/silvasonic/status:/mnt/data/services/silvasonic/status:z
-      - /mnt/data/services/silvasonic/errors:/mnt/data/services/silvasonic/errors:z
+      - ${SILVASONIC_DATA_DIR}/recorder/recordings:/data/recording:ro
+      - ${SILVASONIC_DATA_DIR}/uploader/config:/config/rclone:z
+      - ${SILVASONIC_DATA_DIR}/logs:/var/log/silvasonic:z
+      - ${SILVASONIC_DATA_DIR}/status:/mnt/data/services/silvasonic/status:z
+      - ${SILVASONIC_DATA_DIR}/errors:/mnt/data/services/silvasonic/errors:z
     restart: always
 
   healthchecker:
@@ -45,11 +45,11 @@ services:
     env_file: .env
     volumes:
       - ./containers/healthchecker/src:/app/src:z
-      - /mnt/data/services/silvasonic/config:/config:z
-      - /mnt/data/services/silvasonic/status:/mnt/data/services/silvasonic/status:z
-      - /mnt/data/services/silvasonic/errors:/mnt/data/services/silvasonic/errors:z
-      - /mnt/data/services/silvasonic/notifications:/data/notifications:z
-      - /mnt/data/services/silvasonic/logs:/var/log/silvasonic:z
+      - ${SILVASONIC_DATA_DIR}/config:/config:z
+      - ${SILVASONIC_DATA_DIR}/status:/mnt/data/services/silvasonic/status:z
+      - ${SILVASONIC_DATA_DIR}/errors:/mnt/data/services/silvasonic/errors:z
+      - ${SILVASONIC_DATA_DIR}/notifications:/data/notifications:z
+      - ${SILVASONIC_DATA_DIR}/logs:/var/log/silvasonic:z
 
   birdnet:
     build: 
@@ -64,12 +64,12 @@ services:
       - RECURSIVE_WATCH=true
     volumes:
       - ./containers/birdnet/src:/app/src:z
-      - /mnt/data/services/silvasonic/recorder/recordings:/data/recording:ro
-      - /mnt/data/services/silvasonic/config:/config:ro
-      - /mnt/data/services/silvasonic/birdnet/results:/data/results:z
-      - /mnt/data/services/silvasonic/logs:/var/log/silvasonic:z
-      - /mnt/data/services/silvasonic/status:/mnt/data/services/silvasonic/status:z
-      - /mnt/data/services/silvasonic/notifications:/data/notifications:z
+      - ${SILVASONIC_DATA_DIR}/recorder/recordings:/data/recording:ro
+      - ${SILVASONIC_DATA_DIR}/config:/config:ro
+      - ${SILVASONIC_DATA_DIR}/birdnet/results:/data/results:z
+      - ${SILVASONIC_DATA_DIR}/logs:/var/log/silvasonic:z
+      - ${SILVASONIC_DATA_DIR}/status:/mnt/data/services/silvasonic/status:z
+      - ${SILVASONIC_DATA_DIR}/notifications:/data/notifications:z
     restart: always
 
   livesound:
@@ -85,9 +85,9 @@ services:
     cpu_shares: 512
     volumes:
       - ./containers/livesound/src:/app/src:z
-      - /mnt/data/services/silvasonic/recorder/recordings:/data/recording:ro
-      - /mnt/data/services/silvasonic/logs:/var/log/silvasonic:z
-      - /mnt/data/services/silvasonic/status:/mnt/data/services/silvasonic/status:z
+      - ${SILVASONIC_DATA_DIR}/recorder/recordings:/data/recording:ro
+      - ${SILVASONIC_DATA_DIR}/logs:/var/log/silvasonic:z
+      - ${SILVASONIC_DATA_DIR}/status:/mnt/data/services/silvasonic/status:z
     restart: always
 
   dashboard:
@@ -104,10 +104,10 @@ services:
       - "8080:8080"
     volumes:
       - ./containers/dashboard/src:/app/src:z
-      - /mnt/data/services/silvasonic/recorder/recordings:/data/recording:ro
-      - /mnt/data/services/silvasonic/config:/config:z
-      - /mnt/data/services/silvasonic/logs:/var/log/silvasonic:z
-      - /mnt/data/services/silvasonic/status:/mnt/data/services/silvasonic/status:z
+      - ${SILVASONIC_DATA_DIR}/recorder/recordings:/data/recording:ro
+      - ${SILVASONIC_DATA_DIR}/config:/config:z
+      - ${SILVASONIC_DATA_DIR}/logs:/var/log/silvasonic:z
+      - ${SILVASONIC_DATA_DIR}/status:/mnt/data/services/silvasonic/status:z
 
   weather:
     build: 
@@ -118,9 +118,9 @@ services:
     env_file: .env
     volumes:
       - ./containers/weather/src:/app/src:z
-      - /mnt/data/services/silvasonic/config:/config:z
-      - /mnt/data/services/silvasonic/logs:/var/log/silvasonic:z
-      - /mnt/data/services/silvasonic/status:/mnt/data/services/silvasonic/status:z
+      - ${SILVASONIC_DATA_DIR}/config:/config:z
+      - ${SILVASONIC_DATA_DIR}/logs:/var/log/silvasonic:z
+      - ${SILVASONIC_DATA_DIR}/status:/mnt/data/services/silvasonic/status:z
 
   db:
     image: docker.io/library/postgres:15-alpine
@@ -130,7 +130,7 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-silvasonic}
       POSTGRES_DB: ${POSTGRES_DB:-silvasonic}
     volumes:
-      - /mnt/data/services/silvasonic/db/data:/var/lib/postgresql/data:z
+      - ${SILVASONIC_DATA_DIR}/db/data:/var/lib/postgresql/data:z
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U silvasonic"]
       interval: 10s

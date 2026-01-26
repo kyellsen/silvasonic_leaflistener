@@ -21,24 +21,24 @@ app.add_middleware(
 )
 
 
-@app.on_event("startup")
+@app.on_event("startup")  # type: ignore
 async def startup_event() -> None:
     # Pass the running loop to the processor
     loop = asyncio.get_running_loop()
     processor.start(loop)
 
 
-@app.on_event("shutdown")
+@app.on_event("shutdown")  # type: ignore
 async def shutdown_event() -> None:
     processor.stop()
 
 
-@app.get("/")
+@app.get("/")  # type: ignore
 async def get() -> HTMLResponse:
     return HTMLResponse("<h1>Silvasonic Brain Live</h1><p>Active.</p>")
 
 
-@app.websocket("/ws/spectrogram")
+@app.websocket("/ws/spectrogram")  # type: ignore
 async def websocket_endpoint(websocket: WebSocket) -> None:
     await websocket.accept()
     logger.debug("WS Connected")
@@ -59,7 +59,7 @@ async def websocket_endpoint(websocket: WebSocket) -> None:
         processor.unsubscribe_spectrogram(queue)
 
 
-@app.get("/stream")
+@app.get("/stream")  # type: ignore
 async def stream_audio() -> StreamingResponse:
     """Streams audio to the browser by piping the creation of MP3."""
     return StreamingResponse(

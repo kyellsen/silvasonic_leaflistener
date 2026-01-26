@@ -1,6 +1,7 @@
 import datetime
 import os
 import shutil
+import typing
 from pathlib import Path
 
 import psutil
@@ -10,7 +11,7 @@ from .common import REC_DIR, logger
 
 class SystemService:
     @staticmethod
-    def get_stats():
+    def get_stats() -> dict[str, typing.Any]:
         try:
             # CPU Cores
             cpu_cores = psutil.cpu_percent(interval=None, percpu=True)
@@ -56,14 +57,15 @@ class SystemService:
         # Boot time
         try:
             boot_time = datetime.datetime.fromtimestamp(psutil.boot_time())
-            uptime = datetime.datetime.now() - boot_time
+            uptime: datetime.timedelta | str = datetime.datetime.now() - boot_time
         except Exception as e:
             logger.error(f"Error getting Boot stats: {e}", exc_info=True)
             uptime = "Unknown"
 
         # Last Recording
         last_rec = "Unknown"
-        last_rec_ts = 0
+        last_rec_ts: float = 0.0
+
         try:
             files = sorted(Path(REC_DIR).glob("**/*.flac"), key=os.path.getmtime, reverse=True)
             if files:
