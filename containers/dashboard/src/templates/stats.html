@@ -5,7 +5,7 @@
     <div class="flex items-center justify-between">
       <div>
         <h1
-          class="text-3xl font-bold bg-gradient-to-r from-blue-400 to-indigo-500 bg-clip-text text-transparent"
+          class="text-3xl font-bold bg-gradient-to-r from-indigo-400 to-violet-500 bg-clip-text text-transparent"
         >
           BirdStats
         </h1>
@@ -102,7 +102,7 @@
         class="text-lg font-bold text-gray-900 dark:text-white flex items-center gap-2"
       >
         <svg
-          class="w-5 h-5 text-blue-400"
+          class="w-5 h-5 text-indigo-400"
           fill="none"
           stroke="currentColor"
           viewBox="0 0 24 24"
@@ -523,7 +523,6 @@
     >
       Rarity Watch
     </h3>
-    <div class="flex items-center gap-4">
       <div
         class="w-12 h-12 rounded-full bg-purple-500/10 flex items-center justify-center text-2xl"
       >
@@ -538,6 +537,25 @@
           (All Time)
         </div>
       </div>
+    </div>
+  </div>
+
+  <!-- Metric Definitions -->
+  <div class="glass-panel p-6 rounded-2xl">
+    <h3
+      class="font-bold text-gray-900 dark:text-white mb-4 border-b border-gray-200 dark:border-white/10 pb-2 text-sm uppercase tracking-wide"
+    >
+      Metric Guide
+    </h3>
+    <div class="space-y-4 text-xs text-gray-600 dark:text-gray-300">
+        <div>
+            <strong class="text-gray-900 dark:text-white block mb-1">Biodiversity Index</strong>
+            <p>Calculated using Menhinick's Index (D = S / √N). Higher values indicate a richer variety of species relative to total detection count.</p>
+        </div>
+        <div>
+            <strong class="text-gray-900 dark:text-white block mb-1">Confidence</strong>
+            <p>The probability score from the AI model (BirdNET). We filter out low confidence results to ensure data quality.</p>
+        </div>
     </div>
   </div>
 </div>

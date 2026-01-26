@@ -319,89 +319,78 @@
     <span class="text-2xl">🐦</span> Recent Detections
   </h2>
 
-  <div
-    class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4"
-  >
+  <div class="flex flex-col gap-3">
     {% for d in detections %}
     <div
-      class="group relative bg-white dark:bg-white/5 rounded-2xl overflow-hidden shadow-sm hover:shadow-md transition-all border border-gray-200 dark:border-white/5 flex flex-col"
+      class="group flex items-center bg-white dark:bg-white/5 rounded-xl p-3 shadow-sm hover:shadow-md transition-all border border-gray-100 dark:border-white/5"
     >
-      <!-- Image / Placeholder -->
+      <!-- Time -->
       <div
-        class="h-32 w-full bg-gray-100 dark:bg-gray-800 relative overflow-hidden"
+        class="flex flex-col items-center justify-center mr-4 w-12 border-r border-gray-100 dark:border-white/5 pr-4"
+      >
+        <span
+          class="local-time-only text-xs font-mono font-bold text-gray-500 dark:text-gray-400"
+          data-timestamp="{{ d.iso_timestamp }}"
+          >--:--</span
+        >
+      </div>
+
+      <!-- Avatar -->
+      <div
+        class="relative w-10 h-10 rounded-full overflow-hidden flex-shrink-0 bg-gray-100 dark:bg-gray-800 mr-4 border border-gray-200 dark:border-white/10"
       >
         {% if d.image_url %}
         <img
           src="{{ d.image_url }}"
           alt="{{ d.display_name }}"
-          class="w-full h-full object-cover transform group-hover:scale-110 transition-transform duration-500"
+          class="w-full h-full object-cover"
         />
         {% else %}
-        <div
-          class="flex items-center justify-center h-full text-silva-200 dark:text-gray-700"
-        >
-          <svg class="w-12 h-12" fill="currentColor" viewBox="0 0 24 24">
+        <div class="flex items-center justify-center h-full text-gray-400">
+          <svg class="w-6 h-6" fill="currentColor" viewBox="0 0 24 24">
             <path
               d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 17.93c-3.95-.49-7-3.85-7-7.93 0-.62.08-1.21.21-1.79L9 15v1c0 1.1.9 2 2 2v1.93zm6.9-2.54c-.26-.81-1-1.39-1.9-1.39h-1v-3c0-.55-.45-1-1-1H8v-2h2c.55 0 1-.45 1-1V7h2c1.1 0 2-.9 2-2v-.41c2.93 1.19 5 4.06 5 7.41 0 2.08-.8 3.97-2.1 5.39z"
             />
           </svg>
         </div>
         {% endif %}
-
-        <!-- Confidence Badge -->
-        <div
-          class="absolute top-2 right-2 px-2 py-0.5 rounded-full bg-black/60 backdrop-blur-md border border-white/10 text-[10px] font-bold text-white shadow-sm"
-        >
-          {{ (d.confidence * 100)|round(0)|int }}%
-        </div>
-
-        <!-- Play Overlay -->
-        <div
-          class="absolute inset-0 flex items-center justify-center bg-black/30 opacity-0 group-hover:opacity-100 transition-opacity"
-        >
-          <button
-            class="p-2 bg-white/20 backdrop-blur-md rounded-full text-white hover:bg-white/40 transition hover:scale-105"
-            onclick='playGlobalAudio("{{ d.audio_relative_path|replace("\\", "/") }}", "{{ d.display_name|replace("\"", "\\\"") }}", "{{ d.confidence }}")'
-          >
-            <svg class="w-8 h-8" fill="currentColor" viewBox="0 0 24 24">
-              <path d="M8 5v14l11-7z" />
-            </svg>
-          </button>
-        </div>
       </div>
 
-      <div class="p-4 flex flex-col flex-1 relative">
+      <!-- Info -->
+      <div class="flex-1 min-w-0 mr-4">
         <h3
           class="font-bold text-gray-900 dark:text-white text-sm truncate"
           title="{{ d.display_name }}"
         >
           {{ d.display_name }}
         </h3>
-        <p class="text-[10px] text-gray-500 italic mb-2 truncate">
+        <p class="text-[10px] text-gray-500 italic truncate">
           {{ d.sci_name }}
         </p>
+      </div>
 
-        <div
-          class="mt-auto flex items-center justify-between pt-2 border-t border-gray-100 dark:border-white/5"
+      <!-- Confidence & Play -->
+      <div class="flex items-center gap-3">
+        <span
+          class="px-2 py-0.5 rounded-full bg-gray-100 dark:bg-white/10 text-[10px] font-bold text-gray-600 dark:text-gray-300"
         >
-          <div class="flex flex-col">
-            <span
-              class="local-date text-[10px] font-mono text-gray-400"
-              data-timestamp="{{ d.iso_timestamp }}"
-              >--</span
-            >
-            <span
-              class="local-time-only text-[10px] font-mono text-gray-300"
-              data-timestamp="{{ d.iso_timestamp }}"
-              >--</span
-            >
-          </div>
-        </div>
+          {{ (d.confidence * 100)|round(0)|int }}%
+        </span>
+
+        <button
+          class="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-white/10 text-gray-500 dark:text-gray-400 transition"
+          onclick='playGlobalAudio("{{ d.audio_relative_path|replace("\\", "/") }}", "{{ d.display_name|replace("\"", "\\\"") }}", "{{ d.confidence }}")'
+          title="Play Audio"
+        >
+          <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+            <path d="M8 5v14l11-7z" />
+          </svg>
+        </button>
       </div>
     </div>
     {% endfor %} {% if not detections %}
     <div
-      class="col-span-full p-10 text-center text-gray-500 italic bg-gray-50/50 dark:bg-white/5 rounded-2xl border border-dashed border-gray-300 dark:border-gray-700"
+      class="p-8 text-center text-gray-500 italic bg-gray-50/50 dark:bg-white/5 rounded-xl border border-dashed border-gray-300 dark:border-gray-700"
     >
       No recent detections found. Wait for the birds to sing! 🐦
     </div>

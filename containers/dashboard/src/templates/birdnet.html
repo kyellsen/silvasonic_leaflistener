@@ -5,7 +5,7 @@
   hx-trigger="every {{ auto_refresh_interval }}s"
   hx-swap="outerHTML"
 >
-  <h2 class="text-2xl font-bold mb-6 text-silva-800 dark:text-silva-100">
+  <h2 class="text-2xl font-bold mb-6 text-lime-600 dark:text-lime-400">
     BirdNET Detections
   </h2>
 
@@ -211,12 +211,47 @@
   <div
     class="bg-white dark:bg-gray-800 p-4 rounded-lg border border-gray-200 dark:border-gray-700 mt-4"
   >
-    <h3 class="font-bold text-gray-400 uppercase text-xs mb-4">Filter</h3>
-    <input
-      type="text"
-      placeholder="Search..."
-      class="w-full bg-gray-50 dark:bg-gray-900 border border-gray-300 dark:border-gray-600 rounded p-2 text-sm text-gray-900 dark:text-white"
-    />
+    <h3 class="font-bold text-gray-400 uppercase text-xs mb-4">
+      Filter Detections
+    </h3>
+
+    <!-- Search Input -->
+    <div class="mb-4">
+      <label class="block text-xs font-bold text-gray-500 mb-1">Search</label>
+      <input
+        type="text"
+        placeholder="Species, Scientific Name..."
+        class="w-full bg-gray-50 dark:bg-gray-900 border border-gray-300 dark:border-gray-600 rounded p-2 text-sm text-gray-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-lime-500"
+        onkeyup="filterTable()"
+        id="searchInput"
+      />
+      <p class="text-[10px] text-gray-400 mt-1">
+        Tip: Search for 'Turdus' to find all thrushes.
+      </p>
+    </div>
+
+    <!-- Date Filter (UI Placeholder for now) -->
+    <div class="mb-4">
+      <label class="block text-xs font-bold text-gray-500 mb-1">Date</label>
+      <input
+        type="date"
+        class="w-full bg-gray-50 dark:bg-gray-900 border border-gray-300 dark:border-gray-600 rounded p-2 text-sm text-gray-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-lime-500"
+      />
+    </div>
+
+    <!-- Confidence Filter (UI Placeholder) -->
+    <div class="mb-2">
+      <label class="block text-xs font-bold text-gray-500 mb-1"
+        >Min. Confidence</label
+      >
+      <div class="flex items-center gap-2">
+        <input
+          type="range"
+          class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer dark:bg-gray-700 accent-lime-500"
+        />
+        <span class="text-xs text-gray-500">70%</span>
+      </div>
+    </div>
   </div>
 </div>
 {% endblock %}
