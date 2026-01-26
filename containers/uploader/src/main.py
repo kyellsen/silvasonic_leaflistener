@@ -117,6 +117,34 @@ def main():
     wrapper = RcloneWrapper()
     janitor = StorageJanitor(SOURCE_DIR, threshold_percent=CLEANUP_THRESHOLD, target_percent=CLEANUP_TARGET)
     
+    # Database Setup
+    from src.database import DatabaseHandler
+    db = DatabaseHandler()
+    db.connect()
+
+    def upload_callback(filename, status, error=None):
+        """Callback for rclone wrapper."""
+        try:
+            # Try to get file size if success
+            size = 0
+            if status == "success":
+                try:
+                    full_path = os.path.join(SOURCE_DIR, filename)
+                    if os.path.exists(full_path):
+                        size = os.path.getsize(full_path)
+                except:
+                    pass
+            
+            db.log_upload(
+                filename=filename,
+                remote_path=f"{TARGET_DIR}/{filename}",
+                status=status,
+                size_bytes=size,
+                error_message=error
+            )
+        except Exception as e:
+            logger.error(f"Callback error: {e}")
+
     # 1. Configuration Check
     if NEXTCLOUD_URL and NEXTCLOUD_USER and NEXTCLOUD_PASSWORD:
         wrapper.configure_webdav(
@@ -143,7 +171,7 @@ def main():
                 
                 # Use COPY instead of SYNC to prevent deleting files on remote if they are missing locally
                 # Use MIN_AGE to avoid uploading files currently being written by the recorder
-                success = wrapper.copy(SOURCE_DIR, f"remote:{TARGET_DIR}", min_age=MIN_AGE)
+                success = wrapper.copy(SOURCE_DIR, f"remote:{TARGET_DIR}", min_age=MIN_AGE, callback=upload_callback)
                 
                 # Update metrics after upload attempt
                 queue_size = count_files(SOURCE_DIR)

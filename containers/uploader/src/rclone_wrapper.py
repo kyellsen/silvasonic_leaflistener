@@ -43,7 +43,7 @@ class RcloneWrapper:
             logger.error(f"Failed to configure remote: {e.stderr}")
             raise
 
-    def sync(self, source: str, dest: str, transfers: int = 4, checkers: int = 8) -> bool:
+    def sync(self, source: str, dest: str, transfers: int = 4, checkers: int = 8, callback=None) -> bool:
         """
         Runs the sync command and streams output.
         Returns True if successful, False otherwise.
@@ -56,9 +56,9 @@ class RcloneWrapper:
             "--config", self.config_path
         ]
         
-        return self._run_transfer(cmd, source, dest)
+        return self._run_transfer(cmd, source, dest, callback=callback)
 
-    def copy(self, source: str, dest: str, transfers: int = 4, checkers: int = 8, min_age: str = None) -> bool:
+    def copy(self, source: str, dest: str, transfers: int = 4, checkers: int = 8, min_age: str = None, callback=None) -> bool:
         """
         Runs the copy command (additive only) and streams output.
         Returns True if successful, False otherwise.
@@ -74,12 +74,19 @@ class RcloneWrapper:
         if min_age:
             cmd.extend(["--min-age", min_age])
         
-        return self._run_transfer(cmd, source, dest)
+        return self._run_transfer(cmd, source, dest, callback=callback)
 
-    def _run_transfer(self, cmd: list, source: str, dest: str) -> bool:
+    def _run_transfer(self, cmd: list, source: str, dest: str, callback=None) -> bool:
         """Helper to run transfer commands and stream logs. Returns True on success."""
         logger.info(f"Starting transfer: {source} -> {dest}")
         start_time = time.time()
+        
+        # Regex for parsing rclone logs
+        import re
+        # INFO : file.txt: Copied (new)
+        re_success = re.compile(r"INFO\s+:\s+(.+?):\s+Copied")
+        # ERROR : file.txt: Failed to copy: error message
+        re_error = re.compile(r"ERROR\s+:\s+(.+?):\s+Failed to copy:\s+(.*)")
         
         try:
             process = subprocess.Popen(
@@ -101,6 +108,25 @@ class RcloneWrapper:
                     # Keep buffer size manageable (e.g., last 100 lines)
                     if len(output_buffer) > 100:
                         output_buffer.pop(0)
+
+                    # Callback parsing
+                    if callback:
+                        try:
+                            # Check Success
+                            m_ok = re_success.search(line)
+                            if m_ok:
+                                filename = m_ok.group(1).strip()
+                                callback(filename, "success")
+                                continue
+
+                            # Check Error
+                            m_err = re_error.search(line)
+                            if m_err:
+                                filename = m_err.group(1).strip()
+                                err_msg = m_err.group(2).strip()
+                                callback(filename, "failed", error=err_msg)
+                        except Exception as e:
+                            logger.error(f"Callback error analyzing line '{line}': {e}")
             
             process.wait()
             
@@ -110,10 +136,10 @@ class RcloneWrapper:
                 return True
             else:
                 logger.error(f"Transfer failed with return code {process.returncode}")
-                logger.error("--- Rclone Output Dump (Last 100 lines) ---")
-                for line in output_buffer:
-                    logger.error(f"[Rclone] {line}")
-                logger.error("-------------------------------------------")
+                # logger.error("--- Rclone Output Dump (Last 100 lines) ---")
+                # for line in output_buffer:
+                #    logger.error(f"[Rclone] {line}")
+                # logger.error("-------------------------------------------")
                 return False
                 
         except Exception as e:
