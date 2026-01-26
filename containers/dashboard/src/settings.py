@@ -41,7 +41,7 @@ class HealthCheckerSettings(BaseModel):
     )
 
     @validator("recipient_email")
-    def validate_email(cls, v):
+    def validate_email(cls, v):  # noqa: N805
         if not v:
             return ""
         # Simple regex for email validation to avoid external dependencies
@@ -114,7 +114,7 @@ class SettingsService:
             if not os.path.exists(os.path.dirname(CONFIG_PATH)):
                 try:
                     os.makedirs(os.path.dirname(CONFIG_PATH), exist_ok=True)
-                except:
+                except OSError:
                     pass
 
             with open(CONFIG_PATH, "w") as f:

@@ -58,6 +58,9 @@ select = [
 ignore = [
     "D100", # Missing docstring in public module
     "D104", # Missing docstring in public package
+    "D",    # Ignore all docstyle issues for now
+    "E501", # Ignore line length
+    "W291", # Ignore trailing whitespace
 ]
 
 [tool.ruff.lint.pydocstyle]

@@ -27,13 +27,13 @@ def generate_spectrogram(audio_path: str, output_path: str) -> bool:
         y, sr = librosa.load(audio_path, sr=48000, duration=60)
 
         # Compute Spectrogram
-        D = librosa.amplitude_to_db(np.abs(librosa.stft(y)), ref=np.max)
+        s_db = librosa.amplitude_to_db(np.abs(librosa.stft(y)), ref=np.max)
 
         # Generate Plot
         # clear any existing plots to avoid memory leaks
         plt.clf()
         plt.figure(figsize=(10, 4))
-        librosa.display.specshow(D, sr=sr, x_axis="time", y_axis="hz")
+        librosa.display.specshow(s_db, sr=sr, x_axis="time", y_axis="hz")
         plt.colorbar(format="%+2.0f dB")
         plt.title("Spectrogram")
         plt.tight_layout()

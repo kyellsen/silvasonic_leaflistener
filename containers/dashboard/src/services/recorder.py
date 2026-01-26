@@ -119,7 +119,7 @@ class RecorderService:
 
             files_found = []
             # Recursive scan to find all audio files (support subdirs like YYYY-MM-DD or profile)
-            for root, dirs, files in os.walk(REC_DIR):
+            for root, _dirs, files in os.walk(REC_DIR):
                 for f in files:
                     if f.endswith((".flac", ".wav", ".mp3")):
                         full_path = os.path.join(root, f)
@@ -190,7 +190,7 @@ class RecorderService:
             # We might need to scan subdirs if profile is used.
             # Let's assume recursion for robustness or check depth 1.
 
-            for root, dirs, files in os.walk(REC_DIR):
+            for root, _dirs, files in os.walk(REC_DIR):
                 for f in files:
                     if not f.endswith(".flac"):
                         continue
@@ -221,7 +221,7 @@ class RecorderService:
                         # os.walk yields names. We have to stat for mtime.
                         # Parsing name avoids stat call (IO).
 
-                        folder_date = root.split("/")[-1]  # if folders are dates
+                        # folder_date = root.split("/")[-1]  # if folders are dates
 
                         # Try parsing name first
                         dt = datetime.datetime.strptime(ts_str, "%Y-%m-%d_%H-%M-%S")
@@ -229,13 +229,13 @@ class RecorderService:
 
                         if ts >= cutoff:
                             count += 1
-                    except:
+                    except Exception:
                         # Fallback to mtime
                         try:
                             mtime = os.path.getmtime(os.path.join(root, f))
                             if mtime >= cutoff:
                                 count += 1
-                        except:
+                        except Exception:
                             pass
 
             # Return rate per minute
@@ -252,12 +252,11 @@ class RecorderService:
             if not os.path.exists(REC_DIR):
                 return None
             # Find latest file. os.scandir is fast.
-            latest = None
             # We assume YYYY-MM-DD naming sort works
             # Optimization: check only recent folders if deeply nested?
             # For now, recursive walk
             all_files = []
-            for root, dirs, files in os.walk(REC_DIR):
+            for _root, _dirs, files in os.walk(REC_DIR):
                 for f in files:
                     if f.endswith(".flac"):
                         all_files.append(f)
@@ -282,7 +281,7 @@ class RecorderService:
             if not os.path.exists(REC_DIR):
                 return 0
             count = 0
-            for root, dirs, files in os.walk(REC_DIR):
+            for _root, _dirs, files in os.walk(REC_DIR):
                 for f in files:
                     if f.endswith(".flac"):
                         if not filename or f > filename:

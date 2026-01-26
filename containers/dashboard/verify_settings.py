@@ -1,20 +1,20 @@
 import os
 import sys
 
+from fastapi.testclient import TestClient
+from src.auth import require_auth
+from src.main import app
+from src.settings import CONFIG_PATH
+
 # Add src to path
 sys.path.append(os.path.join(os.getcwd(), "src"))
 
-
-from fastapi.testclient import TestClient
-from src.main import app
-from src.settings import CONFIG_PATH
 
 client = TestClient(app)
 
 # Mock Auth
 # We need to bypass auth or mock it.
 # fastest way: Dependency override
-from src.auth import require_auth
 
 app.dependency_overrides[require_auth] = lambda: True
 

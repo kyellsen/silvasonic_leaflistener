@@ -108,6 +108,7 @@ class WeatherService:
                     # Scatter (Correlation)
                     # ChartJS scatter format: {x: val, y: val}
                     data["scatter_temp"].append({"x": temp, "y": count})
+                    data["scatter_wind"].append({"x": wind, "y": count})
                     if rain > 0:
                         data["scatter_rain"].append({"x": rain, "y": count})
 
