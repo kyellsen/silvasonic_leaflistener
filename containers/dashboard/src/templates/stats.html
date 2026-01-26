@@ -13,9 +13,11 @@
   <!-- Distribution Pies Row -->
   <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
     <!-- Today -->
-    <div class="bg-gray-800 rounded-xl p-4 border border-gray-700 shadow-xl">
+    <div
+      class="bg-white dark:bg-gray-800 rounded-xl p-4 border border-gray-200 dark:border-gray-700 shadow-xl"
+    >
       <h3
-        class="text-xs font-bold text-gray-400 uppercase tracking-wider mb-3 text-center"
+        class="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-3 text-center"
       >
         Today (Top 20)
       </h3>
@@ -24,9 +26,11 @@
       </div>
     </div>
     <!-- Week -->
-    <div class="bg-gray-800 rounded-xl p-4 border border-gray-700 shadow-xl">
+    <div
+      class="bg-white dark:bg-gray-800 rounded-xl p-4 border border-gray-200 dark:border-gray-700 shadow-xl"
+    >
       <h3
-        class="text-xs font-bold text-gray-400 uppercase tracking-wider mb-3 text-center"
+        class="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-3 text-center"
       >
         Last 7 Days
       </h3>
@@ -35,9 +39,11 @@
       </div>
     </div>
     <!-- Month -->
-    <div class="bg-gray-800 rounded-xl p-4 border border-gray-700 shadow-xl">
+    <div
+      class="bg-white dark:bg-gray-800 rounded-xl p-4 border border-gray-200 dark:border-gray-700 shadow-xl"
+    >
       <h3
-        class="text-xs font-bold text-gray-400 uppercase tracking-wider mb-3 text-center"
+        class="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-3 text-center"
       >
         Last 30 Days
       </h3>
@@ -46,9 +52,11 @@
       </div>
     </div>
     <!-- Year -->
-    <div class="bg-gray-800 rounded-xl p-4 border border-gray-700 shadow-xl">
+    <div
+      class="bg-white dark:bg-gray-800 rounded-xl p-4 border border-gray-200 dark:border-gray-700 shadow-xl"
+    >
       <h3
-        class="text-xs font-bold text-gray-400 uppercase tracking-wider mb-3 text-center"
+        class="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-3 text-center"
       >
         Last Year
       </h3>
@@ -59,9 +67,13 @@
   </div>
 
   <!-- Time Series Section -->
-  <div class="bg-gray-800 rounded-xl p-6 border border-gray-700 shadow-xl">
+  <div
+    class="bg-white dark:bg-gray-800 rounded-xl p-6 border border-gray-200 dark:border-gray-700 shadow-xl"
+  >
     <div class="flex items-center justify-between mb-6">
-      <h3 class="text-lg font-bold text-white flex items-center gap-2">
+      <h3
+        class="text-lg font-bold text-gray-900 dark:text-white flex items-center gap-2"
+      >
         <svg
           class="w-5 h-5 text-blue-400"
           fill="none"
@@ -83,11 +95,14 @@
     </div>
   </div>
 
-  <!-- Dual Col: Hourly & Histogram -->
   <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
     <!-- Hourly Distribution -->
-    <div class="bg-gray-800 rounded-xl p-6 border border-gray-700 shadow-xl">
-      <h3 class="text-lg font-bold text-white mb-6 flex items-center gap-2">
+    <div
+      class="bg-white dark:bg-gray-800 rounded-xl p-6 border border-gray-200 dark:border-gray-700 shadow-xl"
+    >
+      <h3
+        class="text-lg font-bold text-gray-900 dark:text-white mb-6 flex items-center gap-2"
+      >
         <svg
           class="w-5 h-5 text-amber-400"
           fill="none"
@@ -109,9 +124,13 @@
     </div>
 
     <!-- All Species Histogram -->
-    <div class="bg-gray-800 rounded-xl p-6 border border-gray-700 shadow-xl">
+    <div
+      class="bg-white dark:bg-gray-800 rounded-xl p-6 border border-gray-200 dark:border-gray-700 shadow-xl"
+    >
       <div class="flex items-center justify-between mb-6">
-        <h3 class="text-lg font-bold text-white flex items-center gap-2">
+        <h3
+          class="text-lg font-bold text-gray-900 dark:text-white flex items-center gap-2"
+        >
           <svg
             class="w-5 h-5 text-purple-400"
             fill="none"
@@ -137,7 +156,7 @@
           >
           <div
             id="logToggleBtn"
-            class="w-9 h-5 bg-gray-700 border border-gray-600 rounded-full relative transition-all"
+            class="w-9 h-5 bg-gray-200 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-full relative transition-all"
           >
             <div
               id="logToggleCircle"
@@ -154,8 +173,12 @@
   </div>
 
   <!-- Rarest Species List -->
-  <div class="bg-gray-800 rounded-xl p-6 border border-gray-700 shadow-xl">
-    <h3 class="text-lg font-bold text-white mb-4 flex items-center gap-2">
+  <div
+    class="bg-white dark:bg-gray-800 rounded-xl p-6 border border-gray-200 dark:border-gray-700 shadow-xl"
+  >
+    <h3
+      class="text-lg font-bold text-gray-900 dark:text-white mb-4 flex items-center gap-2"
+    >
       <svg
         class="w-5 h-5 text-emerald-400"
         fill="none"
@@ -172,9 +195,9 @@
       Rare Sightings (Least Frequent)
     </h3>
     <div class="overflow-x-auto">
-      <table class="w-full text-left text-sm text-gray-400">
+      <table class="w-full text-left text-sm text-gray-600 dark:text-gray-400">
         <thead
-          class="bg-gray-700/50 text-xs uppercase font-medium text-gray-300"
+          class="bg-gray-100 dark:bg-gray-700/50 text-xs uppercase font-medium text-gray-500 dark:text-gray-300"
         >
           <tr>
             <th class="px-4 py-3 rounded-l-lg">Species</th>
@@ -182,15 +205,15 @@
             <th class="px-4 py-3 rounded-r-lg text-right">Action</th>
           </tr>
         </thead>
-        <tbody class="divide-y divide-gray-700/50">
+        <tbody class="divide-y divide-gray-200 dark:divide-gray-700/50">
           {% for bird in rarest %}
-          <tr class="hover:bg-gray-700/30 transition">
-            <td class="px-4 py-3 font-medium text-white">
+          <tr class="hover:bg-gray-50 dark:hover:bg-gray-700/30 transition">
+            <td class="px-4 py-3 font-medium text-gray-900 dark:text-white">
               {{ bird.common_name }}
             </td>
             <td class="px-4 py-3">
               <span
-                class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-700 text-gray-300"
+                class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 border border-gray-200 dark:border-gray-600"
               >
                 {{ bird.count }}
               </span>
@@ -244,15 +267,15 @@
       const commonLayout = {
           paper_bgcolor: 'rgba(0,0,0,0)',
           plot_bgcolor: 'rgba(0,0,0,0)',
-          font: { color: '#9ca3af', family: 'Inter, sans-serif' },
+          font: { color: document.documentElement.classList.contains('dark') ? '#9ca3af' : '#4b5563', family: 'Inter, sans-serif' },
           margin: { t: 10, b: 30, l: 40, r: 10 },
           xaxis: {
-              gridcolor: 'rgba(255,255,255,0.05)',
-              zerolinecolor: 'rgba(255,255,255,0.05)'
+              gridcolor: document.documentElement.classList.contains('dark') ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)',
+              zerolinecolor: document.documentElement.classList.contains('dark') ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)'
           },
           yaxis: {
-              gridcolor: 'rgba(255,255,255,0.05)',
-              zerolinecolor: 'rgba(255,255,255,0.05)'
+              gridcolor: document.documentElement.classList.contains('dark') ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)',
+              zerolinecolor: document.documentElement.classList.contains('dark') ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)'
           }
       };
 
@@ -282,7 +305,7 @@
                showlegend: false,
                annotations: [
                    {
-                       font: { size: 14, color: '#9ca3af' },
+                       font: { size: 14, color: document.documentElement.classList.contains('dark') ? '#9ca3af' : '#4b5563' },
                        showarrow: false,
                        text: values.reduce((a, b) => a + b, 0).toString(),
                        x: 0.5,
@@ -406,15 +429,29 @@
 
           if(!isLog) {
                // Turn ON
-              btn.classList.replace('bg-gray-700', 'bg-silva-600');
-              btn.classList.replace('border-gray-600', 'border-silva-500');
+              btn.classList.replace('bg-gray-200', 'bg-silva-600');
+              btn.classList.replace('dark:bg-gray-700', 'dark:bg-silva-600');
+              // Note: The original code logic might be simpler just replacing a 'bg-gray-700' directly?
+              // But we introduced dual classes. This toggle logic relies on specific class present.
+              // Let's protect it.
+              // ACTUALLY: The original JS relies on exact class replacement.
+              // Simpler fix: Just re-render the button entire classList or handle better logic?
+              // Let's assume the user doesn't switch themes MID-toggle-interaction often.
+              // But 'bg-gray-700' won't be there in light mode if we changed it to 'bg-gray-200 dark:bg-gray-700'.
+              // We need to robustify this JS.
+
+              // New Logic:
+              btn.classList.remove('bg-gray-200', 'dark:bg-gray-700', 'border-gray-300', 'dark:border-gray-600');
+              btn.classList.add('bg-silva-600', 'border-silva-500');
+
               circle.classList.replace('left-1', 'left-5');
               circle.classList.replace('bg-gray-400', 'bg-white');
               renderHist(true);
           } else {
                // Turn OFF
-              btn.classList.replace('bg-silva-600', 'bg-gray-700');
-              btn.classList.replace('border-silva-500', 'border-gray-600');
+              btn.classList.remove('bg-silva-600', 'border-silva-500');
+              btn.classList.add('bg-gray-200', 'dark:bg-gray-700', 'border-gray-300', 'dark:border-gray-600');
+
               circle.classList.replace('left-5', 'left-1');
               circle.classList.replace('bg-white', 'bg-gray-400');
               renderHist(false);

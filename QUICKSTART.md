@@ -149,7 +149,7 @@ journalctl -fu silvasonic
 # Neuladen
 
 ```bash
-sudo docker compose up -d --build
+sudo podman compose up -d --build
 ```
 
 

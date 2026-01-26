@@ -1,22 +1,22 @@
 {% extends base %} {% block content %}
 <div class="max-w-7xl mx-auto space-y-6">
   <!-- Breadcrumb -->
-  <div class="text-sm text-gray-400 flex items-center gap-2">
+  <div class="text-sm text-gray-500 dark:text-gray-400 flex items-center gap-2">
     <a
       href="/dashboard"
-      class="hover:text-amber-400 transition"
+      class="hover:text-amber-500 dark:hover:text-amber-400 transition"
       hx-target="#main-content"
       >Home</a
     >
     <span>/</span>
     <a
       href="/birdnet"
-      class="hover:text-amber-400 transition"
+      class="hover:text-amber-500 dark:hover:text-amber-400 transition"
       hx-target="#main-content"
       >BirdNET</a
     >
     <span>/</span>
-    <span class="text-gray-200">Discover</span>
+    <span class="text-gray-900 dark:text-gray-200">Discover</span>
   </div>
 
   <!-- Header -->
@@ -27,7 +27,7 @@
       >
         BirdDiscover
       </h1>
-      <p class="text-gray-400 mt-1 font-sans">
+      <p class="text-gray-600 dark:text-gray-400 mt-1 font-sans">
         Species Reference & Collection (<span id="header-count"
           >{{ species_list|length }}</span
         >
@@ -40,7 +40,7 @@
         type="text"
         id="species-search"
         placeholder="Search species..."
-        class="bg-gray-900/50 border border-gray-700 rounded-full px-5 py-2.5 w-64 text-sm focus:ring-2 focus:ring-amber-500/50 focus:border-amber-500/50 text-gray-200 transition-all group-hover:w-72"
+        class="bg-white dark:bg-gray-900/50 border border-gray-300 dark:border-gray-700 rounded-full px-5 py-2.5 w-64 text-sm focus:ring-2 focus:ring-amber-500/50 focus:border-amber-500/50 text-gray-900 dark:text-gray-200 transition-all group-hover:w-72"
         onkeyup="filterSpecies()"
       />
       <svg
@@ -82,11 +82,13 @@
           </svg>
         </div>
         <div>
-          <h3 class="font-bold text-gray-400 text-xs uppercase tracking-wider">
+          <h3
+            class="font-bold text-gray-500 dark:text-gray-400 text-xs uppercase tracking-wider"
+          >
             Total Species
           </h3>
           <p
-            class="text-3xl font-heading font-bold text-white mt-1"
+            class="text-3xl font-heading font-bold text-gray-900 dark:text-white mt-1"
             id="stats-count"
           >
             {{ species_list|length }}
@@ -141,7 +143,7 @@
         {% endif %}
 
         <div
-          class="absolute bottom-3 right-3 px-2 py-1 bg-black/40 backdrop-blur-md rounded-lg text-[10px] font-bold text-amber-300 border border-amber-500/20 shadow-lg"
+          class="absolute bottom-3 right-3 px-2 py-1 bg-white/80 dark:bg-black/40 backdrop-blur-md rounded-lg text-[10px] font-bold text-amber-600 dark:text-amber-300 border border-amber-500/20 shadow-lg"
         >
           {{ (sp.avg_conf * 100)|int }}% CONFIDENCE
         </div>
@@ -169,26 +171,28 @@
       </div>
       <div class="p-5">
         <h3
-          class="font-heading font-bold text-lg text-gray-100 group-hover:text-amber-400 transition truncate"
+          class="font-heading font-bold text-lg text-gray-900 dark:text-gray-100 group-hover:text-amber-500 dark:group-hover:text-amber-400 transition truncate"
         >
           {{ sp.display_name }}
         </h3>
         <p
-          class="text-xs text-gray-500 italic mb-4 border-b border-gray-700/50 pb-2"
+          class="text-xs text-gray-500 italic mb-4 border-b border-gray-200 dark:border-gray-700/50 pb-2"
         >
           {{ sp.sci_name }}
         </p>
 
-        <div class="space-y-2 text-xs text-gray-400">
+        <div class="space-y-2 text-xs text-gray-500 dark:text-gray-400">
           <div
-            class="flex justify-between items-center bg-gray-800/30 p-2 rounded-lg"
+            class="flex justify-between items-center bg-gray-100 dark:bg-gray-800/30 p-2 rounded-lg"
           >
             <span>Encounters</span>
-            <span class="text-white font-mono font-bold">{{ sp.count }}</span>
+            <span class="text-gray-900 dark:text-white font-mono font-bold"
+              >{{ sp.count }}</span
+            >
           </div>
           <div class="flex justify-between items-center px-1">
             <span>Last Seen</span>
-            <span class="text-gray-300">
+            <span class="text-gray-700 dark:text-gray-300">
               <span
                 class="local-time opacity-0 transition-opacity"
                 data-timestamp="{{ sp.last_seen_iso }}"
@@ -205,7 +209,7 @@
   <!-- No Results Message -->
   <div id="no-results" class="hidden text-center py-12">
     <div
-      class="inline-flex items-center justify-center p-4 bg-gray-800/50 rounded-full mb-4"
+      class="inline-flex items-center justify-center p-4 bg-gray-100 dark:bg-gray-800/50 rounded-full mb-4"
     >
       <svg
         class="w-8 h-8 text-gray-500"
