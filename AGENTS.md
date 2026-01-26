@@ -60,7 +60,7 @@ All code contributions must adhere to the following stack:
 
 - **Python**: `>= 3.13`
 - **Dependency Manager**: `uv` (Required).
-- **Environment**: **DevContainer (ARM64 QEMU)** required for non-ARM hosts.
+- **Environment**: **Native DevContainer** (Cross-compile for Prod).
 - **Linter/Formatter**: `ruff` (Google Style docstrings).
 - **Type Checker**: `mypy` (Strict mode).
 - **Models**: `Pydantic v2`.
