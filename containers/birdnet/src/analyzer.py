@@ -1,6 +1,7 @@
 import logging
 import shutil
 import subprocess
+import typing
 from pathlib import Path
 
 import soundfile as sf
@@ -17,7 +18,7 @@ logger = logging.getLogger("Analyzer")
 
 
 class BirdNETAnalyzer:
-    def __init__(self):
+    def __init__(self) -> None:
         logger.info("Initializing BirdNET Analyzer (Simple Mode)...")
         if bn_analyze is None:
             logger.error("BirdNET-Analyzer module not found!")
@@ -29,7 +30,7 @@ class BirdNETAnalyzer:
         logger.info("Connecting to Database...")
         db.connect()
 
-    def process_file(self, file_path: str):
+    def process_file(self, file_path: str) -> None:
         """Analyze a single audio file and save CSV results."""
         path = Path(file_path)
         if not path.exists():
@@ -225,9 +226,9 @@ class BirdNETAnalyzer:
 
         except Exception as e:
             logger.error(f"Failed to save clip for {audio_path.name}: {e}")
-            return None
+            return ""
 
-    def _run_ffmpeg_resampling(self, input_path: Path, output_path: Path):
+    def _run_ffmpeg_resampling(self, input_path: Path, output_path: Path) -> bool:
         """Resample to 48kHz mono using ffmpeg (robust against formats)"""
         try:
             cmd = [
@@ -252,7 +253,7 @@ class BirdNETAnalyzer:
             logger.error(f"Resampling error: {e}")
             return False
 
-    def _trigger_alert(self, detection: dict):
+    def _trigger_alert(self, detection: dict[str, typing.Any]) -> None:
         """Creates a notification event in the shared queue."""
         try:
             # Shared notification queue path

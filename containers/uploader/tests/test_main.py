@@ -1,6 +1,6 @@
 import json
 import os
-from unittest.mock import ANY, patch
+from unittest.mock import ANY, MagicMock, patch
 
 import pytest
 
@@ -10,7 +10,7 @@ import pytest
 class TestMain:
     """Tests for the main application logic."""
 
-    def test_calculate_queue_size(self, temp_fs, mock_db):
+    def test_calculate_queue_size(self, temp_fs: str, mock_db: MagicMock) -> None:
         """Test queue size calculation with some uploaded and some pending files."""
         from main import calculate_queue_size
 
@@ -33,7 +33,7 @@ class TestMain:
         assert "file1.txt" in args
         assert "subdir/file2.txt" in args
 
-    def test_calculate_queue_size_empty(self, temp_fs, mock_db):
+    def test_calculate_queue_size_empty(self, temp_fs: str, mock_db: MagicMock) -> None:
         """Test queue size is 0 when directory is empty."""
         from main import calculate_queue_size
 
@@ -41,7 +41,7 @@ class TestMain:
         assert queue_size == 0
         mock_db.get_uploaded_filenames.assert_not_called()
 
-    def test_calculate_queue_size_exception(self, temp_fs, mock_db):
+    def test_calculate_queue_size_exception(self, temp_fs: str, mock_db: MagicMock) -> None:
         """Test graceful handling of exceptions during queue size calculation."""
         # Pass invalid directory to trigger exception in os.walk (e.g. file as dir)
         # Or mock os.walk
@@ -53,7 +53,7 @@ class TestMain:
             assert queue_size == 0
 
     @patch("main.STATUS_FILE", new_callable=lambda: "status.json")
-    def test_write_status(self, mock_status_file, temp_fs):
+    def test_write_status(self, mock_status_file: MagicMock, temp_fs: str) -> None:
         """Test writing status to the status file."""
         # Redirect STATUS_FILE to temp dir
         status_path = os.path.join(temp_fs, "status.json")
@@ -74,7 +74,7 @@ class TestMain:
             assert "timestamp" in data
 
     @patch("main.ERROR_DIR", new_callable=lambda: "errors")
-    def test_report_error(self, mock_error_dir, temp_fs):
+    def test_report_error(self, mock_error_dir: MagicMock, temp_fs: str) -> None:
         """Test reporting errors to the error directory."""
         error_dir = os.path.join(temp_fs, "errors")
 
@@ -101,8 +101,14 @@ class TestMain:
     @patch("main.StorageJanitor")
     @patch("time.sleep")
     def test_main_loop_flow(
-        self, mock_sleep, mock_janitor, mock_rclone, mock_db_cls, mock_setup, temp_fs
-    ):
+        self,
+        mock_sleep: MagicMock,
+        mock_janitor: MagicMock,
+        mock_rclone: MagicMock,
+        mock_db_cls: MagicMock,
+        mock_setup: MagicMock,
+        temp_fs: str,
+    ) -> None:
         """Test the main loop flow including upload and cleanup."""
         # We need to break the infinite loop
         # We'll use a side effect on time.sleep to raise an exception after 1 call
@@ -148,8 +154,14 @@ class TestMain:
     @patch("main.StorageJanitor")
     @patch("time.sleep")
     def test_main_loop_failure(
-        self, mock_sleep, mock_janitor, mock_rclone, mock_db_cls, mock_setup, temp_fs
-    ):
+        self,
+        mock_sleep: MagicMock,
+        mock_janitor: MagicMock,
+        mock_rclone: MagicMock,
+        mock_db_cls: MagicMock,
+        mock_setup: MagicMock,
+        temp_fs: str,
+    ) -> None:
         """Test the main loop handling of upload failures."""
         mock_sleep.side_effect = [None, SystemExit("Break Loop")]
 
@@ -172,7 +184,7 @@ class TestMain:
         # Cleanup should NOT be called
         mock_janitor.return_value.check_and_clean.assert_not_called()
 
-    def test_upload_callback(self, mock_db):
+    def test_upload_callback(self, mock_db: MagicMock) -> None:
         """Test the upload callback function logging to the database."""
         with (
             patch("src.database.DatabaseHandler") as mock_db_cls,
@@ -221,7 +233,7 @@ class TestMain:
 
     @patch("main.logging")
     @patch("main.os.makedirs")
-    def test_setup_environment(self, mock_makedirs, mock_logging):
+    def test_setup_environment(self, mock_makedirs: MagicMock, mock_logging: MagicMock) -> None:
         """Test that environment setup creates necessary directories and configures logging."""
         from main import setup_environment
 
@@ -237,8 +249,14 @@ class TestMain:
     @patch("main.StorageJanitor")
     @patch("time.sleep")
     def test_main_loop_crash(
-        self, mock_sleep, mock_janitor, mock_rclone, mock_db, mock_setup, temp_fs
-    ):
+        self,
+        mock_sleep: MagicMock,
+        mock_janitor: MagicMock,
+        mock_rclone: MagicMock,
+        mock_db: MagicMock,
+        mock_setup: MagicMock,
+        temp_fs: str,
+    ) -> None:
         """Test that unhandled exceptions in the main loop are caught and reported."""
         # Create a file so calculate_queue_size proceeds to call db
         with open(os.path.join(temp_fs, "test.wav"), "w") as f:
@@ -261,7 +279,7 @@ class TestMain:
 
             mock_report.assert_called_with("main_loop_crash", ANY)
 
-    def test_signal_handler(self):
+    def test_signal_handler(self) -> None:
         """Test the signal handler raises SystemExit."""
         import signal
 

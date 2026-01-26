@@ -9,8 +9,10 @@ recorder_src = os.path.abspath(
     os.path.join(os.path.dirname(__file__), "../containers/recorder/src/main.py")
 )
 spec = importlib.util.spec_from_file_location("recorder_main", recorder_src)
+assert spec is not None
 main = importlib.util.module_from_spec(spec)
 sys.modules["recorder_main"] = main
+assert spec.loader is not None
 spec.loader.exec_module(main)
 
 

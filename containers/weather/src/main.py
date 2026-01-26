@@ -101,7 +101,7 @@ def find_station(lat: float, lon: float) -> str | None:
         if not df.empty:
             station_id = df.iloc[0]["station_id"]
             logger.info(f"Found nearest station: {station_id} for {lat}, {lon}")
-            return station_id
+            return str(station_id)
     except Exception as e:
         logger.error(f"Error finding station: {e}")
     return None

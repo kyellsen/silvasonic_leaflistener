@@ -1,9 +1,10 @@
 import logging
+import os
 import time
 
 from src.analyzer import BirdNETAnalyzer
 from src.config import config
-from watchdog.events import FileSystemEventHandler
+from watchdog.events import FileClosedEvent, FileSystemEventHandler
 from watchdog.observers import Observer
 
 logger = logging.getLogger("Watcher")
@@ -13,26 +14,27 @@ class AudioFileHandler(FileSystemEventHandler):
     def __init__(self, analyzer: BirdNETAnalyzer):
         self.analyzer = analyzer
 
-    def on_closed(self, event):
+    def on_closed(self, event: FileClosedEvent) -> None:
         # We listen for close_write events (Linux) to ensure file is fully written
         if event.is_directory:
             return
         # Support common audio formats
-        if not (event.src_path.endswith(".flac") or event.src_path.endswith(".wav")):
+        src_path_str = os.fsdecode(event.src_path)
+        if not (src_path_str.endswith(".flac") or src_path_str.endswith(".wav")):
             return
 
-        logger.info(f"New audio file detected: {event.src_path}")
+        logger.info(f"New audio file detected: {src_path_str}")
         # Give a small grace period just in case
         time.sleep(0.5)
-        self.analyzer.process_file(event.src_path)
+        self.analyzer.process_file(src_path_str)
 
 
 class WatcherService:
-    def __init__(self):
+    def __init__(self) -> None:
         self.analyzer = BirdNETAnalyzer()
         self.observer = Observer()
 
-    def run(self):
+    def run(self) -> None:
         # Scan existing files first?
         # Often good to process backlog, but BirdNET is heavy.
         # Let's verify backlog only if not huge or we can rely on manual trigger.
@@ -64,7 +66,7 @@ class WatcherService:
             self.observer.stop()
         self.observer.join()
 
-    def write_status(self, status: str):
+    def write_status(self, status: str) -> None:
         try:
             import json
             import os
@@ -91,7 +93,7 @@ class WatcherService:
         except Exception as e:
             logger.error(f"Failed to write status: {e}")
 
-    def scan_existing(self):
+    def scan_existing(self) -> None:
         self.write_status("Scanning")
         if not config.INPUT_DIR.exists():
             return

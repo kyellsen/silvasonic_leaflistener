@@ -14,14 +14,14 @@ logger = logging.getLogger("webapp")
 
 
 @app.route("/")
-def index():
+def index() -> str:
     """Render the index page with listed networks."""
     networks = manager.scan_networks()
     return render_template("index.html", networks=networks)
 
 
 @app.route("/connect", methods=["POST"])
-def connect():
+def connect() -> str | tuple[str, int]:
     """Handle the connection request to a WiFi network."""
     data = request.form
     ssid = data.get("ssid")
@@ -32,7 +32,7 @@ def connect():
 
     logger.info(f"Received connect request for {ssid}")
 
-    def attempt_connect():
+    def attempt_connect() -> None:
         time.sleep(3)  # Give browser time to load success page
         manager.connect_wifi(ssid, password)
 

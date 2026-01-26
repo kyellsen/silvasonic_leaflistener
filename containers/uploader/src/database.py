@@ -1,5 +1,6 @@
 import logging
 import os
+import typing
 
 from sqlalchemy import create_engine, text
 from sqlalchemy.orm import sessionmaker
@@ -21,8 +22,8 @@ class DatabaseHandler:
         self.db_url = (
             f"postgresql://{self.user}:{self.password}@{self.host}:{self.port}/{self.db_name}"
         )
-        self.engine = None
-        self.Session = None
+        self.engine: typing.Any | None = None
+        self.Session: sessionmaker | None = None
 
     def connect(self) -> bool:
         """Connect to the database and create tables."""
@@ -73,12 +74,15 @@ class DatabaseHandler:
         remote_path: str,
         status: str,
         size_bytes: int = 0,
-        error_message: str = None,
+        error_message: str | None = None,
     ) -> None:
         """Log an upload event."""
         if not self.Session:
             if not self.connect():
                 return
+
+        if not self.Session:
+            return
 
         session = self.Session()
         try:

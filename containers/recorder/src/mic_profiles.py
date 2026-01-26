@@ -8,6 +8,7 @@ import logging
 import os
 import re
 import subprocess
+import typing
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -43,7 +44,7 @@ class MicrophoneProfile:
     slug: str = ""  # URL-safe identifier for folder names
     manufacturer: str = "Unknown"
     model: str = "Unknown"
-    device_patterns: list = field(default_factory=list)
+    device_patterns: list[str] = field(default_factory=list)
     audio: AudioConfig = field(default_factory=AudioConfig)
     recording: RecordingConfig = field(default_factory=RecordingConfig)
     priority: int = 50
@@ -56,7 +57,7 @@ class MicrophoneProfile:
             self.slug = re.sub(r"[^a-z0-9]+", "_", self.name.lower()).strip("_")
 
     @classmethod
-    def from_dict(cls, data: dict, filename: str = "") -> "MicrophoneProfile":
+    def from_dict(cls, data: dict[str, typing.Any], filename: str = "") -> "MicrophoneProfile":
         """Create profile from dictionary (parsed YAML)."""
         audio_data = data.get("audio", {})
         recording_data = data.get("recording", {})

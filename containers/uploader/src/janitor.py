@@ -1,5 +1,6 @@
 import logging
 import os
+import typing
 
 logger = logging.getLogger("Janitor")
 
@@ -19,7 +20,9 @@ class StorageJanitor:
         self.threshold_percent = threshold_percent
         self.target_percent = target_percent
 
-    def check_and_clean(self, remote_files: dict[str, int] | None, get_usage_callback) -> None:
+    def check_and_clean(
+        self, remote_files: dict[str, int] | None, get_usage_callback: typing.Callable[[str], float]
+    ) -> None:
         """Checks disk usage and deletes old files if threshold is exceeded.
 
         Args:

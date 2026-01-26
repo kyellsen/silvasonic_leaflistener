@@ -10,19 +10,19 @@ class TestRcloneWrapper:
     """Tests for the RcloneWrapper class."""
 
     @pytest.fixture
-    def rclone(self, temp_fs):
+    def rclone(self, temp_fs: str) -> RcloneWrapper:
         """Fixture providing an RcloneWrapper instance."""
         config = os.path.join(temp_fs, "rclone.conf")
         return RcloneWrapper(config_path=config)
 
-    def test_init_creates_config_dir(self, temp_fs):
+    def test_init_creates_config_dir(self, temp_fs: str) -> None:
         """Test that initialization creates the configuration directory if missing."""
         config_path = os.path.join(temp_fs, "nested", "rclone.conf")
         RcloneWrapper(config_path=config_path)
         assert os.path.exists(os.path.dirname(config_path))
 
     @patch("subprocess.run")
-    def test_configure_webdav(self, mock_run, rclone):
+    def test_configure_webdav(self, mock_run: MagicMock, rclone: RcloneWrapper) -> None:
         """Test configuring a WebDAV remote."""
         mock_run.return_value.returncode = 0
 
@@ -37,7 +37,7 @@ class TestRcloneWrapper:
         assert "webdav" in args
 
     @patch("subprocess.run")
-    def test_configure_webdav_failure(self, mock_run, rclone):
+    def test_configure_webdav_failure(self, mock_run: MagicMock, rclone: RcloneWrapper) -> None:
         """Test failure handling when configuring WebDAV."""
         mock_run.side_effect = subprocess.CalledProcessError(1, ["cmd"], stderr="Error output")
 
@@ -45,7 +45,7 @@ class TestRcloneWrapper:
             rclone.configure_webdav("remote", "http://url", "user", "pass")
 
     @patch("subprocess.Popen")
-    def test_sync_success_callbacks(self, mock_popen, rclone):
+    def test_sync_success_callbacks(self, mock_popen: MagicMock, rclone: RcloneWrapper) -> None:
         """Test sync calls callbacks on success."""
         # Mock process output
         process_mock = MagicMock()
@@ -65,7 +65,7 @@ class TestRcloneWrapper:
         )
 
     @patch("subprocess.Popen")
-    def test_copy_failure_callbacks(self, mock_popen, rclone):
+    def test_copy_failure_callbacks(self, mock_popen: MagicMock, rclone: RcloneWrapper) -> None:
         """Test copy calls callbacks on failure."""
         # Mock process output with error
         process_mock = MagicMock()
@@ -82,7 +82,9 @@ class TestRcloneWrapper:
         callback.assert_called_once_with("badfile.txt", "failed", error="Network Error")
 
     @patch("subprocess.Popen")
-    def test_transfer_execution_exception(self, mock_popen, rclone):
+    def test_transfer_execution_exception(
+        self, mock_popen: MagicMock, rclone: RcloneWrapper
+    ) -> None:
         """Test handling of exceptions during transfer execution."""
         mock_popen.side_effect = Exception("Popopen failed")
 
@@ -90,7 +92,7 @@ class TestRcloneWrapper:
         assert success is False
 
     @patch("subprocess.run")
-    def test_list_files(self, mock_run, rclone):
+    def test_list_files(self, mock_run: MagicMock, rclone: RcloneWrapper) -> None:
         """Test listing files from a remote."""
         # Mock lsjson output
         json_output = """
@@ -111,7 +113,7 @@ class TestRcloneWrapper:
         assert "subdir" not in files
 
     @patch("subprocess.run")
-    def test_list_files_failure(self, mock_run, rclone):
+    def test_list_files_failure(self, mock_run: MagicMock, rclone: RcloneWrapper) -> None:
         """Test failure handling when listing files."""
         mock_run.side_effect = subprocess.CalledProcessError(1, ["cmd"], stderr="Error")
 
@@ -119,7 +121,7 @@ class TestRcloneWrapper:
         assert files is None
 
     @patch("os.statvfs")
-    def test_get_disk_usage(self, mock_stat, rclone):
+    def test_get_disk_usage(self, mock_stat: MagicMock, rclone: RcloneWrapper) -> None:
         """Test disk usage calculation."""
         # Mock statvfs
         # percent = (used / total) * 100
@@ -141,7 +143,7 @@ class TestRcloneWrapper:
         assert percent == 60.0
 
     @patch("os.statvfs")
-    def test_get_disk_usage_error(self, mock_stat, rclone):
+    def test_get_disk_usage_error(self, mock_stat: MagicMock, rclone: RcloneWrapper) -> None:
         """Test disk usage returns 0 on error."""
         mock_stat.side_effect = OSError("Disk error")
         percent = rclone.get_disk_usage_percent("/path")

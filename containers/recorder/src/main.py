@@ -8,6 +8,7 @@ Outputs:
 
 import json
 import logging
+import logging.handlers
 import os
 import signal
 import subprocess
@@ -168,12 +169,15 @@ def start_recording(profile: typing.Any, device: typing.Any, output_dir: str) ->
     )
 
     ffmpeg_process = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    assert ffmpeg_process.stderr is not None
     return ffmpeg_process
 
 
-def consume_stderr(proc: subprocess.Popen) -> None:
+def consume_stderr(proc: subprocess.Popen[bytes]) -> None:
     """Reads stderr in a separate thread to prevent buffer deadlock."""
     try:
+        if proc.stderr is None:
+            return
         for line in iter(proc.stderr.readline, b""):
             line_str = line.decode("utf-8", errors="replace").strip()
             if line_str:
@@ -183,7 +187,8 @@ def consume_stderr(proc: subprocess.Popen) -> None:
         logger.error(f"Log consumer error: {e}")
     finally:
         try:
-            proc.stderr.close()
+            if proc.stderr:
+                proc.stderr.close()
         except Exception:
             pass
 
@@ -205,7 +210,7 @@ def main() -> None:
     output_dir = os.path.join(BASE_OUTPUT_DIR, profile.slug)
 
     # Signal Handlers
-    def stop(sig, frame):
+    def stop(sig: int, frame: typing.Any) -> None:
         global running
         logger.info("Stopping...")
         running = False

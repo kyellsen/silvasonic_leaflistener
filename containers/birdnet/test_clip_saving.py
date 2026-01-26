@@ -37,7 +37,7 @@ from src.analyzer import BirdNETAnalyzer  # noqa: E402
 
 
 class TestClipSaving(unittest.TestCase):
-    def setUp(self):
+    def setUp(self) -> None:
         # Setup directories
         if config.RESULTS_DIR.exists():
             shutil.rmtree(config.RESULTS_DIR)
@@ -49,7 +49,7 @@ class TestClipSaving(unittest.TestCase):
         self.test_audio = Path("/tmp/test_audio.wav")
         self.create_dummy_wav(self.test_audio)
 
-    def tearDown(self):
+    def tearDown(self) -> None:
         if config.RESULTS_DIR.exists():
             shutil.rmtree(config.RESULTS_DIR)
         if self.test_audio.exists():
@@ -64,7 +64,9 @@ class TestClipSaving(unittest.TestCase):
         data = np.random.uniform(-1, 1, size=(sr * duration,))
         sf.write(str(path), data, sr)
 
-    def create_dummy_csv(self, output_dir: str | Path, filename: str) -> Path:
+    def create_dummy_csv(self, output_dir: str | Path | None, filename: str) -> Path:
+        if output_dir is None:
+            raise ValueError("output_dir cannot be None")
         csv_path = Path(output_dir) / f"{filename}.BirdNET.results.csv"
         with open(csv_path, "w", newline="") as f:
             writer = csv.writer(f)

@@ -19,7 +19,7 @@ class WifiMonitor:
     def __init__(self) -> None:
         """Initialize the WifiMonitor."""
         self.manager = WifiManager()
-        self.current_process: subprocess.Popen | None = None
+        self.current_process: subprocess.Popen[bytes] | None = None
 
         self.mode = "none"  # none, setup, redirect
         self.check_interval = 10

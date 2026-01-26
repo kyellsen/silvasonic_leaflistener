@@ -9,7 +9,7 @@ BASE_URL = "http://localhost:8080"  # Dashboard Port
 # Credentials are in .env usually, but default is admin/silvasonic
 
 
-def login(page: Page):
+def login(page: Page) -> None:
     """Log in to the dashboard."""
     try:
         page.goto(f"{BASE_URL}/auth/login")
@@ -26,14 +26,14 @@ def login(page: Page):
         page.wait_for_url(f"{BASE_URL}/dashboard")
 
 
-def test_dashboard_access(page: Page):
+def test_dashboard_access(page: Page) -> None:
     """Smoke test: Can we see the dashboard?"""
     login(page)
     expect(page).to_have_title("Silvasonic Dashboard")
     expect(page.locator("h1").first).to_contain_text("Overview")
 
 
-def test_livesound_page_elements(page: Page):
+def test_livesound_page_elements(page: Page) -> None:
     """Check if LiveSound page loads without error and canvas is present."""
     login(page)
     page.click("a[href='/livesound']")
@@ -47,7 +47,7 @@ def test_livesound_page_elements(page: Page):
     expect(page.locator("text=System:")).to_be_visible()
 
 
-def test_settings_integrity(page: Page):
+def test_settings_integrity(page: Page) -> None:
     """Check if Settings page renders forms correctly (Regression check)."""
     login(page)
     page.click("a[href='/settings']")

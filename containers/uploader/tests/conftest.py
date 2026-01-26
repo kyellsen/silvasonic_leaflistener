@@ -2,6 +2,7 @@ import os
 import shutil
 import sys
 import tempfile
+import typing
 from unittest.mock import MagicMock
 
 import pytest
@@ -12,7 +13,7 @@ sys.path.append(os.path.join(os.path.dirname(__file__), "../src"))
 
 
 @pytest.fixture
-def mock_env(monkeypatch):
+def mock_env(monkeypatch: pytest.MonkeyPatch) -> None:
     """Sets up clean environment variables."""
     monkeypatch.setenv("UPLOADER_NEXTCLOUD_URL", "https://example.com")
     monkeypatch.setenv("UPLOADER_NEXTCLOUD_USER", "user")
@@ -30,7 +31,7 @@ def mock_env(monkeypatch):
 
 
 @pytest.fixture(autouse=True)
-def clean_imports():
+def clean_imports() -> None:
     """Ensure we are using the local modules, not cached ones from other tests."""
     # 1. Clean sys.modules
     # Also clean 'src' prefixes left by birdnet tests
@@ -59,7 +60,7 @@ def clean_imports():
 
 
 @pytest.fixture
-def temp_fs():
+def temp_fs() -> typing.Generator[str, None, None]:
     """Creates a temporary directory for file operations."""
     path = tempfile.mkdtemp()
     yield path
@@ -67,7 +68,7 @@ def temp_fs():
 
 
 @pytest.fixture
-def mock_db():
+def mock_db() -> MagicMock:
     """Mocks the DatabaseHandler."""
     db_mock = MagicMock()
     # Setup happy path
@@ -77,7 +78,7 @@ def mock_db():
 
 
 @pytest.fixture
-def mock_rclone():
+def mock_rclone() -> MagicMock:
     """Mocks the RcloneWrapper."""
     rclone = MagicMock()
     rclone.copy.return_value = True

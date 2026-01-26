@@ -12,10 +12,10 @@ from sqlalchemy.schema import CreateSchema
 # Setup logging
 logger = logging.getLogger("Database")
 
-Base = declarative_base()
+Base: typing.Any = declarative_base()
 
 
-class BirdNETDetection(Base):
+class BirdNETDetection(Base):  # type: ignore
     __tablename__ = "detections"
     __table_args__ = {"schema": "birdnet"}
 
@@ -41,7 +41,7 @@ class BirdNETDetection(Base):
     clip_path = Column(String(1024), nullable=True)
 
 
-class SpeciesInfo(Base):
+class SpeciesInfo(Base):  # type: ignore
     __tablename__ = "species_info"
     __table_args__ = {"schema": "birdnet"}
 
@@ -57,7 +57,7 @@ class SpeciesInfo(Base):
     last_updated = Column(DateTime, default=lambda: datetime.now(UTC))
 
 
-class Watchlist(Base):
+class Watchlist(Base):  # type: ignore
     __tablename__ = "watchlist"
     __table_args__ = {"schema": "birdnet"}
 
@@ -73,7 +73,7 @@ class Watchlist(Base):
     min_confidence = Column(Float, default=0.0)  # 0.0 = Use global default
 
 
-class ProcessedFile(Base):
+class ProcessedFile(Base):  # type: ignore
     __tablename__ = "processed_files"
     __table_args__ = {"schema": "birdnet"}
 

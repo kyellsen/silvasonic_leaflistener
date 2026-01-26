@@ -8,7 +8,7 @@ from sqlalchemy import text
 from src.services.database import db
 
 
-async def check():
+async def check() -> None:
     """Check database connection and basic statistics."""
     print("Checking DB connection...")
     try:

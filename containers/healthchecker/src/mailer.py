@@ -8,11 +8,11 @@ logger = logging.getLogger("HealthChecker.Notifier")
 
 
 class Mailer:
-    def __init__(self):
+    def __init__(self) -> None:
         self.apobj = apprise.Apprise()
         self._configure_notifications()
 
-    def _configure_notifications(self):
+    def _configure_notifications(self) -> None:
         """Configures Apprise with URLs from env vars or settings."""
         # 1. Load from settings.json (Preferred)
         config_path = "/config/settings.json"
@@ -90,9 +90,11 @@ class Mailer:
 
         try:
             # Apprise notify returns True if at least one notification was sent
-            status = self.apobj.notify(
-                body=body,
-                title=f"[Silvasonic] {subject}",
+            status = bool(
+                self.apobj.notify(
+                    body=body,
+                    title=f"[Silvasonic] {subject}",
+                )
             )
 
             if status:

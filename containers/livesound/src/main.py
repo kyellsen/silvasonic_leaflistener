@@ -31,7 +31,7 @@ except Exception as e:
 logger = logging.getLogger("Main")
 
 
-def write_status():
+def write_status() -> None:
     """Writes the Livesound's own heartbeat."""
     status_file = "/mnt/data/services/silvasonic/status/livesound.json"
     os.makedirs(os.path.dirname(status_file), exist_ok=True)
@@ -57,7 +57,7 @@ def write_status():
         time.sleep(5)
 
 
-def main():
+def main() -> None:
     logger.info("Starting Silvasonic Livesound...")
 
     # Start Status Thread

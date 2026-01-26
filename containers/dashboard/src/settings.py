@@ -41,7 +41,7 @@ class HealthCheckerSettings(BaseModel):
     )
 
     @validator("recipient_email")
-    def validate_email(cls, v):  # noqa: N805
+    def validate_email(cls, v: str | None) -> str:  # noqa: N805
         if not v:
             return ""
         # Simple regex for email validation to avoid external dependencies
@@ -67,7 +67,7 @@ DEFAULT_SETTINGS = Settings().dict()
 
 class SettingsService:
     @staticmethod
-    def get_settings() -> dict:
+    def get_settings() -> dict[str, typing.Any]:
         """Load settings from JSON, returning dict for compatibility."""
         return SettingsService.load_model().dict()
 
@@ -88,7 +88,7 @@ class SettingsService:
             # Deep merge helper
             current = Settings().dict()
 
-            def deep_update(target, source):
+            def deep_update(target: dict, source: dict) -> None:
                 for k, v in source.items():
                     if isinstance(v, dict) and k in target and isinstance(target[k], dict):
                         deep_update(target[k], v)
@@ -128,5 +128,5 @@ class SettingsService:
             return False
 
     @staticmethod
-    def is_german_names_enabled():
+    def is_german_names_enabled() -> bool:
         return SettingsService.load_model().locale.use_german_names

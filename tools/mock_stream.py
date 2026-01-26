@@ -14,7 +14,7 @@ CHUNK_SIZE = 4096  # Samples per packet
 CHANNELS = 1
 
 
-def load_playlist(audio_dir: Path):
+def load_playlist(audio_dir: Path) -> list[Path]:
     """Load all .flac and .wav files from the directory."""
     files = list(audio_dir.glob("*.flac")) + list(audio_dir.glob("*.wav"))
     if not files:
@@ -24,7 +24,7 @@ def load_playlist(audio_dir: Path):
     return sorted(files)
 
 
-def process_track(file_path):
+def process_track(file_path: Path) -> np.ndarray | None:
     """Load and process an audio track for streaming."""
     print(f"Loading {file_path.name}...")
     try:
@@ -52,7 +52,7 @@ def process_track(file_path):
         return None
 
 
-def stream_loop(audio_dir: Path):
+def stream_loop(audio_dir: Path) -> None:
     """Continuously stream audio files from the directory."""
     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 

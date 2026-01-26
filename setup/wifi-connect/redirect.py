@@ -1,5 +1,6 @@
 import logging
 import socket
+import typing
 
 from flask import Flask, redirect
 
@@ -10,7 +11,7 @@ logger = logging.getLogger("redirector")
 app = Flask(__name__)
 
 
-def get_ip():
+def get_ip() -> str:
     """Get the local IP address of the device."""
     s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     try:
@@ -26,7 +27,7 @@ def get_ip():
 
 @app.route("/", defaults={"path": ""})
 @app.route("/<path:path>")
-def catch_all(path):
+def catch_all(path: str) -> typing.Any:
     """Handle all requests and redirect to the captive portal."""
     # Determine Hostname or IP to redirect to
     # Ideally use the Host header from the request to preserve "silvasonic.local" vs IP

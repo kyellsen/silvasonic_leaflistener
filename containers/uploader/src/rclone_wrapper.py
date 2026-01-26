@@ -51,7 +51,7 @@ class RcloneWrapper:
         dest: str,
         transfers: int = 4,
         checkers: int = 8,
-        callback: Callable | None = None,
+        callback: Callable[[str, str, str], None] | None = None,
     ) -> bool:
         """Runs the sync command and streams output.
 
@@ -80,7 +80,7 @@ class RcloneWrapper:
         transfers: int = 4,
         checkers: int = 8,
         min_age: str | None = None,
-        callback: Callable | None = None,
+        callback: Callable[[str, str, str], None] | None = None,
     ) -> bool:
         """Runs the copy command (additive only) and streams output.
 
@@ -106,7 +106,11 @@ class RcloneWrapper:
         return self._run_transfer(cmd, source, dest, callback=callback)
 
     def _run_transfer(
-        self, cmd: list[str], source: str, dest: str, callback: Callable | None = None
+        self,
+        cmd: list[str],
+        source: str,
+        dest: str,
+        callback: Callable[[str, str, str], None] | None = None,
     ) -> bool:
         """Helper to run transfer commands and stream logs. Returns True on success."""
         logger.info(f"Starting transfer: {source} -> {dest}")
@@ -149,7 +153,7 @@ class RcloneWrapper:
                                 m_ok = re_success.search(line)
                                 if m_ok:
                                     filename = m_ok.group(1).strip()
-                                    callback(filename, "success")
+                                    callback(filename, "success", "")
                                     continue
 
                                 # Check Error
@@ -157,7 +161,7 @@ class RcloneWrapper:
                                 if m_err:
                                     filename = m_err.group(1).strip()
                                     err_msg = m_err.group(2).strip()
-                                    callback(filename, "failed", error=err_msg)
+                                    callback(filename, "failed", err_msg)
                             except Exception as e:
                                 logger.error(f"Callback error analyzing line '{line}': {e}")
 

@@ -68,7 +68,7 @@ class WifiManager:
 
                     networks.append({"ssid": ssid, "signal": signal, "security": security})
         # Sort by signal strength
-        networks.sort(key=lambda x: x["signal"], reverse=True)
+        networks.sort(key=lambda x: int(str(x["signal"])), reverse=True)
         return networks
 
     def connect_wifi(self, ssid: str, password: str | None) -> bool:
@@ -107,6 +107,11 @@ class WifiManager:
 
         # Activate it
         self.run_command(f"nmcli connection up '{self.AP_SSID}'")
+
+    def stop_ap(self) -> None:
+        """Stop the Access Point."""
+        logger.info("Stopping Access Point...")
+        self.run_command(f"nmcli connection down '{self.AP_SSID}'")
 
     def is_ap_running(self) -> bool:
         """Check if the Access Point is currently active."""

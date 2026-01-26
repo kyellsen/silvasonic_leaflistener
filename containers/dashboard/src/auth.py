@@ -11,14 +11,14 @@ SESSION_SECRET = os.getenv("SESSION_SECRET", secrets.token_hex(32))
 COOKIE_NAME = "silvasonic_session"
 
 
-def check_auth(request: Request):
+def check_auth(request: Request) -> bool | None:
     token = request.cookies.get(COOKIE_NAME)
     if not token or token != SESSION_SECRET:
         return None
     return True
 
 
-def require_auth(request: Request):
+def require_auth(request: Request) -> bool | RedirectResponse:
     if not check_auth(request):
         # If API request, return 401
         if request.url.path.startswith("/api"):
@@ -36,7 +36,7 @@ def require_auth(request: Request):
     return True
 
 
-def verify_credentials(username, password):
+def verify_credentials(username: str, password: str) -> bool:
     # Constant time comparison to prevent timing attacks
     user_ok = secrets.compare_digest(username, ADMIN_USER)
     pass_ok = secrets.compare_digest(password, ADMIN_PASS)

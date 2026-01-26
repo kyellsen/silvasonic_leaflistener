@@ -1,5 +1,6 @@
 import logging
 import os
+import typing
 from datetime import datetime, timedelta
 
 from sqlalchemy import create_engine, text
@@ -17,12 +18,12 @@ DB_URL = f"postgresql://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
 engine = create_engine(DB_URL)
 
 
-def get_connection():
+def get_connection() -> typing.Any:
     """Get a new database connection."""
     return engine.connect()
 
 
-def init_analysis_db():
+def init_analysis_db() -> None:
     """Create the analysis table if it doesn't exist."""
     try:
         with get_connection() as conn:
@@ -43,7 +44,7 @@ def init_analysis_db():
         logger.error(f"Failed to init analysis DB: {e}")
 
 
-def run_analysis():
+def run_analysis() -> None:
     """Run the aggregation logic."""
     logger.info("Running statistical analysis...")
     try:

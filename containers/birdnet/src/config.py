@@ -97,31 +97,31 @@ class Config:
     # Backward compatibility properties (proxies to fresh settings)
     @property
     def MIN_CONFIDENCE(self) -> float:
-        return self.birdnet_settings["min_conf"]
+        return float(self.birdnet_settings["min_conf"])
 
     @property
     def LATITUDE(self) -> float:
-        return self.birdnet_settings["lat"]
+        return float(self.birdnet_settings["lat"])
 
     @property
     def LONGITUDE(self) -> float:
-        return self.birdnet_settings["lon"]
+        return float(self.birdnet_settings["lon"])
 
     @property
     def WEEK(self) -> int:
-        return self.birdnet_settings["week"]
+        return int(self.birdnet_settings["week"])
 
     @property
     def OVERLAP(self) -> float:
-        return self.birdnet_settings["overlap"]
+        return float(self.birdnet_settings["overlap"])
 
     @property
     def SENSITIVITY(self) -> float:
-        return self.birdnet_settings["sensitivity"]
+        return float(self.birdnet_settings["sensitivity"])
 
     @property
     def THREADS(self) -> int:
-        return self.birdnet_settings["threads"]
+        return int(self.birdnet_settings["threads"])
 
 
 config = Config()

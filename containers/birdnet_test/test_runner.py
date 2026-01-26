@@ -73,7 +73,7 @@ def analyze_file(input_path: Path, results_dir: Path):
             week=-1,  # Northern Germany (Hamburg area), Year-round filter
             overlap=0.0,
             sensitivity=1.0,
-            threads=max(1, os.cpu_count() - 1),
+            threads=max(1, (os.cpu_count() or 1) - 1),
             sf_thresh=0.0001,
             output=str(temp_output_dir),
             rtype="csv",

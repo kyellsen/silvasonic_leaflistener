@@ -10,7 +10,7 @@ from src.watcher import WatcherService
 logger = logging.getLogger("Main")
 
 
-def setup_logging():
+def setup_logging() -> None:
     log_dir = os.environ.get("LOG_DIR", "/var/log/silvasonic")
     # Only create directory if we are likely allowed to (e.g. not in a test env that prohibits it)
     # However, for tests, we simply won't call setup_logging or we set LOG_DIR to a temp dir.
@@ -42,7 +42,7 @@ def setup_logging():
     )
 
 
-def main():
+def main() -> None:
     setup_logging()
     logger.info("Starting Silvasonic BirdNET (Ornithologist)...")
 

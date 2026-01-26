@@ -31,7 +31,7 @@ class Config:
     METADATA_DIR = Path(os.getenv("METADATA_DIR", "/data/processed/metadata"))
 
     @classmethod
-    def ensure_dirs(cls):
+    def ensure_dirs(cls) -> None:
         """Ensure necessary directories exist."""
         cls.ARTIFACTS_DIR.mkdir(parents=True, exist_ok=True)
         if cls.EXPORT_JSON_METADATA:
