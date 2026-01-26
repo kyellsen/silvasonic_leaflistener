@@ -89,7 +89,7 @@ class Config:
         if settings_path.exists():
             try:
                 with open(settings_path) as f:
-                    return json.load(f)
+                    return typing.cast(dict[str, typing.Any], json.load(f))
             except Exception as e:
                 logger.error(f"Failed to load settings.json: {e}")
         return {}

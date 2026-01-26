@@ -1,6 +1,7 @@
 import importlib.util
 import os
 import sys
+import typing
 import unittest
 from unittest.mock import MagicMock, patch
 
@@ -40,7 +41,7 @@ class TestRecorder(unittest.TestCase):
 
     @patch("recorder_main.subprocess.Popen")
     @patch("recorder_main.os.makedirs")
-    def test_start_recording(self, mock_makedirs, mock_popen) -> None:
+    def test_start_recording(self, mock_makedirs: typing.Any, mock_popen: typing.Any) -> None:
         """Test that start_recording calls FFmpeg with correct arguments."""
         process_mock = MagicMock()
         mock_popen.return_value = process_mock
@@ -72,7 +73,7 @@ class TestRecorder(unittest.TestCase):
 
     @patch("recorder_main.subprocess.Popen")
     @patch("recorder_main.os.makedirs")
-    def test_start_recording_mock_mode(self, mock_makedirs, mock_popen) -> None:
+    def test_start_recording_mock_mode(self, mock_makedirs: typing.Any, mock_popen: typing.Any) -> None:
         """Test that mock mode changes input source."""
         self.profile.is_mock = True
 

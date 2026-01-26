@@ -95,8 +95,8 @@ class DatabaseHandler:
         self.db_url = (
             f"postgresql://{self.user}:{self.password}@{self.host}:{self.port}/{self.db_name}"
         )
-        self.engine = None
-        self.Session = None
+        self.engine: create_engine | None = None
+        self.Session: sessionmaker[typing.Any] | None = None
 
     def connect(self) -> bool:
         """Establish database connection and ensure schema exists."""

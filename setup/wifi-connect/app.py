@@ -17,7 +17,7 @@ logger = logging.getLogger("webapp")
 def index() -> str:
     """Render the index page with listed networks."""
     networks = manager.scan_networks()
-    return render_template("index.html", networks=networks)
+    return str(render_template("index.html", networks=networks))
 
 
 @app.route("/connect", methods=["POST"])  # type: ignore
@@ -41,7 +41,7 @@ def connect() -> str | tuple[str, int]:
 
     # Assume success for now (we can't report failure easily if we disconnect)
     # Ideally we try to pre-validate, but wpa_supplicant handshakes take time.
-    return render_template("success.html", ssid=ssid)
+    return str(render_template("success.html", ssid=ssid))
 
 
 if __name__ == "__main__":
