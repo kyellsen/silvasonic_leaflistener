@@ -247,8 +247,8 @@
     statusText.innerText = "Connecting...";
 
     // Always reset src for live stream to ensure we get "now"
-    // But check if already set to avoid glitch if just resuming (though for live, resuming = reconnecting usually)
-    audioEl.src = streamUrl;
+    // We add a timestamp to force the browser to open a NEW connection and bypass cache
+    audioEl.src = `${streamUrl}?t=${Date.now()}`;
 
     audioEl.play().catch((e) => {
       console.error("Play failed:", e);

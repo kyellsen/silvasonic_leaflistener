@@ -48,15 +48,26 @@ MIN_AGE = os.getenv("UPLOADER_MIN_AGE", "1m")
 os.makedirs(os.path.dirname(STATUS_FILE), exist_ok=True)
 os.makedirs(ERROR_DIR, exist_ok=True)
 
-def count_files(directory):
-    """Count total files in directory recursively."""
-    count = 0
+def calculate_queue_size(directory, db):
+    """Calculate pending files (local files - uploaded files)."""
+    files = []
     try:
         for root, _, filenames in os.walk(directory):
-            count += len(filenames)
+            for f in filenames:
+                # Get relative path to match DB entries
+                rel_path = os.path.relpath(os.path.join(root, f), directory)
+                files.append(rel_path)
     except Exception:
-        pass
-    return count
+        return 0
+
+    if not files:
+        return 0
+
+    # Get set of files that are already uploaded
+    uploaded = db.get_uploaded_filenames(files)
+    
+    # Queue is what's left
+    return len(files) - len(uploaded)
 
 def write_status(status: str, last_upload: float = 0, queue_size: int = -1, disk_usage: float = 0):
     """Write current status to JSON file for dashboard."""
@@ -164,7 +175,7 @@ def main():
         try:
             if os.path.exists(SOURCE_DIR):
                 # Gather Metrics
-                queue_size = count_files(SOURCE_DIR)
+                queue_size = calculate_queue_size(SOURCE_DIR, db)
                 disk_usage = wrapper.get_disk_usage_percent(SOURCE_DIR)
 
                 # --- PHASE 1: UPLOAD ---
@@ -175,7 +186,7 @@ def main():
                 success = wrapper.copy(SOURCE_DIR, f"remote:{TARGET_DIR}", min_age=MIN_AGE, callback=upload_callback)
 
                 # Update metrics after upload attempt
-                queue_size = count_files(SOURCE_DIR)
+                queue_size = calculate_queue_size(SOURCE_DIR, db)
                 disk_usage = wrapper.get_disk_usage_percent(SOURCE_DIR)
 
                 if success:
@@ -193,7 +204,7 @@ def main():
                     janitor.check_and_clean(remote_files, wrapper.get_disk_usage_percent)
 
                     # Final update after cleanup
-                    queue_size = count_files(SOURCE_DIR)
+                    queue_size = calculate_queue_size(SOURCE_DIR, db)
                     disk_usage = wrapper.get_disk_usage_percent(SOURCE_DIR)
                     write_status("Idle", last_upload_success, queue_size, disk_usage)
                 else:
@@ -207,7 +218,7 @@ def main():
                 write_status("Error: No Source", last_upload_success)
 
             logger.info(f"Sleeping for {SYNC_INTERVAL} seconds...")
-            write_status("Sleeping", last_upload_success, count_files(SOURCE_DIR), wrapper.get_disk_usage_percent(SOURCE_DIR) if os.path.exists(SOURCE_DIR) else 0)
+            write_status("Sleeping", last_upload_success, calculate_queue_size(SOURCE_DIR, db), wrapper.get_disk_usage_percent(SOURCE_DIR) if os.path.exists(SOURCE_DIR) else 0)
 
             # Smart Sleep (interruptible)
             for _ in range(SYNC_INTERVAL):

@@ -31,7 +31,7 @@
           </div>
           <div
             class="text-xl font-bold text-gray-900 dark:text-white mt-2 truncate group-hover:text-pink-500 transition"
-            title="{{ stats.device.description if stats.device is mapping else stats.device }}"
+            title="{{ stats.device.description if stats.device is mapping else stats.device_raw or stats.device }}"
           >
             {{ stats.device.description if stats.device is mapping else
             stats.device or 'Unknown Device' }}
@@ -329,13 +329,13 @@
         <div class="bg-gray-50 dark:bg-white/5 p-3 rounded-lg text-center">
           <div class="text-[10px] text-gray-400 uppercase">Est. Remaining</div>
           <div class="font-bold text-lg text-gray-900 dark:text-white">
-            ~14d
+            {{ stats.storage_forecast.remaining_str }}
           </div>
         </div>
         <div class="bg-gray-50 dark:bg-white/5 p-3 rounded-lg text-center">
           <div class="text-[10px] text-gray-400 uppercase">Daily Usage</div>
           <div class="font-bold text-lg text-gray-900 dark:text-white">
-            ~4GB
+            {{ stats.storage_forecast.daily_str }}
           </div>
         </div>
       </div>

@@ -146,15 +146,15 @@
             d="M13 10V3L4 14h7v7l9-11h-7z"
           ></path>
         </svg>
-        Pipeline Status
+        Processing Status
       </div>
       <div class="text-[10px] font-mono text-gray-400">Live Backlog</div>
     </div>
 
-    <!-- Visualization Pipeline -->
+    <!-- Visualization Parallel Flow -->
     <div class="flex items-center justify-around relative">
-      <!-- Recorder -->
-      <div class="flex flex-col items-center group/item relative z-10">
+      <!-- Source: Recorder -->
+      <div class="flex flex-col items-center group/item relative z-10 w-1/3">
         <div
           class="p-3 bg-gray-100 dark:bg-white/10 rounded-full mb-2 group-hover/item:scale-110 transition-transform shadow-lg border border-transparent {% if throughput.recorder_active %}border-green-500/50{% else %}border-gray-500/30{% endif %}"
         >
@@ -186,98 +186,125 @@
         {% endif %}
       </div>
 
-      <!-- Arrow 1 -->
-      <div
-        class="flex-1 h-0.5 bg-gray-200 dark:bg-gray-700 mx-4 relative overflow-hidden"
-      >
+      <!-- Splitter / Arrows -->
+      <div class="flex flex-col justify-center h-24 w-1/6 relative">
+        <!-- Top Branch Arrow -->
         <div
-          class="absolute inset-0 bg-gradient-to-r from-transparent via-blue-500/50 to-transparent w-1/2 animate-[shimmer_2s_infinite]"
+          class="h-10 border-l-2 border-t-2 border-gray-200 dark:border-gray-700 rounded-tl-xl absolute top-0 left-0 w-full translate-y-2"
         ></div>
-      </div>
 
-      <!-- Analyzer -->
-      <div class="flex flex-col items-center group/item relative z-10">
+        <!-- Bottom Branch Arrow -->
         <div
-          class="p-3 bg-gray-100 dark:bg-white/10 rounded-full mb-2 group-hover/item:scale-110 transition-transform shadow-lg border border-transparent {% if throughput.analyzer_status == 'ok' %}group-hover/item:border-green-500/50{% elif throughput.analyzer_status == 'pending' %}border-blue-400{% else %}border-amber-500 animate-pulse{% endif %}"
-        >
-          <!-- Neutral Activity Icon -->
-          <svg
-            class="w-6 h-6 text-gray-700 dark:text-gray-200"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-          >
-            <path
-              stroke-linecap="round"
-              stroke-linejoin="round"
-              stroke-width="2"
-              d="M9 3v2m6-2v2M9 19v2m6-2v2M5 9H3m2 6H3m18-6h-2m2 6h-2M7 19h10a2 2 0 002-2V7a2 2 0 00-2-2H7a2 2 0 00-2 2v10a2 2 0 002 2zM9 9h6v6H9V9z"
-            ></path>
-          </svg>
-        </div>
-        <div class="text-sm font-bold text-gray-700 dark:text-gray-200">
-          Analyzer
-        </div>
-
-        <!-- Status Text -->
-        {% if throughput.analyzer_status == 'ok' %}
-        <div class="text-[10px] text-green-500 font-bold mt-1">SYNCED</div>
-        {% elif throughput.analyzer_status == 'pending' %}
-        <div class="text-[10px] text-blue-400 font-bold mt-1">
-          {{ throughput.analyzer_lag }} PENDING
-        </div>
-        {% else %}
-        <div class="text-[10px] text-amber-500 font-bold mt-1">
-          LAG: {{ throughput.analyzer_lag }}
-        </div>
-        {% endif %}
-      </div>
-
-      <!-- Arrow 2 -->
-      <div
-        class="flex-1 h-0.5 bg-gray-200 dark:bg-gray-700 mx-4 relative overflow-hidden"
-      >
-        <div
-          class="absolute inset-0 bg-gradient-to-r from-transparent via-cyan-500/50 to-transparent w-1/2 animate-[shimmer_2s_infinite] delay-1000"
+          class="h-10 border-l-2 border-b-2 border-gray-200 dark:border-gray-700 rounded-bl-xl absolute bottom-0 left-0 w-full -translate-y-2"
         ></div>
+
+        <!-- Animated Dots for Flow -->
+        <div
+          class="absolute inset-0 flex items-center justify-center opacity-30"
+        >
+          <div class="w-1 h-1 bg-blue-500 rounded-full animate-ping"></div>
+        </div>
       </div>
 
-      <!-- Uploader -->
-      <div class="flex flex-col items-center group/item relative z-10">
-        <div
-          class="p-3 bg-gray-100 dark:bg-white/10 rounded-full mb-2 group-hover/item:scale-110 transition-transform shadow-lg border border-transparent {% if throughput.uploader_status == 'ok' %}group-hover/item:border-green-500/50{% elif throughput.uploader_status == 'pending' %}border-blue-400{% else %}border-amber-500 animate-pulse{% endif %}"
-        >
-          <!-- Neutral Cloud Upload Icon -->
-          <svg
-            class="w-6 h-6 text-gray-700 dark:text-gray-200"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
+      <!-- Consumers Stack -->
+      <div class="flex flex-col gap-4 w-1/3">
+        <!-- Analyzer Row -->
+        <div class="flex items-center gap-3">
+          <!-- Arrow Head -->
+          <div class="text-gray-200 dark:text-gray-700">▶</div>
+
+          <!-- Analyzer Block -->
+          <div
+            class="flex items-center gap-3 p-2 rounded-xl bg-gray-50/50 dark:bg-white/5 flex-1 relative overflow-hidden group/consumer border border-transparent {% if throughput.analyzer_status == 'ok' %}hover:border-green-500/30{% endif %}"
           >
-            <path
-              stroke-linecap="round"
-              stroke-linejoin="round"
-              stroke-width="2"
-              d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"
-            ></path>
-          </svg>
-        </div>
-        <div class="text-sm font-bold text-gray-700 dark:text-gray-200">
-          Uploader
+            <!-- Shimmer bg -->
+            <div
+              class="absolute inset-0 bg-gradient-to-r from-transparent via-blue-500/5 to-transparent translate-x-[-100%] animate-[shimmer_3s_infinite]"
+            ></div>
+
+            <div class="p-2 bg-white dark:bg-white/10 rounded-lg shadow-sm">
+              <svg
+                class="w-4 h-4 text-gray-700 dark:text-gray-200"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  d="M9 3v2m6-2v2M9 19v2m6-2v2M5 9H3m2 6H3m18-6h-2m2 6h-2M7 19h10a2 2 0 002-2V7a2 2 0 00-2-2H7a2 2 0 00-2 2v10a2 2 0 002 2zM9 9h6v6H9V9z"
+                ></path>
+              </svg>
+            </div>
+
+            <div class="flex flex-col">
+              <span class="text-xs font-bold text-gray-700 dark:text-gray-200"
+                >Analyzer</span
+              >
+              {% if throughput.analyzer_status == 'ok' %}
+              <span class="text-[10px] text-green-500 font-bold">SYNCED</span>
+              {% elif throughput.analyzer_status == 'pending' %}
+              <span class="text-[10px] text-blue-400 font-bold"
+                >{{ throughput.analyzer_lag }} PENDING</span
+              >
+              {% else %}
+              <span class="text-[10px] text-amber-500 font-bold"
+                >LAG: {{ throughput.analyzer_lag }}</span
+              >
+              {% endif %}
+            </div>
+          </div>
         </div>
 
-        <!-- Status Text -->
-        {% if throughput.uploader_status == 'ok' %}
-        <div class="text-[10px] text-green-500 font-bold mt-1">SYNCED</div>
-        {% elif throughput.uploader_status == 'pending' %}
-        <div class="text-[10px] text-blue-400 font-bold mt-1">
-          {{ throughput.uploader_lag }} PENDING
+        <!-- Uploader Row -->
+        <div class="flex items-center gap-3">
+          <!-- Arrow Head -->
+          <div class="text-gray-200 dark:text-gray-700">▶</div>
+
+          <!-- Uploader Block -->
+          <div
+            class="flex items-center gap-3 p-2 rounded-xl bg-gray-50/50 dark:bg-white/5 flex-1 relative overflow-hidden group/consumer border border-transparent {% if throughput.uploader_status == 'ok' %}hover:border-green-500/30{% endif %}"
+          >
+            <!-- Shimmer bg -->
+            <div
+              class="absolute inset-0 bg-gradient-to-r from-transparent via-cyan-500/5 to-transparent translate-x-[-100%] animate-[shimmer_3s_infinite] delay-75"
+            ></div>
+
+            <div class="p-2 bg-white dark:bg-white/10 rounded-lg shadow-sm">
+              <svg
+                class="w-4 h-4 text-gray-700 dark:text-gray-200"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"
+                ></path>
+              </svg>
+            </div>
+
+            <div class="flex flex-col">
+              <span class="text-xs font-bold text-gray-700 dark:text-gray-200"
+                >Uploader</span
+              >
+              {% if throughput.uploader_status == 'ok' %}
+              <span class="text-[10px] text-green-500 font-bold">SYNCED</span>
+              {% elif throughput.uploader_status == 'pending' %}
+              <span class="text-[10px] text-blue-400 font-bold"
+                >{{ throughput.uploader_lag }} PENDING</span
+              >
+              {% else %}
+              <span class="text-[10px] text-amber-500 font-bold"
+                >LAG: {{ throughput.uploader_lag }}</span
+              >
+              {% endif %}
+            </div>
+          </div>
         </div>
-        {% else %}
-        <div class="text-[10px] text-amber-500 font-bold mt-1">
-          LAG: {{ throughput.uploader_lag }}
-        </div>
-        {% endif %}
       </div>
     </div>
   </div>

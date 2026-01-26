@@ -190,6 +190,9 @@
             <td class="px-4 py-3 text-right">
               <a
                 href="/birdnet/discover/{{ bird.common_name }}"
+                hx-target="#main-content"
+                hx-swap="innerHTML"
+                hx-push-url="true"
                 class="text-blue-400 hover:text-blue-300 text-xs font-medium"
                 >Analyze &rarr;</a
               >

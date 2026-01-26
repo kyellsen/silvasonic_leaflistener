@@ -75,3 +75,41 @@ class DatabaseHandler:
             session.rollback()
         finally:
             session.close()
+
+    def get_uploaded_filenames(self, filenames: list[str]) -> set[str]:
+        """
+        Check which of the provided filenames have been successfully uploaded.
+        Returns a set of filenames that are marked as 'success' in the database.
+        """
+        if not filenames or not self.Session:
+            if not self.Session and not self.connect():
+                return set()
+            if not filenames:
+                return set()
+
+        session = self.Session()
+        uploaded = set()
+        chunk_size = 1000
+
+        try:
+            # Process in chunks to avoid parameter limits
+            for i in range(0, len(filenames), chunk_size):
+                chunk = filenames[i:i + chunk_size]
+                if not chunk: continue
+
+                query = text("""
+                    SELECT filename FROM carrier.uploads 
+                    WHERE status = 'success' 
+                    AND filename IN :filenames
+                """)
+                
+                result = session.execute(query, {"filenames": tuple(chunk)})
+                for row in result:
+                    uploaded.add(row[0])
+                    
+        except Exception as e:
+            logger.error(f"Failed to check uploaded status: {e}")
+        finally:
+            session.close()
+            
+        return uploaded

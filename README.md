@@ -74,3 +74,13 @@ All contributors (human and AI) must follow the strict rules defined in our agen
 ## Development
 
 [View Development Workflow](docs/dev_workflow.md)
+
+## License
+
+This project is licensed under the **Creative Commons Attribution-NonCommercial-ShareAlike 4.0 International License (CC BY-NC-SA 4.0)**.
+
+- **Non-Commercial**: You may not use this software for commercial purposes without explicit permission.
+- **Open Source**: You are free to copy, distribute, and modify the software for personal or non-commercial use.
+- **ShareAlike**: If you modify and distribute this software, you must distribute your contributions under the same license.
+
+This project includes components such as **BirdNET-Analyzer**, which are also licensed under CC BY-NC-SA 4.0.

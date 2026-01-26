@@ -111,7 +111,7 @@ _Das Script installiert Podman, richtet Verzeichnisse ein und klont den Code nac
 
 ---
 
-### Schritt 6: Carrier (Nextcloud) Konfiguration
+### Schritt 6: Uploader (Cloud Sync) Konfiguration
 
 Damit deine Aufnahmen automatisch hochgeladen werden, musst du die `.env` Datei konfigurieren.
 
@@ -131,10 +131,10 @@ Damit deine Aufnahmen automatisch hochgeladen werden, musst du die `.env` Datei 
    ```
 
    ```ini
-   CARRIER_NEXTCLOUD_URL=https://deine-nextcloud.de/remote.php/webdav/
-   CARRIER_NEXTCLOUD_USER=dein_nutzer
-   CARRIER_NEXTCLOUD_PASSWORD=dein_app_passwort
-   CARRIER_TARGET_DIR=silvasonic
+   UPLOADER_NEXTCLOUD_URL=https://deine-nextcloud.de/remote.php/webdav/
+   UPLOADER_NEXTCLOUD_USER=dein_nutzer
+   UPLOADER_NEXTCLOUD_PASSWORD=dein_app_passwort
+   UPLOADER_TARGET_DIR=silvasonic
    ```
 
 ---
@@ -154,11 +154,14 @@ cd /mnt/data/dev/silvasonic
 sudo podman-compose -f podman-compose.yml up --build -d
 
 # 4. Logs prüfen
-sudo podman logs -f silvasonic_ear
+sudo podman logs -f silvasonic_recorder
 ```
 
+> **Dashboard aufrufen:**
+> Öffne `http://silvasonic.local:8080` in deinem Browser.
 
 # Löscht alle ungenutzten Images, Container und Netzwerke
+
 sudo podman system prune
 
 Die Atombombe:

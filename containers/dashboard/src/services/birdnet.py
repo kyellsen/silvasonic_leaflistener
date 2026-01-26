@@ -140,7 +140,7 @@ class BirdNetService:
                     FROM birdnet.detections 
                     GROUP BY common_name 
                     ORDER BY count DESC 
-                    LIMIT 5
+                    LIMIT 10
                 """)
                 result_top = await conn.execute(query_top)
                 top_species = [dict(row._mapping) for row in result_top]

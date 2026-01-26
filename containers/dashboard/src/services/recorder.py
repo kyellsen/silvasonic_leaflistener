@@ -21,27 +21,98 @@ class RecorderService:
 
                     # Flatten meta for compatibility or just return rich data
                     meta = data.get("meta", {})
-                    data["profile"] = meta.get("profile", "Unknown")
-                    data["device"] = meta.get("device", "Unknown")
+                    profile = meta.get("profile", {})
+                    
+                    # 1. Device Name Cleaning
+                    raw_device = meta.get("device", "Unknown")
+                    clean_device = raw_device
+                    if isinstance(raw_device, str):
+                        # Extract content between first [] if present
+                        # Example: card 0: r0 [UltraMic384K_EVO 16bit r0], device 0...
+                        import re
+                        match = re.search(r"\[(.*?)\]", raw_device)
+                        if match:
+                            clean_device = match.group(1)
+                    
+                    data["profile"] = profile
+                    data["device"] = clean_device
+                    data["device_raw"] = raw_device
+
+                    # 2. Storage Forecast
+                    # Calculate daily usage based on profile
+                    forecast = {
+                        "daily_gb": 0,
+                        "daily_str": "Unknown",
+                        "remaining_days": 0,
+                        "remaining_str": "Unknown"
+                    }
+                    
+                    if isinstance(profile, dict) and "audio" in profile:
+                        try:
+                            audio = profile["audio"]
+                            sr = int(audio.get("sample_rate", 48000))
+                            ch = int(audio.get("channels", 1))
+                            depth = int(audio.get("bit_depth", 16))
+                            
+                            # Bytes per second (Uncompressed)
+                            bps = sr * ch * (depth / 8)
+                            
+                            # Compression Ratio (Estimate for FLAC)
+                            # 384kHz recordings might compress differently, but 0.6 is a safe standard for FLAC
+                            compression = 0.6 
+                            
+                            # Bytes per day
+                            bytes_per_day = bps * 60 * 60 * 24 * compression
+                            gb_per_day = bytes_per_day / (1024**3)
+                            
+                            forecast["daily_gb"] = round(gb_per_day, 1)
+                            forecast["daily_str"] = f"~{gb_per_day:.1f} GB"
+                            
+                            # Calculate Remaining using shutil on the recording path
+                            import shutil
+                            # Check if REC_DIR exists, else use current
+                            check_path = REC_DIR if os.path.exists(REC_DIR) else "/"
+                            usage = shutil.disk_usage(check_path)
+                            free_bytes = usage.free
+                            
+                            if bytes_per_day > 0:
+                                days_remaining = free_bytes / bytes_per_day
+                                forecast["remaining_days"] = int(days_remaining)
+                                if days_remaining > 365:
+                                    forecast["remaining_str"] = ">1y"
+                                else:
+                                    forecast["remaining_str"] = f"~{int(days_remaining)}d"
+                            
+                        except Exception as e:
+                            logger.error(f"Forecast Error: {e}")
+                    
+                    data["storage_forecast"] = forecast
 
                     return data
         except Exception as e:
-            print(f"Recorder status error: {e}")
+            logger.error(f"Recorder status error: {e}")
 
-        return {"status": "Unknown", "profile": "Unknown", "device": "Unknown"}
+        return {
+            "status": "Unknown", 
+            "profile": "Unknown", 
+            "device": "Unknown", 
+            "storage_forecast": {"daily_str": "?", "remaining_str": "?"}
+        }
 
     @staticmethod
     async def get_recent_recordings(limit=20):
         try:
             async with db.get_connection() as conn:
+                # Try fetching from birdnet schema (new architecture)
+                # Fallback to brain if needed, but for now we switch to birdnet.processed_files
                 query = text("""
                     SELECT 
                         filename,
-                        duration_sec,
-                        file_size_bytes,
-                        created_at
-                    FROM brain.audio_files
-                    ORDER BY created_at DESC
+                        audio_duration_sec as duration_sec,
+                        0 as file_size_bytes,
+                        processed_at as created_at
+                    FROM birdnet.processed_files
+                    ORDER BY processed_at DESC
                     LIMIT :limit
                 """)
                 result = await conn.execute(query, {"limit": limit})
@@ -60,7 +131,24 @@ class RecorderService:
                         d['formatted_time'] = "Unknown"
 
                     # Calculate Size in MB
-                    d['size_mb'] = round((d.get('file_size_bytes') or 0) / (1024*1024), 2)
+                    # If DB returns 0 (birdnet schema doesn't store size), try to fetch from disk
+                    size_bytes = d.get('file_size_bytes') or 0
+                    fname = d.get('filename')
+                    
+                    if size_bytes == 0 and fname:
+                        try:
+                            # Try to find file in REC_DIR
+                            # Note: This is an educated guess if file is in root of REC_DIR
+                            # If structure is complex, we might miss it without a recursive search.
+                            # But recursive search for every row is too slow.
+                            p = os.path.join(REC_DIR, fname)
+                            if os.path.exists(p):
+                                size_bytes = os.path.getsize(p)
+                        except Exception:
+                            pass
+                            
+                    d['size_mb'] = round(size_bytes / (1024*1024), 2)
+                    d['file_size_bytes'] = size_bytes
                     d['duration_str'] = f"{d.get('duration_sec', 0):.1f}s"
 
                     # Audio Path Logic (Recorder usually stores just filename in filename column, or full path?)
