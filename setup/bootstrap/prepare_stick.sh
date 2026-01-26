@@ -295,8 +295,8 @@ log "  • flash_ssd.sh  (NVMe installer)"
 log "  • bootstrap.env (credentials + settings)"
 log "  • OS image      (to flash onto NVMe)"
 log ""
-log "The Silvasonic repo will be cloned from GitHub"
-log "by Ansible (install.sh) after NVMe boot."
+log "The Silvasonic repo will be transferred via rsync."
+log "You can still git pull updates from GitHub later."
 log "=============================================="
 
 # ===================== CLEANUP =====================

@@ -181,8 +181,8 @@ sudo chmod 600 "$SSH_DIR/authorized_keys"
 sudo chown -R 1000:1000 "$MNT_ROOT/home/${USER_NAME}"
 
 # --- NOTE: NO REPO COPYING ---
-# The repository is cloned via Ansible (install.sh) from GitHub.
-# This keeps the SD/USB stick minimal and ensures the Pi always gets the latest code.
+# The repository is transferred via Ansible (rsync) from your Workstation.
+# This ensures the Pi gets exactly the version you have locally.
 
 log_info "Base image provisioning complete."
 
@@ -196,5 +196,5 @@ echo "  1. sudo poweroff"
 echo "  2. Remove Boot Stick (SD/USB)"
 echo "  3. Boot from NVMe"
 echo "  4. From WORKSTATION, run: ./setup/install.sh"
-echo "     (This will clone the repo from GitHub + provision the Pi)"
+echo "     (This will transfer the repo via rsync + provision the Pi)"
 echo "================================================="

@@ -308,7 +308,13 @@
   }
 
   volumeSlider.addEventListener("input", (e) => {
-    audioEl.volume = e.target.value;
+    e.stopPropagation();
+    if (audioEl) {
+      const vol = parseFloat(e.target.value);
+      if (!isNaN(vol) && isFinite(vol)) {
+        audioEl.volume = Math.min(Math.max(vol, 0), 1);
+      }
+    }
   });
 
   // Start WS
