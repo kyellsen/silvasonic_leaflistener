@@ -4,7 +4,7 @@ import datetime
 from sqlalchemy import text
 from src.settings import SettingsService
 
-from .common import REC_DIR
+from .common import REC_DIR, logger
 from .database import db
 
 
@@ -63,7 +63,7 @@ class BirdNetService:
 
                 return detections
         except Exception as e:
-            print(f"DB Error (get_recent_detections): {e}")
+            logger.error(f"DB Error (get_recent_detections): {e}", exc_info=True)
             return []
 
     @staticmethod
@@ -118,7 +118,7 @@ class BirdNetService:
 
                 return d
         except Exception as e:
-            print(f"DB Error (get_detection): {e}")
+            logger.error(f"DB Error (get_detection): {e}", exc_info=True)
             return None
 
     @staticmethod
@@ -150,7 +150,8 @@ class BirdNetService:
                     "total": total_count,
                     "top_species": top_species
                 }
-        except:
+        except Exception as e:
+            logger.error(f"Error getting BirdNet Stats: {e}", exc_info=True)
             return {"today": 0, "total": 0, "top_species": []}
 
     @staticmethod
@@ -220,7 +221,7 @@ class BirdNetService:
 
                 return species
         except Exception as e:
-            print(f"Error get_all_species: {e}")
+            logger.error(f"Error get_all_species: {e}", exc_info=True)
             return []
 
     @staticmethod
@@ -318,7 +319,7 @@ class BirdNetService:
                     "hourly": hourly_data
                 }
         except Exception as e:
-            print(f"Error get_species_stats: {e}")
+            logger.error(f"Error get_species_stats: {e}", exc_info=True)
             return None
 
     @staticmethod
@@ -379,7 +380,7 @@ class BirdNetService:
                     info['wikipedia_url'] = wiki_data.get('wikipedia_url')
 
         except Exception as e:
-            print(f"Enrichment error for {sci_name}: {e}")
+            logger.error(f"Enrichment error for {sci_name}: {e}", exc_info=True)
 
         return info
 
@@ -405,7 +406,7 @@ class BirdNetService:
                 await conn.commit()
                 return True
         except Exception as e:
-            print(f"Watchlist toggle error: {e}")
+            logger.error(f"Watchlist toggle error: {e}", exc_info=True)
             return False
 
     @staticmethod
@@ -426,7 +427,7 @@ class BirdNetService:
 
                 return {name: (name in watched) for name in sci_names}
         except Exception as e:
-            print(f"Watchlist status error: {e}")
+            logger.error(f"Watchlist status error: {e}", exc_info=True)
             return {}
 
     @staticmethod
@@ -548,7 +549,7 @@ class BirdNetService:
                     "rarest": rarest_list
                 }
         except Exception as e:
-            print(f"Error get_advanced_stats: {e}")
+            logger.error(f"Error get_advanced_stats: {e}", exc_info=True)
             empty_chart = {"labels": [], "values": []}
             return {
                 "daily": empty_chart,
