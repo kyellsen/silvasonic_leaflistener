@@ -863,11 +863,18 @@
       // Sidebar Toggle Logic
       function toggleInspector() {
         const sidebar = document.getElementById("right-sidebar");
-        // Check actual computed width or class presence to toggle
-        // We use the w-0 class as the source of truth for "collapsed" state on mobile/default
-        const isCollapsed = sidebar.classList.contains("w-0");
+        const isLg = window.innerWidth >= 1024;
+        
+        // Determine current state
+        // It is open if:
+        // 1. It has the explicit 'w-80' class
+        // 2. OR we are on Large screen AND it has the 'lg:w-80' class (and no explicit closed override, though we handle that by removing lg class)
+        let isOpen = sidebar.classList.contains("w-80");
+        if (!isOpen && isLg && sidebar.classList.contains("lg:w-80")) {
+            isOpen = true;
+        }
 
-        if (isCollapsed) {
+        if (!isOpen) {
           // OPEN IT
           sidebar.classList.remove("w-0", "border-l-0", "p-0", "overflow-hidden");
           sidebar.classList.add("w-80", "border-l");
@@ -876,6 +883,10 @@
             // CLOSE IT
           sidebar.classList.add("w-0", "border-l-0", "p-0", "overflow-hidden");
           sidebar.classList.remove("w-80", "border-l");
+          
+          // CRITICAL: Remove responsive overrides that force it open on LG
+          sidebar.classList.remove("lg:w-80", "lg:overflow-visible", "lg:border-l");
+          
           localStorage.setItem("inspector-collapsed", "true");
         }
       }
@@ -886,19 +897,15 @@
         const shouldBeCollapsed =
           localStorage.getItem("inspector-collapsed") === "true";
 
-        // Logic:
-        // By default effectively (via HTML classes), it is w-0 on mobile/small (default) and w-80 on lg.
-        // If user explicitly collapsed it (shouldBeCollapsed == true), we force close it even on big screens.
-        // If user explicitly expanded it (shouldBeCollapsed == false), we might want to open it on mobile?
-        // Let's stick to: Respect localStorage if present, otherwise default to HTML classes.
-        
         if (localStorage.getItem("inspector-collapsed") !== null) {
             if (shouldBeCollapsed) {
                 sidebar.classList.add("w-0", "border-l-0", "p-0", "overflow-hidden");
                 sidebar.classList.remove("w-80", "border-l");
+                sidebar.classList.remove("lg:w-80", "lg:overflow-visible", "lg:border-l");
             } else {
                 sidebar.classList.remove("w-0", "border-l-0", "p-0", "overflow-hidden");
                 sidebar.classList.add("w-80", "border-l");
+                // We don't need to add lg: classes back, w-80 handles it
             }
         }
 
