@@ -109,7 +109,7 @@ def get_alsa_devices() -> list[DetectedDevice]:
                     device_id = match.group(2)
                     devices.append(DetectedDevice(
                         card_id=card_id,
-                        hw_address=f"hw:{card_id},{device_id}",
+                        hw_address=f"plughw:{card_id},{device_id}",
                         description=line.strip()
                     ))
     except Exception as e:
