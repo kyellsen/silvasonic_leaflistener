@@ -361,8 +361,6 @@ class BirdNetService:
                          d['iso_timestamp'] = d['timestamp'].isoformat()
                     else:
                          d['iso_timestamp'] = ""
-                    else:
-                         d['iso_timestamp'] = ""
                     
                     # Audio Path Logic for species stats
                     fp = d.get('filepath')

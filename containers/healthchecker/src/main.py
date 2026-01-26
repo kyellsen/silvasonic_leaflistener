@@ -34,7 +34,7 @@ SERVICES_CONFIG = {
     "recorder": {"name": "Recorder", "timeout": 120}, # 2 mins
     "birdnet": {"name": "BirdNET", "timeout": 300}, # 5 mins
     "sound_analyser": {"name": "Brain", "timeout": 300}, # 5 mins
-    "weather": {"name": "Weather Station", "timeout": 300} # 5 mins
+    # "weather": {"name": "Weather Station", "timeout": 300} # 5 mins
 }
 
 STATUS_DIR = f"{BASE_DIR}/status"

@@ -213,17 +213,20 @@ services:
   # ---------------------------------------------------------------------------
   # Weather - Local Weather Data Collector
   # ---------------------------------------------------------------------------
-  weather:
-    build:
-      context: containers/weather
-    image: silvasonic-weather:latest
-    container_name: silvasonic_weather
-    restart: always
-    env_file: .env
-    volumes:
-      # Shared Config (Read/Write)
-      - /mnt/data/services/silvasonic/config:/config:z
-      # Shared Logs
-      - /mnt/data/services/silvasonic/logs:/var/log/silvasonic:z
-      # Shared Status
-      - /mnt/data/services/silvasonic/status:/mnt/data/services/silvasonic/status:z
+  # ---------------------------------------------------------------------------
+  # Weather - Local Weather Data Collector (DISABLED)
+  # ---------------------------------------------------------------------------
+  # weather:
+  #   build:
+  #     context: containers/weather
+  #   image: silvasonic-weather:latest
+  #   container_name: silvasonic_weather
+  #   restart: always
+  #   env_file: .env
+  #   volumes:
+  #     # Shared Config (Read/Write)
+  #     - /mnt/data/services/silvasonic/config:/config:z
+  #     # Shared Logs
+  #     - /mnt/data/services/silvasonic/logs:/var/log/silvasonic:z
+  #     # Shared Status
+  #     - /mnt/data/services/silvasonic/status:/mnt/data/services/silvasonic/status:z

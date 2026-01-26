@@ -104,11 +104,14 @@ def get_alsa_devices() -> list[DetectedDevice]:
         
         for line in output.split('\n'):
             if 'card' in line.lower():
-                match = re.search(r'card (\d+):', line)
+                # Match "card X: ... device Y:"
+                match = re.search(r'card (\d+):.*?device (\d+):', line)
                 if match:
+                    card_id = match.group(1)
+                    device_id = match.group(2)
                     devices.append(DetectedDevice(
-                        card_id=match.group(1),
-                        hw_address=f"hw:{match.group(1)},0",
+                        card_id=card_id,
+                        hw_address=f"hw:{card_id},{device_id}",
                         description=line.strip()
                     ))
     except Exception as e:

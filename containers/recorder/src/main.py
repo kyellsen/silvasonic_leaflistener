@@ -151,10 +151,8 @@ def consume_stderr(proc):
         for line in iter(proc.stderr.readline, b''):
             line_str = line.decode('utf-8', errors='replace').strip()
             if line_str:
-                if "Error" in line_str or "fail" in line_str.lower():
-                    logger.error(f"[FFmpeg] {line_str}")
-                # else:
-                #    logger.debug(f"[FFmpeg] {line_str}")
+                # Log everything for debugging
+                logger.info(f"[FFmpeg] {line_str}")
     except Exception as e:
         logger.error(f"Log consumer error: {e}")
     finally:
