@@ -50,8 +50,8 @@ RUN apt-get update && apt-get install -y \
     && apt-get clean && rm -rf /var/lib/apt/lists/*
 
 # 2. Install 'uv'
-RUN curl -LsSf https://astral.sh/uv/install.sh | sh && \
-    mv /root/.cargo/bin/uv /usr/local/bin/uv
+ENV UV_INSTALL_DIR="/usr/local/bin"
+RUN curl -LsSf https://astral.sh/uv/install.sh | sh
 
 # 3. Create non-root user 'vscode' (if not already handled by features, but good to be explicit for base compat)
 # Note: The common-utils feature in devcontainer.json handles the complex user setup, 

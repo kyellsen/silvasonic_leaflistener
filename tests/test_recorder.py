@@ -1,13 +1,7 @@
-
-import os
-import queue
-import sys
-import threading
-import time
 import unittest
-from unittest.mock import MagicMock, patch
-
-import numpy as np
+from unittest.mock import patch, MagicMock
+import sys
+import os
 
 # Adjust path to import main from containers/recorder/src
 # Use insert(0) to prioritize this path over installed packages
@@ -17,104 +11,72 @@ sys.path.insert(0, os.path.abspath(os.path.join(
 
 import main
 
-
 class TestRecorder(unittest.TestCase):
-    """Tests for the recorder module."""
-
     def setUp(self):
-        """Reset global state before each test."""
-        # Reset global state before each test
-        main.running = True
-        main.audio_queue = queue.Queue()
-        main.MOCK_HARDWARE = False
+        # We don't really need to call setup_logging/ensure_status_dir for unit tests of functions
+        # mocking them is better if needed, or relying on the import-safe refactor we did.
+        
+        # Mock profile and device
+        self.profile = MagicMock()
+        self.profile.audio.channels = 1
+        self.profile.audio.sample_rate = 48000
+        self.profile.recording.chunk_duration_seconds = 30
+        self.profile.recording.compression_level = 5
+        self.profile.is_mock = False
+        self.profile.slug = "test_profile"
 
-    @patch('main.sd')
-    def test_device_selection_success(self, mock_sd):
-        """Test successful selection of the target audio device."""
-        # Mock device list
-        mock_sd.query_devices.return_value = [
-            {'name': 'Built-in Audio', 'max_input_channels': 2},
-            {'name': 'Ultramic384 EVO', 'max_input_channels': 1}
-        ]
+        self.device = MagicMock()
+        self.device.hw_address = "hw:0,0"
 
-        # Test finding Ultramic
-        main.DEVICE_NAME = 'Ultramic'
-        main.CHANNELS = 1
+        self.output_dir = "/tmp/test_rec"
 
-        # We need to simulate main() logic partially or refactor main to be more testable.
-        # For this test, let's extract the device logic or just test the logic inline here matching main.py
+    @patch("main.subprocess.Popen")
+    @patch("main.os.makedirs")
+    def test_start_recording(self, mock_makedirs, mock_popen):
+        """Test that start_recording calls FFmpeg with correct arguments."""
+        process_mock = MagicMock()
+        mock_popen.return_value = process_mock
 
-        devices = mock_sd.query_devices()
-        target_idx = None
-        for idx, dev in enumerate(devices):
-            if (main.DEVICE_NAME.lower() in dev['name'].lower() and
-                    dev['max_input_channels'] >= main.CHANNELS):
-                target_idx = idx
-                break
+        # Call the function
+        main.start_recording(self.profile, self.device, self.output_dir)
 
-        self.assertEqual(target_idx, 1)
+        # Verify directory creation
+        mock_makedirs.assert_called_with(self.output_dir, exist_ok=True)
+        
+        # Verify FFmpeg call
+        args, kwargs = mock_popen.call_args
+        cmd = args[0]
+        
+        # Check essential flags
+        self.assertIn("ffmpeg", cmd)
+        self.assertIn("alsa", cmd)
+        self.assertIn(self.device.hw_address, cmd)
+        self.assertIn("flac", cmd)
+        self.assertIn(str(self.profile.recording.chunk_duration_seconds), cmd)
+        
+        # Check stream target construction
+        # udp_url = f"udp://{LIVE_STREAM_TARGET}:{LIVE_STREAM_PORT}"
+        # Defaults are silvasonic_livesound:1234
+        # self.assertIn("udp://silvasonic_livesound:1234", cmd) 
+        # Actually cmd is a list, so we check if the url string is in the list
+        found_udp = any("udp://" in arg for arg in cmd)
+        self.assertTrue(found_udp, "UDP URL not found in command")
 
-    @patch('main.sd')
-    def test_device_selection_failure(self, mock_sd):
-        """Test failure to find the target audio device."""
-        mock_sd.query_devices.return_value = [
-            {'name': 'Built-in Audio', 'max_input_channels': 2}
-        ]
-        main.DEVICE_NAME = 'NonExistentMic'
-
-        devices = mock_sd.query_devices()
-        target_idx = None
-        for idx, dev in enumerate(devices):
-            if main.DEVICE_NAME.lower() in dev['name'].lower():
-                target_idx = idx
-                break
-
-        self.assertIsNone(target_idx)
-
-    def test_audio_callback(self):
-        """Verify audio callback puts data into the queue."""
-        # Verify callback puts data into queue
-        indata = np.zeros((10, 1), dtype='float32')
-        main.audio_callback(indata, 10, None, None)
-
-        self.assertFalse(main.audio_queue.empty())
-        item = main.audio_queue.get()
-        np.testing.assert_array_equal(item, indata)
-
-    @patch('main.sf')
-    @patch('os.makedirs')
-    def test_file_writer(self, mock_makedirs, mock_sf):
-        """Test the file writer logic."""
-        # Mock SoundFile context manager
-        mock_file = MagicMock()
-        mock_sf.SoundFile.return_value.__enter__.return_value = mock_file
-
-        # Mock Queue get to return data then raise Empty to break loop if we were using timeout
-        # But writer loop runs while 'running' is True.
-
-        # We'll put one item in queue, start writer in thread, wait a bit, then stop.
-        test_data = np.zeros((100, 1), dtype='float32')
-        main.audio_queue.put(test_data)
-
-        # Start writer
-        t = threading.Thread(target=main.file_writer)
-        t.start()
-
-        # Let it run for a fraction of a second
-        time.sleep(0.1)
-
-        # Stop
-        main.running = False
-        t.join(timeout=1)
-
-        # Verify
-        mock_makedirs.assert_called_with(main.RAW_DIR, exist_ok=True)
-        mock_sf.SoundFile.assert_called()
-        mock_file.write.assert_called()
-        # Verify at least one write call was made with our data
-        # Note: Depending on race conditions, it might have written more calls if
-        # we didn't control queue perfectly, but we just want to ensure it wrote something.
-        self.assertTrue(mock_file.write.called)
+    @patch("main.subprocess.Popen")
+    @patch("main.os.makedirs")
+    def test_start_recording_mock_mode(self, mock_makedirs, mock_popen):
+        """Test that mock mode changes input source."""
+        self.profile.is_mock = True
+        
+        main.start_recording(self.profile, self.device, self.output_dir)
+        
+        args, kwargs = mock_popen.call_args
+        cmd = args[0]
+        
+        self.assertIn("lavfi", cmd)
+        # Check for anoisesrc
+        found_anoise = any("anoisesrc" in arg for arg in cmd)
+        self.assertTrue(found_anoise, "anoisesrc source not found for mock profile")
 
 if __name__ == '__main__':
     unittest.main()

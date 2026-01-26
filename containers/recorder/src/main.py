@@ -19,29 +19,38 @@ from dataclasses import asdict
 import psutil
 
 # --- Logging ---
-os.makedirs("/var/log/silvasonic", exist_ok=True)
-import logging.handlers
-
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s [%(levelname)s] %(message)s',
-    handlers=[
-        logging.StreamHandler(sys.stdout)
-    ]
-)
-
-try:
-    file_handler = logging.handlers.TimedRotatingFileHandler(
-        "/var/log/silvasonic/recorder.log",
-        when='midnight',
-        interval=1,
-        backupCount=30,
-        encoding='utf-8'
-    )
-    logging.getLogger().addHandler(file_handler)
-except Exception as e:
-    logging.getLogger().warning(f"Failed to setup file logging: {e}")
 logger = logging.getLogger("recorder")
+
+def setup_logging():
+    log_dir = "/var/log/silvasonic"
+    # Allow override for tests if needed via env, or just try/except
+    # But for now, just replicate existing logic shielded by function
+    try:
+        os.makedirs(log_dir, exist_ok=True)
+    except OSError:
+        pass # Ignore if we can't create it (e.g. tests)
+
+    handlers = [logging.StreamHandler(sys.stdout)]
+    
+    log_file = os.path.join(log_dir, "recorder.log")
+    try:
+        file_handler = logging.handlers.TimedRotatingFileHandler(
+            log_file,
+            when='midnight',
+            interval=1,
+            backupCount=30,
+            encoding='utf-8'
+        )
+        handlers.append(file_handler)
+    except Exception as e:
+        logger.warning(f"Failed to setup file logging: {e}")
+
+    logging.basicConfig(
+        level=logging.INFO,
+        format='%(asctime)s [%(levelname)s] %(message)s',
+        handlers=handlers,
+        force=True
+    )
 
 # --- Configuration ---
 BASE_OUTPUT_DIR = os.getenv("AUDIO_OUTPUT_DIR", "/data/recording")
@@ -49,7 +58,12 @@ LIVE_STREAM_TARGET = os.getenv("LIVE_STREAM_TARGET", "silvasonic_livesound")
 LIVE_STREAM_PORT = int(os.getenv("LIVE_STREAM_PORT", "1234"))
 
 STATUS_FILE = "/mnt/data/services/silvasonic/status/recorder.json"
-os.makedirs(os.path.dirname(STATUS_FILE), exist_ok=True)
+
+def ensure_status_dir():
+    try:
+        os.makedirs(os.path.dirname(STATUS_FILE), exist_ok=True)
+    except OSError:
+        pass
 
 # --- Global State ---
 running = True
@@ -165,6 +179,8 @@ def consume_stderr(proc):
             pass
 
 def main():
+    setup_logging()
+    ensure_status_dir()
     global running, ffmpeg_process
 
     from mic_profiles import get_active_profile

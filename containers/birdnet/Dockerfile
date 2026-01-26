@@ -1,28 +1,51 @@
-FROM python:3.11-slim-bookworm
 
-# Install system dependencies
-# libsndfile1 for audio loading, ffmpeg for resizing/resampling
-RUN apt-get update && apt-get install -y \
-    libsndfile1 \
-    ffmpeg \
+# --- Stage 1: Builder ---
+FROM python:3.11-slim-bookworm AS builder
+
+# Install build dependencies
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    build-essential \
     git \
-    gcc \
     libpq-dev \
+    libsndfile1-dev \
+    gcc \
     && rm -rf /var/lib/apt/lists/*
 
-# Set work directory
 WORKDIR /app
 
-# Install Python dependencies
 # Install uv
 COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
 
-# Install Python dependencies
+# Create venv and install dependencies
 COPY pyproject.toml .
-# We install numpy first to avoid build isolation issues with some audio libs if they occur
-RUN uv pip install --system --no-cache numpy
+ENV VIRTUAL_ENV=/app/.venv
+ENV PATH="/app/.venv/bin:$PATH"
+
+# Install numpy first to avoid build isolation issues
+RUN uv venv && \
+    uv pip install --no-cache numpy
+
+# Compile and install rest
 RUN uv pip compile pyproject.toml -o requirements.txt && \
-    uv pip install --system --no-cache -r requirements.txt
+    uv pip install --no-cache -r requirements.txt
+
+
+# --- Stage 2: Runtime ---
+FROM python:3.11-slim-bookworm
+
+# Install runtime dependencies
+# libsndfile1 for audio, ffmpeg for resizing
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    libsndfile1 \
+    ffmpeg \
+    libpq5 \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /app
+
+# Copy venv from builder
+COPY --from=builder /app/.venv /app/.venv
+ENV PATH="/app/.venv/bin:$PATH"
 
 # Copy source code
 COPY src/ src/
@@ -37,3 +60,4 @@ ENV PYTHONPATH=/app
 
 # Command to run
 CMD ["python", "src/main.py"]
+

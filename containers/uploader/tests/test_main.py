@@ -4,12 +4,11 @@ import sys
 from unittest.mock import ANY, patch
 import pytest
 
-# Ensure local src is used instead of installed src from other containers
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+# Ensure local src is used directly to avoid namespace collision with 'src' from other containers
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../src')))
 
-import src.main as main
-from src.main import calculate_queue_size, report_error, write_status
-
+import main
+from main import calculate_queue_size, report_error, write_status
 
 class TestMain:
     """Tests for the main application logic."""
@@ -50,13 +49,13 @@ class TestMain:
             queue_size = calculate_queue_size(temp_fs, mock_db)
             assert queue_size == 0
 
-    @patch("src.main.STATUS_FILE", new_callable=lambda: "status.json")
+    @patch("main.STATUS_FILE", new_callable=lambda: "status.json")
     def test_write_status(self, mock_status_file, temp_fs):
         """Test writing status to the status file."""
         # Redirect STATUS_FILE to temp dir
         status_path = os.path.join(temp_fs, "status.json")
 
-        with patch("src.main.STATUS_FILE", status_path):
+        with patch("main.STATUS_FILE", status_path):
             write_status("Testing", last_upload=123.0, queue_size=5, disk_usage=45.0)
 
             assert os.path.exists(status_path)
@@ -69,12 +68,12 @@ class TestMain:
             assert data["meta"]["disk_usage_percent"] == 45.0
             assert "timestamp" in data
 
-    @patch("src.main.ERROR_DIR", new_callable=lambda: "errors")
+    @patch("main.ERROR_DIR", new_callable=lambda: "errors")
     def test_report_error(self, mock_error_dir, temp_fs):
         """Test reporting errors to the error directory."""
         error_dir = os.path.join(temp_fs, "errors")
 
-        with patch("src.main.ERROR_DIR", error_dir):
+        with patch("main.ERROR_DIR", error_dir):
             os.makedirs(error_dir, exist_ok=True)
             try:
                 raise ValueError("Test Error")
@@ -89,10 +88,10 @@ class TestMain:
             assert data["context"] == "test_context"
             assert "Test Error" in data["error"]
 
-    @patch("src.main.setup_environment")
-    @patch("src.database.DatabaseHandler")
-    @patch("src.main.RcloneWrapper")
-    @patch("src.main.StorageJanitor")
+    @patch("main.setup_environment")
+    @patch("database.DatabaseHandler")
+    @patch("main.RcloneWrapper")
+    @patch("main.StorageJanitor")
     @patch("time.sleep")
     def test_main_loop_flow(
         self, mock_sleep, mock_janitor, mock_rclone, mock_db_cls, mock_setup, temp_fs
@@ -111,10 +110,10 @@ class TestMain:
 
         # Run main
         # We need to patch SOURCE_DIR and constants locally
-        with patch("src.main.SOURCE_DIR", temp_fs), \
-             patch("src.main.NEXTCLOUD_URL", "http://url"), \
-             patch("src.main.NEXTCLOUD_USER", "user"), \
-             patch("src.main.NEXTCLOUD_PASSWORD", "pass"):
+        with patch("main.SOURCE_DIR", temp_fs), \
+             patch("main.NEXTCLOUD_URL", "http://url"), \
+             patch("main.NEXTCLOUD_USER", "user"), \
+             patch("main.NEXTCLOUD_PASSWORD", "pass"):
 
              try:
                  main.main()
@@ -131,10 +130,10 @@ class TestMain:
         # Check cleanup called (since upload success)
         mock_janitor_inst.check_and_clean.assert_called()
 
-    @patch("src.main.setup_environment")
-    @patch("src.database.DatabaseHandler")
-    @patch("src.main.RcloneWrapper")
-    @patch("src.main.StorageJanitor")
+    @patch("main.setup_environment")
+    @patch("database.DatabaseHandler")
+    @patch("main.RcloneWrapper")
+    @patch("main.StorageJanitor")
     @patch("time.sleep")
     def test_main_loop_failure(
         self, mock_sleep, mock_janitor, mock_rclone, mock_db_cls, mock_setup, temp_fs
@@ -145,10 +144,10 @@ class TestMain:
         mock_wrapper = mock_rclone.return_value
         mock_wrapper.copy.return_value = False # Failure
 
-        with patch("src.main.SOURCE_DIR", temp_fs), \
-             patch("src.main.NEXTCLOUD_URL", "http://url"), \
-             patch("src.main.NEXTCLOUD_USER", "user"), \
-             patch("src.main.NEXTCLOUD_PASSWORD", "pass"):
+        with patch("main.SOURCE_DIR", temp_fs), \
+             patch("main.NEXTCLOUD_URL", "http://url"), \
+             patch("main.NEXTCLOUD_USER", "user"), \
+             patch("main.NEXTCLOUD_PASSWORD", "pass"):
 
              try:
                  main.main()
@@ -161,12 +160,12 @@ class TestMain:
     def test_upload_callback(self, mock_db):
         """Test the upload callback function logging to the database."""
 
-        with patch("src.database.DatabaseHandler") as mock_db_cls, \
-             patch("src.main.RcloneWrapper") as mock_rclone, \
-             patch("src.main.StorageJanitor"), \
+        with patch("database.DatabaseHandler") as mock_db_cls, \
+             patch("main.RcloneWrapper") as mock_rclone, \
+             patch("main.StorageJanitor"), \
              patch("time.sleep", side_effect=SystemExit), \
-             patch("src.main.SOURCE_DIR", "/tmp"), \
-             patch("src.main.setup_environment"):
+             patch("main.SOURCE_DIR", "/tmp"), \
+             patch("main.setup_environment"):
 
             try:
                 main.main()
@@ -202,21 +201,21 @@ class TestMain:
                 error_message="Network Error"
             )
 
-    @patch("src.main.logging")
-    @patch("src.main.os.makedirs")
+    @patch("main.logging")
+    @patch("main.os.makedirs")
     def test_setup_environment(self, mock_makedirs, mock_logging):
         """Test that environment setup creates necessary directories and configures logging."""
-        from src.main import setup_environment
+        from main import setup_environment
         setup_environment()
 
         # Verify makedirs called twice (log dir, status dir, error dir) -> 3 times actually
         assert mock_makedirs.call_count >= 2
         mock_logging.basicConfig.assert_called_once()
 
-    @patch("src.main.setup_environment")
-    @patch("src.database.DatabaseHandler")
-    @patch("src.main.RcloneWrapper")
-    @patch("src.main.StorageJanitor")
+    @patch("main.setup_environment")
+    @patch("database.DatabaseHandler")
+    @patch("main.RcloneWrapper")
+    @patch("main.StorageJanitor")
     @patch("time.sleep")
     def test_main_loop_crash(
         self, mock_sleep, mock_janitor, mock_rclone, mock_db, mock_setup, temp_fs
@@ -233,8 +232,8 @@ class TestMain:
         # sleep triggers SystemExit to break loop eventually, but verify we hit report_error
         mock_sleep.side_effect = [SystemExit("Stop")]
 
-        with patch("src.main.SOURCE_DIR", temp_fs), \
-             patch("src.main.report_error") as mock_report:
+        with patch("main.SOURCE_DIR", temp_fs), \
+             patch("main.report_error") as mock_report:
 
              try:
                  main.main()
@@ -247,7 +246,7 @@ class TestMain:
         """Test the signal handler raises SystemExit."""
         import signal
 
-        from src.main import signal_handler
+        from main import signal_handler
 
         with pytest.raises(SystemExit) as e:
             signal_handler(signal.SIGTERM, None)
