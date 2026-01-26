@@ -28,7 +28,7 @@
   >
     <div class="text-xs font-bold text-gray-500 uppercase">Total Duration</div>
     <div class="text-3xl font-bold text-blue-600 dark:text-blue-400 mt-2">
-      {{ stats.total_duration_hours|default(0) }}h
+      {{ stats.total_duration_fmt|default('0s') }}
     </div>
   </div>
   <div
@@ -36,7 +36,7 @@
   >
     <div class="text-xs font-bold text-gray-500 uppercase">Avg Duration</div>
     <div class="text-3xl font-bold text-green-600 dark:text-green-400 mt-2">
-      {{ stats.avg_duration|default(0) }}s
+      {{ stats.avg_duration_fmt|default('0s') }}
     </div>
   </div>
   <div
@@ -44,7 +44,7 @@
   >
     <div class="text-xs font-bold text-gray-500 uppercase">Avg Size</div>
     <div class="text-3xl font-bold text-orange-600 dark:text-orange-400 mt-2">
-      {{ stats.avg_size_mb|default(0) }}MB
+      {{ stats.avg_size_fmt|default('0 B') }}
     </div>
   </div>
 </div>
@@ -146,12 +146,12 @@
           <td
             class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400"
           >
-            {{ item.duration_sec }}s
+            {{ item.duration_fmt }}
           </td>
           <td
             class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400"
           >
-            {{ item.size_mb }} MB
+            {{ item.size_fmt }}
           </td>
           <td
             class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400"

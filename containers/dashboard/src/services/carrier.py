@@ -73,6 +73,8 @@ class CarrierService:
                     if d.get('upload_time'):
                          if d['upload_time'].tzinfo is None: d['upload_time'] = d['upload_time'].replace(tzinfo=datetime.UTC)
                          d['upload_time_str'] = d['upload_time'].strftime("%Y-%m-%d %H:%M:%S")
+                         # Convert to string for JSON serialization
+                         d['upload_time'] = d['upload_time'].isoformat()
 
                     d['size_mb'] = round((d.get('size_bytes') or 0) / (1024*1024), 2)
                     items.append(d)
@@ -100,6 +102,8 @@ class CarrierService:
                     if d.get('upload_time'):
                          if d['upload_time'].tzinfo is None: d['upload_time'] = d['upload_time'].replace(tzinfo=datetime.UTC)
                          d['upload_time_str'] = d['upload_time'].strftime("%Y-%m-%d %H:%M:%S")
+                         # Convert to string for JSON serialization
+                         d['upload_time'] = d['upload_time'].isoformat()
                     items.append(d)
                 return items
         except Exception as e:

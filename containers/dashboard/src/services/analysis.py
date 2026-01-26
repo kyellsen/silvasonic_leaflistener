@@ -44,9 +44,15 @@ class AnalyzerService:
                          
                     # Format size
                     if d.get('file_size_bytes'):
-                        d['size_mb'] = round(d['file_size_bytes'] / (1024*1024), 2)
+                        d['size_fmt'] = AnalyzerService._format_size(d['file_size_bytes'])
                     else:
-                        d['size_mb'] = 0
+                        d['size_fmt'] = "0 B"
+                        
+                    # Format duration
+                    if d.get('duration_sec'):
+                        d['duration_fmt'] = AnalyzerService._format_duration(d['duration_sec'])
+                    else:
+                        d['duration_fmt'] = "-"
                     
                     # Round metrics
                     if d.get('rms_loudness'): d['rms_loudness'] = round(d['rms_loudness'], 1)
@@ -57,6 +63,38 @@ class AnalyzerService:
         except Exception as e:
             logger.error(f"Analyzer Error: {e}", exc_info=True)
             return []
+
+    @staticmethod
+    def _format_duration(seconds: float) -> str:
+        """Format seconds into readable string (e.g. 2h 30m 15s)"""
+        if not seconds:
+            return "0s"
+        
+        # Check for bad data (e.g. timestamps or nanoseconds)
+        # If > 50 years (approx 1.5 billion seconds), assuming it's a timestamp or garbage -> 0
+        if seconds > 1577880000: 
+            return "Invalid"
+            
+        m, s = divmod(int(seconds), 60)
+        h, m = divmod(m, 60)
+        d, h = divmod(h, 24)
+        
+        parts = []
+        if d > 0: parts.append(f"{d}d")
+        if h > 0: parts.append(f"{h}h")
+        if m > 0: parts.append(f"{m}m")
+        if s > 0 or not parts: parts.append(f"{s}s")
+        
+        return " ".join(parts[:2]) # Return max 2 significant parts
+
+    @staticmethod
+    def _format_size(size_bytes: int) -> str:
+        if not size_bytes: return "0 B"
+        for unit in ['B', 'KB', 'MB', 'GB']:
+            if size_bytes < 1024:
+                return f"{size_bytes:.1f} {unit}"
+            size_bytes /= 1024
+        return f"{size_bytes:.1f} TB"
 
     @staticmethod
     async def get_stats():
@@ -73,9 +111,14 @@ class AnalyzerService:
                 res = (await conn.execute(query)).fetchone()
                 if res:
                     d = dict(res._mapping)
-                    d['total_duration_hours'] = round(d['total_duration'] / 3600, 2)
-                    d['avg_size_mb'] = round((d['avg_size'] or 0) / (1024*1024), 2)
-                    d['avg_duration'] = round(d.get('avg_duration') or 0, 1)
+                    
+                    raw_total = d.get('total_duration', 0)
+                    raw_avg = d.get('avg_duration', 0)
+                    
+                    d['total_duration_fmt'] = AnalyzerService._format_duration(raw_total)
+                    d['avg_duration_fmt'] = AnalyzerService._format_duration(raw_avg)
+                    d['avg_size_fmt'] = AnalyzerService._format_size(d.get('avg_size') or 0)
+                    
                     return d
                 return {}
          except Exception as e:

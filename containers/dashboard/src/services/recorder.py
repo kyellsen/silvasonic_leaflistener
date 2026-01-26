@@ -51,6 +51,8 @@ class RecorderService:
                              d['created_at'] = d['created_at'].replace(tzinfo=UTC)
                         d['created_at_iso'] = d['created_at'].isoformat()
                         d['formatted_time'] = d['created_at'].strftime("%Y-%m-%d %H:%M:%S")
+                        # Convert to string for JSON serialization in templates
+                        d['created_at'] = d['created_at'].isoformat()
                     else:
                         d['created_at_iso'] = ""
                         d['formatted_time'] = "Unknown"
