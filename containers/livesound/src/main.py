@@ -55,7 +55,7 @@ def write_status():
         except Exception as e:
             logger.error(f"Failed to write livesound status: {e}")
             
-        time.sleep(15)
+        time.sleep(5)
 
 def main():
     logger.info("Starting Silvasonic Livesound...")
