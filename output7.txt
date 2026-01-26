@@ -1,8 +1,0 @@
-============================= test session starts ==============================
-platform linux -- Python 3.12.12, pytest-9.0.2, pluggy-1.6.0
-rootdir: /mnt/data/dev/packages/silvasonic
-configfile: pyproject.toml
-plugins: base-url-2.1.0, playwright-0.7.2
-collected 11 items
-
-containers/uploader/tests/test_main.py .....F.

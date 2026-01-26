@@ -1,163 +1,127 @@
 version: "3.8"
 
-# =============================================================================
-# Silvasonic Sensor Stack
-# =============================================================================
-# Usage:
-#   sudo podman-compose -f podman-compose.yml up --build -d
-#   sudo podman-compose -f podman-compose.yml logs -f
-# =============================================================================
-
 services:
-  # ---------------------------------------------------------------------------
-  # Recorder (formerly Ear) - Primary Microphone
-  # ---------------------------------------------------------------------------
-  # Captures audio and stores it in /data/recording
-  # ---------------------------------------------------------------------------
   recorder:
-    build:
+    build: 
       context: containers/recorder
     image: silvasonic-recorder:latest
     container_name: silvasonic_recorder
-
     environment:
       - PYTHONUNBUFFERED=1
-
     devices:
       - /dev/snd:/dev/snd
     privileged: true
-
     volumes:
-      # Master Audio Storage
+      - ./containers/recorder/src:/app/src:z
       - /mnt/data/services/silvasonic/recorder/recordings:/data/recording:z
-      # Shared Logs
       - /mnt/data/services/silvasonic/logs:/var/log/silvasonic:z
-      # Shared Status
       - /mnt/data/services/silvasonic/status:/mnt/data/services/silvasonic/status:z
-
     restart: always
 
-  # ---------------------------------------------------------------------------
-  # Uploader (formerly Carrier) - Data Sync
-  # ---------------------------------------------------------------------------
-  # Syncs recordings to cloud (Rclone)
-  # ---------------------------------------------------------------------------
   uploader:
-    build:
+    build: 
       context: containers/uploader
     image: silvasonic-uploader:latest
     container_name: silvasonic_uploader
-    hostname: silvasonic-uploader
-    restart: always
-
     env_file: .env
     environment:
       - PUID=1000
       - PGID=1000
-
     volumes:
-      # Read-only access to recordings from Recorder
+      - ./containers/uploader/src:/app/src:z
       - /mnt/data/services/silvasonic/recorder/recordings:/data/recording:ro
-      # Rclone Config Persistence
       - /mnt/data/services/silvasonic/uploader/config:/config/rclone:z
-      # Shared Logs
       - /mnt/data/services/silvasonic/logs:/var/log/silvasonic:z
-      # Shared Status & Errors
       - /mnt/data/services/silvasonic/status:/mnt/data/services/silvasonic/status:z
       - /mnt/data/services/silvasonic/errors:/mnt/data/services/silvasonic/errors:z
+    restart: always
 
-  # ---------------------------------------------------------------------------
-  # HealthChecker (formerly Notifier) - Alerts & Monitoring
-  # ---------------------------------------------------------------------------
   healthchecker:
-    build:
+    build: 
       context: containers/healthchecker
     image: silvasonic-healthchecker:latest
     container_name: silvasonic_healthchecker
     restart: always
     env_file: .env
     volumes:
-      # Shared Config (Read/Write)
+      - ./containers/healthchecker/src:/app/src:z
       - /mnt/data/services/silvasonic/config:/config:z
-      # Shared Status & Errors (Read/Write for archiving errors and writing own status)
       - /mnt/data/services/silvasonic/status:/mnt/data/services/silvasonic/status:z
       - /mnt/data/services/silvasonic/errors:/mnt/data/services/silvasonic/errors:z
-      # Notification Queue
       - /mnt/data/services/silvasonic/notifications:/data/notifications:z
-      # Shared Logs
       - /mnt/data/services/silvasonic/logs:/var/log/silvasonic:z
 
-  # ---------------------------------------------------------------------------
-  # BirdNET - Species Identification
-  # ---------------------------------------------------------------------------
   birdnet:
-    build:
+    build: 
       context: containers/birdnet
     image: silvasonic-birdnet:latest
     container_name: silvasonic_birdnet
-
     environment:
       - PYTHONUNBUFFERED=1
       - INPUT_DIR=/data/recording
-      - DB_PATH=/data/db/birdnet.sqlite
       - RESULTS_DIR=/data/results
       - MIN_CONFIDENCE=0.7
       - RECURSIVE_WATCH=true
-
     volumes:
-      # Read-only access to recordings
+      - ./containers/birdnet/src:/app/src:z
       - /mnt/data/services/silvasonic/recorder/recordings:/data/recording:ro
-      # Configuration (Read-Only)
       - /mnt/data/services/silvasonic/config:/config:ro
-      # Isolated Results
       - /mnt/data/services/silvasonic/birdnet/results:/data/results:z
-      # Shared Logs
       - /mnt/data/services/silvasonic/logs:/var/log/silvasonic:z
-      # Shared Status
       - /mnt/data/services/silvasonic/status:/mnt/data/services/silvasonic/status:z
-      # Notification Queue
       - /mnt/data/services/silvasonic/notifications:/data/notifications:z
-
     restart: always
 
-  # ---------------------------------------------------------------------------
-  # Livesound (formerly SoundAnalyser/Brain) - Live Streaming
-  # ---------------------------------------------------------------------------
   livesound:
-    build:
+    build: 
       context: containers/livesound
     image: silvasonic-livesound:latest
     container_name: silvasonic_livesound
-
     environment:
       - PYTHONUNBUFFERED=1
-      # No INPUT_DIR needed for pure live streaming usually, unless processor needs it?
-      # Keeping it minimally if code expects it, but plan says remove unused.
-      # - INPUT_DIR=/data/recording
-      # - DB_PATH=/data/db/brain.sqlite
-      # - RECURSIVE_WATCH=true
-
     ports:
       - "8000:8000"
       - "1234:1234/udp"
-
-    # Live streaming needs responsive CPU, but shouldn't eat 100%
     cpu_shares: 512
-
     volumes:
-      # Read-only access to recordings (if needed for live stream backfill?)
-      # processor.py listens to UDP, but maybe we keep it for now just in case
+      - ./containers/livesound/src:/app/src:z
       - /mnt/data/services/silvasonic/recorder/recordings:/data/recording:ro
-      # Shared Logs
       - /mnt/data/services/silvasonic/logs:/var/log/silvasonic:z
-      # Shared Status
       - /mnt/data/services/silvasonic/status:/mnt/data/services/silvasonic/status:z
-
     restart: always
 
-  # ---------------------------------------------------------------------------
-  # Database (PostgreSQL) - Central Storage
-  # ---------------------------------------------------------------------------
+  dashboard:
+    build: 
+      context: containers/dashboard
+    image: silvasonic-dashboard:latest
+    container_name: silvasonic_dashboard
+    hostname: silvasonic-dashboard
+    restart: always
+    env_file: .env
+    environment:
+      - PYTHONUNBUFFERED=1
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./containers/dashboard/src:/app/src:z
+      - /mnt/data/services/silvasonic/recorder/recordings:/data/recording:ro
+      - /mnt/data/services/silvasonic/config:/config:z
+      - /mnt/data/services/silvasonic/logs:/var/log/silvasonic:z
+      - /mnt/data/services/silvasonic/status:/mnt/data/services/silvasonic/status:z
+
+  weather:
+    build: 
+      context: containers/weather
+    image: silvasonic-weather:latest
+    container_name: silvasonic_weather
+    restart: always
+    env_file: .env
+    volumes:
+      - ./containers/weather/src:/app/src:z
+      - /mnt/data/services/silvasonic/config:/config:z
+      - /mnt/data/services/silvasonic/logs:/var/log/silvasonic:z
+      - /mnt/data/services/silvasonic/status:/mnt/data/services/silvasonic/status:z
+
   db:
     image: docker.io/library/postgres:15-alpine
     container_name: silvasonic_db
@@ -173,51 +137,3 @@ services:
       timeout: 5s
       retries: 5
     restart: always
-
-  # ---------------------------------------------------------------------------
-  # Dashboard (The Face) - Status UI
-  # ---------------------------------------------------------------------------
-  dashboard:
-    build:
-      context: containers/dashboard
-    image: silvasonic-dashboard:latest
-    container_name: silvasonic_dashboard
-    hostname: silvasonic-dashboard
-    restart: always
-    env_file: .env
-    environment:
-      - PYTHONUNBUFFERED=1
-    ports:
-      - "8080:8080"
-    volumes:
-      # Read-Only Audio (Playback)
-      - /mnt/data/services/silvasonic/recorder/recordings:/data/recording:ro
-      # Shared Config (Read/Write)
-      - /mnt/data/services/silvasonic/config:/config:z
-      # Shared Logs (Read/Write)
-      - /mnt/data/services/silvasonic/logs:/var/log/silvasonic:z
-      # Shared Status
-      - /mnt/data/services/silvasonic/status:/mnt/data/services/silvasonic/status:z
-      # System Stats (Optional, depends on host)
-      # - /etc/localtime:/etc/localtime:ro
-
-  # ---------------------------------------------------------------------------
-  # Weather - Local Weather Data Collector
-  # ---------------------------------------------------------------------------
-  # ---------------------------------------------------------------------------
-  # Weather - Local Weather Data Collector
-  # ---------------------------------------------------------------------------
-  weather:
-    build:
-      context: containers/weather
-    image: silvasonic-weather:latest
-    container_name: silvasonic_weather
-    restart: always
-    env_file: .env
-    volumes:
-      # Shared Config (Read/Write)
-      - /mnt/data/services/silvasonic/config:/config:z
-      # Shared Logs
-      - /mnt/data/services/silvasonic/logs:/var/log/silvasonic:z
-      # Shared Status
-      - /mnt/data/services/silvasonic/status:/mnt/data/services/silvasonic/status:z

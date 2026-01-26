@@ -4,7 +4,11 @@ set -e
 echo "--- Silvasonic DevContainer Setup (Native) ---"
 
 # 1. Fix Permissions
-sudo chown -R vscode:vscode /mnt/data/services/silversonic
+# Code (in /workspace)
+sudo chown -R vscode:vscode /workspace
+# Daten (in /mnt/...) - hier war der Tippfehler!
+sudo mkdir -p /mnt/data/services/silvasonic/{recorder,db,logs,status}
+sudo chown -R vscode:vscode /mnt/data/services/silvasonic
 
 # 2. Sync Dependencies using UV
 echo "Installing dependencies with uv..."
