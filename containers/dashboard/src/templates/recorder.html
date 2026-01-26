@@ -306,14 +306,14 @@
       <div>
         <div class="flex justify-between text-xs text-gray-500 uppercase mb-1">
           <span>Capacity (/data)</span>
-          <span>{{ 100 - stats.disk_percent }}% Free</span>
+          <span>{{ 100 - sys_stats.disk_percent }}% Free</span>
         </div>
         <div
           class="w-full bg-gray-200 dark:bg-gray-700 h-2 rounded-full overflow-hidden"
         >
           <div
             class="bg-gradient-to-r from-silva-500 to-green-400 h-full rounded-full"
-            style="width: {{ stats.disk_percent }}%"
+            style="width: {{ sys_stats.disk_percent }}%"
           ></div>
         </div>
       </div>

@@ -33,10 +33,12 @@ class Config:
     def birdnet_settings(self):
         """Returns a dictionary of BirdNET settings, merging defaults,
         env vars, and YAML config.
-        Priority: settings.json > config.yaml > Environment > Default
+        Priority: settings.json (BirdNET) > settings.json (Global Location) > config.yaml > Environment > Default
         """
         yaml_conf = self._load_yaml().get('birdnet', {})
-        json_conf = self._load_settings_json()
+        full_json = self._load_settings_json()
+        json_conf = full_json.get("birdnet", {})
+        location_conf = full_json.get("location", {})
 
         # Helper to get value from JSON -> YAML -> Env -> Default
         def get_val(key, env_key, default, type_cast):
@@ -44,6 +46,12 @@ class Config:
             val = json_conf.get(key)
             if val is not None:
                 return type_cast(val)
+
+            # 1.5 Special Fallback for Location (Global Settings)
+            if key == 'latitude' and 'latitude' in location_conf:
+                return type_cast(location_conf['latitude'])
+            if key == 'longitude' and 'longitude' in location_conf:
+                return type_cast(location_conf['longitude'])
 
             # 2. Static Config (YAML)
             val = yaml_conf.get(key)
@@ -65,7 +73,7 @@ class Config:
             'week': get_val('week', 'WEEK', -1, int),
             'overlap': get_val('overlap', 'OVERLAP', 0.0, float),
             'sensitivity': get_val('sensitivity', 'SENSITIVITY', 1.0, float),
-            'threads': get_val('threads', 'THREADS', 1, int),
+            'threads': get_val('threads', 'THREADS', 3, int),
         }
 
     def _load_settings_json(self):
@@ -74,7 +82,7 @@ class Config:
         if settings_path.exists():
             try:
                 with open(settings_path) as f:
-                    return json.load(f).get("birdnet", {})
+                    return json.load(f)
             except Exception as e:
                 logger.error(f"Failed to load settings.json: {e}")
         return {}

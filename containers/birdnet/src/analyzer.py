@@ -54,12 +54,20 @@ class BirdNETAnalyzer:
         try:
             logger.info(f"Running analysis on {temp_resampled.name}...")
             settings = config.birdnet_settings
+            
+            # Sanitize location (pass None if disabled/default -1)
+            lat = settings['lat']
+            lon = settings['lon']
+            if lat == -1 or lon == -1:
+                lat = None
+                lon = None
+
             if bn_analyze:
                 bn_analyze(
                     audio_input=str(temp_resampled),
                     min_conf=settings['min_conf'],
-                    lat=settings['lat'],
-                    lon=settings['lon'],
+                    lat=lat,
+                    lon=lon,
                     week=settings['week'],
                     overlap=settings['overlap'],
                     sensitivity=settings['sensitivity'],
