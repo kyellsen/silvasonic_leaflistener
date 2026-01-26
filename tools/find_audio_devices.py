@@ -11,7 +11,7 @@ import subprocess
 import sys
 
 
-def get_alsa_devices():
+def get_alsa_devices() -> list[dict[str, str]]:
     """Get list of ALSA capture devices."""
     print("Scanning ALSA Capture Devices...\n")
 
@@ -66,7 +66,7 @@ def get_alsa_devices():
     return devices
 
 
-def suggest_config(devices):
+def suggest_config(devices: list[dict[str, str]]) -> None:
     print(f"{'Address':<15} | {'Description'}")
     print("-" * 60)
 

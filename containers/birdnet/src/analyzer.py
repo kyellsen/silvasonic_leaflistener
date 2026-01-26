@@ -136,6 +136,7 @@ class BirdNETAnalyzer:
                                     "lat": config.LATITUDE,
                                     "lon": config.LONGITUDE,
                                     "clip_path": clip_path,
+                                    "source_device": path.parent.name,  # Extract source from folder (e.g. "front_mic")
                                 }
                                 db.save_detection(detection)
 

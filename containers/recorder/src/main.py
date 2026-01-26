@@ -187,7 +187,7 @@ def main() -> None:
     ensure_status_dir()
     global running, ffmpeg_process
 
-    from mic_profiles import create_strategy_for_profile, get_active_profile
+    from .mic_profiles import create_strategy_for_profile, get_active_profile
 
     profile, device = get_active_profile()
 
@@ -197,7 +197,7 @@ def main() -> None:
 
     # Create Strategy
     # Using type: ignore because mypy might not like dynamic imports inside function above, but here it's fine
-    strategy = create_strategy_for_profile(profile, device)  # type: ignore
+    strategy = create_strategy_for_profile(profile, device)
 
     output_dir = os.path.join(BASE_OUTPUT_DIR, profile.slug)
 

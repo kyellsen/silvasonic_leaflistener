@@ -16,6 +16,9 @@ import yaml
 
 logger = logging.getLogger("mic_profiles")
 
+if typing.TYPE_CHECKING:
+    from .strategies import AudioStrategy
+
 
 @dataclass
 class AudioConfig:
@@ -252,7 +255,9 @@ def get_active_profile() -> tuple[MicrophoneProfile | None, DetectedDevice | Non
     return find_matching_profile(profiles, force_mock=mock_mode, force_profile=force_profile)
 
 
-def create_strategy_for_profile(profile: MicrophoneProfile, device: DetectedDevice):
+def create_strategy_for_profile(
+    profile: MicrophoneProfile, device: DetectedDevice
+) -> "AudioStrategy":
     """Factory to create the appropriate AudioStrategy."""
     from .strategies import AlsaStrategy, FileMockStrategy
 

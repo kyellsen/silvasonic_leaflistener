@@ -45,8 +45,8 @@ On your workstation, navigate to the repo and set up your secrets.
 ```bash
 cd dev/silvasonic
 mkdir -p setup/config
-cp setup/config.example.env setup/config/config.env
-nano setup/config/config.env
+cp setup/config/bootstrap.example.env setup/config/bootstrap.env
+nano setup/config/bootstrap.env
 ```
 
 **Required Settings:**
@@ -73,7 +73,7 @@ sudo ./setup/bootstrap/prepare_stick.sh
 **What this does:**
 
 - Copies `flash_ssd.sh` (The installer).
-- Copies `config.env` (Your credentials).
+- Copies `bootstrap.env` (Your credentials).
 - **Does NOT** copy the repository code (that comes later).
 
 ---
@@ -86,7 +86,7 @@ Now we move to the device itself.
 2.  **SSH into the Pi**:
     ```bash
     ssh pi@silvasonic.local
-    # Password: As defined in your config.env (or default 'raspberry' if not set)
+    # Password: As defined in your bootstrap.env (or default 'raspberry' if not set)
     ```
 3.  **Run the Flasher**:
     This script will install the OS onto the NVMe drive and configure it with your users and keys.
@@ -115,7 +115,7 @@ Power on the Raspberry Pi (with only the NVMe drive). Now we use Ansible to turn
 From your workstation:
 
 ```bash
-cd dev/silvasonic
+cd /mnt/data/dev/packages/silvasonic
 ./setup/install.sh
 ```
 

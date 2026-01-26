@@ -41,7 +41,7 @@ COPY src /app/src
 
 # Environment variables
 ENV PYTHONUNBUFFERED=1
-ENV PYTHONPATH=/app/src
+ENV PYTHONPATH=/app
 
 # Run the application
-CMD ["python", "src/main.py"]
+CMD ["python", "-m", "src.main"]

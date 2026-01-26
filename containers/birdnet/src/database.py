@@ -5,6 +5,7 @@ import typing
 from datetime import UTC, datetime
 
 from sqlalchemy import Column, DateTime, Float, Integer, String, Text, create_engine
+from sqlalchemy.engine import Engine
 from sqlalchemy.exc import OperationalError, ProgrammingError
 from sqlalchemy.orm import declarative_base, sessionmaker
 from sqlalchemy.schema import CreateSchema
@@ -25,6 +26,7 @@ class BirdNETDetection(Base):  # type: ignore
     # File Info
     filename = Column(String(255), nullable=False)
     filepath = Column(String(1024), nullable=False)
+    source_device = Column(String(50), nullable=True)  # e.g. "front", "back", "ultramic"
 
     # Detection Info (Raw)
     start_time = Column(Float, nullable=False)
@@ -95,7 +97,7 @@ class DatabaseHandler:
         self.db_url = (
             f"postgresql://{self.user}:{self.password}@{self.host}:{self.port}/{self.db_name}"
         )
-        self.engine: create_engine | None = None
+        self.engine: Engine | None = None
         self.Session: sessionmaker[typing.Any] | None = None
 
     def connect(self) -> bool:
@@ -166,6 +168,7 @@ class DatabaseHandler:
                 latitude=detection_dict.get("lat"),
                 longitude=detection_dict.get("lon"),
                 clip_path=detection_dict.get("clip_path"),
+                source_device=detection_dict.get("source_device"),
                 timestamp=datetime.now(UTC),
             )
             session.add(det)

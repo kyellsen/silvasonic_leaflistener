@@ -11,8 +11,8 @@ try:
     import numpy as np
     import soundfile as sf
 except ImportError:
-    np = None
-    sf = None
+    np: typing.Any = None
+    sf: typing.Any = None
 
 logger = logging.getLogger("recorder.strategies")
 
@@ -30,7 +30,7 @@ class AudioStrategy(ABC):
         """Return the input source string (the value for -i)."""
         pass
 
-    def start_background_tasks(self, process: subprocess.Popen) -> None:  # noqa: B027
+    def start_background_tasks(self, process: "subprocess.Popen[bytes]") -> None:  # noqa: B027
         """Hook to start any background threads (e.g. file reading) after FFmpeg starts."""
         pass
 
@@ -83,7 +83,7 @@ class FileMockStrategy(AudioStrategy):
     def get_input_source(self) -> str:
         return "pipe:0"
 
-    def start_background_tasks(self, process: subprocess.Popen) -> None:
+    def start_background_tasks(self, process: "subprocess.Popen[bytes]") -> None:
         self.running = True
         self.thread = threading.Thread(target=self._stream_loop, args=(process,), daemon=True)
         self.thread.start()
@@ -131,7 +131,7 @@ class FileMockStrategy(AudioStrategy):
             logger.error(f"Error loading {file_path}: {e}")
             return None
 
-    def _stream_loop(self, process: subprocess.Popen) -> None:
+    def _stream_loop(self, process: "subprocess.Popen[bytes]") -> None:
         logger.info(f"Starting File Mock Stream from {self.watch_dir}")
 
         if process.stdin is None:
