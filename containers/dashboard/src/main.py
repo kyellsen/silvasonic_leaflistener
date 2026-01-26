@@ -154,6 +154,7 @@ async def logout():
 from src.services import (
     # AnalyzerService, # Deprecated
     BirdNetService,
+    BirdNetStatsService,
     CarrierService,
     HealthCheckerService,
     RecorderService,
@@ -169,7 +170,7 @@ async def dashboard(request: Request, auth=Depends(require_auth)):
 
     stats = SystemService.get_stats()
     detections = await BirdNetService.get_recent_detections(limit=5)
-    birdnet_stats = await BirdNetService.get_stats()
+    birdnet_stats = await BirdNetStatsService.get_stats()
     carrier_stats = CarrierService.get_status()
     recorder_stats = RecorderService.get_status()
     raw_containers = HealthCheckerService.get_system_metrics()
@@ -425,7 +426,7 @@ async def birdnet_page(request: Request, auth=Depends(require_auth)):
     if isinstance(auth, RedirectResponse): return auth
 
     detections = await BirdNetService.get_recent_detections(limit=50) # More for browser
-    stats = await BirdNetService.get_stats()
+    stats = await BirdNetStatsService.get_stats()
 
     return render(request, "birdnet.html", {
         "request": request,
@@ -464,7 +465,7 @@ async def birdnet_discover_page(request: Request, auth=Depends(require_auth)):
 async def birdnet_species_page(request: Request, species_name: str, auth=Depends(require_auth)):
     if isinstance(auth, RedirectResponse): return auth
 
-    data = await BirdNetService.get_species_stats(species_name)
+    data = await BirdNetStatsService.get_species_stats(species_name)
     if not data:
         raise HTTPException(status_code=404, detail="Species not found")
 
@@ -486,7 +487,7 @@ async def birdnet_species_page(request: Request, species_name: str, auth=Depends
 async def stats_page(request: Request, auth=Depends(require_auth)):
     if isinstance(auth, RedirectResponse): return auth
 
-    stats_data = await BirdNetService.get_advanced_stats()
+    stats_data = await BirdNetStatsService.get_advanced_stats()
 
     return render(request, "stats.html", {
         "request": request,
@@ -619,6 +620,41 @@ async def get_birdnet_details(request: Request, filename: str, auth=Depends(requ
          data = await BirdNetService.get_detection(filename) or data
 
     return render(request, "partials/inspector_birdnet.html", {"request": request, "d": data})
+
+@app.get("/api/export/birdnet/csv")
+async def export_birdnet_csv(auth=Depends(require_auth)):
+    if isinstance(auth, RedirectResponse): raise HTTPException(401)
+
+    async def iter_csv():
+        # Header
+        yield "Date,Time,Scientific Name,Common Name,Confidence,Start (s),End (s),Filename\n"
+        
+        # Rows
+        iterator = BirdNetService.get_all_detections_cursor()
+        async for row in iterator:
+            # Format fields
+            ts = row.get('timestamp')
+            
+            date_str = ts.strftime("%Y-%m-%d") if ts else ""
+            time_str = ts.strftime("%H:%M:%S") if ts else ""
+            
+            sci = row.get('scientific_name', '').replace(',', ' ') # Simple CSV escape
+            com = row.get('common_name', '').replace(',', ' ')
+            conf = f"{row.get('confidence', 0.0):.2f}"
+            start = f"{row.get('start_time', 0.0):.1f}"
+            end = f"{row.get('end_time', 0.0):.1f}"
+            fname = row.get('filename', '')
+
+            line = f"{date_str},{time_str},{sci},{com},{conf},{start},{end},{fname}\n"
+            yield line
+
+    filename = f"birdnet_export_{datetime.datetime.now().strftime('%Y%m%d_%H%M%S')}.csv"
+    return StreamingResponse(
+        iter_csv(),
+        media_type="text/csv",
+        headers={"Content-Disposition": f"attachment; filename={filename}"}
+    )
+
 
 # --- API / HTMX Partials ---
 

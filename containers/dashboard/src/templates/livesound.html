@@ -131,194 +131,214 @@
   </div>
 </div>
 
-<script>
-  const playBtn = document.getElementById("playButton");
-  const playIcon = document.getElementById("playIcon");
-  const pauseIcon = document.getElementById("pauseIcon");
-  const statusText = document.getElementById("statusText");
-  const volumeSlider = document.getElementById("volumeSlider");
-
-  // Audio Context
-  let audioCtx;
-  let audioSource;
-  let audioEl = new Audio();
-  audioEl.crossOrigin = "anonymous";
-
-  // Determine Stream URL (Assuming port 8000 on same host)
-  const streamUrl = `http://${window.location.hostname}:8000/stream`;
-
-  // Spectrogram WebSocket
-  const wsUrl = `ws://${window.location.hostname}:8000/ws/spectrogram`;
-  let ws;
-
-  // Canvas
-  const canvas = document.getElementById("spectrogramCanvas");
-  const ctx = canvas.getContext("2d");
-
-  // Adjust canvas resolution
-  function resize() {
-    canvas.width = canvas.offsetWidth;
-    canvas.height = canvas.offsetHeight;
-  }
-  window.addEventListener("resize", resize);
-  resize();
-
-  // Waterfall Buffer
-  // We scroll the image left
-  let tempCanvas = document.createElement("canvas");
-  let tempCtx = tempCanvas.getContext("2d");
-
-  function initWebSocket() {
-    ws = new WebSocket(wsUrl);
-
-    ws.onopen = () => {
-      statusText.innerText = "Connected";
-      statusText.className = "text-xs text-green-500 font-mono";
-      document.getElementById("connectionStatus").innerText = "Real-time";
+  /* 
+   * Livesound Lifecycle Management 
+   * Handles initialization and cleanup for HTMX navigation
+   */
+  (function() {
+    // --- State ---
+    const state = {
+      audioCtx: null,
+      audioEl: new Audio(),
+      ws: null,
+      wsUrl: `ws://${window.location.hostname}:8000/ws/spectrogram`,
+      streamUrl: `http://${window.location.hostname}:8000/stream`,
+      canvas: document.getElementById("spectrogramCanvas"),
+      ctx: null,
+      tempCanvas: document.createElement("canvas"),
+      tempCtx: null,
+      maxReconnects: 5,
+      reconnectCount: 0,
+      isActive: true // Flag to stop loops if we navigate away
     };
 
-    ws.onmessage = (event) => {
-      const msg = JSON.parse(event.data);
-      if (msg.type === "spectrogram") {
-        drawColumn(msg.data);
+    // --- DOM Elements ---
+    const ui = {
+      playBtn: document.getElementById("playButton"),
+      playIcon: document.getElementById("playIcon"),
+      pauseIcon: document.getElementById("pauseIcon"),
+      status: document.getElementById("statusText"),
+      vol: document.getElementById("volumeSlider"),
+      connStatus: document.getElementById("connectionStatus")
+    };
+
+    // --- Initialization ---
+    function init() {
+      // Setup Audio Element
+      state.audioEl.crossOrigin = "anonymous";
+      
+      // Setup Canvas
+      if (state.canvas) {
+        state.ctx = state.canvas.getContext("2d");
+        state.tempCtx = state.tempCanvas.getContext("2d");
+        resizeCanvas();
+        window.addEventListener("resize", resizeCanvas);
       }
-    };
 
-    ws.onclose = () => {
-      statusText.innerText = "Disconnected (Retrying...)";
-      statusText.className = "text-xs text-red-500 font-mono";
-      setTimeout(initWebSocket, 3000);
-    };
-  }
+      // Setup Listeners
+      setupAudioListeners();
+      setupUIListeners();
+      
+      // Auto-connect WS
+      connectWebSocket();
 
-  function drawColumn(dataArray) {
-    // dataArray is list of ints 0-255 (intensity)
-    // length 128 (mel bands)
-    // We draw 1 pixel width column at the right, shift everything left
-
-    const w = canvas.width;
-    const h = canvas.height;
-
-    // 1. Save current canvas to temp
-    tempCanvas.width = w;
-    tempCanvas.height = h;
-    tempCtx.drawImage(canvas, 0, 0);
-
-    // 2. Draw saved image shifted left by 1 pixel
-    ctx.clearRect(0, 0, w, h);
-    ctx.drawImage(tempCanvas, -1, 0); // Shift left
-
-    // 3. Draw new column at x = w-1
-    // We map freq bins (0=low, 127=high) to Y axis (h to 0)
-    const barHeight = h / dataArray.length;
-
-    for (let i = 0; i < dataArray.length; i++) {
-      const val = dataArray[i]; // 0-255
-
-      // Color Map: Purple (low) -> Cyan -> Yellow (high)
-      // Simple: HSL
-      // 255 -> 60deg (Yellow)
-      // 0 -> 260deg (Purple)
-      const hue = 260 - (val / 255) * 200;
-      const lightness = (val / 255) * 50; // 0 -> 50%
-
-      ctx.fillStyle = `hsl(${hue}, 100%, ${lightness}%)`;
-
-      // Draw rect
-      // Y grows down, so low freq (i=0) at bottom
-      const y = h - i * barHeight - barHeight;
-
-      ctx.fillRect(w - 1, y, 2, barHeight + 1); // +1 overlap
+      // Register Cleanup for HTMX
+      // This listener will fire when HTMX is about to swap OUT the content
+      document.body.addEventListener('htmx:beforeSwap', cleanup, { once: true });
     }
-  }
 
-  // Audio Player Logic
-  // We use the audio element events as the source of truth for the UI
+    // --- Cleanup ---
+    function cleanup(event) {
+      console.log("[Livesound] Cleaning up resources...");
+      state.isActive = false;
 
-  playBtn.addEventListener("click", () => {
-    if (audioEl.paused) {
-      startStream();
-    } else {
-      stopStream();
+      // 1. Stop Audio
+      if (state.audioEl) {
+        state.audioEl.pause();
+        state.audioEl.src = "";
+        state.audioEl.load();
+        state.audioEl = null;
+      }
+
+      // 2. Close WebSocket
+      if (state.ws) {
+        state.ws.onclose = null; // Prevent reconnect loops
+        state.ws.close();
+        state.ws = null;
+      }
+
+      // 3. Remove Global Listeners
+      window.removeEventListener("resize", resizeCanvas);
+      
+      // Note: Event listeners on DOM elements (playBtn) are removed automatically 
+      // when the elements are removed from the DOM by HTMX.
     }
-  });
 
-  function startStream() {
-    statusText.innerText = "Connecting...";
+    // --- WebSocket Logic ---
+    function connectWebSocket() {
+      if (!state.isActive) return;
 
-    // Always reset src for live stream to ensure we get "now"
-    // We add a timestamp to force the browser to open a NEW connection and bypass cache
-    audioEl.src = `${streamUrl}?t=${Date.now()}`;
+      state.ws = new WebSocket(state.wsUrl);
 
-    audioEl.play().catch((e) => {
-      console.error("Play failed:", e);
-      statusText.innerText = "Stream Error";
-      // UI will remain in paused state via events
-    });
-  }
+      state.ws.onopen = () => {
+        ui.status.innerText = "Connected";
+        ui.status.className = "text-xs text-green-500 font-mono";
+        ui.connStatus.innerText = "Real-time";
+        state.reconnectCount = 0;
+      };
 
-  function stopStream() {
-    audioEl.pause();
-    // For live streams, it's good practice to unload the source to stop buffering
-    audioEl.src = "";
-    audioEl.load();
-  }
+      state.ws.onmessage = (event) => {
+        if (!state.isActive) return;
+        const msg = JSON.parse(event.data);
+        if (msg.type === "spectrogram") {
+          drawSpectrogramColumn(msg.data);
+        }
+      };
 
-  // Update UI based on actual Audio Element state
-  audioEl.addEventListener("play", () => {
-    // Fired when play() is called and active
-    // Note: 'playing' event is better for when actual data is starting to play
-    // But 'play' is immediate feedback for "I am trying to play"
-    toggleIcons(true);
-    statusText.innerText = "Streaming Audio";
-  });
-
-  audioEl.addEventListener("playing", () => {
-    // Audio is actually playing
-    statusText.innerText = "Live";
-  });
-
-  audioEl.addEventListener("pause", () => {
-    toggleIcons(false);
-    statusText.innerText = "Paused";
-  });
-
-  audioEl.addEventListener("error", (e) => {
-    console.error("Audio Error", e);
-    toggleIcons(false);
-    statusText.innerText = "Error";
-  });
-
-  audioEl.addEventListener("waiting", () => {
-    statusText.innerText = "Buffering...";
-  });
-
-  function toggleIcons(playing) {
-    if (playing) {
-      playIcon.classList.add("hidden");
-      pauseIcon.classList.remove("hidden");
-      playBtn.classList.replace("bg-purple-600", "bg-red-500");
-      playBtn.classList.replace("hover:bg-purple-700", "hover:bg-red-600");
-    } else {
-      playIcon.classList.remove("hidden");
-      pauseIcon.classList.add("hidden");
-      playBtn.classList.replace("bg-red-500", "bg-purple-600");
-      playBtn.classList.replace("hover:bg-red-600", "hover:bg-purple-700");
+      state.ws.onclose = () => {
+        if (!state.isActive) return;
+        ui.status.innerText = "Disconnected";
+        ui.status.className = "text-xs text-red-500 font-mono";
+        
+        if (state.reconnectCount < state.maxReconnects) {
+          state.reconnectCount++;
+          setTimeout(connectWebSocket, 2000);
+        }
+      };
     }
-  }
 
-  volumeSlider.addEventListener("input", (e) => {
-    e.stopPropagation();
-    if (audioEl) {
-      const vol = parseFloat(e.target.value);
-      if (!isNaN(vol) && isFinite(vol)) {
-        audioEl.volume = Math.min(Math.max(vol, 0), 1);
+    // --- Audio Control ---
+    function startStream() {
+      ui.status.innerText = "Connecting Audio...";
+      // Cache buster to force new stream
+      state.audioEl.src = `${state.streamUrl}?t=${Date.now()}`;
+      state.audioEl.play().catch(e => {
+        console.error("Play failed:", e);
+        ui.status.innerText = "Stream Error";
+      });
+    }
+
+    function stopStream() {
+      state.audioEl.pause();
+      state.audioEl.src = "";
+      state.audioEl.load();
+    }
+
+    // --- Spectrogram Drawing ---
+    function drawSpectrogramColumn(dataArray) {
+      if (!state.ctx) return;
+      const w = state.canvas.width;
+      const h = state.canvas.height;
+
+      // 1. Shift existing
+      state.tempCanvas.width = w;
+      state.tempCanvas.height = h;
+      state.tempCtx.drawImage(state.canvas, 0, 0);
+      
+      state.ctx.clearRect(0, 0, w, h);
+      state.ctx.drawImage(state.tempCanvas, -1, 0);
+
+      // 2. Draw new column
+      const barH = h / dataArray.length;
+      for (let i = 0; i < dataArray.length; i++) {
+        const val = dataArray[i];
+        const hue = 260 - (val / 255) * 200;
+        const light = (val / 255) * 50;
+        
+        state.ctx.fillStyle = `hsl(${hue}, 100%, ${light}%)`;
+        state.ctx.fillRect(w - 1, h - i * barH - barH, 2, barH + 1);
       }
     }
-  });
 
-  // Start WS
-  initWebSocket();
+    function resizeCanvas() {
+      if (state.canvas) {
+        state.canvas.width = state.canvas.offsetWidth;
+        state.canvas.height = state.canvas.offsetHeight;
+      }
+    }
+
+    // --- Event Wiring ---
+    function setupAudioListeners() {
+      state.audioEl.addEventListener("play", () => updateUI(true));
+      state.audioEl.addEventListener("pause", () => updateUI(false));
+      state.audioEl.addEventListener("playing", () => ui.status.innerText = "Live Audio");
+      state.audioEl.addEventListener("waiting", () => ui.status.innerText = "Buffering...");
+      state.audioEl.addEventListener("error", () => {
+        updateUI(false);
+        ui.status.innerText = "Error";
+      });
+    }
+
+    function setupUIListeners() {
+      ui.playBtn.onclick = () => {
+        if (state.audioEl.paused) startStream();
+        else stopStream();
+      };
+      
+      ui.vol.oninput = (e) => {
+        const v = parseFloat(e.target.value);
+        if (!isNaN(v)) state.audioEl.volume = v;
+      };
+    }
+
+    function updateUI(isPlaying) {
+      if (isPlaying) {
+        ui.playIcon.classList.add("hidden");
+        ui.pauseIcon.classList.remove("hidden");
+        ui.playBtn.classList.replace("bg-purple-600", "bg-red-500");
+        ui.playBtn.classList.replace("hover:bg-purple-700", "hover:bg-red-600");
+      } else {
+        ui.playIcon.classList.remove("hidden");
+        ui.pauseIcon.classList.add("hidden");
+        ui.playBtn.classList.replace("bg-red-500", "bg-purple-600");
+        ui.playBtn.classList.replace("hover:bg-red-600", "hover:bg-purple-700");
+      }
+    }
+
+    // Start
+    init();
+
+  })();
 </script>
 {% endblock %} {% block inspector %}
 <!-- No inspector needed for live stream page -->

@@ -1,6 +1,7 @@
 from .database import db, DatabaseHandler
 from .system import SystemService
 from .birdnet import BirdNetService
+from .birdnet_stats import BirdNetStatsService
 from .carrier import CarrierService
 from .recorder import RecorderService
 from .health import HealthCheckerService
