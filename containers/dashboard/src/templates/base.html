@@ -147,7 +147,7 @@
           hx-push-url="true"
         >
           <img
-            src="/static/images/logo_not_text.webp"
+            src="/static/images/logo_no_text.webp"
             alt="Silvasonic Logo"
             class="h-10 w-auto hover:opacity-90 transition-opacity"
           />
@@ -303,7 +303,7 @@
       <!-- Left Sidebar (Nav) -->
       <nav
         id="sidebar-menu"
-        class="fixed md:static inset-y-0 left-0 w-64 glass z-40 border-r border-gray-200 dark:border-dark-border flex flex-col py-6 gap-2 shrink-0 transition-transform duration-300 md:translate-x-0 -translate-x-full h-full md:h-auto"
+        class="fixed md:static inset-y-0 left-0 w-64 expanded glass z-40 border-r border-gray-200 dark:border-dark-border flex flex-col py-6 gap-2 shrink-0 transition-transform duration-300 md:translate-x-0 -translate-x-full h-full md:h-auto"
         hx-target="#main-content"
         hx-swap="innerHTML"
       >
@@ -905,12 +905,18 @@
 
         // Left Sidebar Init
         const leftSidebar = document.getElementById("sidebar-menu");
+
         const leftCollapsed = localStorage.getItem("sidebar-collapsed");
-        // Default to collapsed (w-20) if not set, or if set to true.
-        // If "false", we expand to w-64.
-        if (leftCollapsed === "false") {
-          leftSidebar.classList.remove("w-20");
-          leftSidebar.classList.add("w-64", "expanded");
+        
+        // Logic: Default to EXPANDED (w-64) because HTML has w-64.
+        // If localStorage says "true" (collapsed), then we switch to w-20.
+        if (leftCollapsed === "true") {
+            leftSidebar.classList.remove("w-64", "expanded");
+            leftSidebar.classList.add("w-20");
+        } else {
+            // Explicitly ensure expanded state (redundant if HTML is correct, but safe)
+            leftSidebar.classList.remove("w-20");
+            leftSidebar.classList.add("w-64", "expanded");
         }
 
         const storedTheme = localStorage.getItem("theme");

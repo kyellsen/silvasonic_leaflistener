@@ -17,6 +17,7 @@ import psutil
 import asyncio
 import threading
 
+os.makedirs("/var/log/silvasonic", exist_ok=True)
 logging.basicConfig(
     level=logging.INFO,
     handlers=[
@@ -38,6 +39,7 @@ TEMPLATES_DIR = os.path.join(BASE_DIR, "templates")
 AUDIO_DIR = "/data/recording"
 LOG_DIR = "/var/log/silvasonic"
 ARTIFACTS_DIR = "/data/processed/artifacts"
+os.makedirs(ARTIFACTS_DIR, exist_ok=True)
 
 VERSION = "0.1.0"
 

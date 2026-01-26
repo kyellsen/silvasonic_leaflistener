@@ -8,6 +8,7 @@ import threading
 import psutil
 
 
+os.makedirs("/var/log/silvasonic", exist_ok=True)
 
 logging.basicConfig(
     level=logging.INFO,

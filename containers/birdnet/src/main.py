@@ -3,8 +3,11 @@ import logging
 # Setup logging to stdout
 import logging.handlers
 import sys
+import os
 
 from src.watcher import WatcherService
+
+os.makedirs("/var/log/silvasonic", exist_ok=True)
 
 logging.basicConfig(
     level=logging.INFO,
