@@ -12,6 +12,22 @@ from .database import db
 
 class RecorderService:
     @staticmethod
+    def get_audio_settings(profile):
+        """Extract audio BPS (Bytes per Second) from profile."""
+        try:
+            if isinstance(profile, dict) and "audio" in profile:
+                audio = profile["audio"]
+                sr = int(audio.get("sample_rate", 48000))
+                ch = int(audio.get("channels", 1))
+                depth = int(audio.get("bit_depth", 16))
+                
+                # Bytes per second (Uncompressed)
+                return sr * ch * (depth / 8)
+        except Exception:
+            pass
+        return 48000 * 1 * 2  # Default to 48kHz, Mono, 16-bit (96000 Bps)
+
+    @staticmethod
     def get_status():
         try:
             status_file = os.path.join(STATUS_DIR, "recorder.json")
@@ -39,7 +55,6 @@ class RecorderService:
                     data["device_raw"] = raw_device
 
                     # 2. Storage Forecast
-                    # Calculate daily usage based on profile
                     forecast = {
                         "daily_gb": 0,
                         "daily_str": "Unknown",
@@ -49,13 +64,7 @@ class RecorderService:
                     
                     if isinstance(profile, dict) and "audio" in profile:
                         try:
-                            audio = profile["audio"]
-                            sr = int(audio.get("sample_rate", 48000))
-                            ch = int(audio.get("channels", 1))
-                            depth = int(audio.get("bit_depth", 16))
-                            
-                            # Bytes per second (Uncompressed)
-                            bps = sr * ch * (depth / 8)
+                            bps = RecorderService.get_audio_settings(profile)
                             
                             # Compression Ratio (Estimate for FLAC)
                             # 384kHz recordings might compress differently, but 0.6 is a safe standard for FLAC
@@ -102,6 +111,10 @@ class RecorderService:
     @staticmethod
     async def get_recent_recordings(limit=20):
         try:
+            # Get current BPS setting for Duration Fallback
+            current_status = RecorderService.get_status()
+            current_bps = RecorderService.get_audio_settings(current_status.get('profile'))
+
             async with db.get_connection() as conn:
                 # Try fetching from birdnet schema (new architecture)
                 # Fallback to brain if needed, but for now we switch to birdnet.processed_files
@@ -119,52 +132,71 @@ class RecorderService:
                 items = []
                 for row in result:
                     d = dict(row._mapping)
+                    
+                    # Date Handling
+                    created_at_dt = None
                     if d.get('created_at'):
-                        if d['created_at'].tzinfo is None:
-                             d['created_at'] = d['created_at'].replace(tzinfo=UTC)
-                        d['created_at_iso'] = d['created_at'].isoformat()
-                        d['formatted_time'] = d['created_at'].strftime("%Y-%m-%d %H:%M:%S")
-                        # Convert to string for JSON serialization in templates
-                        d['created_at'] = d['created_at'].isoformat()
+                        created_at_dt = d['created_at']
+                        if created_at_dt.tzinfo is None:
+                             created_at_dt = created_at_dt.replace(tzinfo=UTC)
+                        d['created_at'] = created_at_dt.isoformat()
+                        d['created_at_iso'] = d['created_at']
+                        d['formatted_time'] = created_at_dt.strftime("%Y-%m-%d %H:%M:%S")
                     else:
                         d['created_at_iso'] = ""
                         d['formatted_time'] = "Unknown"
 
-                    # Calculate Size in MB
-                    # If DB returns 0 (birdnet schema doesn't store size), try to fetch from disk
+                    # Calculate Size in MB & Find File
                     size_bytes = d.get('file_size_bytes') or 0
                     fname = d.get('filename')
                     
-                    if size_bytes == 0 and fname:
-                        try:
-                            # Try to find file in REC_DIR
-                            # Note: This is an educated guess if file is in root of REC_DIR
-                            # If structure is complex, we might miss it without a recursive search.
-                            # But recursive search for every row is too slow.
-                            p = os.path.join(REC_DIR, fname)
+                    # Try to find file to get real size
+                    if fname:
+                        possible_paths = []
+                        # 1. Direct path (if relative or absolute)
+                        possible_paths.append(os.path.join(REC_DIR, fname))
+                        
+                        # 2. Dated Subdirectory (YYYY-MM-DD/filename)
+                        if created_at_dt:
+                            date_folder = created_at_dt.strftime("%Y-%m-%d")
+                            possible_paths.append(os.path.join(REC_DIR, date_folder, fname))
+                        
+                        found_path = None
+                        for p in possible_paths:
                             if os.path.exists(p):
-                                size_bytes = os.path.getsize(p)
-                        except Exception:
-                            pass
-                            
+                                found_path = p
+                                break
+                        
+                        if found_path:
+                            try:
+                                size_bytes = os.path.getsize(found_path)
+                                # Update relative path for audio playback API
+                                if found_path.startswith(REC_DIR):
+                                    d['audio_relative_path'] = found_path[len(REC_DIR):].lstrip('/')
+                            except Exception:
+                                pass
+                        else:
+                            # Fallback: if we didn't find it, assume name is relative
+                            d['audio_relative_path'] = fname
+
                     d['size_mb'] = round(size_bytes / (1024*1024), 2)
                     d['file_size_bytes'] = size_bytes
-                    d['duration_str'] = f"{d.get('duration_sec', 0):.1f}s"
 
-                    # Audio Path Logic (Recorder usually stores just filename in filename column, or full path?)
-                    # brain.audio_files table usually is populated by Carrier/Recorder.
-                    # If filename is just "file.flac", it's relative to REC_DIR?
-                    # Let's assume filename IS the relative path or base name.
-                    # But we should try to be smart.
-
-                    # Ideally we have a filepath column in audio_files too?
-                    # The query selects: filename.
-                    fname = d.get('filename')
-                    # If it's a full path
-                    if fname and fname.startswith(REC_DIR):
-                        d['audio_relative_path'] = fname[len(REC_DIR):].lstrip('/')
-                    else:
-                        d['audio_relative_path'] = fname
+                    # Sanitize Duration
+                    duration = d.get('duration_sec', 0.0)
+                    
+                    # Heuristic: If duration is insanely large or 0, recalculate
+                    if duration > 3600 or duration <= 0:
+                        if size_bytes > 0:
+                            # Estimate using BPS (assume 0.6 compression for FLAC)
+                            # BPS is uncompressed, so CompressedSize = Duration * BPS * 0.6
+                            # Duration = CompressedSize / (BPS * 0.6)
+                            duration = size_bytes / (current_bps * 0.6)
+                        else:
+                            duration = 30.0 # Default fallback
+                    
+                    d['duration_sec'] = duration
+                    d['duration_str'] = f"{duration:.2f}s"
 
                     items.append(d)
                 return items

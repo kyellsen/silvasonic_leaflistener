@@ -11,7 +11,7 @@
   </div>
 
   <!-- Distribution Pies Row -->
-  <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
+  <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
     <!-- Today -->
     <div class="bg-gray-800 rounded-xl p-4 border border-gray-700 shadow-xl">
       <h3
@@ -211,8 +211,16 @@
   </div>
 </div>
 {% endblock %} {% block scripts %}
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 <script>
+  if (typeof Chart === 'undefined') {
+      document.querySelectorAll('canvas').forEach(c => {
+          const err = document.createElement('div');
+          err.className = "flex items-center justify-center h-full text-red-500 text-xs text-center p-2 border border-red-500/20 rounded bg-red-500/10";
+          err.innerText = "Chart.js failed to load. Check internet.";
+          c.parentNode.replaceChild(err, c);
+      });
+  }
   let histChart = null;
   let isLogScale = false;
 
