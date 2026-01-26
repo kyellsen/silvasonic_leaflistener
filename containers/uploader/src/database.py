@@ -22,7 +22,6 @@ class DatabaseHandler:
         """Connect to the database and create tables."""
         try:
             self.engine = create_engine(self.db_url, pool_pre_ping=True)
-            self.Session = sessionmaker(bind=self.engine)
 
             # Create schema and table
             with self.engine.begin() as conn:
@@ -42,10 +41,13 @@ class DatabaseHandler:
                 conn.execute(text("CREATE INDEX IF NOT EXISTS idx_uploads_time ON carrier.uploads(upload_time DESC);"))
                 conn.execute(text("CREATE INDEX IF NOT EXISTS idx_uploads_status ON carrier.uploads(status);"))
 
+            # Only create session maker if connection and init was successful
+            self.Session = sessionmaker(bind=self.engine)
             logger.info("Database initialized successfully.")
             return True
         except Exception as e:
             logger.error(f"Failed to connect/init database: {e}")
+            self.Session = None
             return False
 
     def log_upload(self, filename: str, remote_path: str, status: str, size_bytes: int = 0, error_message: str = None):
