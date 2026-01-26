@@ -1,4 +1,0 @@
-Traceback (most recent call last):
-  File "/mnt/data/dev/packages/silvasonic/containers/dashboard/src/verify_logging.py", line 20, in <module>
-    from src.services import SystemService, logger
-ImportError: cannot import name 'logger' from 'src.services' (/mnt/data/dev/packages/silvasonic/containers/dashboard/src/../src/services/__init__.py)
