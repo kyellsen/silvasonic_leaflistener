@@ -65,9 +65,7 @@ class TestDatabaseHandler:
         db.connect()
 
         # Mock query result
-        mock_session_inst.execute.return_value = [
-            ("file1.txt",), ("file3.txt",)
-        ]
+        mock_session_inst.execute.return_value = [("file1.txt",), ("file3.txt",)]
 
         input_files = ["file1.txt", "file2.txt", "file3.txt"]
         result = db.get_uploaded_filenames(input_files)

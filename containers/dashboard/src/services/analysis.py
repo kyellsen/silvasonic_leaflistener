@@ -31,35 +31,37 @@ class AnalyzerService:
                 items = []
                 for row in result:
                     d = dict(row._mapping)
-                    if d.get('created_at'):
-                        if d['created_at'].tzinfo is None:
-                            d['created_at'] = d['created_at'].replace(tzinfo=UTC)
-                        d['created_at_iso'] = d['created_at'].isoformat()
+                    if d.get("created_at"):
+                        if d["created_at"].tzinfo is None:
+                            d["created_at"] = d["created_at"].replace(tzinfo=UTC)
+                        d["created_at_iso"] = d["created_at"].isoformat()
                     else:
-                        d['created_at_iso'] = ""
+                        d["created_at_iso"] = ""
 
                     # Fix spec path
-                    if d.get('spec_path'):
-                         fname = os.path.basename(d['spec_path'])
-                         d['spec_url'] = f"/api/spectrogram/{fname}"
+                    if d.get("spec_path"):
+                        fname = os.path.basename(d["spec_path"])
+                        d["spec_url"] = f"/api/spectrogram/{fname}"
                     else:
-                         d['spec_url'] = None
+                        d["spec_url"] = None
 
                     # Format size
-                    if d.get('file_size_bytes'):
-                        d['size_fmt'] = AnalyzerService._format_size(d['file_size_bytes'])
+                    if d.get("file_size_bytes"):
+                        d["size_fmt"] = AnalyzerService._format_size(d["file_size_bytes"])
                     else:
-                        d['size_fmt'] = "0 B"
+                        d["size_fmt"] = "0 B"
 
                     # Format duration
-                    if d.get('duration_sec'):
-                        d['duration_fmt'] = AnalyzerService._format_duration(d['duration_sec'])
+                    if d.get("duration_sec"):
+                        d["duration_fmt"] = AnalyzerService._format_duration(d["duration_sec"])
                     else:
-                        d['duration_fmt'] = "-"
+                        d["duration_fmt"] = "-"
 
                     # Round metrics
-                    if d.get('rms_loudness'): d['rms_loudness'] = round(d['rms_loudness'], 1)
-                    if d.get('peak_frequency_hz'): d['peak_frequency_hz'] = int(d['peak_frequency_hz'])
+                    if d.get("rms_loudness"):
+                        d["rms_loudness"] = round(d["rms_loudness"], 1)
+                    if d.get("peak_frequency_hz"):
+                        d["peak_frequency_hz"] = int(d["peak_frequency_hz"])
 
                     items.append(d)
                 return items
@@ -83,17 +85,22 @@ class AnalyzerService:
         d, h = divmod(h, 24)
 
         parts = []
-        if d > 0: parts.append(f"{d}d")
-        if h > 0: parts.append(f"{h}h")
-        if m > 0: parts.append(f"{m}m")
-        if s > 0 or not parts: parts.append(f"{s}s")
+        if d > 0:
+            parts.append(f"{d}d")
+        if h > 0:
+            parts.append(f"{h}h")
+        if m > 0:
+            parts.append(f"{m}m")
+        if s > 0 or not parts:
+            parts.append(f"{s}s")
 
-        return " ".join(parts[:2]) # Return max 2 significant parts
+        return " ".join(parts[:2])  # Return max 2 significant parts
 
     @staticmethod
     def _format_size(size_bytes: int) -> str:
-        if not size_bytes: return "0 B"
-        for unit in ['B', 'KB', 'MB', 'GB']:
+        if not size_bytes:
+            return "0 B"
+        for unit in ["B", "KB", "MB", "GB"]:
             if size_bytes < 1024:
                 return f"{size_bytes:.1f} {unit}"
             size_bytes /= 1024
@@ -101,7 +108,7 @@ class AnalyzerService:
 
     @staticmethod
     async def get_stats():
-         try:
+        try:
             async with db.get_connection() as conn:
                 query = text("""
                     SELECT 
@@ -115,15 +122,15 @@ class AnalyzerService:
                 if res:
                     d = dict(res._mapping)
 
-                    raw_total = d.get('total_duration', 0)
-                    raw_avg = d.get('avg_duration', 0)
+                    raw_total = d.get("total_duration", 0)
+                    raw_avg = d.get("avg_duration", 0)
 
-                    d['total_duration_fmt'] = AnalyzerService._format_duration(raw_total)
-                    d['avg_duration_fmt'] = AnalyzerService._format_duration(raw_avg)
-                    d['avg_size_fmt'] = AnalyzerService._format_size(d.get('avg_size') or 0)
+                    d["total_duration_fmt"] = AnalyzerService._format_duration(raw_total)
+                    d["avg_duration_fmt"] = AnalyzerService._format_duration(raw_avg)
+                    d["avg_size_fmt"] = AnalyzerService._format_size(d.get("avg_size") or 0)
 
                     return d
                 return {}
-         except Exception as e:
-             logger.error(f"Analyzer Stats Error: {e}", exc_info=True)
-             return {}
+        except Exception as e:
+            logger.error(f"Analyzer Stats Error: {e}", exc_info=True)
+            return {}

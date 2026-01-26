@@ -19,19 +19,23 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+
 @app.on_event("startup")
 async def startup_event():
     # Pass the running loop to the processor
     loop = asyncio.get_running_loop()
     processor.start(loop)
 
+
 @app.on_event("shutdown")
 async def shutdown_event():
     processor.stop()
 
+
 @app.get("/")
 async def get():
     return HTMLResponse("<h1>Silvasonic Brain Live</h1><p>Active.</p>")
+
 
 @app.websocket("/ws/spectrogram")
 async def websocket_endpoint(websocket: WebSocket):
@@ -46,25 +50,21 @@ async def websocket_endpoint(websocket: WebSocket):
             data = await queue.get()
 
             # Send binary or json
-            await websocket.send_json({
-                "type": "spectrogram",
-                "data": data
-            })
+            await websocket.send_json({"type": "spectrogram", "data": data})
 
     except WebSocketDisconnect:
         logger.debug("WS Disconnected")
     finally:
         processor.unsubscribe_spectrogram(queue)
 
+
 @app.get("/stream")
 async def stream_audio():
-    """Streams audio to the browser by piping the creation of MP3.
-    """
+    """Streams audio to the browser by piping the creation of MP3."""
     return StreamingResponse(
-        audio_stream_generator(),
-        media_type="audio/mpeg",
-        headers={"Cache-Control": "no-cache"}
+        audio_stream_generator(), media_type="audio/mpeg", headers={"Cache-Control": "no-cache"}
     )
+
 
 async def audio_stream_generator():
     """1. Subscribes to Raw Audio Queue.
@@ -75,14 +75,21 @@ async def audio_stream_generator():
     # FFmpeg command: Read PCM from Pipe, Write MP3 to Pipe
     cmd = [
         "ffmpeg",
-        "-f", "s16le",       # Input format: Signed 16-bit Little Endian
-        "-ar", "48000",      # Input Sample Rate
-        "-ac", "1",          # Input Channels
-        "-i", "pipe:0",      # Input from Stdin
-        "-f", "mp3",         # Output format
-        "-b:a", "128k",      # Bitrate
-        "-ar", "44100",      # Output Sample Rate (Standard for Web)
-        "pipe:1"             # Output to Stdout
+        "-f",
+        "s16le",  # Input format: Signed 16-bit Little Endian
+        "-ar",
+        "48000",  # Input Sample Rate
+        "-ac",
+        "1",  # Input Channels
+        "-i",
+        "pipe:0",  # Input from Stdin
+        "-f",
+        "mp3",  # Output format
+        "-b:a",
+        "128k",  # Bitrate
+        "-ar",
+        "44100",  # Output Sample Rate (Standard for Web)
+        "pipe:1",  # Output to Stdout
     ]
 
     # Create async subprocess
@@ -90,7 +97,7 @@ async def audio_stream_generator():
         *cmd,
         stdin=asyncio.subprocess.PIPE,
         stdout=asyncio.subprocess.PIPE,
-        stderr=asyncio.subprocess.DEVNULL, # Silence logs
+        stderr=asyncio.subprocess.DEVNULL,  # Silence logs
     )
 
     queue = await processor.subscribe_audio()
@@ -118,6 +125,7 @@ async def audio_stream_generator():
             await proc.wait()
         except:
             pass
+
 
 async def feed_input(stdin_writer, queue):
     """Feeds audio chunks from queue to FFmpeg stdin"""

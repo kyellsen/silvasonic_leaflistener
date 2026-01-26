@@ -8,6 +8,7 @@ from janitor import StorageJanitor
 
 class TestStorageJanitor:
     """Tests for the StorageJanitor class."""
+
     @pytest.fixture
     def janitor(self, temp_fs):
         """Fixture providing a StorageJanitor instance."""
@@ -16,8 +17,8 @@ class TestStorageJanitor:
     def create_file(self, base_dir, name, size=1024, age_offset=0):
         """Create a dummy file with specific size and age."""
         path = os.path.join(base_dir, name)
-        with open(path, 'wb') as f:
-            f.write(b'\0' * size)
+        with open(path, "wb") as f:
+            f.write(b"\0" * size)
         # Set mtime
         new_time = time.time() - age_offset
         os.utime(path, (new_time, new_time))
@@ -39,11 +40,7 @@ class TestStorageJanitor:
         f3 = self.create_file(temp_fs, "new.flac", age_offset=100)
 
         # Remote knows all of them
-        remote_files = {
-            "old.flac": 1024,
-            "mid.flac": 1024,
-            "new.flac": 1024
-        }
+        remote_files = {"old.flac": 1024, "mid.flac": 1024, "new.flac": 1024}
 
         # Mock usage to trigger cleanup: 80% -> 75% -> 65% -> 50%
         mock_usage = MagicMock(side_effect=[80.0, 75.0, 65.0, 50.0])
@@ -88,9 +85,7 @@ class TestStorageJanitor:
         f1 = self.create_file(temp_fs, "bad_upload.flac", size=1024, age_offset=300)
 
         # Remote says size is 0
-        remote_files = {
-            "bad_upload.flac": 0
-        }
+        remote_files = {"bad_upload.flac": 0}
 
         mock_usage = MagicMock(return_value=90.0)
 
@@ -103,10 +98,8 @@ class TestStorageJanitor:
         # This is hard to trigger with real FS as it happens between os.walk and os.stat
         # So we mock os.walk and os.stat
 
-        with patch('os.walk') as mock_walk, \
-             patch('os.stat') as mock_stat:
-
-            mock_walk.return_value = [('/root', [], ['ghost.file'])]
+        with patch("os.walk") as mock_walk, patch("os.stat") as mock_stat:
+            mock_walk.return_value = [("/root", [], ["ghost.file"])]
             mock_stat.side_effect = FileNotFoundError
 
             files = janitor._list_local_files()
@@ -121,11 +114,11 @@ class TestStorageJanitor:
         mock_usage = MagicMock(return_value=90.0)
 
         # Mock os.remove to fail
-        with patch('os.remove') as mock_remove:
+        with patch("os.remove") as mock_remove:
             mock_remove.side_effect = PermissionError("Access denied")
 
             # Using logs to verify error logging
-            with caplog.at_level('ERROR'):
+            with caplog.at_level("ERROR"):
                 janitor.check_and_clean(remote_files, mock_usage)
 
             assert "Failed to delete" in caplog.text

@@ -8,6 +8,7 @@ from rclone_wrapper import RcloneWrapper
 
 class TestRcloneWrapper:
     """Tests for the RcloneWrapper class."""
+
     @pytest.fixture
     def rclone(self, temp_fs):
         """Fixture providing an RcloneWrapper instance."""
@@ -48,10 +49,7 @@ class TestRcloneWrapper:
         """Test sync calls callbacks on success."""
         # Mock process output
         process_mock = MagicMock()
-        process_mock.stdout = [
-            "INFO : file1.txt: Copied (new)",
-            "INFO : file2.txt: Copied (new)"
-        ]
+        process_mock.stdout = ["INFO : file1.txt: Copied (new)", "INFO : file2.txt: Copied (new)"]
         process_mock.returncode = 0
         process_mock.wait.return_value = None
         mock_popen.return_value = process_mock
@@ -62,19 +60,16 @@ class TestRcloneWrapper:
 
         assert success is True
         assert callback.call_count == 2
-        callback.assert_has_calls([
-            call("file1.txt", "success"),
-            call("file2.txt", "success")
-        ], any_order=True)
+        callback.assert_has_calls(
+            [call("file1.txt", "success"), call("file2.txt", "success")], any_order=True
+        )
 
     @patch("subprocess.Popen")
     def test_copy_failure_callbacks(self, mock_popen, rclone):
         """Test copy calls callbacks on failure."""
         # Mock process output with error
         process_mock = MagicMock()
-        process_mock.stdout = [
-            "ERROR : badfile.txt: Failed to copy: Network Error"
-        ]
+        process_mock.stdout = ["ERROR : badfile.txt: Failed to copy: Network Error"]
         process_mock.returncode = 1
         process_mock.wait.return_value = None
         mock_popen.return_value = process_mock

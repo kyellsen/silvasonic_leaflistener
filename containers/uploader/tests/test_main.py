@@ -2,13 +2,15 @@ import json
 import os
 import sys
 from unittest.mock import ANY, patch
+
 import pytest
 
 # Ensure local src is used directly to avoid namespace collision with 'src' from other containers
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../src')))
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../src")))
 
 import main
 from main import calculate_queue_size, report_error, write_status
+
 
 class TestMain:
     """Tests for the main application logic."""
@@ -106,19 +108,20 @@ class TestMain:
         mock_wrapper = mock_rclone.return_value
         mock_janitor_inst = mock_janitor.return_value
 
-        mock_wrapper.copy.return_value = True # Success
+        mock_wrapper.copy.return_value = True  # Success
 
         # Run main
         # We need to patch SOURCE_DIR and constants locally
-        with patch("main.SOURCE_DIR", temp_fs), \
-             patch("main.NEXTCLOUD_URL", "http://url"), \
-             patch("main.NEXTCLOUD_USER", "user"), \
-             patch("main.NEXTCLOUD_PASSWORD", "pass"):
-
-             try:
-                 main.main()
-             except SystemExit:
-                 pass
+        with (
+            patch("main.SOURCE_DIR", temp_fs),
+            patch("main.NEXTCLOUD_URL", "http://url"),
+            patch("main.NEXTCLOUD_USER", "user"),
+            patch("main.NEXTCLOUD_PASSWORD", "pass"),
+        ):
+            try:
+                main.main()
+            except SystemExit:
+                pass
 
         # Verify Interactions
         mock_db.connect.assert_called_once()
@@ -142,31 +145,32 @@ class TestMain:
         mock_sleep.side_effect = [None, SystemExit("Break Loop")]
 
         mock_wrapper = mock_rclone.return_value
-        mock_wrapper.copy.return_value = False # Failure
+        mock_wrapper.copy.return_value = False  # Failure
 
-        with patch("main.SOURCE_DIR", temp_fs), \
-             patch("main.NEXTCLOUD_URL", "http://url"), \
-             patch("main.NEXTCLOUD_USER", "user"), \
-             patch("main.NEXTCLOUD_PASSWORD", "pass"):
-
-             try:
-                 main.main()
-             except SystemExit:
-                 pass
+        with (
+            patch("main.SOURCE_DIR", temp_fs),
+            patch("main.NEXTCLOUD_URL", "http://url"),
+            patch("main.NEXTCLOUD_USER", "user"),
+            patch("main.NEXTCLOUD_PASSWORD", "pass"),
+        ):
+            try:
+                main.main()
+            except SystemExit:
+                pass
 
         # Cleanup should NOT be called
         mock_janitor.return_value.check_and_clean.assert_not_called()
 
     def test_upload_callback(self, mock_db):
         """Test the upload callback function logging to the database."""
-
-        with patch("database.DatabaseHandler") as mock_db_cls, \
-             patch("main.RcloneWrapper") as mock_rclone, \
-             patch("main.StorageJanitor"), \
-             patch("time.sleep", side_effect=SystemExit), \
-             patch("main.SOURCE_DIR", "/tmp"), \
-             patch("main.setup_environment"):
-
+        with (
+            patch("database.DatabaseHandler") as mock_db_cls,
+            patch("main.RcloneWrapper") as mock_rclone,
+            patch("main.StorageJanitor"),
+            patch("time.sleep", side_effect=SystemExit),
+            patch("main.SOURCE_DIR", "/tmp"),
+            patch("main.setup_environment"),
+        ):
             try:
                 main.main()
             except SystemExit:
@@ -174,13 +178,14 @@ class TestMain:
 
             # wrapper.copy was called with callback=upload_callback
             copy_call = mock_rclone.return_value.copy.call_args
-            callback = copy_call.kwargs['callback']
+            callback = copy_call.kwargs["callback"]
 
             # Now test the callback
             # Case 1: Success with file
-            with patch("os.path.exists", return_value=True), \
-                 patch("os.path.getsize", return_value=1234):
-
+            with (
+                patch("os.path.exists", return_value=True),
+                patch("os.path.getsize", return_value=1234),
+            ):
                 callback("test.mp3", "success")
 
                 mock_db_cls.return_value.log_upload.assert_called_with(
@@ -188,7 +193,7 @@ class TestMain:
                     remote_path=ANY,
                     status="success",
                     size_bytes=1234,
-                    error_message=None
+                    error_message=None,
                 )
 
             # Case 2: Failure
@@ -198,7 +203,7 @@ class TestMain:
                 remote_path=ANY,
                 status="failed",
                 size_bytes=0,
-                error_message="Network Error"
+                error_message="Network Error",
             )
 
     @patch("main.logging")
@@ -206,6 +211,7 @@ class TestMain:
     def test_setup_environment(self, mock_makedirs, mock_logging):
         """Test that environment setup creates necessary directories and configures logging."""
         from main import setup_environment
+
         setup_environment()
 
         # Verify makedirs called twice (log dir, status dir, error dir) -> 3 times actually
@@ -232,15 +238,13 @@ class TestMain:
         # sleep triggers SystemExit to break loop eventually, but verify we hit report_error
         mock_sleep.side_effect = [SystemExit("Stop")]
 
-        with patch("main.SOURCE_DIR", temp_fs), \
-             patch("main.report_error") as mock_report:
+        with patch("main.SOURCE_DIR", temp_fs), patch("main.report_error") as mock_report:
+            try:
+                main.main()
+            except SystemExit:
+                pass
 
-             try:
-                 main.main()
-             except SystemExit:
-                 pass
-
-             mock_report.assert_called_with("main_loop_crash", ANY)
+            mock_report.assert_called_with("main_loop_crash", ANY)
 
     def test_signal_handler(self):
         """Test the signal handler raises SystemExit."""
@@ -251,4 +255,3 @@ class TestMain:
         with pytest.raises(SystemExit) as e:
             signal_handler(signal.SIGTERM, None)
         assert e.value.code == 0
-

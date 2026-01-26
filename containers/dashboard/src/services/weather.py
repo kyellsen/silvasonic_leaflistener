@@ -23,11 +23,10 @@ class WeatherService:
                 row = (await conn.execute(query)).fetchone()
                 if row:
                     d = dict(row._mapping)
-                    if d.get('timestamp') and d['timestamp'].tzinfo is None:
-                        d['timestamp'] = d['timestamp'].replace(tzinfo=datetime.UTC)
+                    if d.get("timestamp") and d["timestamp"].tzinfo is None:
+                        d["timestamp"] = d["timestamp"].replace(tzinfo=datetime.UTC)
                     return d
         except Exception as e:
-
             logger.error(f"Weather DB Error: {e}", exc_info=True)
         return None
 
@@ -37,21 +36,18 @@ class WeatherService:
         try:
             async with db.get_connection() as conn:
                 # Bind param properly or safe f-string for int
-                query = text(f"SELECT * FROM weather.measurements WHERE timestamp >= NOW() - INTERVAL '{int(hours)} HOURS' ORDER BY timestamp ASC")
+                query = text(
+                    f"SELECT * FROM weather.measurements WHERE timestamp >= NOW() - INTERVAL '{int(hours)} HOURS' ORDER BY timestamp ASC"
+                )
 
                 result = await conn.execute(query)
-                data = {
-                    "labels": [],
-                    "temp": [],
-                    "humidity": [],
-                    "rain": [],
-                    "wind": []
-                }
+                data = {"labels": [], "temp": [], "humidity": [], "rain": [], "wind": []}
 
                 for row in result:
                     d = dict(row._mapping)
-                    ts = d['timestamp']
-                    if ts.tzinfo is None: ts = ts.replace(tzinfo=datetime.UTC)
+                    ts = d["timestamp"]
+                    if ts.tzinfo is None:
+                        ts = ts.replace(tzinfo=datetime.UTC)
 
                     data["labels"].append(ts.strftime("%H:%M"))
                     data["temp"].append(d.get("temperature_c"))
@@ -61,7 +57,6 @@ class WeatherService:
 
                 return data
         except Exception as e:
-
             logger.error(f"Weather History Error: {e}", exc_info=True)
             return {"labels": [], "temp": [], "humidity": [], "rain": [], "wind": []}
 
@@ -83,18 +78,19 @@ class WeatherService:
 
                 data = {
                     "labels": [],
-                    "scatter_temp": [], # {x: temp, y: count}
+                    "scatter_temp": [],  # {x: temp, y: count}
                     "scatter_rain": [],
                     "scatter_wind": [],
                     "series_temp": [],
                     "series_count": [],
-                    "series_rain": []
+                    "series_rain": [],
                 }
 
                 for row in result:
                     d = dict(row._mapping)
-                    ts = d['timestamp']
-                    if ts.tzinfo is None: ts = ts.replace(tzinfo=datetime.UTC)
+                    ts = d["timestamp"]
+                    if ts.tzinfo is None:
+                        ts = ts.replace(tzinfo=datetime.UTC)
 
                     label = ts.strftime("%d.%m %H:00")
                     count = d.get("detection_count", 0)
@@ -117,12 +113,14 @@ class WeatherService:
 
                 return data
         except Exception as e:
-
             logger.error(f"Weather Correlation Error: {e}", exc_info=True)
             return {
                 "labels": [],
-                "scatter_temp": [], "scatter_rain": [],
-                "series_temp": [], "series_count": [], "series_rain": []
+                "scatter_temp": [],
+                "scatter_rain": [],
+                "series_temp": [],
+                "series_count": [],
+                "series_rain": [],
             }
 
     @staticmethod
@@ -138,5 +136,5 @@ class WeatherService:
                         data["status"] = "Stalen"
                     return data
         except Exception as e:
-             logger.error(f"Weather Status Error: {e}", exc_info=True)
+            logger.error(f"Weather Status Error: {e}", exc_info=True)
         return {"status": "Unknown"}

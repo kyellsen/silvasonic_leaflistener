@@ -12,36 +12,48 @@ CONFIG_PATH = "/config/settings.json"
 
 # ... imports ...
 
+
 class LocaleSettings(BaseModel):
     use_german_names: bool = False
 
+
 class BirdNETSettings(BaseModel):
-    min_confidence: float = Field(default=0.7, ge=0.01, le=0.99, description="Minimum confidence score (0.01-0.99)")
-    sensitivity: float = Field(default=1.0, ge=0.5, le=1.5, description="Detection sensitivity (0.5-1.5)")
+    min_confidence: float = Field(
+        default=0.7, ge=0.01, le=0.99, description="Minimum confidence score (0.01-0.99)"
+    )
+    sensitivity: float = Field(
+        default=1.0, ge=0.5, le=1.5, description="Detection sensitivity (0.5-1.5)"
+    )
     overlap: float = Field(default=0.0, ge=0.0, le=2.5, description="Overlap in seconds (0.0-2.5)")
 
-class HealthCheckerSettings(BaseModel):
-    recipient_email: str | None = Field(default="") # Empty allowed, falls back to env
-    apprise_urls: list[str] = Field(default_factory=list)
-    service_timeouts: dict[str, int] = Field(default_factory=lambda: {
-        "carrier": 3600,
-        "recorder": 120,
-        "birdnet": 300,
-        "sound_analyser": 300,
-        "weather": 300
-    })
 
-    @validator('recipient_email')
+class HealthCheckerSettings(BaseModel):
+    recipient_email: str | None = Field(default="")  # Empty allowed, falls back to env
+    apprise_urls: list[str] = Field(default_factory=list)
+    service_timeouts: dict[str, int] = Field(
+        default_factory=lambda: {
+            "carrier": 3600,
+            "recorder": 120,
+            "birdnet": 300,
+            "sound_analyser": 300,
+            "weather": 300,
+        }
+    )
+
+    @validator("recipient_email")
     def validate_email(cls, v):
-        if not v: return ""
+        if not v:
+            return ""
         # Simple regex for email validation to avoid external dependencies
         if not re.match(r"[^@]+@[^@]+\.[^@]+", v):
-            raise ValueError('Invalid email address format')
+            raise ValueError("Invalid email address format")
         return v
+
 
 class LocationSettings(BaseModel):
     latitude: float = Field(default=54.17301, ge=-90, le=90)
     longitude: float = Field(default=10.49468, ge=-180, le=180)
+
 
 class Settings(BaseModel):
     locale: LocaleSettings = Field(default_factory=LocaleSettings)
@@ -49,7 +61,9 @@ class Settings(BaseModel):
     location: LocationSettings = Field(default_factory=LocationSettings)
     birdnet: BirdNETSettings = Field(default_factory=BirdNETSettings)
 
+
 DEFAULT_SETTINGS = Settings().dict()
+
 
 class SettingsService:
     @staticmethod
@@ -103,12 +117,12 @@ class SettingsService:
                 except:
                     pass
 
-            with open(CONFIG_PATH, 'w') as f:
+            with open(CONFIG_PATH, "w") as f:
                 json.dump(model.dict(), f, indent=4)
             return True
         except ValidationError as e:
             logger.error(f"Validation Error saving settings: {e}")
-            raise e # Propagate to controller for UI feedback
+            raise e  # Propagate to controller for UI feedback
         except Exception as e:
             logger.error(f"Failed to save settings: {e}")
             return False
@@ -116,4 +130,3 @@ class SettingsService:
     @staticmethod
     def is_german_names_enabled():
         return SettingsService.load_model().locale.use_german_names
-

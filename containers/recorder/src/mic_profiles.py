@@ -19,6 +19,7 @@ logger = logging.getLogger("mic_profiles")
 @dataclass
 class AudioConfig:
     """Audio recording configuration."""
+
     sample_rate: int = 48000
     channels: int = 1
     bit_depth: int = 16
@@ -28,6 +29,7 @@ class AudioConfig:
 @dataclass
 class RecordingConfig:
     """Recording output configuration."""
+
     chunk_duration_seconds: int = 30
     output_format: str = "flac"
     compression_level: int = 5
@@ -36,6 +38,7 @@ class RecordingConfig:
 @dataclass
 class MicrophoneProfile:
     """Complete microphone profile."""
+
     name: str
     slug: str = ""  # URL-safe identifier for folder names
     manufacturer: str = "Unknown"
@@ -49,7 +52,7 @@ class MicrophoneProfile:
     def __post_init__(self):
         if not self.slug:
             # Generate slug from name
-            self.slug = re.sub(r'[^a-z0-9]+', '_', self.name.lower()).strip('_')
+            self.slug = re.sub(r"[^a-z0-9]+", "_", self.name.lower()).strip("_")
 
     @classmethod
     def from_dict(cls, data: dict, filename: str = "") -> "MicrophoneProfile":
@@ -88,6 +91,7 @@ class MicrophoneProfile:
 @dataclass
 class DetectedDevice:
     """Represents a detected audio device."""
+
     card_id: str
     hw_address: str
     description: str
@@ -100,18 +104,20 @@ def get_alsa_devices() -> list[DetectedDevice]:
         result = subprocess.run(["arecord", "-l"], capture_output=True, text=True)
         output = result.stdout + result.stderr
 
-        for line in output.split('\n'):
-            if 'card' in line.lower():
+        for line in output.split("\n"):
+            if "card" in line.lower():
                 # Match "card X: ... device Y:"
-                match = re.search(r'card (\d+):.*?device (\d+):', line)
+                match = re.search(r"card (\d+):.*?device (\d+):", line)
                 if match:
                     card_id = match.group(1)
                     device_id = match.group(2)
-                    devices.append(DetectedDevice(
-                        card_id=card_id,
-                        hw_address=f"plughw:{card_id},{device_id}",
-                        description=line.strip()
-                    ))
+                    devices.append(
+                        DetectedDevice(
+                            card_id=card_id,
+                            hw_address=f"plughw:{card_id},{device_id}",
+                            description=line.strip(),
+                        )
+                    )
     except Exception as e:
         logger.error(f"Error querying ALSA devices: {e}")
 
@@ -148,12 +154,10 @@ def load_profiles(profiles_dir: Path | None = None) -> list[MicrophoneProfile]:
 
 
 def find_matching_profile(
-    profiles: list[MicrophoneProfile],
-    force_mock: bool = False,
-    force_profile: str | None = None
+    profiles: list[MicrophoneProfile], force_mock: bool = False, force_profile: str | None = None
 ) -> tuple[MicrophoneProfile | None, DetectedDevice | None]:
     """Find a profile that matches an available audio device.
-    
+
     Returns:
         Tuple of (matched_profile, device) or (None, None)
     """
@@ -163,9 +167,7 @@ def find_matching_profile(
             if profile.is_mock:
                 logger.info(f"Mock mode: Using profile '{profile.name}'")
                 mock_device = DetectedDevice(
-                    card_id="mock",
-                    hw_address="mock",
-                    description="Mock Virtual Device"
+                    card_id="mock", hw_address="mock", description="Mock Virtual Device"
                 )
                 return profile, mock_device
 
@@ -179,16 +181,17 @@ def find_matching_profile(
             recording=RecordingConfig(chunk_duration_seconds=10),
         )
         mock_device = DetectedDevice(
-            card_id="mock",
-            hw_address="mock",
-            description="Mock Virtual Device"
+            card_id="mock", hw_address="mock", description="Mock Virtual Device"
         )
         return mock_profile, mock_device
 
     # Handle forced profile selection
     if force_profile:
         for profile in profiles:
-            if force_profile.lower() in profile.name.lower() or force_profile.lower() == profile.slug:
+            if (
+                force_profile.lower() in profile.name.lower()
+                or force_profile.lower() == profile.slug
+            ):
                 logger.info(f"Forced profile: {profile.name}")
                 devices = get_alsa_devices()
                 if devices:
@@ -230,7 +233,7 @@ def find_matching_profile(
 
 def get_active_profile() -> tuple[MicrophoneProfile | None, DetectedDevice | None]:
     """Main entry point: Get the active microphone profile and device.
-    
+
     Environment variables:
         MOCK_HARDWARE: Set to 'true' for mock mode
         AUDIO_PROFILE: Force a specific profile by name/slug

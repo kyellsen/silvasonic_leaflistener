@@ -9,6 +9,7 @@ import numpy as np
 
 logger = logging.getLogger("LiveProcessor")
 
+
 @dataclass
 class StreamConfig:
     host: str = "0.0.0.0"
@@ -19,6 +20,7 @@ class StreamConfig:
     chunk_size: int = 4096
     fft_window: int = 2048
     hop_length: int = 512
+
 
 class AudioIngestor:
     def __init__(self, config: StreamConfig = StreamConfig()):
@@ -84,7 +86,7 @@ class AudioIngestor:
                 pass
 
     def _ingest_loop(self):
-        buffer_size = self.config.chunk_size * 2 * 2 # Safety buffer
+        buffer_size = self.config.chunk_size * 2 * 2  # Safety buffer
 
         # Buffer for FFT
         fft_buffer = np.zeros(0, dtype=np.float32)
@@ -95,7 +97,7 @@ class AudioIngestor:
             n_fft=self.config.fft_window,
             n_mels=128,
             fmin=100,
-            fmax=14000 # Birds range
+            fmax=14000,  # Birds range
         )
 
         while self.running:
@@ -123,10 +125,17 @@ class AudioIngestor:
                 if len(fft_buffer) >= self.config.fft_window:
                     # Compute STFT
                     # We only take the slice needed
-                    y = fft_buffer[:self.config.fft_window]
+                    y = fft_buffer[: self.config.fft_window]
 
                     # Short-Time Fourier Transform
-                    D = np.abs(librosa.stft(y, n_fft=self.config.fft_window, hop_length=self.config.hop_length))**2
+                    D = (
+                        np.abs(
+                            librosa.stft(
+                                y, n_fft=self.config.fft_window, hop_length=self.config.hop_length
+                            )
+                        )
+                        ** 2
+                    )
 
                     # Mel Spectrogram
                     S = mel_basis.dot(D)
@@ -152,18 +161,19 @@ class AudioIngestor:
                         self._broadcast_safe(self._spectrogram_queues, payload)
 
                     # Slide buffer
-                    step = self.config.chunk_size # Advance by what we consumed?
+                    step = self.config.chunk_size  # Advance by what we consumed?
                     # Actually, for continuous stream integration, we should keep the overlap.
                     # But for simple live viz, just sliding window is okay.
 
                     # Keep tail
                     overlap = self.config.fft_window - self.config.hop_length
                     if len(fft_buffer) > overlap:
-                         fft_buffer = fft_buffer[-overlap:]
+                        fft_buffer = fft_buffer[-overlap:]
 
             except Exception as e:
                 if self.running:
                     logger.error(f"Ingest Error: {e}")
+
 
 # Singleton
 processor = AudioIngestor()

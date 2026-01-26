@@ -29,10 +29,12 @@ class SystemService:
             ram_total_gb = round(mem.total / (1024**3), 1)
         except Exception as e:
             logger.error(f"Error getting Memory stats: {e}", exc_info=True)
+
             class MockMem:
                 percent = 0
                 used = 0
                 total = 16 * (1024**3)
+
             mem = MockMem()
             mem_percent = 0
             ram_used_gb = 0
@@ -91,7 +93,11 @@ class SystemService:
             "disk_percent": round(disk_percent, 1),
             "disk_used_gb": int(disk_used_gb),
             "disk_total_gb": int(disk_total_gb),
-            "uptime_str": str(uptime).split('.')[0] if isinstance(uptime, datetime.timedelta) else str(uptime),
+            "uptime_str": str(uptime).split(".")[0]
+            if isinstance(uptime, datetime.timedelta)
+            else str(uptime),
             "last_recording": last_rec,
-            "last_recording_ago": int(datetime.datetime.now().timestamp() - last_rec_ts) if last_rec_ts > 0 else -1
+            "last_recording_ago": int(datetime.datetime.now().timestamp() - last_rec_ts)
+            if last_rec_ts > 0
+            else -1,
         }

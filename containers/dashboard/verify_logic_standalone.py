@@ -1,4 +1,3 @@
-
 def _format_duration(seconds: float) -> str:
     """Format seconds into readable string (e.g. 2h 30m 15s)"""
     if not seconds:
@@ -14,20 +13,27 @@ def _format_duration(seconds: float) -> str:
     d, h = divmod(h, 24)
 
     parts = []
-    if d > 0: parts.append(f"{d}d")
-    if h > 0: parts.append(f"{h}h")
-    if m > 0: parts.append(f"{m}m")
-    if s > 0 or not parts: parts.append(f"{s}s")
+    if d > 0:
+        parts.append(f"{d}d")
+    if h > 0:
+        parts.append(f"{h}h")
+    if m > 0:
+        parts.append(f"{m}m")
+    if s > 0 or not parts:
+        parts.append(f"{s}s")
 
-    return " ".join(parts[:2]) # Return max 2 significant parts
+    return " ".join(parts[:2])  # Return max 2 significant parts
+
 
 def _format_size(size_bytes: int) -> str:
-    if not size_bytes: return "0 B"
-    for unit in ['B', 'KB', 'MB', 'GB']:
+    if not size_bytes:
+        return "0 B"
+    for unit in ["B", "KB", "MB", "GB"]:
         if size_bytes < 1024:
             return f"{size_bytes:.1f} {unit}"
         size_bytes /= 1024
     return f"{size_bytes:.1f} TB"
+
 
 if __name__ == "__main__":
     print(f"Format 120s: {_format_duration(120)}")

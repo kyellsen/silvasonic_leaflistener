@@ -14,22 +14,23 @@ except ImportError:
 # Add src to path
 sys.path.insert(0, str(Path.cwd()))
 
+
 def test_config_load():
     # 1. Create a temp config file
     config_data = {
-        'birdnet': {
-            'min_confidence': 0.85,
-            'latitude': 52.5,
-            'longitude': 13.4,
-            'week': 12,
-            'overlap': 1.5,
-            'sensitivity': 1.25,
-            'threads': 4
+        "birdnet": {
+            "min_confidence": 0.85,
+            "latitude": 52.5,
+            "longitude": 13.4,
+            "week": 12,
+            "overlap": 1.5,
+            "sensitivity": 1.25,
+            "threads": 4,
         }
     }
 
     temp_config = Path("temp_test_config.yml")
-    with open(temp_config, 'w') as f:
+    with open(temp_config, "w") as f:
         yaml.dump(config_data, f)
 
     try:
@@ -41,6 +42,7 @@ def test_config_load():
         # Config instantiates 'config' object at module level.
         # We can just instantiate a new Config class.
         from src.config import Config
+
         cfg = Config()
 
         # 4. Verify values
@@ -54,10 +56,12 @@ def test_config_load():
     except Exception as e:
         print(f"FAILED: {e}")
         import traceback
+
         traceback.print_exc()
     finally:
         if temp_config.exists():
             temp_config.unlink()
+
 
 if __name__ == "__main__":
     test_config_load()

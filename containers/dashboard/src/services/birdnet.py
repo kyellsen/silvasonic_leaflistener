@@ -41,46 +41,52 @@ class BirdNetService:
                 import os  # Ensure os is available
 
                 for row in result:
-                    d = dict(row._mapping) # SQLAlchemy Row to dict
-                    ts = d.get('timestamp')
+                    d = dict(row._mapping)  # SQLAlchemy Row to dict
+                    ts = d.get("timestamp")
                     if ts:
                         if ts.tzinfo is None:
                             ts = ts.replace(tzinfo=datetime.UTC)
-                        d['iso_timestamp'] = ts.isoformat()
+                        d["iso_timestamp"] = ts.isoformat()
                         # Legacy support or direct use? We'll use ISO in frontend.
-                        d['time'] = ts.isoformat() # Temporary overload for template compatibility check
+                        d["time"] = (
+                            ts.isoformat()
+                        )  # Temporary overload for template compatibility check
                     else:
-                        d['iso_timestamp'] = ""
-                        d['time'] = "-"
+                        d["iso_timestamp"] = ""
+                        d["time"] = "-"
 
                     # Display Name Logic
-                    d['display_name'] = d.get('german_name') if use_german and d.get('german_name') else d.get('com_name')
+                    d["display_name"] = (
+                        d.get("german_name")
+                        if use_german and d.get("german_name")
+                        else d.get("com_name")
+                    )
 
                     # Audio Path Logic
-                    fp = d.get('filepath')
+                    fp = d.get("filepath")
                     if fp and fp.startswith(REC_DIR):
-                        d['audio_relative_path'] = fp[len(REC_DIR):].lstrip('/')
+                        d["audio_relative_path"] = fp[len(REC_DIR) :].lstrip("/")
                     else:
-                        d['audio_relative_path'] = d.get('filename')
+                        d["audio_relative_path"] = d.get("filename")
 
                     # Playback URL Logic (Clip vs Full)
-                    if d.get('clip_path'):
-                        d['playback_url'] = f"/api/clips/{os.path.basename(d['clip_path'])}"
+                    if d.get("clip_path"):
+                        d["playback_url"] = f"/api/clips/{os.path.basename(d['clip_path'])}"
                     else:
-                        d['playback_url'] = f"/api/audio/{d.get('audio_relative_path')}"
+                        d["playback_url"] = f"/api/audio/{d.get('audio_relative_path')}"
 
                     # Image Logic (Fallback & Enrichment Trigger)
-                    if not d.get('image_url'):
-                        d['image_url'] = None
+                    if not d.get("image_url"):
+                        d["image_url"] = None
                         # We should try to enrich this species so next time it has an image
-                        if d.get('sci_name'):
+                        if d.get("sci_name"):
                             # Fire and forget / Background task?
                             # Or just await it? For "Recent Detections" on dashboard, speed matters.
                             # But if we don't await, we won't show it THIS time.
                             # Let's await for the first few (limit is small, 5).
                             # Check if we already have it in a local cache to avoid DB hits?
                             # limit is small, so we can afford to check.
-                            pass # We will collect distinct species to enrich below
+                            pass  # We will collect distinct species to enrich below
 
                     detections.append(d)
 
@@ -88,27 +94,31 @@ class BirdNetService:
                 # Collect unique scientific names that are missing images
                 missing_images = {}
                 for d in detections:
-                    if not d.get('image_url') and d.get('sci_name'):
-                        missing_images[d['sci_name']] = d
+                    if not d.get("image_url") and d.get("sci_name"):
+                        missing_images[d["sci_name"]] = d
 
                 if missing_images:
                     # Enrich unique species found
                     for sci_name in missing_images:
                         # Create a dummy dict to pass to enricher (it expects dict with sci_name)
-                        info = {'sci_name': sci_name, 'com_name': missing_images[sci_name].get('com_name')}
+                        info = {
+                            "sci_name": sci_name,
+                            "com_name": missing_images[sci_name].get("com_name"),
+                        }
                         updated_info = await BirdNetService.enrich_species_data(info)
 
                         # Update all detections with this sci_name
-                        if updated_info.get('image_url'):
+                        if updated_info.get("image_url"):
                             for d in detections:
-                                if d.get('sci_name') == sci_name:
-                                    d['image_url'] = updated_info.get('image_url')
-                                    d['description'] = updated_info.get('description')
+                                if d.get("sci_name") == sci_name:
+                                    d["image_url"] = updated_info.get("image_url")
+                                    d["description"] = updated_info.get("description")
                                     # Update German name if we found one
-                                    if updated_info.get('german_name'):
-                                         d['german_name'] = updated_info.get('german_name')
-                                         # Re-evaluate display name
-                                         if use_german: d['display_name'] = d['german_name']
+                                    if updated_info.get("german_name"):
+                                        d["german_name"] = updated_info.get("german_name")
+                                        # Re-evaluate display name
+                                        if use_german:
+                                            d["display_name"] = d["german_name"]
 
                 return detections
         except Exception as e:
@@ -142,46 +152,50 @@ class BirdNetService:
                     LEFT JOIN birdnet.species_info s ON d.scientific_name = s.scientific_name
                     WHERE d.filepath = :filepath OR d.filename = :filename
                 """)
-                row = (await conn.execute(query, {"filepath": target_filepath, "filename": filename})).fetchone()
+                row = (
+                    await conn.execute(query, {"filepath": target_filepath, "filename": filename})
+                ).fetchone()
 
                 if not row:
                     return None
 
                 d = dict(row._mapping)
-                if d.get('timestamp'):
-                    if d['timestamp'].tzinfo is None:
-                        d['timestamp'] = d['timestamp'].replace(tzinfo=datetime.UTC)
-                    d['iso_timestamp'] = d['timestamp'].isoformat()
-                    d['formatted_time'] = d['timestamp'].strftime("%d.%m.%Y %H:%M:%S")
+                if d.get("timestamp"):
+                    if d["timestamp"].tzinfo is None:
+                        d["timestamp"] = d["timestamp"].replace(tzinfo=datetime.UTC)
+                    d["iso_timestamp"] = d["timestamp"].isoformat()
+                    d["formatted_time"] = d["timestamp"].strftime("%d.%m.%Y %H:%M:%S")
                 else:
-                    d['iso_timestamp'] = ""
-                    d['formatted_time'] = "-"
+                    d["iso_timestamp"] = ""
+                    d["formatted_time"] = "-"
 
-                d['confidence_percent'] = round(d['confidence'] * 100)
+                d["confidence_percent"] = round(d["confidence"] * 100)
 
                 # Display Name Logic
                 use_german = SettingsService.is_german_names_enabled()
-                d['display_name'] = d.get('german_name') if use_german and d.get('german_name') else d.get('com_name')
+                d["display_name"] = (
+                    d.get("german_name")
+                    if use_german and d.get("german_name")
+                    else d.get("com_name")
+                )
 
                 # Audio Path Logic
-                fp = d.get('filepath')
+                fp = d.get("filepath")
                 if fp and fp.startswith(REC_DIR):
-                    d['audio_relative_path'] = fp[len(REC_DIR):].lstrip('/')
+                    d["audio_relative_path"] = fp[len(REC_DIR) :].lstrip("/")
                 else:
-                    d['audio_relative_path'] = d.get('filename')
+                    d["audio_relative_path"] = d.get("filename")
 
                 # Playback URL
-                if d.get('clip_path'):
-                     d['playback_url'] = f"/api/clips/{os.path.basename(d['clip_path'])}"
+                if d.get("clip_path"):
+                    d["playback_url"] = f"/api/clips/{os.path.basename(d['clip_path'])}"
                 else:
-                     d['playback_url'] = f"/api/audio/{d.get('audio_relative_path')}"
+                    d["playback_url"] = f"/api/audio/{d.get('audio_relative_path')}"
 
                 return d
         except Exception as e:
             logger.error(f"DB Error (get_detection): {e}", exc_info=True)
             return None
-
-
 
     @staticmethod
     async def get_processing_rate(minutes=60):
@@ -198,7 +212,9 @@ class BirdNetService:
                 # safer to construct interval in python or use parameter.
 
                 # Postgres logic:
-                query = text("SELECT COUNT(*) FROM birdnet.processed_files WHERE processed_at >= NOW() - make_interval(mins => :mins)")
+                query = text(
+                    "SELECT COUNT(*) FROM birdnet.processed_files WHERE processed_at >= NOW() - make_interval(mins => :mins)"
+                )
 
                 count = (await conn.execute(query, {"mins": minutes})).scalar() or 0
                 return round(count / minutes, 2)
@@ -251,61 +267,67 @@ class BirdNetService:
                 for row in result:
                     d = dict(row._mapping)
                     # Format dates
-                    if d.get('last_seen'):
-                        if d['last_seen'].tzinfo is None:
-                             d['last_seen'] = d['last_seen'].replace(tzinfo=datetime.UTC)
-                        d['last_seen_iso'] = d['last_seen'].isoformat()
+                    if d.get("last_seen"):
+                        if d["last_seen"].tzinfo is None:
+                            d["last_seen"] = d["last_seen"].replace(tzinfo=datetime.UTC)
+                        d["last_seen_iso"] = d["last_seen"].isoformat()
                     else:
-                        d['last_seen_iso'] = ""
+                        d["last_seen_iso"] = ""
 
-                    if d.get('first_seen'):
-                        if d['first_seen'].tzinfo is None:
-                             d['first_seen'] = d['first_seen'].replace(tzinfo=datetime.UTC)
-                        d['first_seen_iso'] = d['first_seen'].isoformat()
+                    if d.get("first_seen"):
+                        if d["first_seen"].tzinfo is None:
+                            d["first_seen"] = d["first_seen"].replace(tzinfo=datetime.UTC)
+                        d["first_seen_iso"] = d["first_seen"].isoformat()
                     else:
-                        d['first_seen_iso'] = ""
+                        d["first_seen_iso"] = ""
 
-                    if d.get('avg_conf'):
-                        d['avg_conf'] = float(d['avg_conf'])
+                    if d.get("avg_conf"):
+                        d["avg_conf"] = float(d["avg_conf"])
                     else:
-                        d['avg_conf'] = 0.0
+                        d["avg_conf"] = 0.0
 
                     species.append(d)
 
                     # Check if enrichment is needed (no image)
-                    if not d.get('image_url'):
+                    if not d.get("image_url"):
                         to_enrich.append(d)
 
                 # Enrich in background (parallel)
                 if to_enrich:
                     # We limit concurrency to avoid hitting API limits if many are missing
                     # But for now, simple gather is a start.
-                    await asyncio.gather(*[BirdNetService.enrich_species_data(sp) for sp in to_enrich])
+                    await asyncio.gather(
+                        *[BirdNetService.enrich_species_data(sp) for sp in to_enrich]
+                    )
 
                 # Display Name Logic (Post-process after enrichment)
                 use_german = SettingsService.is_german_names_enabled()
                 for sp in species:
-                    sp['display_name'] = sp.get('german_name') if use_german and sp.get('german_name') else sp.get('com_name')
+                    sp["display_name"] = (
+                        sp.get("german_name")
+                        if use_german and sp.get("german_name")
+                        else sp.get("com_name")
+                    )
 
                 return species
         except Exception as e:
             logger.error(f"Error get_all_species: {e}", exc_info=True)
             return []
 
-
-
     @staticmethod
     async def enrich_species_data(info: dict):
         """Enrich species info with Wikimedia data, using cache."""
-        if not info or not info.get('sci_name'):
+        if not info or not info.get("sci_name"):
             return info
 
-        sci_name = info['sci_name']
+        sci_name = info["sci_name"]
 
         try:
-             async with db.get_connection() as conn:
+            async with db.get_connection() as conn:
                 # 1. Check Cache
-                query_cache = text("SELECT * FROM birdnet.species_info WHERE scientific_name = :sci_name")
+                query_cache = text(
+                    "SELECT * FROM birdnet.species_info WHERE scientific_name = :sci_name"
+                )
                 cache = (await conn.execute(query_cache, {"sci_name": sci_name})).fetchone()
 
                 wiki_data = None
@@ -316,6 +338,7 @@ class BirdNetService:
                 # 2. Fetch if missing
                 if not wiki_data:
                     from src.wikimedia import WikimediaService
+
                     print(f"Fetching Wikimedia data for {sci_name}...")
                     wiki_data = await WikimediaService.fetch_species_data(sci_name)
 
@@ -338,18 +361,18 @@ class BirdNetService:
                                 last_updated = NOW()
                         """)
                         # Fill gaps
-                        wiki_data['common_name'] = info.get('com_name')
-                        wiki_data['family'] = "" # ToDo
+                        wiki_data["common_name"] = info.get("com_name")
+                        wiki_data["family"] = ""  # ToDo
 
                         await conn.execute(query_upsert, wiki_data)
                         await conn.commit()
 
                 # 4. Merge
                 if wiki_data:
-                    info['german_name'] = wiki_data.get('german_name')
-                    info['image_url'] = wiki_data.get('image_url')
-                    info['description'] = wiki_data.get('description')
-                    info['wikipedia_url'] = wiki_data.get('wikipedia_url')
+                    info["german_name"] = wiki_data.get("german_name")
+                    info["image_url"] = wiki_data.get("image_url")
+                    info["description"] = wiki_data.get("description")
+                    info["wikipedia_url"] = wiki_data.get("wikipedia_url")
 
         except Exception as e:
             logger.error(f"Enrichment error for {sci_name}: {e}", exc_info=True)
@@ -368,12 +391,20 @@ class BirdNetService:
 
                 if res:
                     # Update
-                    upd = text("UPDATE birdnet.watchlist SET enabled = :en, common_name = :com WHERE scientific_name = :sci")
-                    await conn.execute(upd, {"en": 1 if enabled else 0, "com": com_name, "sci": sci_name})
+                    upd = text(
+                        "UPDATE birdnet.watchlist SET enabled = :en, common_name = :com WHERE scientific_name = :sci"
+                    )
+                    await conn.execute(
+                        upd, {"en": 1 if enabled else 0, "com": com_name, "sci": sci_name}
+                    )
                 else:
                     # Insert
-                    ins = text("INSERT INTO birdnet.watchlist (scientific_name, common_name, enabled) VALUES (:sci, :com, :en)")
-                    await conn.execute(ins, {"sci": sci_name, "com": com_name, "en": 1 if enabled else 0})
+                    ins = text(
+                        "INSERT INTO birdnet.watchlist (scientific_name, common_name, enabled) VALUES (:sci, :com, :en)"
+                    )
+                    await conn.execute(
+                        ins, {"sci": sci_name, "com": com_name, "en": 1 if enabled else 0}
+                    )
 
                 await conn.commit()
                 return True
@@ -385,9 +416,12 @@ class BirdNetService:
     async def get_watchlist_status(sci_names: list) -> dict:
         """Get watchlist status for a list of scientific names. Returns dict {sci_name: bool}"""
         try:
-            if not sci_names: return {}
+            if not sci_names:
+                return {}
             async with db.get_connection() as conn:
-                query = text("SELECT scientific_name FROM birdnet.watchlist WHERE enabled = 1 AND scientific_name IN :names")
+                query = text(
+                    "SELECT scientific_name FROM birdnet.watchlist WHERE enabled = 1 AND scientific_name IN :names"
+                )
                 # SQL Alchemy IN clause handling with text?
                 # Better: SELECT scientific_name FROM birdnet.watchlist WHERE enabled = 1
                 # And filter in python if list is small, or bind parameters dynamically.
@@ -401,8 +435,3 @@ class BirdNetService:
         except Exception as e:
             logger.error(f"Watchlist status error: {e}", exc_info=True)
             return {}
-
-
-
-
-

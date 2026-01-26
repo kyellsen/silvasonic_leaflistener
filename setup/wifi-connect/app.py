@@ -12,18 +12,20 @@ manager = WifiManager()
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("webapp")
 
-@app.route('/')
+
+@app.route("/")
 def index():
     """Render the index page with listed networks."""
     networks = manager.scan_networks()
-    return render_template('index.html', networks=networks)
+    return render_template("index.html", networks=networks)
 
-@app.route('/connect', methods=['POST'])
+
+@app.route("/connect", methods=["POST"])
 def connect():
     """Handle the connection request to a WiFi network."""
     data = request.form
-    ssid = data.get('ssid')
-    password = data.get('password')
+    ssid = data.get("ssid")
+    password = data.get("password")
 
     if not ssid:
         return "SSID required", 400
@@ -31,7 +33,7 @@ def connect():
     logger.info(f"Received connect request for {ssid}")
 
     def attempt_connect():
-        time.sleep(3) # Give browser time to load success page
+        time.sleep(3)  # Give browser time to load success page
         manager.connect_wifi(ssid, password)
 
     # Launch background thread
@@ -39,7 +41,8 @@ def connect():
 
     # Assume success for now (we can't report failure easily if we disconnect)
     # Ideally we try to pre-validate, but wpa_supplicant handshakes take time.
-    return render_template('success.html', ssid=ssid)
+    return render_template("success.html", ssid=ssid)
 
-if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=80, debug=False)
+
+if __name__ == "__main__":
+    app.run(host="0.0.0.0", port=80, debug=False)

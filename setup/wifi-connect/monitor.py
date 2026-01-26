@@ -8,10 +8,10 @@ from wifi_manager import WifiManager
 
 # Configure logging
 logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+    level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
 )
 logger = logging.getLogger("wifi_monitor")
+
 
 class WifiMonitor:
     """Monitor the WiFi connection and manage the setup/redirect services."""
@@ -20,17 +20,14 @@ class WifiMonitor:
         """Initialize the WifiMonitor."""
         self.manager = WifiManager()
         self.current_process = None
-        self.mode = "none" # none, setup, redirect
+        self.mode = "none"  # none, setup, redirect
         self.check_interval = 10
         self.disconnection_counter = 0
         self.disconnection_threshold = 3
 
     def start_service(self, service_name):
         """Start a web service (app.py or redirect.py)."""
-        script_map = {
-            "setup": "app.py",
-            "redirect": "redirect.py"
-        }
+        script_map = {"setup": "app.py", "redirect": "redirect.py"}
 
         if service_name not in script_map:
             return
@@ -43,15 +40,12 @@ class WifiMonitor:
             logger.info(f"Starting {service_name} service...")
             env = os.environ.copy()
             script_path = os.path.join(
-                os.path.dirname(os.path.abspath(__file__)),
-                script_map[service_name]
+                os.path.dirname(os.path.abspath(__file__)), script_map[service_name]
             )
 
             try:
                 self.current_process = subprocess.Popen(
-                    ["python3", script_path],
-                    env=env,
-                    preexec_fn=os.setsid
+                    ["python3", script_path], env=env, preexec_fn=os.setsid
                 )
                 self.mode = service_name
             except Exception as e:
@@ -110,6 +104,7 @@ class WifiMonitor:
                 logger.error(f"Error in monitor loop: {e}")
 
             time.sleep(self.check_interval)
+
 
 if __name__ == "__main__":
     monitor = WifiMonitor()

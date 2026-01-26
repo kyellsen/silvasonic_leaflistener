@@ -10,8 +10,9 @@ import soundfile as sf
 HOST = "127.0.0.1"
 PORT = 1234
 SAMPLE_RATE = 48000
-CHUNK_SIZE = 4096 # Samples per packet
+CHUNK_SIZE = 4096  # Samples per packet
 CHANNELS = 1
+
 
 def load_playlist(audio_dir: Path):
     """Load all .flac and .wav files from the directory."""
@@ -22,11 +23,12 @@ def load_playlist(audio_dir: Path):
     print(f"Found {len(files)} tracks.")
     return sorted(files)
 
+
 def process_track(file_path):
     """Load and process an audio track for streaming."""
     print(f"Loading {file_path.name}...")
     try:
-        data, samplerate = sf.read(file_path, dtype='float32')
+        data, samplerate = sf.read(file_path, dtype="float32")
 
         # Stereo to Mono
         if len(data.shape) > 1:
@@ -37,11 +39,7 @@ def process_track(file_path):
             print(f"Resampling from {samplerate} to {SAMPLE_RATE}...")
             duration = len(data) / samplerate
             new_length = int(duration * SAMPLE_RATE)
-            data = np.interp(
-                np.linspace(0, len(data), new_length),
-                np.arange(len(data)),
-                data
-            )
+            data = np.interp(np.linspace(0, len(data), new_length), np.arange(len(data)), data)
 
         # Convert to Int16
         # Clip to -1.0 ... 1.0 then scale
@@ -52,6 +50,7 @@ def process_track(file_path):
     except Exception as e:
         print(f"Error loading {file_path}: {e}")
         return None
+
 
 def stream_loop(audio_dir: Path):
     """Continuously stream audio files from the directory."""
@@ -84,7 +83,7 @@ def stream_loop(audio_dir: Path):
 
             # Streaming Loop
             for i in range(0, len(audio_data), CHUNK_SIZE):
-                chunk = audio_data[i:i + CHUNK_SIZE]
+                chunk = audio_data[i : i + CHUNK_SIZE]
 
                 # Pad last chunk if needed
                 if len(chunk) < CHUNK_SIZE:
@@ -101,6 +100,7 @@ def stream_loop(audio_dir: Path):
 
             # Small pause between tracks
             time.sleep(1.0)
+
 
 if __name__ == "__main__":
     base_dir = Path(__file__).parent / "mock_audio"

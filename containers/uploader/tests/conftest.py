@@ -10,6 +10,7 @@ import pytest
 sys.path.append(os.path.join(os.path.dirname(__file__), ".."))
 sys.path.append(os.path.join(os.path.dirname(__file__), "../src"))
 
+
 @pytest.fixture
 def mock_env(monkeypatch):
     """Sets up clean environment variables."""
@@ -27,12 +28,14 @@ def mock_env(monkeypatch):
     monkeypatch.setenv("POSTGRES_HOST", "localhost")
     monkeypatch.setenv("POSTGRES_PORT", "5432")
 
+
 @pytest.fixture
 def temp_fs():
     """Creates a temporary directory for file operations."""
     path = tempfile.mkdtemp()
     yield path
     shutil.rmtree(path)
+
 
 @pytest.fixture
 def mock_db():
@@ -42,6 +45,7 @@ def mock_db():
     db_mock.connect.return_value = True
     db_mock.get_uploaded_filenames.return_value = set()
     return db_mock
+
 
 @pytest.fixture
 def mock_rclone():

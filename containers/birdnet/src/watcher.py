@@ -9,6 +9,7 @@ from src.config import config
 
 logger = logging.getLogger("Watcher")
 
+
 class AudioFileHandler(FileSystemEventHandler):
     def __init__(self, analyzer: BirdNETAnalyzer):
         self.analyzer = analyzer
@@ -18,13 +19,14 @@ class AudioFileHandler(FileSystemEventHandler):
         if event.is_directory:
             return
         # Support common audio formats
-        if not (event.src_path.endswith('.flac') or event.src_path.endswith('.wav')):
+        if not (event.src_path.endswith(".flac") or event.src_path.endswith(".wav")):
             return
 
         logger.info(f"New audio file detected: {event.src_path}")
         # Give a small grace period just in case
         time.sleep(0.5)
         self.analyzer.process_file(event.src_path)
+
 
 class WatcherService:
     def __init__(self):
@@ -40,7 +42,9 @@ class WatcherService:
         self.scan_existing()
 
         # Start Watcher
-        logger.info(f"Starting Watchdog on {config.INPUT_DIR} (Recursive: {config.RECURSIVE_WATCH})")
+        logger.info(
+            f"Starting Watchdog on {config.INPUT_DIR} (Recursive: {config.RECURSIVE_WATCH})"
+        )
 
         # Ensure input dir exists
         while not config.INPUT_DIR.exists():
@@ -48,13 +52,15 @@ class WatcherService:
             time.sleep(5)
 
         event_handler = AudioFileHandler(self.analyzer)
-        self.observer.schedule(event_handler, str(config.INPUT_DIR), recursive=config.RECURSIVE_WATCH)
+        self.observer.schedule(
+            event_handler, str(config.INPUT_DIR), recursive=config.RECURSIVE_WATCH
+        )
         self.observer.start()
 
         try:
             while True:
                 self.write_status("Idle (Watching)")
-                time.sleep(5) # Update status every 5s
+                time.sleep(5)  # Update status every 5s
         except KeyboardInterrupt:
             self.observer.stop()
         self.observer.join()
@@ -72,18 +78,15 @@ class WatcherService:
                 "status": status,
                 "cpu_percent": psutil.cpu_percent(),
                 "memory_usage_mb": psutil.Process(os.getpid()).memory_info().rss / 1024 / 1024,
-                "meta": {
-                    "input_dir": str(config.INPUT_DIR),
-                    "recursive": config.RECURSIVE_WATCH
-                },
-                "pid": os.getpid()
+                "meta": {"input_dir": str(config.INPUT_DIR), "recursive": config.RECURSIVE_WATCH},
+                "pid": os.getpid(),
             }
 
             status_file = "/mnt/data/services/silvasonic/status/birdnet.json"
             os.makedirs(os.path.dirname(status_file), exist_ok=True)
 
             tmp_file = f"{status_file}.tmp"
-            with open(tmp_file, 'w') as f:
+            with open(tmp_file, "w") as f:
                 json.dump(data, f)
             os.rename(tmp_file, status_file)
         except Exception as e:

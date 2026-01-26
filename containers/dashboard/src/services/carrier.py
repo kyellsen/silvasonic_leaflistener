@@ -33,9 +33,9 @@ class CarrierService:
                         if ago < 60:
                             data["last_upload_ago"] = "Just now"
                         elif ago < 3600:
-                            data["last_upload_ago"] = f"{int(ago/60)}m ago"
+                            data["last_upload_ago"] = f"{int(ago / 60)}m ago"
                         else:
-                            data["last_upload_ago"] = f"{int(ago/3600)}h ago"
+                            data["last_upload_ago"] = f"{int(ago / 3600)}h ago"
                     else:
                         data["last_upload_str"] = "Never"
                         data["last_upload_ago"] = ""
@@ -51,7 +51,7 @@ class CarrierService:
             "last_upload_str": "Unknown",
             "last_upload_ago": "",
             "queue_size": -1,
-            "disk_usage": 0
+            "disk_usage": 0,
         }
 
     @staticmethod
@@ -70,13 +70,14 @@ class CarrierService:
                 items = []
                 for row in result:
                     d = dict(row._mapping)
-                    if d.get('upload_time'):
-                         if d['upload_time'].tzinfo is None: d['upload_time'] = d['upload_time'].replace(tzinfo=datetime.UTC)
-                         d['upload_time_str'] = d['upload_time'].strftime("%Y-%m-%d %H:%M:%S")
-                         # Convert to string for JSON serialization
-                         d['upload_time'] = d['upload_time'].isoformat()
+                    if d.get("upload_time"):
+                        if d["upload_time"].tzinfo is None:
+                            d["upload_time"] = d["upload_time"].replace(tzinfo=datetime.UTC)
+                        d["upload_time_str"] = d["upload_time"].strftime("%Y-%m-%d %H:%M:%S")
+                        # Convert to string for JSON serialization
+                        d["upload_time"] = d["upload_time"].isoformat()
 
-                    d['size_mb'] = round((d.get('size_bytes') or 0) / (1024*1024), 2)
+                    d["size_mb"] = round((d.get("size_bytes") or 0) / (1024 * 1024), 2)
                     items.append(d)
                 return items
         except Exception as e:
@@ -99,11 +100,12 @@ class CarrierService:
                 items = []
                 for row in result:
                     d = dict(row._mapping)
-                    if d.get('upload_time'):
-                         if d['upload_time'].tzinfo is None: d['upload_time'] = d['upload_time'].replace(tzinfo=datetime.UTC)
-                         d['upload_time_str'] = d['upload_time'].strftime("%Y-%m-%d %H:%M:%S")
-                         # Convert to string for JSON serialization
-                         d['upload_time'] = d['upload_time'].isoformat()
+                    if d.get("upload_time"):
+                        if d["upload_time"].tzinfo is None:
+                            d["upload_time"] = d["upload_time"].replace(tzinfo=datetime.UTC)
+                        d["upload_time_str"] = d["upload_time"].strftime("%Y-%m-%d %H:%M:%S")
+                        # Convert to string for JSON serialization
+                        d["upload_time"] = d["upload_time"].isoformat()
                     items.append(d)
                 return items
         except Exception as e:
@@ -139,7 +141,9 @@ class CarrierService:
         """Calculate files uploaded per minute over the last X minutes."""
         try:
             async with db.get_connection() as conn:
-                query = text("SELECT COUNT(*) FROM carrier.uploads WHERE status='success' AND upload_time >= NOW() - make_interval(mins => :mins)")
+                query = text(
+                    "SELECT COUNT(*) FROM carrier.uploads WHERE status='success' AND upload_time >= NOW() - make_interval(mins => :mins)"
+                )
                 count = (await conn.execute(query, {"mins": minutes})).scalar() or 0
                 return round(count / minutes, 2)
         except Exception as e:

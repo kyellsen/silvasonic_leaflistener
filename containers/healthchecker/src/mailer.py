@@ -6,6 +6,7 @@ import apprise
 
 logger = logging.getLogger("HealthChecker.Notifier")
 
+
 class Mailer:
     def __init__(self):
         self.apobj = apprise.Apprise()
@@ -57,7 +58,9 @@ class Mailer:
 
             # Encode special chars in user/pass if needed? Apprise handles basic, but let's just construct carefully.
             # Assuming standard chars for now.
-            url = f"{scheme}://{smtp_user}:{smtp_password}@{smtp_server}:{smtp_port}/?to={recipient}"
+            url = (
+                f"{scheme}://{smtp_user}:{smtp_password}@{smtp_server}:{smtp_port}/?to={recipient}"
+            )
             urls.append(url)
             logger.info(f"Added legacy SMTP notification for {recipient}")
 

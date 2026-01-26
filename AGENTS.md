@@ -88,9 +88,8 @@ Code is not "done" until it passes:
     - Verify paths against `setup/provision/playbooks/setup.yml`.
 3.  **Implement & Verify**
     - Code must be container-aware (Podman).
-    - Code must be container-aware (Podman).
     - If you change the architecture, update `docs/`.
-    - **Consult `docs/DEVELOPMENT.md`** for QEMU/DevContainer testing workflows.
+    - **Consult `docs/DEVELOPMENT.md`** for DevContainer workflows.
 
 ---
 

@@ -6,9 +6,9 @@ import time
 
 logger = logging.getLogger(__name__)
 
+
 class RcloneWrapper:
-    """A robust wrapper around the rclone CLI.
-    """
+    """A robust wrapper around the rclone CLI."""
 
     def __init__(self, config_path: str = "/config/rclone/rclone.conf"):
         self.config_path = config_path
@@ -16,20 +16,24 @@ class RcloneWrapper:
         os.makedirs(os.path.dirname(config_path), exist_ok=True)
 
     def configure_webdav(self, remote_name: str, url: str, user: str, password: str):
-        """Configures a remote using 'rclone config create'.
-        """
+        """Configures a remote using 'rclone config create'."""
         logger.info(f"Configuring remote '{remote_name}' for WebDAV...")
 
         # Mask password in logs
         cmd = [
-            "rclone", "config", "create", remote_name, "webdav",
+            "rclone",
+            "config",
+            "create",
+            remote_name,
+            "webdav",
             f"url={url}",
             "vendor=nextcloud",
             f"user={user}",
             f"pass={password}",
-            "--obscure",          # Obscure the password
+            "--obscure",  # Obscure the password
             "--non-interactive",  # Don't prompt
-            "--config", self.config_path
+            "--config",
+            self.config_path,
         ]
 
         try:
@@ -40,30 +44,52 @@ class RcloneWrapper:
             logger.error(f"Failed to configure remote: {e.stderr}")
             raise
 
-    def sync(self, source: str, dest: str, transfers: int = 4, checkers: int = 8, callback=None) -> bool:
+    def sync(
+        self, source: str, dest: str, transfers: int = 4, checkers: int = 8, callback=None
+    ) -> bool:
         """Runs the sync command and streams output.
         Returns True if successful, False otherwise.
         """
         cmd = [
-            "rclone", "sync", source, dest,
-            "--transfers", str(transfers),
-            "--checkers", str(checkers),
+            "rclone",
+            "sync",
+            source,
+            dest,
+            "--transfers",
+            str(transfers),
+            "--checkers",
+            str(checkers),
             "--verbose",
-            "--config", self.config_path
+            "--config",
+            self.config_path,
         ]
 
         return self._run_transfer(cmd, source, dest, callback=callback)
 
-    def copy(self, source: str, dest: str, transfers: int = 4, checkers: int = 8, min_age: str = None, callback=None) -> bool:
+    def copy(
+        self,
+        source: str,
+        dest: str,
+        transfers: int = 4,
+        checkers: int = 8,
+        min_age: str = None,
+        callback=None,
+    ) -> bool:
         """Runs the copy command (additive only) and streams output.
         Returns True if successful, False otherwise.
         """
         cmd = [
-            "rclone", "copy", source, dest,
-            "--transfers", str(transfers),
-            "--checkers", str(checkers),
+            "rclone",
+            "copy",
+            source,
+            dest,
+            "--transfers",
+            str(transfers),
+            "--checkers",
+            str(checkers),
             "--verbose",
-            "--config", self.config_path
+            "--config",
+            self.config_path,
         ]
 
         if min_age:
@@ -78,6 +104,7 @@ class RcloneWrapper:
 
         # Regex for parsing rclone logs
         import re
+
         # INFO : file.txt: Copied (new)
         re_success = re.compile(r"INFO\s+:\s+(.+?):\s+Copied")
         # ERROR : file.txt: Failed to copy: error message
@@ -89,7 +116,7 @@ class RcloneWrapper:
                 stdout=subprocess.PIPE,
                 stderr=subprocess.STDOUT,  # Merge stdout and stderr
                 text=True,
-                bufsize=1
+                bufsize=1,
             )
 
             output_buffer = []
@@ -146,11 +173,7 @@ class RcloneWrapper:
         Returns None if listing fails.
         Uses 'rclone lsjson' for parsing.
         """
-        cmd = [
-            "rclone", "lsjson", remote,
-            "--recursive",
-            "--config", self.config_path
-        ]
+        cmd = ["rclone", "lsjson", remote, "--recursive", "--config", self.config_path]
 
         try:
             result = subprocess.run(cmd, check=True, capture_output=True, text=True)
@@ -158,7 +181,7 @@ class RcloneWrapper:
 
             # Create a simple dict: relative_path -> size
             # rclone lsjson returns 'Path' relative to the root of the remote
-            return {item['Path']: item['Size'] for item in items if not item['IsDir']}
+            return {item["Path"]: item["Size"] for item in items if not item["IsDir"]}
 
         except Exception as e:
             logger.error(f"Failed to list remote files: {e}")

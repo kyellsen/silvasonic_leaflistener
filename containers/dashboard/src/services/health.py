@@ -12,16 +12,15 @@ class HealthCheckerService:
             status_file = os.path.join(STATUS_DIR, "healthchecker.json")
             if os.path.exists(status_file):
                 with open(status_file) as f:
-                     # Check freshness
-                     data = json.load(f)
+                    # Check freshness
+                    data = json.load(f)
 
-                     # Check if stale (> 2 mins)
-                     if time.time() - data.get("timestamp", 0) > 120:
-                         data["status"] = "Stalled"
+                    # Check if stale (> 2 mins)
+                    if time.time() - data.get("timestamp", 0) > 120:
+                        data["status"] = "Stalled"
 
-                     return data
+                    return data
         except Exception as e:
-
             logger.error(f"HealthChecker status error: {e}", exc_info=True)
 
         return {"status": "Unknown"}
@@ -33,9 +32,8 @@ class HealthCheckerService:
             status_file = os.path.join(STATUS_DIR, "system_status.json")
             if os.path.exists(status_file):
                 with open(status_file) as f:
-                     return json.load(f)
+                    return json.load(f)
         except Exception as e:
-
             logger.error(f"System metrics error: {e}", exc_info=True)
 
         return {}

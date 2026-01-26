@@ -13,9 +13,10 @@ logger = logging.getLogger("Database")
 
 Base = declarative_base()
 
+
 class BirdNETDetection(Base):
-    __tablename__ = 'detections'
-    __table_args__ = {'schema': 'birdnet'}
+    __tablename__ = "detections"
+    __table_args__ = {"schema": "birdnet"}
 
     id = Column(Integer, primary_key=True, autoincrement=True)
     timestamp = Column(DateTime, default=lambda: datetime.now(UTC))
@@ -28,7 +29,7 @@ class BirdNETDetection(Base):
     start_time = Column(Float, nullable=False)
     end_time = Column(Float, nullable=False)
     confidence = Column(Float, nullable=False)
-    species_code = Column(String(50), nullable=True) # e.g. "Turdus merula"
+    species_code = Column(String(50), nullable=True)  # e.g. "Turdus merula"
     common_name = Column(String(255), nullable=True)
     scientific_name = Column(String(255), nullable=True)
 
@@ -38,9 +39,10 @@ class BirdNETDetection(Base):
     model_version = Column(String(50), nullable=True)
     clip_path = Column(String(1024), nullable=True)
 
+
 class SpeciesInfo(Base):
-    __tablename__ = 'species_info'
-    __table_args__ = {'schema': 'birdnet'}
+    __tablename__ = "species_info"
+    __table_args__ = {"schema": "birdnet"}
 
     scientific_name = Column(String(255), primary_key=True)
     common_name = Column(String(255), nullable=True)
@@ -53,28 +55,33 @@ class SpeciesInfo(Base):
     wikipedia_url = Column(String(1024), nullable=True)
     last_updated = Column(DateTime, default=lambda: datetime.now(UTC))
 
+
 class Watchlist(Base):
-    __tablename__ = 'watchlist'
-    __table_args__ = {'schema': 'birdnet'}
+    __tablename__ = "watchlist"
+    __table_args__ = {"schema": "birdnet"}
 
     id = Column(Integer, primary_key=True, autoincrement=True)
     scientific_name = Column(String(255), unique=True, nullable=False)
-    common_name = Column(String(255), nullable=True) # Cache for display if needed
-    enabled = Column(Integer, default=1) # 1=Enabled, 0=Disabled. Using Integer for SQLite/PG compat just in case, though Boolean is fine in PG.
+    common_name = Column(String(255), nullable=True)  # Cache for display if needed
+    enabled = Column(
+        Integer, default=1
+    )  # 1=Enabled, 0=Disabled. Using Integer for SQLite/PG compat just in case, though Boolean is fine in PG.
     last_notification = Column(DateTime, nullable=True)
 
     # Notification Settings (Future Proofing)
-    min_confidence = Column(Float, default=0.0) # 0.0 = Use global default
+    min_confidence = Column(Float, default=0.0)  # 0.0 = Use global default
+
 
 class ProcessedFile(Base):
-    __tablename__ = 'processed_files'
-    __table_args__ = {'schema': 'birdnet'}
+    __tablename__ = "processed_files"
+    __table_args__ = {"schema": "birdnet"}
 
     id = Column(Integer, primary_key=True, autoincrement=True)
     filename = Column(String(255), nullable=False)
     processed_at = Column(DateTime, default=lambda: datetime.now(UTC))
-    processing_time_sec = Column(Float, nullable=True) # How long analysis took
-    audio_duration_sec = Column(Float, nullable=True) # Duration of the audio file in seconds
+    processing_time_sec = Column(Float, nullable=True)  # How long analysis took
+    audio_duration_sec = Column(Float, nullable=True)  # Duration of the audio file in seconds
+
 
 class DatabaseHandler:
     def __init__(self):
@@ -84,7 +91,9 @@ class DatabaseHandler:
         self.host = os.getenv("POSTGRES_HOST", "db")
         self.port = os.getenv("POSTGRES_PORT", "5432")
 
-        self.db_url = f"postgresql://{self.user}:{self.password}@{self.host}:{self.port}/{self.db_name}"
+        self.db_url = (
+            f"postgresql://{self.user}:{self.password}@{self.host}:{self.port}/{self.db_name}"
+        )
         self.engine = None
         self.Session = None
 
@@ -100,7 +109,7 @@ class DatabaseHandler:
                 with self.engine.connect() as conn:
                     # Create Schema 'birdnet' if not exists
                     try:
-                        conn.execute(CreateSchema('birdnet', if_not_exists=True))
+                        conn.execute(CreateSchema("birdnet", if_not_exists=True))
                         conn.commit()
                     except ProgrammingError as e:
                         # Sometimes race condition or perm issue, but CreateSchema if_not_exists handles most
@@ -127,7 +136,7 @@ class DatabaseHandler:
 
     def save_detection(self, detection_dict: dict):
         """Save a single detection to the database.
-        
+
         Args:
             detection_dict: {
                 'filename': str,
@@ -146,17 +155,17 @@ class DatabaseHandler:
         session = self.Session()
         try:
             det = BirdNETDetection(
-                filename=detection_dict.get('filename'),
-                filepath=detection_dict.get('filepath', ''),
-                start_time=detection_dict.get('start_time'),
-                end_time=detection_dict.get('end_time'),
-                confidence=detection_dict.get('confidence'),
-                common_name=detection_dict.get('common_name'),
-                scientific_name=detection_dict.get('scientific_name'),
-                latitude=detection_dict.get('lat'),
-                longitude=detection_dict.get('lon'),
-                clip_path=detection_dict.get('clip_path'),
-                timestamp=datetime.now(UTC)
+                filename=detection_dict.get("filename"),
+                filepath=detection_dict.get("filepath", ""),
+                start_time=detection_dict.get("start_time"),
+                end_time=detection_dict.get("end_time"),
+                confidence=detection_dict.get("confidence"),
+                common_name=detection_dict.get("common_name"),
+                scientific_name=detection_dict.get("scientific_name"),
+                latitude=detection_dict.get("lat"),
+                longitude=detection_dict.get("lon"),
+                clip_path=detection_dict.get("clip_path"),
+                timestamp=datetime.now(UTC),
             )
             session.add(det)
             session.commit()
@@ -168,7 +177,8 @@ class DatabaseHandler:
 
     def get_watchlist(self):
         """Returns all enabled watchlist items."""
-        if not self.Session: return []
+        if not self.Session:
+            return []
         session = self.Session()
         try:
             return session.query(Watchlist).filter_by(enabled=1).all()
@@ -177,18 +187,19 @@ class DatabaseHandler:
 
     def update_watchlist(self, scientific_name, common_name, enabled=True):
         """Add/Update a species in the watchlist."""
-        if not self.Session: return False
+        if not self.Session:
+            return False
         session = self.Session()
         try:
             item = session.query(Watchlist).filter_by(scientific_name=scientific_name).first()
             if item:
                 item.enabled = 1 if enabled else 0
-                item.common_name = common_name # Update common name just in case
+                item.common_name = common_name  # Update common name just in case
             else:
                 item = Watchlist(
                     scientific_name=scientific_name,
                     common_name=common_name,
-                    enabled=1 if enabled else 0
+                    enabled=1 if enabled else 0,
                 )
                 session.add(item)
             session.commit()
@@ -202,24 +213,31 @@ class DatabaseHandler:
 
     def is_watched(self, scientific_name):
         """Check if a species is in the watchlist and enabled."""
-        if not self.Session: return False
+        if not self.Session:
+            return False
         session = self.Session()
         try:
             # We trust scientific name to be stable
-            return session.query(Watchlist).filter_by(scientific_name=scientific_name, enabled=1).count() > 0
+            return (
+                session.query(Watchlist)
+                .filter_by(scientific_name=scientific_name, enabled=1)
+                .count()
+                > 0
+            )
         finally:
             session.close()
 
     def log_processed_file(self, filename: str, duration: float, processing_time: float):
         """Log that a file was processed (regardless of detections)."""
-        if not self.Session: return
+        if not self.Session:
+            return
         session = self.Session()
         try:
             entry = ProcessedFile(
                 filename=filename,
                 audio_duration_sec=duration,
                 processing_time_sec=processing_time,
-                processed_at=datetime.now(UTC)
+                processed_at=datetime.now(UTC),
             )
             session.add(entry)
             session.commit()
@@ -228,6 +246,7 @@ class DatabaseHandler:
             session.rollback()
         finally:
             session.close()
+
 
 # Singleton
 db = DatabaseHandler()

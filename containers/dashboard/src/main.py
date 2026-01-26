@@ -25,12 +25,12 @@ logging.basicConfig(
         logging.StreamHandler(sys.stdout),
         logging.handlers.TimedRotatingFileHandler(
             "/var/log/silvasonic/dashboard.log",
-            when='midnight',
+            when="midnight",
             interval=1,
             backupCount=30,
-            encoding='utf-8'
-        )
-    ]
+            encoding="utf-8",
+        ),
+    ],
 )
 logger = logging.getLogger("Dashboard")
 
@@ -47,6 +47,7 @@ VERSION = "0.1.0"
 
 app = FastAPI(title="Silvasonic Dashboard")
 templates = Jinja2Templates(directory=TEMPLATES_DIR)
+
 
 def render(request: Request, template: str, context: dict):
     # If HTMX request, we could try to render only the block,
@@ -85,17 +86,18 @@ def write_status():
                 "status": "Running",
                 "cpu_percent": psutil.cpu_percent(),
                 "memory_usage_mb": psutil.Process(os.getpid()).memory_info().rss / 1024 / 1024,
-                "pid": os.getpid()
+                "pid": os.getpid(),
             }
 
             tmp_file = f"{STATUS_FILE}.tmp"
-            with open(tmp_file, 'w') as f:
+            with open(tmp_file, "w") as f:
                 json.dump(data, f)
             os.rename(tmp_file, STATUS_FILE)
         except Exception as e:
             logger.error(f"Failed to write dashboard status: {e}")
 
-        time.sleep(5) # Check every 5s
+        time.sleep(5)  # Check every 5s
+
 
 @app.on_event("startup")
 async def startup_event():
@@ -107,6 +109,7 @@ async def startup_event():
 # Mount Static
 app.mount("/static", StaticFiles(directory=os.path.join(BASE_DIR, "static")), name="static")
 
+
 @app.middleware("http")
 async def add_security_headers(request: Request, call_next):
     response = await call_next(request)
@@ -114,22 +117,27 @@ async def add_security_headers(request: Request, call_next):
     response.headers["X-Frame-Options"] = "DENY"
     return response
 
+
 @app.get("/", response_class=HTMLResponse)
 async def root(request: Request):
     # Redirect to dashboard if authed, else login
     from src.auth import check_auth
+
     if check_auth(request):
         return RedirectResponse("/dashboard", status_code=HTTP_302_FOUND)
     return RedirectResponse("/auth/login", status_code=HTTP_302_FOUND)
+
 
 # --- Auth Routes ---
 @app.get("/auth/login", response_class=HTMLResponse)
 async def login_page(request: Request):
     return templates.TemplateResponse("login.html", {"request": request})
 
+
 @app.post("/auth/login")
 async def login_submit(request: Request, username: str = Form(...), password: str = Form(...)):
     import asyncio
+
     if verify_credentials(username, password):
         response = RedirectResponse(url="/dashboard", status_code=HTTP_302_FOUND)
         response.set_cookie(
@@ -137,19 +145,23 @@ async def login_submit(request: Request, username: str = Form(...), password: st
             value=SESSION_SECRET,
             httponly=True,
             samesite="lax",
-            secure=False # Set to True if running behind HTTPS proxy
+            secure=False,  # Set to True if running behind HTTPS proxy
         )
         return response
 
     # Basic Rate Limiting / Brute Force Protection
     await asyncio.sleep(1.0)
-    return templates.TemplateResponse("login.html", {"request": request, "error": "Invalid credentials"})
+    return templates.TemplateResponse(
+        "login.html", {"request": request, "error": "Invalid credentials"}
+    )
+
 
 @app.get("/auth/logout")
 async def logout():
     response = RedirectResponse(url="/auth/login", status_code=HTTP_302_FOUND)
     response.delete_cookie(COOKIE_NAME)
     return response
+
 
 # --- Protected Routes ---
 
@@ -168,7 +180,8 @@ from src.settings import SettingsService
 
 @app.get("/dashboard", response_class=HTMLResponse)
 async def dashboard(request: Request, auth=Depends(require_auth)):
-    if isinstance(auth, RedirectResponse): return auth
+    if isinstance(auth, RedirectResponse):
+        return auth
 
     stats = SystemService.get_stats()
     detections = await BirdNetService.get_recent_detections(limit=5)
@@ -195,16 +208,18 @@ async def dashboard(request: Request, auth=Depends(require_auth)):
     # 3-10: Pending
     # >10: Lagging
     def get_status(lag):
-        if lag <= 2: return "ok"
-        if lag <= 10: return "pending"
+        if lag <= 2:
+            return "ok"
+        if lag <= 10:
+            return "pending"
         return "lagging"
 
     throughput = {
-        "recorder_active": RecorderService.get_creation_rate(10) > 0, # Simple boolean if recording
+        "recorder_active": RecorderService.get_creation_rate(10) > 0,  # Simple boolean if recording
         "analyzer_lag": analyzer_lag,
         "uploader_lag": uploader_lag,
         "analyzer_status": get_status(analyzer_lag),
-        "uploader_status": get_status(uploader_lag)
+        "uploader_status": get_status(uploader_lag),
     }
 
     # Define Sort Order & Display Names
@@ -236,12 +251,12 @@ async def dashboard(request: Request, auth=Depends(require_auth)):
 
         # If still not found, create a placeholder so the order is preserved
         if not c:
-             c = {
-                 "id": config["key"],
-                 "display_name": config["name"],
-                 "status": "Down",  # Default to Down if missing
-                 "message": "Not Reported"
-             }
+            c = {
+                "id": config["key"],
+                "display_name": config["name"],
+                "status": "Down",  # Default to Down if missing
+                "message": "Not Reported",
+            }
 
         # Clone to avoid mutating original if cached
         c_copy = c.copy()
@@ -254,33 +269,38 @@ async def dashboard(request: Request, auth=Depends(require_auth)):
     # Let's just pass the sorted list.
     containers_sorted = containers
 
-    return render(request, "index.html", {
-        "request": request,
-        "page": "home",
-        "stats": stats,
-        "detections": detections,
-        "birdnet_stats": birdnet_stats,
-        "carrier_stats": carrier_stats,
-        "recorder_stats": recorder_stats,
-        "carrier_stats": carrier_stats,
-        "recorder_stats": recorder_stats,
-        "containers": containers_sorted,
-        "throughput": throughput,
-        "status_label": "System:",
-        "status_value": "Online",
-        "status_color": "text-green-600 dark:text-green-400",
-        "auto_refresh_interval": 5
-    })
+    return render(
+        request,
+        "index.html",
+        {
+            "request": request,
+            "page": "home",
+            "stats": stats,
+            "detections": detections,
+            "birdnet_stats": birdnet_stats,
+            "carrier_stats": carrier_stats,
+            "recorder_stats": recorder_stats,
+            "carrier_stats": carrier_stats,
+            "recorder_stats": recorder_stats,
+            "containers": containers_sorted,
+            "throughput": throughput,
+            "status_label": "System:",
+            "status_value": "Online",
+            "status_color": "text-green-600 dark:text-green-400",
+            "auto_refresh_interval": 5,
+        },
+    )
 
 
 @app.get("/api/events/system")
 async def sse_system_status(request: Request, auth=Depends(require_auth)):
-    if isinstance(auth, RedirectResponse): return auth
+    if isinstance(auth, RedirectResponse):
+        return auth
 
     async def event_generator():
         # Watch system_status.json for changes
         status_file = "/mnt/data/services/silvasonic/status/system_status.json"
-        dashboard_stats_file = "/mnt/data/services/silvasonic/status/dashboard.json" # Watch this too as it has disk stats
+        dashboard_stats_file = "/mnt/data/services/silvasonic/status/dashboard.json"  # Watch this too as it has disk stats
 
         last_mtime = 0
         last_dash_mtime = 0
@@ -305,11 +325,11 @@ async def sse_system_status(request: Request, auth=Depends(require_auth)):
                     mtime = os.path.getmtime(dashboard_stats_file)
                     if mtime > last_dash_mtime:
                         last_dash_mtime = mtime
-                        changed = True # Update if disk stats change
+                        changed = True  # Update if disk stats change
 
                 if changed:
                     # Logic duplicated from dashboard route (refactor ideally, but inline for now is robust)
-                    stats = SystemService.get_stats() # Fresh stats
+                    stats = SystemService.get_stats()  # Fresh stats
                     raw_containers = HealthChecker.get_system_metrics()
 
                     # Construct Containers List (Same logic as dashboard view)
@@ -327,14 +347,19 @@ async def sse_system_status(request: Request, auth=Depends(require_auth)):
                     for config in container_config:
                         c = raw_containers.get(config["key"])
                         if not c:
-                             # Fuzzy search fallback
-                             for k, v in raw_containers.items():
-                                 if config["key"] in k:
-                                     c = v
-                                     break
+                            # Fuzzy search fallback
+                            for k, v in raw_containers.items():
+                                if config["key"] in k:
+                                    c = v
+                                    break
 
                         if not c:
-                             c = {"id": config["key"], "display_name": config["name"], "status": "Down", "message": "Not Reported"}
+                            c = {
+                                "id": config["key"],
+                                "display_name": config["name"],
+                                "status": "Down",
+                                "message": "Not Reported",
+                            }
 
                         c_copy = c.copy()
                         c_copy["display_name"] = config["name"]
@@ -344,8 +369,7 @@ async def sse_system_status(request: Request, auth=Depends(require_auth)):
                     # We render the PARTIAL 'partials/system_overview.html'
                     # We must pass 'containers' and 'stats' as context
                     content = templates.get_template("partials/system_overview.html").render(
-                        containers=containers,
-                        stats=stats
+                        containers=containers, stats=stats
                     )
 
                     # Remove newlines for SSE safety (one line per data) - actually spec allows multi-line data if prefixed
@@ -364,45 +388,59 @@ async def sse_system_status(request: Request, auth=Depends(require_auth)):
                     # Handle multiline data
                     for line in content.splitlines():
                         yield f"data: {line}\n"
-                    yield "\n" # End of event
+                    yield "\n"  # End of event
 
             except Exception as e:
                 logger.error(f"SSE Error: {e}")
 
-            await asyncio.sleep(1) # Check frequency (Internal loop) faster than poll
+            await asyncio.sleep(1)  # Check frequency (Internal loop) faster than poll
 
     return StreamingResponse(event_generator(), media_type="text/event-stream")
 
+
 @app.get("/settings", response_class=HTMLResponse)
 async def settings_page(request: Request, auth=Depends(require_auth)):
-    if isinstance(auth, RedirectResponse): return auth
+    if isinstance(auth, RedirectResponse):
+        return auth
 
     settings = SettingsService.get_settings()
 
-    return render(request, "settings.html", {
-        "request": request,
-        "page": "settings",
-        "settings": settings,
-        "status_label": "System:",
-        "status_value": "Settings",
-        "status_color": "text-gray-500"
-    })
+    return render(
+        request,
+        "settings.html",
+        {
+            "request": request,
+            "page": "settings",
+            "settings": settings,
+            "status_label": "System:",
+            "status_value": "Settings",
+            "status_color": "text-gray-500",
+        },
+    )
+
 
 @app.get("/about", response_class=HTMLResponse)
 async def about_page(request: Request, auth=Depends(require_auth)):
-    if isinstance(auth, RedirectResponse): return auth
+    if isinstance(auth, RedirectResponse):
+        return auth
 
-    return render(request, "about.html", {
-        "request": request,
-        "page": "about",
-        "status_label": "System:",
-        "status_value": "About",
-        "status_color": "text-gray-500"
-    })
+    return render(
+        request,
+        "about.html",
+        {
+            "request": request,
+            "page": "about",
+            "status_label": "System:",
+            "status_value": "About",
+            "status_color": "text-gray-500",
+        },
+    )
+
 
 @app.post("/settings", response_class=HTMLResponse)
 async def settings_save(request: Request, auth=Depends(require_auth)):
-    if isinstance(auth, RedirectResponse): return auth
+    if isinstance(auth, RedirectResponse):
+        return auth
 
     form = await request.form()
 
@@ -416,29 +454,32 @@ async def settings_save(request: Request, auth=Depends(require_auth)):
         latitude = float(form.get("latitude", 52.52))
         longitude = float(form.get("longitude", 13.40))
     except (ValueError, TypeError):
-        latitude = 0.0 # Will likely fail validation if range logic works, or be valid but wrong.
+        latitude = 0.0  # Will likely fail validation if range logic works, or be valid but wrong.
         # Actually, let's keep the raw values or try parse?
         # If float conversion fails, it's invalid input.
         # But here we are converting safely. Pydantic will validate Range.
-        latitude = 52.52 # Default fallback or 0?
-        longitude = 13.40 # fallback
+        latitude = 52.52  # Default fallback or 0?
+        longitude = 13.40  # fallback
         # Ideally we pass raw to Pydantic but Pydantic expects types if we use Settings(**dict).
         # Let's trust the float conversion here for basic typing, Pydantic for Logic.
 
     # Parse URLs (comma separated)
-    apprise_urls = [u.strip() for u in apprise_urls_raw.split(',') if u.strip()]
+    apprise_urls = [u.strip() for u in apprise_urls_raw.split(",") if u.strip()]
 
     # Load existing to preserve other fields if any
     settings = SettingsService.get_settings()
 
-    if "locale" not in settings: settings["locale"] = {}
+    if "locale" not in settings:
+        settings["locale"] = {}
     settings["locale"]["use_german_names"] = use_german
 
-    if "healthchecker" not in settings: settings["healthchecker"] = {}
+    if "healthchecker" not in settings:
+        settings["healthchecker"] = {}
     settings["healthchecker"]["recipient_email"] = notifier_email
     settings["healthchecker"]["apprise_urls"] = apprise_urls
 
-    if "location" not in settings: settings["location"] = {}
+    if "location" not in settings:
+        settings["location"] = {}
     settings["location"]["latitude"] = latitude
     settings["location"]["latitude"] = latitude
     settings["location"]["longitude"] = longitude
@@ -464,7 +505,7 @@ async def settings_save(request: Request, auth=Depends(require_auth)):
             try:
                 settings["healthchecker"]["service_timeouts"][svc] = int(val)
             except ValueError:
-                pass # Keep previous or default
+                pass  # Keep previous or default
 
     # Save
     msg = None
@@ -473,6 +514,7 @@ async def settings_save(request: Request, auth=Depends(require_auth)):
 
     try:
         from pydantic import ValidationError
+
         SettingsService.save_settings(settings)
         msg = "Settings saved successfully."
     except ValidationError as e:
@@ -481,7 +523,7 @@ async def settings_save(request: Request, auth=Depends(require_auth)):
         # e.errors() returns list of dicts: [{'loc': ('healthchecker', 'recipient_email'), 'msg': '...', 'type': '...'}]
         for error in e.errors():
             # Get the leaf field name
-            loc = error['loc']
+            loc = error["loc"]
             if loc:
                 field_name = loc[-1]
                 # Map to form field names if different
@@ -493,80 +535,105 @@ async def settings_save(request: Request, auth=Depends(require_auth)):
                 # ('healthchecker', 'recipient_email') -> 'notifier_email'
                 # ('location', 'latitude') -> 'latitude'
 
-                if field_name == 'recipient_email': field_name = 'notifier_email'
+                if field_name == "recipient_email":
+                    field_name = "notifier_email"
                 # others match (latitude, longitude, use_german_names)
 
-                field_errors[field_name] = error['msg']
+                field_errors[field_name] = error["msg"]
 
     except Exception as e:
         err = f"Failed to save settings: {e}"
 
-    return render(request, "settings.html", {
-        "request": request,
-        "page": "settings",
-        "settings": settings, # Pass back the attempted settings so user doesn't lose input (partial)
-        "success": msg,
-        "error": err,
-        "field_errors": field_errors,
-        "status_label": "System:",
-        "status_value": "Settings",
-        "status_color": "text-gray-500"
-    })
+    return render(
+        request,
+        "settings.html",
+        {
+            "request": request,
+            "page": "settings",
+            "settings": settings,  # Pass back the attempted settings so user doesn't lose input (partial)
+            "success": msg,
+            "error": err,
+            "field_errors": field_errors,
+            "status_label": "System:",
+            "status_value": "Settings",
+            "status_color": "text-gray-500",
+        },
+    )
+
 
 @app.get("/logs", response_class=HTMLResponse)
 async def logs_page(request: Request, auth=Depends(require_auth)):
-    if isinstance(auth, RedirectResponse): return auth
-    return render(request, "logs.html", {
-        "request": request,
-        "page": "logs",
-        "status_label": "System:",
-        "status_value": "Logging",
-        "status_color": "text-gray-500 dark:text-gray-400"
-    })
+    if isinstance(auth, RedirectResponse):
+        return auth
+    return render(
+        request,
+        "logs.html",
+        {
+            "request": request,
+            "page": "logs",
+            "status_label": "System:",
+            "status_value": "Logging",
+            "status_color": "text-gray-500 dark:text-gray-400",
+        },
+    )
+
 
 @app.get("/birdnet", response_class=HTMLResponse)
 async def birdnet_page(request: Request, auth=Depends(require_auth)):
-    if isinstance(auth, RedirectResponse): return auth
+    if isinstance(auth, RedirectResponse):
+        return auth
 
-    detections = await BirdNetService.get_recent_detections(limit=50) # More for browser
+    detections = await BirdNetService.get_recent_detections(limit=50)  # More for browser
     stats = await BirdNetStatsService.get_stats()
 
-    return render(request, "birdnet.html", {
-        "request": request,
-        "page": "birdnet",
-        "detections": detections,
-        "stats": stats,
-        "status_label": "BirdNET:",
-        "status_value": stats.get("status", "Active"),
-        "status_color": "text-green-600 dark:text-green-400",
-        "auto_refresh_interval": 5
-    })
+    return render(
+        request,
+        "birdnet.html",
+        {
+            "request": request,
+            "page": "birdnet",
+            "detections": detections,
+            "stats": stats,
+            "status_label": "BirdNET:",
+            "status_value": stats.get("status", "Active"),
+            "status_color": "text-green-600 dark:text-green-400",
+            "auto_refresh_interval": 5,
+        },
+    )
+
 
 @app.get("/birdnet/discover", response_class=HTMLResponse)
 async def birdnet_discover_page(request: Request, auth=Depends(require_auth)):
-    if isinstance(auth, RedirectResponse): return auth
+    if isinstance(auth, RedirectResponse):
+        return auth
 
     species_list = await BirdNetService.get_all_species()
 
     # Enrich with Watchlist Status
-    sci_names = [s['sci_name'] for s in species_list]
+    sci_names = [s["sci_name"] for s in species_list]
     watchlist_status = await BirdNetService.get_watchlist_status(sci_names)
 
     for s in species_list:
-        s['is_watched'] = watchlist_status.get(s['sci_name'], False)
+        s["is_watched"] = watchlist_status.get(s["sci_name"], False)
 
-    return render(request, "birdnet_discover.html", {
-        "request": request,
-        "page": "birdnet_discover",
-        "species_list": species_list,
-        "status_label": "BirdNET:",
-        "status_value": "Discover",
-        "status_color": "text-amber-500 dark:text-amber-400"
-    })
+    return render(
+        request,
+        "birdnet_discover.html",
+        {
+            "request": request,
+            "page": "birdnet_discover",
+            "species_list": species_list,
+            "status_label": "BirdNET:",
+            "status_value": "Discover",
+            "status_color": "text-amber-500 dark:text-amber-400",
+        },
+    )
+
 
 @app.get("/birdnet/discover/{species_name}", response_class=HTMLResponse)
 async def birdnet_species_page(request: Request, species_name: str, auth=Depends(require_auth)):
-    if isinstance(auth, RedirectResponse): return auth
+    if isinstance(auth, RedirectResponse):
+        return auth
 
     data = await BirdNetStatsService.get_species_stats(species_name)
     if not data:
@@ -575,118 +642,155 @@ async def birdnet_species_page(request: Request, species_name: str, auth=Depends
     # Enrich with Wikimedia Data (Async)
     data["info"] = await BirdNetService.enrich_species_data(data["info"])
 
-    return render(request, "birdnet_species.html", {
-        "request": request,
-        "page": "birdnet_discover",
-        "species": data["info"],
-        "recent": data["recent"],
-        "hourly": data["hourly"],
-        "status_label": "BirdNET:",
-        "status_value": species_name,
-        "status_color": "text-amber-500 dark:text-amber-400"
-    })
-
+    return render(
+        request,
+        "birdnet_species.html",
+        {
+            "request": request,
+            "page": "birdnet_discover",
+            "species": data["info"],
+            "recent": data["recent"],
+            "hourly": data["hourly"],
+            "status_label": "BirdNET:",
+            "status_value": species_name,
+            "status_color": "text-amber-500 dark:text-amber-400",
+        },
+    )
 
 
 @app.get("/stats", response_class=HTMLResponse)
 async def stats_page(request: Request, auth=Depends(require_auth)):
-    if isinstance(auth, RedirectResponse): return auth
+    if isinstance(auth, RedirectResponse):
+        return auth
 
     stats_data = await BirdNetStatsService.get_advanced_stats()
 
-    return render(request, "stats.html", {
-        "request": request,
-        "page": "stats",
-        "daily": stats_data["daily"],
-        "hourly": stats_data["hourly"],
-        "distributions": stats_data["distributions"],
-        "histogram": stats_data["histogram"],
-        "rarest": stats_data["rarest"],
-        "status_label": "Statistics:",
-        "status_value": "Detailed",
-        "status_color": "text-blue-500 dark:text-blue-400"
-    })
+    return render(
+        request,
+        "stats.html",
+        {
+            "request": request,
+            "page": "stats",
+            "daily": stats_data["daily"],
+            "hourly": stats_data["hourly"],
+            "distributions": stats_data["distributions"],
+            "histogram": stats_data["histogram"],
+            "rarest": stats_data["rarest"],
+            "status_label": "Statistics:",
+            "status_value": "Detailed",
+            "status_color": "text-blue-500 dark:text-blue-400",
+        },
+    )
+
 
 @app.get("/recorder", response_class=HTMLResponse)
 async def recorder_page(request: Request, auth=Depends(require_auth)):
-    if isinstance(auth, RedirectResponse): return auth
+    if isinstance(auth, RedirectResponse):
+        return auth
 
     stats = RecorderService.get_status()
     # Also get system stats for context if needed
     sys_stats = SystemService.get_stats()
     recordings = await RecorderService.get_recent_recordings()
 
-    return render(request, "recorder.html", {
-        "request": request,
-        "page": "recorder",
-        "stats": stats,
-        "sys_stats": sys_stats,
-        "recordings": recordings,
-        "status_label": "Recorder:",
-        "status_value": stats.get("status", "Unknown"),
-        "status_color": "text-green-600 dark:text-green-400" if stats.get("status") == "Running" else "text-red-600 dark:text-red-400",
-        "auto_refresh_interval": 5
-    })
+    return render(
+        request,
+        "recorder.html",
+        {
+            "request": request,
+            "page": "recorder",
+            "stats": stats,
+            "sys_stats": sys_stats,
+            "recordings": recordings,
+            "status_label": "Recorder:",
+            "status_value": stats.get("status", "Unknown"),
+            "status_color": "text-green-600 dark:text-green-400"
+            if stats.get("status") == "Running"
+            else "text-red-600 dark:text-red-400",
+            "auto_refresh_interval": 5,
+        },
+    )
+
 
 @app.get("/uploader", response_class=HTMLResponse)
 async def uploader_page(request: Request, auth=Depends(require_auth)):
-    if isinstance(auth, RedirectResponse): return auth
+    if isinstance(auth, RedirectResponse):
+        return auth
 
     stats = CarrierService.get_status()
     upload_stats = await CarrierService.get_upload_stats()
     recent_uploads = await CarrierService.get_recent_uploads(limit=100)
     failed_uploads = await CarrierService.get_failed_uploads(limit=50)
 
-    return render(request, "uploader.html", {
-        "request": request,
-        "page": "uploader",
-        "stats": stats,
-        "upload_stats": upload_stats,
-        "recent_uploads": recent_uploads,
-        "failed_uploads": failed_uploads,
-        "status_label": "Uploader:",
-        "status_value": stats.get("status", "Idle"),
-        "status_color": "text-cyan-600 dark:text-cyan-400",
-        "auto_refresh_interval": 5
-    })
+    return render(
+        request,
+        "uploader.html",
+        {
+            "request": request,
+            "page": "uploader",
+            "stats": stats,
+            "upload_stats": upload_stats,
+            "recent_uploads": recent_uploads,
+            "failed_uploads": failed_uploads,
+            "status_label": "Uploader:",
+            "status_value": stats.get("status", "Idle"),
+            "status_color": "text-cyan-600 dark:text-cyan-400",
+            "auto_refresh_interval": 5,
+        },
+    )
+
 
 @app.get("/livesound", response_class=HTMLResponse)
 async def livesound_page(request: Request, auth=Depends(require_auth)):
-    if isinstance(auth, RedirectResponse): return auth
+    if isinstance(auth, RedirectResponse):
+        return auth
 
     # No stats needed for pure live stream page initially
     # If we want livesound container stats, we could fetch them, but for now just render UI
 
-    return render(request, "livesound.html", {
-        "request": request,
-        "page": "livesound",
-        "status_label": "Livesound:",
-        "status_value": "Streaming",
-        "status_color": "text-purple-600 dark:text-purple-400",
-        # Auto refresh not needed for live canvas/audio
-        # "auto_refresh_interval": 15
-    })
+    return render(
+        request,
+        "livesound.html",
+        {
+            "request": request,
+            "page": "livesound",
+            "status_label": "Livesound:",
+            "status_value": "Streaming",
+            "status_color": "text-purple-600 dark:text-purple-400",
+            # Auto refresh not needed for live canvas/audio
+            # "auto_refresh_interval": 15
+        },
+    )
+
 
 @app.get("/weather", response_class=HTMLResponse)
 async def weather_page(request: Request, auth=Depends(require_auth)):
-    if isinstance(auth, RedirectResponse): return auth
+    if isinstance(auth, RedirectResponse):
+        return auth
 
     current = await WeatherService.get_current_weather()
     history = await WeatherService.get_history(hours=24)
     status_data = WeatherService.get_status()
     correlations = await WeatherService.get_correlations(days=30)
 
-    return render(request, "weather.html", {
-        "request": request,
-        "page": "weather",
-        "current": current,
-        "history": history,
-        "correlations": correlations,
-        "status_label": "Weather:",
-        "status_value": status_data.get("status", "Unknown"),
-        "status_color": "text-blue-500 dark:text-blue-400" if status_data.get("status") == "Running" else "text-red-500",
-        "auto_refresh_interval": 5
-    })
+    return render(
+        request,
+        "weather.html",
+        {
+            "request": request,
+            "page": "weather",
+            "current": current,
+            "history": history,
+            "correlations": correlations,
+            "status_label": "Weather:",
+            "status_value": status_data.get("status", "Unknown"),
+            "status_color": "text-blue-500 dark:text-blue-400"
+            if status_data.get("status") == "Running"
+            else "text-red-500",
+            "auto_refresh_interval": 5,
+        },
+    )
+
 
 # --- Inspector API Partials ---
 from pydantic import BaseModel
@@ -697,19 +801,25 @@ class WatchlistToggleRequest(BaseModel):
     common_name: str
     enabled: bool
 
+
 @app.post("/api/watchlist/toggle")
 async def api_toggle_watchlist(req: WatchlistToggleRequest, auth=Depends(require_auth)):
-    if isinstance(auth, RedirectResponse): raise HTTPException(401)
+    if isinstance(auth, RedirectResponse):
+        raise HTTPException(401)
 
-    success = await BirdNetService.toggle_watchlist(req.scientific_name, req.common_name, req.enabled)
+    success = await BirdNetService.toggle_watchlist(
+        req.scientific_name, req.common_name, req.enabled
+    )
     if success:
         return {"status": "ok", "enabled": req.enabled}
     else:
         raise HTTPException(500, "Failed to toggle watchlist")
 
+
 @app.get("/api/details/birdnet/{filename:path}", response_class=HTMLResponse)
 async def get_birdnet_details(request: Request, filename: str, auth=Depends(require_auth)):
-    if isinstance(auth, RedirectResponse): return auth
+    if isinstance(auth, RedirectResponse):
+        return auth
 
     data = await BirdNetService.get_detection(filename)
     if not data:
@@ -718,17 +828,19 @@ async def get_birdnet_details(request: Request, filename: str, auth=Depends(requ
     # Enrich if missing (async) - optional, or rely on what get_detection fetched (via join)
     # The join in get_detection might miss if not cached.
     # Let's trigger quick enrichment if basic info is missing but we have sci_name
-    if not data.get('image_url') and data.get('sci_name'):
-         # We trigger a background fetch or just Await it (better for user exp here)
-         await BirdNetService.enrich_species_data(data)
-         # Refresh data
-         data = await BirdNetService.get_detection(filename) or data
+    if not data.get("image_url") and data.get("sci_name"):
+        # We trigger a background fetch or just Await it (better for user exp here)
+        await BirdNetService.enrich_species_data(data)
+        # Refresh data
+        data = await BirdNetService.get_detection(filename) or data
 
     return render(request, "partials/inspector_birdnet.html", {"request": request, "d": data})
 
+
 @app.get("/api/export/birdnet/csv")
 async def export_birdnet_csv(auth=Depends(require_auth)):
-    if isinstance(auth, RedirectResponse): raise HTTPException(401)
+    if isinstance(auth, RedirectResponse):
+        raise HTTPException(401)
 
     async def iter_csv():
         # Header
@@ -738,17 +850,17 @@ async def export_birdnet_csv(auth=Depends(require_auth)):
         iterator = BirdNetStatsService.get_all_detections_cursor()
         async for row in iterator:
             # Format fields
-            ts = row.get('timestamp')
+            ts = row.get("timestamp")
 
             date_str = ts.strftime("%Y-%m-%d") if ts else ""
             time_str = ts.strftime("%H:%M:%S") if ts else ""
 
-            sci = (row.get('scientific_name') or '').replace(',', ' ') # Simple CSV escape
-            com = (row.get('common_name') or '').replace(',', ' ')
+            sci = (row.get("scientific_name") or "").replace(",", " ")  # Simple CSV escape
+            com = (row.get("common_name") or "").replace(",", " ")
             conf = f"{row.get('confidence', 0.0):.2f}"
             start = f"{row.get('start_time', 0.0):.1f}"
             end = f"{row.get('end_time', 0.0):.1f}"
-            fname = (row.get('filename') or '')
+            fname = row.get("filename") or ""
 
             line = f"{date_str},{time_str},{sci},{com},{conf},{start},{end},{fname}\n"
             yield line
@@ -757,16 +869,18 @@ async def export_birdnet_csv(auth=Depends(require_auth)):
     return StreamingResponse(
         iter_csv(),
         media_type="text/csv",
-        headers={"Content-Disposition": f"attachment; filename={filename}"}
+        headers={"Content-Disposition": f"attachment; filename={filename}"},
     )
 
 
 # --- API / HTMX Partials ---
 
+
 @app.get("/api/logs/{service}")
 async def get_logs(service: str, lines: int = 200, auth=Depends(require_auth)):
     """Get last N lines of logs"""
-    if isinstance(auth, RedirectResponse): raise HTTPException(401)
+    if isinstance(auth, RedirectResponse):
+        raise HTTPException(401)
 
     log_file = os.path.join(LOG_DIR, f"{service}.log")
 
@@ -780,6 +894,7 @@ async def get_logs(service: str, lines: int = 200, auth=Depends(require_auth)):
         # Efficient tailing using seek is better.
 
         import aiofiles
+
         async with aiofiles.open(log_file) as f:
             # Quick & Dirty: Read all lines? No, might be huge.
             # Seek to end and back up?
@@ -787,30 +902,35 @@ async def get_logs(service: str, lines: int = 200, auth=Depends(require_auth)):
 
             # Using tail command is robust
             proc = await asyncio.create_subprocess_exec(
-                "tail", "-n", str(lines), log_file,
+                "tail",
+                "-n",
+                str(lines),
+                log_file,
                 stdout=asyncio.subprocess.PIPE,
-                stderr=asyncio.subprocess.PIPE
+                stderr=asyncio.subprocess.PIPE,
             )
             stdout, stderr = await proc.communicate()
 
             if proc.returncode != 0:
-                 return {"content": f"Error reading logs: {stderr.decode()}"}
+                return {"content": f"Error reading logs: {stderr.decode()}"}
 
-            return {"content": stdout.decode(errors='replace')}
+            return {"content": stdout.decode(errors="replace")}
 
     except Exception as e:
         return {"content": f"Error accessing logs: {str(e)}"}
 
+
 @app.get("/api/audio/{filename:path}")
 async def stream_audio(filename: str, auth=Depends(require_auth)):
     """Stream audio file from recording dir"""
-    if isinstance(auth, RedirectResponse): raise HTTPException(401)
+    if isinstance(auth, RedirectResponse):
+        raise HTTPException(401)
 
     # Security: Prevent traversing out of audio dir
     # filename here is actually a path potentially (e.g. "2023-10-27/bird.flac")
 
     # Sanitize:
-    clean_path = os.path.normpath(filename).lstrip('/')
+    clean_path = os.path.normpath(filename).lstrip("/")
 
     # Construct full path
     full_path = os.path.join(AUDIO_DIR, clean_path)
@@ -825,13 +945,15 @@ async def stream_audio(filename: str, auth=Depends(require_auth)):
 
     return FileResponse(safe_path, media_type="audio/flac")
 
+
 @app.get("/api/clips/{filename:path}")
 async def stream_clip(filename: str, auth=Depends(require_auth)):
     """Stream clip from clips dir"""
-    if isinstance(auth, RedirectResponse): raise HTTPException(401)
+    if isinstance(auth, RedirectResponse):
+        raise HTTPException(401)
 
     # Sanitize
-    clean_path = os.path.normpath(filename).lstrip('/')
+    clean_path = os.path.normpath(filename).lstrip("/")
     full_path = os.path.join(CLIPS_DIR, clean_path)
     safe_path = os.path.abspath(full_path)
 
@@ -844,10 +966,12 @@ async def stream_clip(filename: str, auth=Depends(require_auth)):
 
     return FileResponse(safe_path, media_type="audio/wav")
 
+
 @app.get("/api/spectrogram/{filename:path}")
 async def stream_spectrogram(filename: str, auth=Depends(require_auth)):
     """Stream spectrogram from artifacts dir, generating it if needed (Lazy Loading)"""
-    if isinstance(auth, RedirectResponse): raise HTTPException(401)
+    if isinstance(auth, RedirectResponse):
+        raise HTTPException(401)
 
     # Path to the visual artifact (PNG)
     safe_path = os.path.normpath(os.path.join(ARTIFACTS_DIR, filename))
@@ -867,7 +991,7 @@ async def stream_spectrogram(filename: str, auth=Depends(require_auth)):
         # So if we have "recording.flac_spec.png", the audio is "recording.flac"
 
         if not filename.endswith("_spec.png"):
-             raise HTTPException(404, "Invalid spectrogram filename format")
+            raise HTTPException(404, "Invalid spectrogram filename format")
 
         audio_filename = filename.replace("_spec.png", "")
         audio_path = os.path.join(AUDIO_DIR, audio_filename)
@@ -882,6 +1006,7 @@ async def stream_spectrogram(filename: str, auth=Depends(require_auth)):
         import asyncio
 
         from src.spectrogram import generate_spectrogram
+
         loop = asyncio.get_event_loop()
         success = await loop.run_in_executor(None, generate_spectrogram, audio_path, safe_path)
 

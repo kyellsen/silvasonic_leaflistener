@@ -37,4 +37,5 @@ class Config:
         if cls.DB_PATH:
             Path(cls.DB_PATH).parent.mkdir(parents=True, exist_ok=True)
 
+
 config = Config()

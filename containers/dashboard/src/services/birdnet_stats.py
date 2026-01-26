@@ -15,7 +15,9 @@ class BirdNetStatsService:
             async with db.get_connection() as conn:
                 # Today
                 today_start = datetime.datetime.utcnow().date()
-                query_today = text("SELECT COUNT(*) FROM birdnet.detections WHERE timestamp >= :today")
+                query_today = text(
+                    "SELECT COUNT(*) FROM birdnet.detections WHERE timestamp >= :today"
+                )
                 today_count = (await conn.execute(query_today, {"today": today_start})).scalar()
 
                 # Total
@@ -40,24 +42,30 @@ class BirdNetStatsService:
                 top_species = []
                 for row in result_top:
                     r = dict(row._mapping)
-                    r['display_name'] = r.get('german_name') if use_german and r.get('german_name') else r.get('com_name')
+                    r["display_name"] = (
+                        r.get("german_name")
+                        if use_german and r.get("german_name")
+                        else r.get("com_name")
+                    )
                     top_species.append(r)
 
                 # Species Count
-                query_species = text("SELECT COUNT(DISTINCT scientific_name) FROM birdnet.detections")
+                query_species = text(
+                    "SELECT COUNT(DISTINCT scientific_name) FROM birdnet.detections"
+                )
                 species_count = (await conn.execute(query_species)).scalar() or 0
 
                 # Biodiversity (Menhinick's Index: D = S / sqrt(N))
                 biodiversity = 0.0
                 if total_count > 0:
-                    biodiversity = round(species_count / (total_count ** 0.5), 3)
+                    biodiversity = round(species_count / (total_count**0.5), 3)
 
                 return {
                     "today": today_count,
                     "total": total_count,
                     "species_count": species_count,
                     "biodiversity": biodiversity,
-                    "top_species": top_species
+                    "top_species": top_species,
                 }
         except Exception as e:
             logger.error(f"Error getting BirdNet Stats: {e}", exc_info=True)
@@ -117,7 +125,7 @@ class BirdNetStatsService:
                     rows = result.fetchall()
                     return {
                         "labels": [r.common_name for r in rows if r.common_name],
-                        "values": [r.count for r in rows if r.common_name]
+                        "values": [r.count for r in rows if r.common_name],
                     }
 
                 query_today_exact = text("""
@@ -133,7 +141,7 @@ class BirdNetStatsService:
                 rows_today = result_today.fetchall()
                 dist_today = {
                     "labels": [r.common_name for r in rows_today if r.common_name],
-                    "values": [r.count for r in rows_today if r.common_name]
+                    "values": [r.count for r in rows_today if r.common_name],
                 }
 
                 dist_week = await get_top_species("7 DAYS")
@@ -156,16 +164,16 @@ class BirdNetStatsService:
                 all_rows = []
                 for row in res_all:
                     d = dict(row._mapping)
-                    if d.get('common_name'):
+                    if d.get("common_name"):
                         all_rows.append(d)
-                        hist_labels.append(d['common_name'])
-                        hist_values.append(d['count'])
+                        hist_labels.append(d["common_name"])
+                        hist_values.append(d["count"])
 
                 # 5. Rarest Species (List)
                 rarest_list = []
                 if len(all_rows) > 0:
                     rarest_slice = all_rows[-20:]
-                    rarest_list = sorted(rarest_slice, key=lambda x: x['count'])
+                    rarest_list = sorted(rarest_slice, key=lambda x: x["count"])
 
                 return {
                     "daily": daily,
@@ -175,13 +183,10 @@ class BirdNetStatsService:
                         "week": dist_week,
                         "month": dist_month,
                         "year": dist_year,
-                        "all_time": dist_all
+                        "all_time": dist_all,
                     },
-                    "histogram": {
-                        "labels": hist_labels,
-                        "values": hist_values
-                    },
-                    "rarest": rarest_list
+                    "histogram": {"labels": hist_labels, "values": hist_values},
+                    "rarest": rarest_list,
                 }
         except Exception as e:
             logger.error(f"Error get_advanced_stats: {e}", exc_info=True)
@@ -190,12 +195,14 @@ class BirdNetStatsService:
                 "daily": empty_chart,
                 "hourly": {"values": []},
                 "distributions": {
-                    "today": empty_chart, "week": empty_chart,
-                    "month": empty_chart, "year": empty_chart,
-                    "all_time": empty_chart
+                    "today": empty_chart,
+                    "week": empty_chart,
+                    "month": empty_chart,
+                    "year": empty_chart,
+                    "all_time": empty_chart,
                 },
                 "histogram": empty_chart,
-                "rarest": []
+                "rarest": [],
             }
 
     @staticmethod
@@ -222,12 +229,14 @@ class BirdNetStatsService:
                     return None
 
                 info = dict(res_info._mapping)
-                if info.get('first_seen'):
-                    if info['first_seen'].tzinfo is None: info['first_seen'] = info['first_seen'].replace(tzinfo=datetime.UTC)
-                    info['first_seen_iso'] = info['first_seen'].isoformat()
-                if info.get('last_seen'):
-                    if info['last_seen'].tzinfo is None: info['last_seen'] = info['last_seen'].replace(tzinfo=datetime.UTC)
-                    info['last_seen_iso'] = info['last_seen'].isoformat()
+                if info.get("first_seen"):
+                    if info["first_seen"].tzinfo is None:
+                        info["first_seen"] = info["first_seen"].replace(tzinfo=datetime.UTC)
+                    info["first_seen_iso"] = info["first_seen"].isoformat()
+                if info.get("last_seen"):
+                    if info["last_seen"].tzinfo is None:
+                        info["last_seen"] = info["last_seen"].replace(tzinfo=datetime.UTC)
+                    info["last_seen_iso"] = info["last_seen"].isoformat()
 
                 # Recent Detections
                 query_recent = text("""
@@ -242,22 +251,23 @@ class BirdNetStatsService:
 
                 for row in res_recent:
                     d = dict(row._mapping)
-                    if d.get('timestamp'):
-                         if d['timestamp'].tzinfo is None: d['timestamp'] = d['timestamp'].replace(tzinfo=datetime.UTC)
-                         d['iso_timestamp'] = d['timestamp'].isoformat()
+                    if d.get("timestamp"):
+                        if d["timestamp"].tzinfo is None:
+                            d["timestamp"] = d["timestamp"].replace(tzinfo=datetime.UTC)
+                        d["iso_timestamp"] = d["timestamp"].isoformat()
                     else:
-                         d['iso_timestamp'] = ""
+                        d["iso_timestamp"] = ""
 
-                    fp = d.get('filepath')
+                    fp = d.get("filepath")
                     if fp and fp.startswith(REC_DIR):
-                        d['audio_relative_path'] = fp[len(REC_DIR):].lstrip('/')
+                        d["audio_relative_path"] = fp[len(REC_DIR) :].lstrip("/")
                     else:
-                        d['audio_relative_path'] = d.get('filename')
+                        d["audio_relative_path"] = d.get("filename")
 
-                    if d.get('clip_path'):
-                        d['playback_url'] = f"/api/clips/{os.path.basename(d['clip_path'])}"
+                    if d.get("clip_path"):
+                        d["playback_url"] = f"/api/clips/{os.path.basename(d['clip_path'])}"
                     else:
-                        d['playback_url'] = f"/api/audio/{d.get('audio_relative_path')}"
+                        d["playback_url"] = f"/api/audio/{d.get('audio_relative_path')}"
 
                     recent.append(d)
 
@@ -273,11 +283,7 @@ class BirdNetStatsService:
                 hourly_dist = {int(r.hour): r.count for r in res_hourly if r.hour is not None}
                 hourly_data = [hourly_dist.get(h, 0) for h in range(24)]
 
-                return {
-                    "info": info,
-                    "recent": recent,
-                    "hourly": hourly_data
-                }
+                return {"info": info, "recent": recent, "hourly": hourly_data}
         except Exception as e:
             logger.error(f"Error get_species_stats: {e}", exc_info=True)
             return None

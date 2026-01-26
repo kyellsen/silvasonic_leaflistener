@@ -10,11 +10,13 @@ ADMIN_PASS = os.getenv("DASHBOARD_PASS", "1234")
 SESSION_SECRET = os.getenv("SESSION_SECRET", secrets.token_hex(32))
 COOKIE_NAME = "silvasonic_session"
 
+
 def check_auth(request: Request):
     token = request.cookies.get(COOKIE_NAME)
     if not token or token != SESSION_SECRET:
         return None
     return True
+
 
 def require_auth(request: Request):
     if not check_auth(request):
@@ -25,12 +27,14 @@ def require_auth(request: Request):
         # Check for HTMX Request
         if request.headers.get("HX-Request"):
             from fastapi.responses import Response
+
             # Force client-side redirect
             return Response(headers={"HX-Redirect": "/auth/login"})
 
         # If Page request, redirect to login
         return RedirectResponse(url="/auth/login", status_code=status.HTTP_302_FOUND)
     return True
+
 
 def verify_credentials(username, password):
     # Constant time comparison to prevent timing attacks

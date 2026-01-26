@@ -4,6 +4,7 @@ import httpx
 
 logger = logging.getLogger("Wikimedia")
 
+
 class WikimediaService:
     BASE_URL = "https://en.wikipedia.org/w/api.php"
     USER_AGENT = "Silvasonic/1.0 (https://github.com/kyellsen/silvasonic; contact@example.com)"
@@ -14,7 +15,9 @@ class WikimediaService:
         Returns a dict with keys matching SpeciesInfo model or None if failed.
         """
         try:
-            async with httpx.AsyncClient(headers={"User-Agent": WikimediaService.USER_AGENT}) as client:
+            async with httpx.AsyncClient(
+                headers={"User-Agent": WikimediaService.USER_AGENT}
+            ) as client:
                 # 1. Search for the page by scientific name to get the title
                 params = {
                     "action": "query",
@@ -24,8 +27,8 @@ class WikimediaService:
                     "pithumbsize": 600,
                     "exintro": True,
                     "explaintext": True,
-                    "lllang": "de", # Get German link
-                    "redirects": True
+                    "lllang": "de",  # Get German link
+                    "redirects": True,
                 }
 
                 response = await client.get(WikimediaService.BASE_URL, params=params, timeout=10.0)
@@ -53,12 +56,12 @@ class WikimediaService:
 
                 # Construct result
                 return {
-                    "scientific_name": scientific_name, # PK
-                    "german_name": german_name or scientific_name, # Fallback
+                    "scientific_name": scientific_name,  # PK
+                    "german_name": german_name or scientific_name,  # Fallback
                     "image_url": image_url,
                     "description": description,
                     "wikipedia_url": f"https://en.wikipedia.org/?curid={page.get('pageid')}",
-                    "family": None # Todo: Fetch from Wikidata if needed, or parse text
+                    "family": None,  # Todo: Fetch from Wikidata if needed, or parse text
                 }
 
         except Exception as e:

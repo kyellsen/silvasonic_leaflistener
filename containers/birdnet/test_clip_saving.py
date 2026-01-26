@@ -7,11 +7,11 @@ from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 # Add src to path
-sys.path.append(os.path.join(os.path.dirname(__file__), 'src'))
+sys.path.append(os.path.join(os.path.dirname(__file__), "src"))
 
 # Mock config and database before importing analyzer
-sys.modules['src.database'] = MagicMock()
-sys.modules['src.config'] = MagicMock()
+sys.modules["src.database"] = MagicMock()
+sys.modules["src.config"] = MagicMock()
 
 from src.config import config
 from src.database import db
@@ -20,8 +20,13 @@ from src.database import db
 config.RESULTS_DIR = Path("/tmp/birdnet_test_results")
 config.CLIPS_DIR = config.RESULTS_DIR / "clips"
 config.birdnet_settings = {
-    'min_conf': 0.5, 'lat': 10, 'lon': 10, 'week': 1,
-    'overlap': 0, 'sensitivity': 1, 'threads': 1
+    "min_conf": 0.5,
+    "lat": 10,
+    "lon": 10,
+    "week": 1,
+    "overlap": 0,
+    "sensitivity": 1,
+    "threads": 1,
 }
 config.LATITUDE = 10
 config.LONGITUDE = 10
@@ -45,13 +50,14 @@ class TestClipSaving(unittest.TestCase):
 
     def tearDown(self):
         if config.RESULTS_DIR.exists():
-             shutil.rmtree(config.RESULTS_DIR)
+            shutil.rmtree(config.RESULTS_DIR)
         if self.test_audio.exists():
             self.test_audio.unlink()
 
     def create_dummy_wav(self, path):
         import numpy as np
         import soundfile as sf
+
         sr = 48000
         duration = 5
         data = np.random.uniform(-1, 1, size=(sr * duration,))
@@ -59,16 +65,18 @@ class TestClipSaving(unittest.TestCase):
 
     def create_dummy_csv(self, output_dir, filename):
         csv_path = Path(output_dir) / f"{filename}.BirdNET.results.csv"
-        with open(csv_path, 'w', newline='') as f:
+        with open(csv_path, "w", newline="") as f:
             writer = csv.writer(f)
-            writer.writerow(['Start (s)', 'End (s)', 'Scientific name', 'Common name', 'Confidence'])
-            writer.writerow(['1.0', '2.0', 'Turdus merula', 'Common Blackbird', '0.85'])
-            writer.writerow(['3.0', '4.0', 'Erithacus rubecula', 'European Robin', '0.90'])
+            writer.writerow(
+                ["Start (s)", "End (s)", "Scientific name", "Common name", "Confidence"]
+            )
+            writer.writerow(["1.0", "2.0", "Turdus merula", "Common Blackbird", "0.85"])
+            writer.writerow(["3.0", "4.0", "Erithacus rubecula", "European Robin", "0.90"])
         return csv_path
 
-    @patch('src.analyzer.BirdNETAnalyzer._trigger_alert')
-    @patch('src.analyzer.bn_analyze')
-    @patch('src.analyzer.BirdNETAnalyzer._run_ffmpeg_resampling')
+    @patch("src.analyzer.BirdNETAnalyzer._trigger_alert")
+    @patch("src.analyzer.bn_analyze")
+    @patch("src.analyzer.BirdNETAnalyzer._run_ffmpeg_resampling")
     def test_clip_saving(self, mock_ffmpeg, mock_bn, mock_alert):
         # Setup Mocks
         def ffmpeg_side_effect(input_path, output_path):
@@ -80,7 +88,7 @@ class TestClipSaving(unittest.TestCase):
 
         # Mock bn_analyze to write a CSV file to the output directory
         def side_effect(**kwargs):
-            output_dir = kwargs.get('output')
+            output_dir = kwargs.get("output")
             # Create a dummy CSV in that directory
             self.create_dummy_csv(output_dir, self.test_audio.stem + "_48k")
 
@@ -108,10 +116,16 @@ class TestClipSaving(unittest.TestCase):
         # End: 2.0 + 3 = 5.0 -> 5.0
         # Result length: 5.0s
         import soundfile as sf
+
         info = sf.info(str(clip_path))
         # Allow small floating point tolerance, but with integer samples it should be exact for 48k?
         # Duration might be float.
-        self.assertAlmostEqual(info.duration, 5.0, delta=0.1, msg="Clip should be padded to full file duration in this case")
+        self.assertAlmostEqual(
+            info.duration,
+            5.0,
+            delta=0.1,
+            msg="Clip should be padded to full file duration in this case",
+        )
 
         # Verify DB calls
         # We expect 2 save_detection calls
@@ -120,10 +134,11 @@ class TestClipSaving(unittest.TestCase):
         # Check args of first call
         args, _ = db.save_detection.call_args_list[0]
         detection = args[0]
-        self.assertEqual(detection['common_name'], 'Common Blackbird')
-        self.assertIn('clip_path', detection)
+        self.assertEqual(detection["common_name"], "Common Blackbird")
+        self.assertIn("clip_path", detection)
         # We checked absolute path str is returned
-        self.assertTrue(detection['clip_path'].endswith(expected_1))
+        self.assertTrue(detection["clip_path"].endswith(expected_1))
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     unittest.main()

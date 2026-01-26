@@ -16,15 +16,18 @@ DB_URL = f"postgresql://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
 
 engine = create_engine(DB_URL)
 
+
 def get_connection():
     """Get a new database connection."""
     return engine.connect()
+
 
 def init_analysis_db():
     """Create the analysis table if it doesn't exist."""
     try:
         with get_connection() as conn:
-            conn.execute(text("""
+            conn.execute(
+                text("""
                 CREATE TABLE IF NOT EXISTS weather.bird_stats (
                     timestamp TIMESTAMPTZ PRIMARY KEY,
                     temperature_c FLOAT,
@@ -33,10 +36,12 @@ def init_analysis_db():
                     detection_count INTEGER,
                     species_count INTEGER
                 );
-            """))
+            """)
+            )
             conn.commit()
     except Exception as e:
         logger.error(f"Failed to init analysis DB: {e}")
+
 
 def run_analysis():
     """Run the aggregation logic."""

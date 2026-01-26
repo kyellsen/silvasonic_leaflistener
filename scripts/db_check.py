@@ -1,4 +1,3 @@
-
 import asyncio
 import sys
 
@@ -23,9 +22,13 @@ async def check():
 
             # Check for recent
             print("Checking recent detections (last 24h)...")
-            recent = (await conn.execute(
-                text("SELECT COUNT(*) FROM birdnet.detections WHERE timestamp > NOW() - INTERVAL '24 HOURS'")
-            )).scalar()
+            recent = (
+                await conn.execute(
+                    text(
+                        "SELECT COUNT(*) FROM birdnet.detections WHERE timestamp > NOW() - INTERVAL '24 HOURS'"
+                    )
+                )
+            ).scalar()
             print(f"Recent detections: {recent}")
 
             # Check schema
@@ -38,6 +41,7 @@ async def check():
 
     except Exception as e:
         print(f"Error: {e}")
+
 
 if __name__ == "__main__":
     asyncio.run(check())

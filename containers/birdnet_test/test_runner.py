@@ -7,9 +7,9 @@ from pathlib import Path
 # Configure Logging
 logging.basicConfig(
     level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
     handlers=[logging.StreamHandler(sys.stdout)],
-    force=True
+    force=True,
 )
 logger = logging.getLogger("TestRunner")
 
@@ -20,16 +20,22 @@ except ImportError as e:
     logger.error(f"CRITICAL: Could not import birdnet_analyzer: {e}")
     sys.exit(1)
 
+
 def run_ffmpeg_resampling(input_path: Path, output_path: Path):
     """Resample to 48kHz mono using ffmpeg (robust against formats)"""
     try:
         cmd = [
-            "ffmpeg", "-y",
-            "-i", str(input_path.absolute()),
-            "-ar", "48000",
-            "-ac", "1",
-            "-c:a", "pcm_s16le",
-            str(output_path)
+            "ffmpeg",
+            "-y",
+            "-i",
+            str(input_path.absolute()),
+            "-ar",
+            "48000",
+            "-ac",
+            "1",
+            "-c:a",
+            "pcm_s16le",
+            str(output_path),
         ]
         # Suppress output unless error
         subprocess.run(cmd, check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
@@ -37,6 +43,7 @@ def run_ffmpeg_resampling(input_path: Path, output_path: Path):
     except subprocess.CalledProcessError as e:
         logger.error(f"FFmpeg failed for {input_path.name}: {e}")
         return False
+
 
 def analyze_file(input_path: Path, results_dir: Path):
     """Process a single file using BirdNET-Analyzer"""
@@ -60,14 +67,16 @@ def analyze_file(input_path: Path, results_dir: Path):
         logger.info(f"Running analysis on {temp_resampled.name}...")
         bn_analyze(
             audio_input=str(temp_resampled),
-            min_conf=0.7, # User requested min 70% confidence
-            lat=53.5, lon=10.0, week=-1, # Northern Germany (Hamburg area), Year-round filter
+            min_conf=0.7,  # User requested min 70% confidence
+            lat=53.5,
+            lon=10.0,
+            week=-1,  # Northern Germany (Hamburg area), Year-round filter
             overlap=0.0,
             sensitivity=1.0,
             threads=max(1, os.cpu_count() - 1),
             sf_thresh=0.0001,
             output=str(temp_output_dir),
-            rtype='csv'
+            rtype="csv",
         )
     except Exception as e:
         logger.error(f"BirdNET analysis crashed: {e}")
@@ -79,11 +88,16 @@ def analyze_file(input_path: Path, results_dir: Path):
     temp_result_path = temp_output_dir / expected_result_name
 
     if not temp_result_path.exists():
-        logger.warning(f"No result file found at {temp_result_path}. Input might be silent or too short.")
+        logger.warning(
+            f"No result file found at {temp_result_path}. Input might be silent or too short."
+        )
         # Debug listing
         try:
-            logger.info(f"Contents of {temp_output_dir}: {[p.name for p in temp_output_dir.iterdir()]}")
-        except: pass
+            logger.info(
+                f"Contents of {temp_output_dir}: {[p.name for p in temp_output_dir.iterdir()]}"
+            )
+        except:
+            pass
         return
 
     # Move to final destination with clean name
@@ -102,6 +116,7 @@ def analyze_file(input_path: Path, results_dir: Path):
 
         # We simply move the generated CSV to the final output path
         import shutil
+
         shutil.move(str(temp_result_path), str(final_output_file))
         logger.info(f"Saved results to: {final_output_file}")
 
@@ -112,14 +127,16 @@ def analyze_file(input_path: Path, results_dir: Path):
     try:
         if temp_resampled.exists():
             temp_resampled.unlink()
-    except: pass
+    except:
+        pass
+
 
 def main():
     logger.info("--- Starting Standalone BirdNET Test Runner ---")
 
     # Define directories
     input_dir = Path("/app/test_data")
-    results_dir = Path("/data/db/results") # Mapped to local ./results in run_test.sh
+    results_dir = Path("/data/db/results")  # Mapped to local ./results in run_test.sh
 
     if not input_dir.exists():
         logger.error(f"Input directory not found: {input_dir}")
@@ -138,6 +155,7 @@ def main():
         analyze_file(f, results_dir)
 
     logger.info("--- All done ---")
+
 
 if __name__ == "__main__":
     main()

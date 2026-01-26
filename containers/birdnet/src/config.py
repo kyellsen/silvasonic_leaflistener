@@ -7,6 +7,7 @@ import yaml
 
 logger = logging.getLogger("Config")
 
+
 class Config:
     def __init__(self):
         # Paths
@@ -35,7 +36,7 @@ class Config:
         env vars, and YAML config.
         Priority: settings.json (BirdNET) > settings.json (Global Location) > config.yaml > Environment > Default
         """
-        yaml_conf = self._load_yaml().get('birdnet', {})
+        yaml_conf = self._load_yaml().get("birdnet", {})
         full_json = self._load_settings_json()
         json_conf = full_json.get("birdnet", {})
         location_conf = full_json.get("location", {})
@@ -48,10 +49,10 @@ class Config:
                 return type_cast(val)
 
             # 1.5 Special Fallback for Location (Global Settings)
-            if key == 'latitude' and 'latitude' in location_conf:
-                return type_cast(location_conf['latitude'])
-            if key == 'longitude' and 'longitude' in location_conf:
-                return type_cast(location_conf['longitude'])
+            if key == "latitude" and "latitude" in location_conf:
+                return type_cast(location_conf["latitude"])
+            if key == "longitude" and "longitude" in location_conf:
+                return type_cast(location_conf["longitude"])
 
             # 2. Static Config (YAML)
             val = yaml_conf.get(key)
@@ -67,13 +68,13 @@ class Config:
             return default
 
         return {
-            'min_conf': get_val('min_confidence', 'MIN_CONFIDENCE', 0.7, float),
-            'lat': get_val('latitude', 'LATITUDE', -1, float),
-            'lon': get_val('longitude', 'LONGITUDE', -1, float),
-            'week': get_val('week', 'WEEK', -1, int),
-            'overlap': get_val('overlap', 'OVERLAP', 0.0, float),
-            'sensitivity': get_val('sensitivity', 'SENSITIVITY', 1.0, float),
-            'threads': get_val('threads', 'THREADS', 3, int),
+            "min_conf": get_val("min_confidence", "MIN_CONFIDENCE", 0.7, float),
+            "lat": get_val("latitude", "LATITUDE", -1, float),
+            "lon": get_val("longitude", "LONGITUDE", -1, float),
+            "week": get_val("week", "WEEK", -1, int),
+            "overlap": get_val("overlap", "OVERLAP", 0.0, float),
+            "sensitivity": get_val("sensitivity", "SENSITIVITY", 1.0, float),
+            "threads": get_val("threads", "THREADS", 3, int),
         }
 
     def _load_settings_json(self):
@@ -89,24 +90,32 @@ class Config:
 
     # Backward compatibility properties (proxies to fresh settings)
     @property
-    def MIN_CONFIDENCE(self): return self.birdnet_settings['min_conf']
+    def MIN_CONFIDENCE(self):
+        return self.birdnet_settings["min_conf"]
 
     @property
-    def LATITUDE(self): return self.birdnet_settings['lat']
+    def LATITUDE(self):
+        return self.birdnet_settings["lat"]
 
     @property
-    def LONGITUDE(self): return self.birdnet_settings['lon']
+    def LONGITUDE(self):
+        return self.birdnet_settings["lon"]
 
     @property
-    def WEEK(self): return self.birdnet_settings['week']
+    def WEEK(self):
+        return self.birdnet_settings["week"]
 
     @property
-    def OVERLAP(self): return self.birdnet_settings['overlap']
+    def OVERLAP(self):
+        return self.birdnet_settings["overlap"]
 
     @property
-    def SENSITIVITY(self): return self.birdnet_settings['sensitivity']
+    def SENSITIVITY(self):
+        return self.birdnet_settings["sensitivity"]
 
     @property
-    def THREADS(self): return self.birdnet_settings['threads']
+    def THREADS(self):
+        return self.birdnet_settings["threads"]
+
 
 config = Config()

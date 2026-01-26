@@ -6,6 +6,7 @@ from sqlalchemy.orm import sessionmaker
 
 logger = logging.getLogger(__name__)
 
+
 class DatabaseHandler:
     def __init__(self):
         self.user = os.getenv("POSTGRES_USER", "silvasonic")
@@ -14,7 +15,9 @@ class DatabaseHandler:
         self.host = os.getenv("POSTGRES_HOST", "db")
         self.port = os.getenv("POSTGRES_PORT", "5432")
 
-        self.db_url = f"postgresql://{self.user}:{self.password}@{self.host}:{self.port}/{self.db_name}"
+        self.db_url = (
+            f"postgresql://{self.user}:{self.password}@{self.host}:{self.port}/{self.db_name}"
+        )
         self.engine = None
         self.Session = None
 
@@ -26,7 +29,8 @@ class DatabaseHandler:
             # Create schema and table
             with self.engine.begin() as conn:
                 conn.execute(text("CREATE SCHEMA IF NOT EXISTS carrier;"))
-                conn.execute(text("""
+                conn.execute(
+                    text("""
                     CREATE TABLE IF NOT EXISTS carrier.uploads (
                         id SERIAL PRIMARY KEY,
                         filename TEXT NOT NULL,
@@ -37,9 +41,18 @@ class DatabaseHandler:
                         upload_time TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
                         error_message TEXT
                     );
-                """))
-                conn.execute(text("CREATE INDEX IF NOT EXISTS idx_uploads_time ON carrier.uploads(upload_time DESC);"))
-                conn.execute(text("CREATE INDEX IF NOT EXISTS idx_uploads_status ON carrier.uploads(status);"))
+                """)
+                )
+                conn.execute(
+                    text(
+                        "CREATE INDEX IF NOT EXISTS idx_uploads_time ON carrier.uploads(upload_time DESC);"
+                    )
+                )
+                conn.execute(
+                    text(
+                        "CREATE INDEX IF NOT EXISTS idx_uploads_status ON carrier.uploads(status);"
+                    )
+                )
 
             # Only create session maker if connection and init was successful
             self.Session = sessionmaker(bind=self.engine)
@@ -50,7 +63,14 @@ class DatabaseHandler:
             self.Session = None
             return False
 
-    def log_upload(self, filename: str, remote_path: str, status: str, size_bytes: int = 0, error_message: str = None):
+    def log_upload(
+        self,
+        filename: str,
+        remote_path: str,
+        status: str,
+        size_bytes: int = 0,
+        error_message: str = None,
+    ):
         """Log an upload event."""
         if not self.Session:
             if not self.connect():
@@ -62,13 +82,16 @@ class DatabaseHandler:
                 INSERT INTO carrier.uploads (filename, remote_path, status, size_bytes, error_message)
                 VALUES (:filename, :remote_path, :status, :size_bytes, :error_message)
             """)
-            session.execute(query, {
-                "filename": filename,
-                "remote_path": remote_path,
-                "status": status,
-                "size_bytes": size_bytes,
-                "error_message": error_message
-            })
+            session.execute(
+                query,
+                {
+                    "filename": filename,
+                    "remote_path": remote_path,
+                    "status": status,
+                    "size_bytes": size_bytes,
+                    "error_message": error_message,
+                },
+            )
             session.commit()
         except Exception as e:
             logger.error(f"Failed to log upload: {e}")
@@ -93,8 +116,9 @@ class DatabaseHandler:
         try:
             # Process in chunks to avoid parameter limits
             for i in range(0, len(filenames), chunk_size):
-                chunk = filenames[i:i + chunk_size]
-                if not chunk: continue
+                chunk = filenames[i : i + chunk_size]
+                if not chunk:
+                    continue
 
                 query = text("""
                     SELECT filename FROM carrier.uploads 

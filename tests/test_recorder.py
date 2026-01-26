@@ -1,21 +1,22 @@
-import unittest
-from unittest.mock import patch, MagicMock
-import sys
 import os
+import sys
+import unittest
+from unittest.mock import MagicMock, patch
 
 # Adjust path to import main from containers/recorder/src
 # Use insert(0) to prioritize this path over installed packages
-sys.path.insert(0, os.path.abspath(os.path.join(
-    os.path.dirname(__file__), '../containers/recorder/src'
-)))
+sys.path.insert(
+    0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../containers/recorder/src"))
+)
 
 import main
+
 
 class TestRecorder(unittest.TestCase):
     def setUp(self):
         # We don't really need to call setup_logging/ensure_status_dir for unit tests of functions
         # mocking them is better if needed, or relying on the import-safe refactor we did.
-        
+
         # Mock profile and device
         self.profile = MagicMock()
         self.profile.audio.channels = 1
@@ -42,22 +43,22 @@ class TestRecorder(unittest.TestCase):
 
         # Verify directory creation
         mock_makedirs.assert_called_with(self.output_dir, exist_ok=True)
-        
+
         # Verify FFmpeg call
         args, kwargs = mock_popen.call_args
         cmd = args[0]
-        
+
         # Check essential flags
         self.assertIn("ffmpeg", cmd)
         self.assertIn("alsa", cmd)
         self.assertIn(self.device.hw_address, cmd)
         self.assertIn("flac", cmd)
         self.assertIn(str(self.profile.recording.chunk_duration_seconds), cmd)
-        
+
         # Check stream target construction
         # udp_url = f"udp://{LIVE_STREAM_TARGET}:{LIVE_STREAM_PORT}"
         # Defaults are silvasonic_livesound:1234
-        # self.assertIn("udp://silvasonic_livesound:1234", cmd) 
+        # self.assertIn("udp://silvasonic_livesound:1234", cmd)
         # Actually cmd is a list, so we check if the url string is in the list
         found_udp = any("udp://" in arg for arg in cmd)
         self.assertTrue(found_udp, "UDP URL not found in command")
@@ -67,16 +68,17 @@ class TestRecorder(unittest.TestCase):
     def test_start_recording_mock_mode(self, mock_makedirs, mock_popen):
         """Test that mock mode changes input source."""
         self.profile.is_mock = True
-        
+
         main.start_recording(self.profile, self.device, self.output_dir)
-        
+
         args, kwargs = mock_popen.call_args
         cmd = args[0]
-        
+
         self.assertIn("lavfi", cmd)
         # Check for anoisesrc
         found_anoise = any("anoisesrc" in arg for arg in cmd)
         self.assertTrue(found_anoise, "anoisesrc source not found for mock profile")
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     unittest.main()

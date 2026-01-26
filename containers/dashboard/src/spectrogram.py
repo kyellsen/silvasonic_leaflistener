@@ -4,13 +4,14 @@ import os
 import matplotlib
 
 # Force headless backend before importing pyplot
-matplotlib.use('Agg')
+matplotlib.use("Agg")
 import librosa
 import librosa.display
 import matplotlib.pyplot as plt
 import numpy as np
 
 logger = logging.getLogger("SpectrogramGenerator")
+
 
 def generate_spectrogram(audio_path: str, output_path: str) -> bool:
     """Generates a spectrogram PNG from an audio file.
@@ -32,9 +33,9 @@ def generate_spectrogram(audio_path: str, output_path: str) -> bool:
         # clear any existing plots to avoid memory leaks
         plt.clf()
         plt.figure(figsize=(10, 4))
-        librosa.display.specshow(D, sr=sr, x_axis='time', y_axis='hz')
-        plt.colorbar(format='%+2.0f dB')
-        plt.title('Spectrogram')
+        librosa.display.specshow(D, sr=sr, x_axis="time", y_axis="hz")
+        plt.colorbar(format="%+2.0f dB")
+        plt.title("Spectrogram")
         plt.tight_layout()
 
         # Ensure directory exists

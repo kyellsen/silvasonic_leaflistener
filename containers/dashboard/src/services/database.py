@@ -18,4 +18,5 @@ class DatabaseHandler:
     def get_connection(self):
         return self.engine.connect()
 
+
 db = DatabaseHandler()
