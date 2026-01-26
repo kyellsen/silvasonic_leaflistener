@@ -40,7 +40,7 @@ logger = logging.getLogger("recorder")
 
 # --- Configuration ---
 BASE_OUTPUT_DIR = os.getenv("AUDIO_OUTPUT_DIR", "/data/recording")
-LIVE_STREAM_TARGET = os.getenv("LIVE_STREAM_TARGET", "silvasonic_sound_analyser")
+LIVE_STREAM_TARGET = os.getenv("LIVE_STREAM_TARGET", "silvasonic_livesound")
 LIVE_STREAM_PORT = int(os.getenv("LIVE_STREAM_PORT", "1234"))
 
 STATUS_FILE = "/mnt/data/services/silvasonic/status/recorder.json"
