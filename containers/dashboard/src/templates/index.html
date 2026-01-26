@@ -1,125 +1,128 @@
 {% extends base %} {% block content %}
-<div id="dashboard-content" hx-get="/dashboard" hx-trigger="every {{ auto_refresh_interval }}s" hx-swap="outerHTML">
-<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-  <!-- CPU Card -->
-  <div
-    class="glass-panel p-5 rounded-2xl shadow-lg relative overflow-hidden group"
-  >
+<div
+  id="dashboard-content"
+  hx-get="/dashboard"
+  hx-trigger="every {{ auto_refresh_interval }}s"
+  hx-swap="outerHTML"
+>
+  <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+    <!-- CPU Card -->
     <div
-      class="absolute -right-4 -top-4 w-24 h-24 bg-silva-500/10 rounded-full blur-xl group-hover:bg-silva-500/20 transition-all"
-    ></div>
-
-    <div
-      class="text-xs font-bold text-gray-400 uppercase tracking-wider flex justify-between relative z-10"
+      class="glass-panel p-5 rounded-2xl shadow-lg relative overflow-hidden group"
     >
-      <span>CPU Usage</span>
-      <span class="text-silva-400 font-mono">{{ stats.cpu_temp }}</span>
+      <div
+        class="absolute -right-4 -top-4 w-24 h-24 bg-silva-500/10 rounded-full blur-xl group-hover:bg-silva-500/20 transition-all"
+      ></div>
+
+      <div
+        class="text-xs font-bold text-gray-400 uppercase tracking-wider flex justify-between relative z-10"
+      >
+        <span>CPU Usage</span>
+        <span class="text-silva-400 font-mono">{{ stats.cpu_temp }}</span>
+      </div>
+
+      <div class="mt-3 grid grid-cols-4 gap-1 relative z-10 h-10 items-end">
+        {% for core in stats.cpu_cores %}
+        <div
+          class="h-full bg-gray-200 dark:bg-gray-700/50 rounded-sm overflow-hidden flex flex-col justify-end w-full"
+          title="Core {{ loop.index }}: {{ core }}%"
+        >
+          <div
+            class="bg-gradient-to-t from-silva-500 to-silva-400 w-full"
+            style="height: {{ core }}%"
+          ></div>
+        </div>
+        {% endfor %}
+      </div>
+      <div class="text-right text-[10px] text-gray-500 mt-1 font-mono">
+        Avg: {{ stats.cpu }}%
+      </div>
     </div>
 
-    <div class="mt-3 grid grid-cols-4 gap-1 relative z-10 h-10 items-end">
-      {% for core in stats.cpu_cores %}
+    <!-- RAM Card -->
+    <div
+      class="glass-panel p-5 rounded-2xl shadow-lg relative overflow-hidden group"
+    >
       <div
-        class="h-full bg-gray-200 dark:bg-gray-700/50 rounded-sm overflow-hidden flex flex-col justify-end w-full"
-        title="Core {{ loop.index }}: {{ core }}%"
+        class="absolute -right-4 -top-4 w-24 h-24 bg-blue-500/10 rounded-full blur-xl group-hover:bg-blue-500/20 transition-all"
+      ></div>
+      <div
+        class="text-xs font-bold text-gray-400 uppercase tracking-wider relative z-10"
+      >
+        RAM Usage
+      </div>
+      <div
+        class="text-2xl font-heading font-bold text-gray-900 dark:text-white mt-3 relative z-10"
+      >
+        {{ stats.ram_used_gb }}<span
+          class="text-sm text-gray-500 font-normal mx-1"
+          >/</span
+        >{{ stats.ram_total_gb }}
+        <span class="text-sm text-gray-500 font-normal">GB</span>
+      </div>
+      <div
+        class="w-full bg-gray-200 dark:bg-gray-700/50 h-1.5 mt-5 rounded-full overflow-hidden"
       >
         <div
-          class="bg-gradient-to-t from-silva-500 to-silva-400 w-full"
-          style="height: {{ core }}%"
+          class="bg-gradient-to-r from-blue-500 to-cyan-400 h-full rounded-full transition-all duration-1000 ease-out"
+          style="width: {{ stats.ram_percent }}%"
         ></div>
       </div>
-      {% endfor %}
     </div>
-    <div class="text-right text-[10px] text-gray-500 mt-1 font-mono">
-      Avg: {{ stats.cpu }}%
-    </div>
-  </div>
 
-  <!-- RAM Card -->
-  <div
-    class="glass-panel p-5 rounded-2xl shadow-lg relative overflow-hidden group"
-  >
+    <!-- Disk Card -->
     <div
-      class="absolute -right-4 -top-4 w-24 h-24 bg-blue-500/10 rounded-full blur-xl group-hover:bg-blue-500/20 transition-all"
-    ></div>
-    <div
-      class="text-xs font-bold text-gray-400 uppercase tracking-wider relative z-10"
-    >
-      RAM Usage
-    </div>
-    <div
-      class="text-2xl font-heading font-bold text-gray-900 dark:text-white mt-3 relative z-10"
-    >
-      {{ stats.ram_used_gb }}<span
-        class="text-sm text-gray-500 font-normal mx-1"
-        >/</span
-      >{{ stats.ram_total_gb }}
-      <span class="text-sm text-gray-500 font-normal">GB</span>
-    </div>
-    <div
-      class="w-full bg-gray-200 dark:bg-gray-700/50 h-1.5 mt-5 rounded-full overflow-hidden"
+      class="glass-panel p-5 rounded-2xl shadow-lg relative overflow-hidden group"
     >
       <div
-        class="bg-gradient-to-r from-blue-500 to-cyan-400 h-full rounded-full transition-all duration-1000 ease-out"
-        style="width: {{ stats.ram_percent }}%"
+        class="absolute -right-4 -top-4 w-24 h-24 bg-purple-500/10 rounded-full blur-xl group-hover:bg-purple-500/20 transition-all"
       ></div>
+      <div
+        class="text-xs font-bold text-gray-400 uppercase tracking-wider relative z-10"
+      >
+        SSD STORAGE
+      </div>
+      <div
+        class="text-2xl font-heading font-bold text-gray-900 dark:text-white mt-3 relative z-10"
+      >
+        {{ stats.disk_used_gb }}<span
+          class="text-sm text-gray-500 font-normal mx-1"
+          >/</span
+        >{{ stats.disk_total_gb }}
+        <span class="text-sm text-gray-500 font-normal">GB</span>
+      </div>
+      <div
+        class="w-full bg-gray-200 dark:bg-gray-700/50 h-1.5 mt-5 rounded-full overflow-hidden relative z-10"
+      >
+        <div
+          class="bg-gradient-to-r from-purple-500 to-pink-400 h-full rounded-full transition-all duration-1000 ease-out"
+          style="width: {{ stats.disk_percent }}%"
+        ></div>
+      </div>
     </div>
-  </div>
 
-  <!-- Disk Card -->
-  <div
-    class="glass-panel p-5 rounded-2xl shadow-lg relative overflow-hidden group"
-  >
+    <!-- Last Recording Card -->
     <div
-      class="absolute -right-4 -top-4 w-24 h-24 bg-purple-500/10 rounded-full blur-xl group-hover:bg-purple-500/20 transition-all"
-    ></div>
-    <div
-      class="text-xs font-bold text-gray-400 uppercase tracking-wider relative z-10"
-    >
-      SSD STORAGE
-    </div>
-    <div
-      class="text-2xl font-heading font-bold text-gray-900 dark:text-white mt-3 relative z-10"
-    >
-      {{ stats.disk_used_gb }}<span
-        class="text-sm text-gray-500 font-normal mx-1"
-        >/</span
-      >{{ stats.disk_total_gb }}
-      <span class="text-sm text-gray-500 font-normal">GB</span>
-    </div>
-    <div
-      class="w-full bg-gray-200 dark:bg-gray-700/50 h-1.5 mt-5 rounded-full overflow-hidden relative z-10"
+      class="glass-panel p-5 rounded-2xl shadow-lg relative overflow-hidden group"
     >
       <div
-        class="bg-gradient-to-r from-purple-500 to-pink-400 h-full rounded-full transition-all duration-1000 ease-out"
-        style="width: {{ stats.disk_percent }}%"
+        class="absolute -right-4 -top-4 w-24 h-24 bg-amber-500/10 rounded-full blur-xl group-hover:bg-amber-500/20 transition-all"
       ></div>
+      <div
+        class="text-xs font-bold text-gray-400 uppercase tracking-wider relative z-10"
+      >
+        Last Recording
+      </div>
+      <div
+        class="text-3xl font-heading font-bold text-gray-900 dark:text-white mt-3 truncate relative z-10"
+      >
+        {{ stats.last_recording }}
+      </div>
+      <div class="text-xs text-silva-500 mt-2 font-bold relative z-10">
+        {% if stats.last_recording_ago >= 0 %} {{ stats.last_recording_ago }}s
+        ago {% else %} -- {% endif %}
+      </div>
     </div>
-  </div>
-
-  <!-- Last Recording Card -->
-  <div
-    class="glass-panel p-5 rounded-2xl shadow-lg relative overflow-hidden group"
-  >
-    <div
-      class="absolute -right-4 -top-4 w-24 h-24 bg-amber-500/10 rounded-full blur-xl group-hover:bg-amber-500/20 transition-all"
-    ></div>
-    <div
-      class="text-xs font-bold text-gray-400 uppercase tracking-wider relative z-10"
-    >
-      Last Recording
-    </div>
-    <div
-      class="text-3xl font-heading font-bold text-gray-900 dark:text-white mt-3 truncate relative z-10"
-    >
-      {{ stats.last_recording }}
-    </div>
-    <div class="text-xs text-silva-500 mt-2 font-bold relative z-10">
-      {% if stats.last_recording_ago >= 0 %} {{ stats.last_recording_ago }}s ago
-      {% else %} -- {% endif %}
-    </div>
-  </div>
-
-
   </div>
 
   <!-- Throughput Analysis -->
@@ -145,151 +148,182 @@
         </svg>
         Pipeline Throughput (Files/min)
       </div>
-      <div class="text-[10px] font-mono text-gray-400">
-        Last 60 Minutes
-      </div>
+      <div class="text-[10px] font-mono text-gray-400">Last 60 Minutes</div>
     </div>
 
     <!-- Visualization Pipeline -->
     <div class="flex items-center justify-around relative">
       <!-- Recorder -->
       <div class="flex flex-col items-center group/item relative z-10">
-        <div class="p-3 bg-gray-100 dark:bg-white/10 rounded-full mb-2 group-hover/item:scale-110 transition-transform shadow-lg border border-transparent group-hover/item:border-green-500/50">
-           <span class="text-2xl">🎤</span>
+        <div
+          class="p-3 bg-gray-100 dark:bg-white/10 rounded-full mb-2 group-hover/item:scale-110 transition-transform shadow-lg border border-transparent group-hover/item:border-green-500/50"
+        >
+          <span class="text-2xl">🎤</span>
         </div>
-        <div class="text-sm font-bold text-gray-700 dark:text-gray-200">Recorder</div>
-        <div class="text-xs font-mono text-gray-500 mt-1">{{ throughput.recorder }} f/m</div>
+        <div class="text-sm font-bold text-gray-700 dark:text-gray-200">
+          Recorder
+        </div>
+        <div class="text-xs font-mono text-gray-500 mt-1">
+          {{ throughput.recorder }} f/m
+        </div>
         <div class="text-[10px] text-green-500 font-bold mt-0.5">SOURCE</div>
       </div>
 
       <!-- Arrow 1 -->
-      <div class="flex-1 h-0.5 bg-gray-200 dark:bg-gray-700 mx-4 relative overflow-hidden">
-        <div class="absolute inset-0 bg-gradient-to-r from-transparent via-blue-500/50 to-transparent w-1/2 animate-[shimmer_2s_infinite]"></div>
+      <div
+        class="flex-1 h-0.5 bg-gray-200 dark:bg-gray-700 mx-4 relative overflow-hidden"
+      >
+        <div
+          class="absolute inset-0 bg-gradient-to-r from-transparent via-blue-500/50 to-transparent w-1/2 animate-[shimmer_2s_infinite]"
+        ></div>
       </div>
 
       <!-- Analyzer -->
       <div class="flex flex-col items-center group/item relative z-10">
-        <div class="p-3 bg-gray-100 dark:bg-white/10 rounded-full mb-2 group-hover/item:scale-110 transition-transform shadow-lg border border-transparent {% if throughput.analyzer_status == 'ok' %}group-hover/item:border-green-500/50{% else %}border-amber-500 animate-pulse{% endif %}">
-           <span class="text-2xl">🧠</span>
+        <div
+          class="p-3 bg-gray-100 dark:bg-white/10 rounded-full mb-2 group-hover/item:scale-110 transition-transform shadow-lg border border-transparent {% if throughput.analyzer_status == 'ok' %}group-hover/item:border-green-500/50{% else %}border-amber-500 animate-pulse{% endif %}"
+        >
+          <span class="text-2xl">🧠</span>
         </div>
-        <div class="text-sm font-bold text-gray-700 dark:text-gray-200">Analyzer</div>
-        <div class="text-xs font-mono text-gray-500 mt-1">{{ throughput.analyzer }} f/m</div>
-        
+        <div class="text-sm font-bold text-gray-700 dark:text-gray-200">
+          Analyzer
+        </div>
+        <div class="text-xs font-mono text-gray-500 mt-1">
+          {{ throughput.analyzer }} f/m
+        </div>
+
         {% if throughput.analyzer_status == 'ok' %}
-        <div class="text-[10px] text-green-500 font-bold mt-0.5 flex items-center gap-1">
+        <div
+          class="text-[10px] text-green-500 font-bold mt-0.5 flex items-center gap-1"
+        >
           <span>✓</span> OK
         </div>
         {% else %}
-        <div class="text-[10px] text-amber-500 font-bold mt-0.5 flex items-center gap-1">
+        <div
+          class="text-[10px] text-amber-500 font-bold mt-0.5 flex items-center gap-1"
+        >
           <span>⚠️</span> LAGGING
         </div>
         {% endif %}
       </div>
 
       <!-- Arrow 2 -->
-      <div class="flex-1 h-0.5 bg-gray-200 dark:bg-gray-700 mx-4 relative overflow-hidden">
-         <div class="absolute inset-0 bg-gradient-to-r from-transparent via-cyan-500/50 to-transparent w-1/2 animate-[shimmer_2s_infinite] delay-1000"></div>
+      <div
+        class="flex-1 h-0.5 bg-gray-200 dark:bg-gray-700 mx-4 relative overflow-hidden"
+      >
+        <div
+          class="absolute inset-0 bg-gradient-to-r from-transparent via-cyan-500/50 to-transparent w-1/2 animate-[shimmer_2s_infinite] delay-1000"
+        ></div>
       </div>
 
       <!-- Uploader -->
       <div class="flex flex-col items-center group/item relative z-10">
-        <div class="p-3 bg-gray-100 dark:bg-white/10 rounded-full mb-2 group-hover/item:scale-110 transition-transform shadow-lg border border-transparent {% if throughput.uploader_status == 'ok' %}group-hover/item:border-green-500/50{% else %}border-amber-500 animate-pulse{% endif %}">
-           <span class="text-2xl">☁️</span>
+        <div
+          class="p-3 bg-gray-100 dark:bg-white/10 rounded-full mb-2 group-hover/item:scale-110 transition-transform shadow-lg border border-transparent {% if throughput.uploader_status == 'ok' %}group-hover/item:border-green-500/50{% else %}border-amber-500 animate-pulse{% endif %}"
+        >
+          <span class="text-2xl">☁️</span>
         </div>
-        <div class="text-sm font-bold text-gray-700 dark:text-gray-200">Uploader</div>
-        <div class="text-xs font-mono text-gray-500 mt-1">{{ throughput.uploader }} f/m</div>
-        
+        <div class="text-sm font-bold text-gray-700 dark:text-gray-200">
+          Uploader
+        </div>
+        <div class="text-xs font-mono text-gray-500 mt-1">
+          {{ throughput.uploader }} f/m
+        </div>
+
         {% if throughput.uploader_status == 'ok' %}
-         <div class="text-[10px] text-green-500 font-bold mt-0.5 flex items-center gap-1">
+        <div
+          class="text-[10px] text-green-500 font-bold mt-0.5 flex items-center gap-1"
+        >
           <span>✓</span> OK
         </div>
         {% else %}
-        <div class="text-[10px] text-amber-500 font-bold mt-0.5 flex items-center gap-1">
+        <div
+          class="text-[10px] text-amber-500 font-bold mt-0.5 flex items-center gap-1"
+        >
           <span>⚠️</span> LAGGING
         </div>
         {% endif %}
       </div>
-
     </div>
   </div>
-</div>
 
-<h2
-  class="text-xl font-heading font-bold mb-6 text-gray-900 dark:text-white flex items-center gap-3"
->
-  <span class="text-2xl">🐦</span> Recent Detections
-</h2>
+  <h2
+    class="text-xl font-heading font-bold mb-6 text-gray-900 dark:text-white flex items-center gap-3"
+  >
+    <span class="text-2xl">🐦</span> Recent Detections
+  </h2>
 
-<div
-  class="glass-panel rounded-2xl overflow-hidden shadow-lg border border-gray-200 dark:border-white/5"
->
-  <table class="w-full text-left text-sm">
-    <thead
-      class="bg-gray-50/50 dark:bg-white/5 text-gray-500 dark:text-gray-400 uppercase font-bold text-[10px] tracking-wider"
-    >
-      <tr>
-        <th class="p-5 font-bold">Time</th>
-        <th class="p-5 font-bold">Common Name</th>
-        <th class="p-5 font-bold">Confidence</th>
-        <th class="p-5 font-bold text-right">Action</th>
-      </tr>
-    </thead>
-    <tbody class="divide-y divide-gray-200 dark:divide-gray-800">
-      {% for d in detections %}
-      <tr
-        class="hover:bg-silva-50 dark:hover:bg-white/5 transition duration-200 cursor-pointer group"
+  <div
+    class="glass-panel rounded-2xl overflow-hidden shadow-lg border border-gray-200 dark:border-white/5"
+  >
+    <table class="w-full text-left text-sm">
+      <thead
+        class="bg-gray-50/50 dark:bg-white/5 text-gray-500 dark:text-gray-400 uppercase font-bold text-[10px] tracking-wider"
       >
-        <td
-          class="p-5 font-mono text-gray-400 group-hover:text-silva-600 dark:group-hover:text-silva-400 transition-colors"
+        <tr>
+          <th class="p-5 font-bold">Time</th>
+          <th class="p-5 font-bold">Common Name</th>
+          <th class="p-5 font-bold">Confidence</th>
+          <th class="p-5 font-bold text-right">Action</th>
+        </tr>
+      </thead>
+      <tbody class="divide-y divide-gray-200 dark:divide-gray-800">
+        {% for d in detections %}
+        <tr
+          class="hover:bg-silva-50 dark:hover:bg-white/5 transition duration-200 cursor-pointer group"
         >
-          <span
-            class="local-time opacity-0 transition-opacity duration-300"
-            data-timestamp="{{ d.iso_timestamp }}"
-            >...</span
+          <td
+            class="p-5 font-mono text-gray-400 group-hover:text-silva-600 dark:group-hover:text-silva-400 transition-colors"
           >
-        </td>
-        <td class="p-5">
-          <span class="font-bold text-gray-900 dark:text-white text-base block"
-            >{{ d.display_name }}</span
-          >
-          <span class="text-xs text-gray-400 italic block mt-0.5"
-            >{{ d.sci_name }}</span
-          >
-        </td>
-        <td class="p-5">
-          <div class="flex items-center gap-2">
-            <div
-              class="w-24 h-1.5 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden"
+            <span
+              class="local-time opacity-0 transition-opacity duration-300"
+              data-timestamp="{{ d.iso_timestamp }}"
+              >...</span
             >
+          </td>
+          <td class="p-5">
+            <span
+              class="font-bold text-gray-900 dark:text-white text-base block"
+              >{{ d.display_name }}</span
+            >
+            <span class="text-xs text-gray-400 italic block mt-0.5"
+              >{{ d.sci_name }}</span
+            >
+          </td>
+          <td class="p-5">
+            <div class="flex items-center gap-2">
               <div
-                class="h-full bg-gradient-to-r from-silva-500 to-green-400"
-                style="width: {{ (d.confidence * 100)|round(1) }}%"
-              ></div>
+                class="w-24 h-1.5 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden"
+              >
+                <div
+                  class="h-full bg-gradient-to-r from-silva-500 to-green-400"
+                  style="width: {{ (d.confidence * 100)|round(1) }}%"
+                ></div>
+              </div>
+              <span class="font-bold text-silva-600 dark:text-silva-400"
+                >{{ (d.confidence * 100)|round(1) }}%</span
+              >
             </div>
-            <span class="font-bold text-silva-600 dark:text-silva-400"
-              >{{ (d.confidence * 100)|round(1) }}%</span
+          </td>
+          <td class="p-5 text-right">
+            <button
+              class="px-4 py-2 rounded-lg bg-silva-100 dark:bg-silva-900/30 text-silva-700 dark:text-silva-300 font-bold text-xs hover:bg-silva-200 dark:hover:bg-silva-900/50 transition shadow-sm"
+              onclick="playGlobalAudio('{{ d.audio_relative_path }}', '{{ d.display_name }}', '{{ d.confidence }}')"
             >
-          </div>
-        </td>
-        <td class="p-5 text-right">
-          <button
-            class="px-4 py-2 rounded-lg bg-silva-100 dark:bg-silva-900/30 text-silva-700 dark:text-silva-300 font-bold text-xs hover:bg-silva-200 dark:hover:bg-silva-900/50 transition shadow-sm"
-            onclick="playGlobalAudio('{{ d.audio_relative_path }}', '{{ d.display_name }}', '{{ d.confidence }}')"
-          >
-            Play
-          </button>
-        </td>
-      </tr>
-      {% endfor %} {% if not detections %}
-      <tr>
-        <td colspan="4" class="p-10 text-center text-gray-500 italic">
-          No detections found in DB yet.
-        </td>
-      </tr>
-      {% endif %}
-    </tbody>
-  </table>
-</div>
+              Play
+            </button>
+          </td>
+        </tr>
+        {% endfor %} {% if not detections %}
+        <tr>
+          <td colspan="4" class="p-10 text-center text-gray-500 italic">
+            No detections found in DB yet.
+          </td>
+        </tr>
+        {% endif %}
+      </tbody>
+    </table>
+  </div>
 </div>
 {% endblock %} {% block inspector %}
 <div class="space-y-6">
