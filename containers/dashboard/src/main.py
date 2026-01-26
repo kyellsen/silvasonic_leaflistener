@@ -141,7 +141,7 @@ async def dashboard(request: Request, auth=Depends(require_auth)):
     container_config = [
         {"key": "recorder", "name": "Recorder"},
         {"key": "uploader", "name": "Carrier"},
-        {"key": "sound_analyser", "name": "LiveSound"},
+        {"key": "brain", "name": "LiveSound"},
         {"key": "birdnet", "name": "Birdnet"},
         {"key": "weather", "name": "Weather"},
         {"key": "postgres", "name": "PostgressDB"},

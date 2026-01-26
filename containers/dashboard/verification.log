@@ -1,9 +1,0 @@
-Resulting Order and Names:
-Recorder (silvasonic-recorder)
-Carrier (silvasonic-uploader)
-Birdnet (silvasonic-birdnet)
-Weather (silvasonic-weather)
-PostgressDB (postgres)
-HealthChecker (silvasonic-healthchecker)
-
-FAILURE: Expected ['Recorder', 'Carrier', 'LiveSound', 'Birdnet', 'Weather', 'PostgressDB', 'HealthChecker'], got ['Recorder', 'Carrier', 'Birdnet', 'Weather', 'PostgressDB', 'HealthChecker']
