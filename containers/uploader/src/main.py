@@ -5,6 +5,7 @@ import os
 import signal
 import sys
 import time
+import typing
 
 import psutil
 from janitor import StorageJanitor
@@ -27,7 +28,7 @@ CLEANUP_TARGET = int(os.getenv("UPLOADER_CLEANUP_TARGET", 60))
 MIN_AGE = os.getenv("UPLOADER_MIN_AGE", "1m")
 
 
-def setup_environment():
+def setup_environment() -> None:
     """Setup logging and directories."""
     os.makedirs("/var/log/silvasonic", exist_ok=True)
 
@@ -52,7 +53,7 @@ def setup_environment():
     os.makedirs(ERROR_DIR, exist_ok=True)
 
 
-def calculate_queue_size(directory, db):
+def calculate_queue_size(directory: str, db: typing.Any) -> int:
     """Calculate pending files (local files - uploaded files)."""
     files = []
     try:
@@ -74,7 +75,9 @@ def calculate_queue_size(directory, db):
     return len(files) - len(uploaded)
 
 
-def write_status(status: str, last_upload: float = 0, queue_size: int = -1, disk_usage: float = 0):
+def write_status(
+    status: str, last_upload: float = 0, queue_size: int = -1, disk_usage: float = 0
+) -> None:
     """Write current status to JSON file for dashboard."""
     try:
         data = {
@@ -102,7 +105,7 @@ def write_status(status: str, last_upload: float = 0, queue_size: int = -1, disk
         logger.error(f"Failed to write status: {e}")
 
 
-def report_error(context: str, error: Exception):
+def report_error(context: str, error: Exception) -> None:
     """Write critical error to shared error directory for the Watchdog."""
     try:
         timestamp = int(time.time())
@@ -124,13 +127,13 @@ def report_error(context: str, error: Exception):
         logger.error(f"Failed to report error: {ie}")
 
 
-def signal_handler(sig, frame):
+def signal_handler(sig: int, frame: typing.Any) -> None:
     """Handle termination signals."""
     logger.info("Graceful shutdown received. Exiting...")
     sys.exit(0)
 
 
-def main():
+def main() -> None:
     setup_environment()
     signal.signal(signal.SIGTERM, signal_handler)
     signal.signal(signal.SIGINT, signal_handler)
@@ -148,7 +151,7 @@ def main():
     db = DatabaseHandler()
     db.connect()
 
-    def upload_callback(filename, status, error=None):
+    def upload_callback(filename: str, status: str, error: str | None = None) -> None:
         """Callback for rclone wrapper."""
         try:
             # Try to get file size if success

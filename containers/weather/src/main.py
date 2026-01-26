@@ -2,6 +2,7 @@ import json
 import logging
 import os
 import time
+import typing
 from datetime import datetime
 
 import schedule
@@ -33,12 +34,12 @@ DB_URL = f"postgresql://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
 engine = create_engine(DB_URL)
 
 
-def get_db_connection():
+def get_db_connection() -> typing.Any:
     """Get a new database connection."""
     return engine.connect()
 
 
-def init_db():
+def init_db() -> None:
     """Initialize the database schema."""
     logger.info("Initializing Database...")
     with get_db_connection() as conn:
@@ -61,7 +62,7 @@ def init_db():
     logger.info("Database initialized.")
 
 
-def get_location():
+def get_location() -> tuple[float, float]:
     """Read location from settings or default."""
     try:
         if os.path.exists(CONFIG_PATH):
@@ -77,7 +78,7 @@ def get_location():
     return DEFAULT_LAT, DEFAULT_LON
 
 
-def find_station(lat, lon):
+def find_station(lat: float, lon: float) -> str | None:
     """Find the nearest DWD station."""
     try:
         request = DwdObservationRequest(
@@ -106,7 +107,7 @@ def find_station(lat, lon):
     return None
 
 
-def fetch_weather():
+def fetch_weather() -> None:
     """Fetch weather data and store it."""
     logger.info("Fetching weather data...")
     lat, lon = get_location()
@@ -236,7 +237,7 @@ if __name__ == "__main__":
     logger.info("Weather service started.")
 
     # Status Helper
-    def write_status(status_msg, station=None):
+    def write_status(status_msg: str, station: str | None = None) -> None:
         """Write the current status to a JSON file."""
         try:
             import psutil

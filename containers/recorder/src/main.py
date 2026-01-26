@@ -14,6 +14,7 @@ import subprocess
 import sys
 import threading
 import time
+import typing
 from dataclasses import asdict
 
 import psutil
@@ -22,7 +23,7 @@ import psutil
 logger = logging.getLogger("recorder")
 
 
-def setup_logging():
+def setup_logging() -> None:
     """Configure logging for the recorder service."""
     log_dir = "/var/log/silvasonic"
     # Allow override for tests if needed via env, or just try/except
@@ -59,7 +60,7 @@ LIVE_STREAM_PORT = int(os.getenv("LIVE_STREAM_PORT", "1234"))
 STATUS_FILE = "/mnt/data/services/silvasonic/status/recorder.json"
 
 
-def ensure_status_dir():
+def ensure_status_dir() -> None:
     """Ensure the status directory exists."""
     try:
         os.makedirs(os.path.dirname(STATUS_FILE), exist_ok=True)
@@ -72,7 +73,9 @@ running = True
 ffmpeg_process = None
 
 
-def write_status(status: str, profile=None, device=None, last_file: str = None):
+def write_status(
+    status: str, profile: typing.Any = None, device: typing.Any = None, last_file: str | None = None
+) -> None:
     """Write current status to JSON file for dashboard."""
     try:
         data = {
@@ -97,7 +100,7 @@ def write_status(status: str, profile=None, device=None, last_file: str = None):
         logger.error(f"Failed to write status: {e}")
 
 
-def start_recording(profile, device, output_dir):
+def start_recording(profile: typing.Any, device: typing.Any, output_dir: str) -> subprocess.Popen:
     """Starts the continuous FFmpeg process."""
     global ffmpeg_process
 
@@ -164,13 +167,11 @@ def start_recording(profile, device, output_dir):
         f"PROFILE_DEBUG: Channels={profile.audio.channels} Rate={profile.audio.sample_rate}"
     )
 
-    # Use Popen
     ffmpeg_process = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-
     return ffmpeg_process
 
 
-def consume_stderr(proc):
+def consume_stderr(proc: subprocess.Popen) -> None:
     """Reads stderr in a separate thread to prevent buffer deadlock."""
     try:
         for line in iter(proc.stderr.readline, b""):
@@ -187,7 +188,7 @@ def consume_stderr(proc):
             pass
 
 
-def main():
+def main() -> None:
     """Start the Recorder service."""
     setup_logging()
     ensure_status_dir()

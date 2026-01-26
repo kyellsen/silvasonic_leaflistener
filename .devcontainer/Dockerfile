@@ -17,8 +17,12 @@ RUN apt-get update && apt-get install -y \
     libnotify4 libxslt1.1 libevent-2.1-7 libgles2 libvpx7 \
     libxcomposite1 libatk1.0-0 libatk-bridge2.0-0 libepoxy0 \
     libgtk-3-0 libharfbuzz-icu0 \
+    podman fuse-overlayfs uidmap \
     && apt-get clean && rm -rf /var/lib/apt/lists/* \
     && chmod 1777 /tmp
+
+# 1.5 Install podman-compose
+RUN pip install podman-compose
 
 # 2. Install 'uv'
 ENV UV_INSTALL_DIR="/usr/local/bin"

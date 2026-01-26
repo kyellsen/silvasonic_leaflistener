@@ -10,7 +10,7 @@ logger = logging.getLogger(__name__)
 class DatabaseHandler:
     """Handles database connections and operations for the uploader."""
 
-    def __init__(self):
+    def __init__(self) -> None:
         """Initialize the DatabaseHandler."""
         self.user = os.getenv("POSTGRES_USER", "silvasonic")
         self.password = os.getenv("POSTGRES_PASSWORD", "silvasonic")
@@ -24,7 +24,7 @@ class DatabaseHandler:
         self.engine = None
         self.Session = None
 
-    def connect(self):
+    def connect(self) -> bool:
         """Connect to the database and create tables."""
         try:
             self.engine = create_engine(self.db_url, pool_pre_ping=True)
@@ -74,7 +74,7 @@ class DatabaseHandler:
         status: str,
         size_bytes: int = 0,
         error_message: str = None,
-    ):
+    ) -> None:
         """Log an upload event."""
         if not self.Session:
             if not self.connect():

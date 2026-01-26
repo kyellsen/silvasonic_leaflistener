@@ -25,6 +25,7 @@ members = [
 dev = [
     "mypy>=1.0",
     "pytest>=8.0",
+    "pytest-cov",
     "ruff>=0.1.0",
     "numpy",
     "sqlalchemy",
