@@ -60,6 +60,7 @@ All code contributions must adhere to the following stack:
 
 - **Python**: `>= 3.13`
 - **Dependency Manager**: `uv` (Required).
+- **Environment**: **DevContainer (ARM64 QEMU)** required for non-ARM hosts.
 - **Linter/Formatter**: `ruff` (Google Style docstrings).
 - **Type Checker**: `mypy` (Strict mode).
 - **Models**: `Pydantic v2`.
@@ -87,7 +88,9 @@ Code is not "done" until it passes:
     - Verify paths against `setup/provision/playbooks/setup.yml`.
 3.  **Implement & Verify**
     - Code must be container-aware (Podman).
+    - Code must be container-aware (Podman).
     - If you change the architecture, update `docs/`.
+    - **Consult `docs/DEVELOPMENT.md`** for QEMU/DevContainer testing workflows.
 
 ---
 

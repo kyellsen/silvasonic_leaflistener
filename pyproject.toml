@@ -32,6 +32,7 @@ dev = [
     "soundfile",
     "pytest-playwright",
     "playwright",
+    "PyYAML",
 ]
 
 [tool.uv]
