@@ -114,10 +114,19 @@
       >
         <!-- Image if available -->
         {% if sp.image_url %}
+        <!-- Blurred Background Layer to fill space -->
         <div
-          class="absolute inset-0 bg-cover bg-center transition duration-700 ease-in-out group-hover:scale-110 opacity-80 group-hover:opacity-100"
+          class="absolute inset-0 bg-cover bg-center transition duration-700 opacity-50 blur-lg scale-110"
           style="background-image: url('{{ sp.image_url }}');"
         ></div>
+
+        <!-- Main Image Layer: Fitted (Contain) -->
+        <div
+          class="absolute inset-0 bg-contain bg-center bg-no-repeat transition duration-700 ease-in-out group-hover:scale-110 opacity-90 group-hover:opacity-100"
+          style="background-image: url('{{ sp.image_url }}');"
+        ></div>
+
+        <!-- Gradient Overlay for contrast -->
         <div
           class="absolute inset-0 bg-gradient-to-t from-gray-900 via-transparent to-transparent"
         ></div>

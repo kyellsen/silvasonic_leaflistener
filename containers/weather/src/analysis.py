@@ -17,6 +17,7 @@ DB_URL = f"postgresql://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
 engine = create_engine(DB_URL)
 
 def get_connection():
+    """Get a new database connection."""
     return engine.connect()
 
 def init_analysis_db():
@@ -48,7 +49,9 @@ def run_analysis():
             # Or just "last 24 hours" if running frequently?
             # Better: "Since last entry" or "Last 30 days" if empty.
 
-            last_entry = conn.execute(text("SELECT MAX(timestamp) FROM weather.bird_stats")).scalar()
+            last_entry = conn.execute(
+                text("SELECT MAX(timestamp) FROM weather.bird_stats")
+            ).scalar()
 
             now = datetime.utcnow()
             # truncate to previous hour to be safe?
@@ -79,40 +82,19 @@ def run_analysis():
             # Weather measurements are irregular (every 10-20 mins).
             # We group by date_trunc('hour', timestamp)
 
-            query = text("""
-                INSERT INTO weather.bird_stats (
-                    timestamp, 
-                    temperature_c, 
-                    precipitation_mm, 
-                    wind_speed_ms, 
-                    detection_count, 
-                    species_count
-                )
-                SELECT
-                    date_trunc('hour', w.timestamp) as hour_ts,
-                    AVG(w.temperature_c) as avg_temp,
-                    SUM(w.precipitation_mm) as total_rain,
-                    AVG(w.wind_speed_ms) as avg_wind,
-                    COUNT(DISTINCT d.id) as det_count, -- Assuming detections has ID, or just count rows
-                    COUNT(DISTINCT d.common_name) as sp_count
-                FROM weather.measurements w
-                LEFT JOIN birdnet.detections d 
-                    ON date_trunc('hour', d.timestamp) = date_trunc('hour', w.timestamp)
-                WHERE w.timestamp >= :start AND w.timestamp < :end
-                GROUP BY 1
-                ON CONFLICT (timestamp) DO NOTHING
-            """)
+            # Query definition removed as it was unused and replaced by complex_query below
+            # to handle efficient aggregation without cross-join explosion.
 
-            # Wait, the JOIN above is a Cross Join on the hour?
-            # If there are multiple weather measurements per hour (e.g. 3) and multiple detections (e.g. 10),
-            # a simple join will explode rows (3 * 10 = 30 rows).
+            # Wait, the JOIN in the original approach was a Cross Join on the hour?
+            # If there are multiple weather measurements per hour (e.g. 3) and
+            # multiple detections (e.g. 10), a simple join will explode rows (3 * 10 = 30 rows).
             # We need to aggregate separately and then join.
 
             # Correct approach: CTEs or separate subqueries.
 
             complex_query = text("""
                 WITH w_stats AS (
-                    SELECT 
+                    SELECT
                         date_trunc('hour', timestamp) as ts,
                         AVG(temperature_c) as temp,
                         SUM(precipitation_mm) as rain,
@@ -122,7 +104,7 @@ def run_analysis():
                     GROUP BY 1
                 ),
                 b_stats AS (
-                    SELECT 
+                    SELECT
                         date_trunc('hour', timestamp) as ts,
                         COUNT(*) as det_count,
                         COUNT(DISTINCT common_name) as sp_count
@@ -131,9 +113,10 @@ def run_analysis():
                     GROUP BY 1
                 )
                 INSERT INTO weather.bird_stats (
-                    timestamp, temperature_c, precipitation_mm, wind_speed_ms, detection_count, species_count
+                    timestamp, temperature_c, precipitation_mm,
+                    wind_speed_ms, detection_count, species_count
                 )
-                SELECT 
+                SELECT
                     w_stats.ts,
                     w_stats.temp,
                     w_stats.rain,

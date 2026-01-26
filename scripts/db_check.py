@@ -10,6 +10,7 @@ from src.services.database import db
 
 
 async def check():
+    """Check database connection and basic statistics."""
     print("Checking DB connection...")
     try:
         async with db.get_connection() as conn:
@@ -22,7 +23,9 @@ async def check():
 
             # Check for recent
             print("Checking recent detections (last 24h)...")
-            recent = (await conn.execute(text("SELECT COUNT(*) FROM birdnet.detections WHERE timestamp > NOW() - INTERVAL '24 HOURS'"))).scalar()
+            recent = (await conn.execute(
+                text("SELECT COUNT(*) FROM birdnet.detections WHERE timestamp > NOW() - INTERVAL '24 HOURS'")
+            )).scalar()
             print(f"Recent detections: {recent}")
 
             # Check schema

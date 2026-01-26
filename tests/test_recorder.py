@@ -10,14 +10,18 @@ from unittest.mock import MagicMock, patch
 import numpy as np
 
 # Adjust path to import main from containers/recorder/src
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../containers/recorder/src')))
+sys.path.append(os.path.abspath(os.path.join(
+    os.path.dirname(__file__), '../containers/recorder/src'
+)))
 
 import main
 
 
 class TestRecorder(unittest.TestCase):
+    """Tests for the recorder module."""
 
     def setUp(self):
+        """Reset global state before each test."""
         # Reset global state before each test
         main.running = True
         main.audio_queue = queue.Queue()
@@ -25,6 +29,7 @@ class TestRecorder(unittest.TestCase):
 
     @patch('main.sd')
     def test_device_selection_success(self, mock_sd):
+        """Test successful selection of the target audio device."""
         # Mock device list
         mock_sd.query_devices.return_value = [
             {'name': 'Built-in Audio', 'max_input_channels': 2},
@@ -41,7 +46,8 @@ class TestRecorder(unittest.TestCase):
         devices = mock_sd.query_devices()
         target_idx = None
         for idx, dev in enumerate(devices):
-            if main.DEVICE_NAME.lower() in dev['name'].lower() and dev['max_input_channels'] >= main.CHANNELS:
+            if (main.DEVICE_NAME.lower() in dev['name'].lower() and
+                    dev['max_input_channels'] >= main.CHANNELS):
                 target_idx = idx
                 break
 
@@ -49,6 +55,7 @@ class TestRecorder(unittest.TestCase):
 
     @patch('main.sd')
     def test_device_selection_failure(self, mock_sd):
+        """Test failure to find the target audio device."""
         mock_sd.query_devices.return_value = [
             {'name': 'Built-in Audio', 'max_input_channels': 2}
         ]
@@ -64,6 +71,7 @@ class TestRecorder(unittest.TestCase):
         self.assertIsNone(target_idx)
 
     def test_audio_callback(self):
+        """Verify audio callback puts data into the queue."""
         # Verify callback puts data into queue
         indata = np.zeros((10, 1), dtype='float32')
         main.audio_callback(indata, 10, None, None)
@@ -75,6 +83,7 @@ class TestRecorder(unittest.TestCase):
     @patch('main.sf')
     @patch('os.makedirs')
     def test_file_writer(self, mock_makedirs, mock_sf):
+        """Test the file writer logic."""
         # Mock SoundFile context manager
         mock_file = MagicMock()
         mock_sf.SoundFile.return_value.__enter__.return_value = mock_file
@@ -102,8 +111,8 @@ class TestRecorder(unittest.TestCase):
         mock_sf.SoundFile.assert_called()
         mock_file.write.assert_called()
         # Verify at least one write call was made with our data
-        # Note: Depending on race conditions, it might have written more calls if we didn't control queue perfectly,
-        # but we just want to ensure it wrote something.
+        # Note: Depending on race conditions, it might have written more calls if
+        # we didn't control queue perfectly, but we just want to ensure it wrote something.
         self.assertTrue(mock_file.write.called)
 
 if __name__ == '__main__':

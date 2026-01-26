@@ -36,6 +36,7 @@ DB_URL = f"postgresql://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
 engine = create_engine(DB_URL)
 
 def get_db_connection():
+    """Get a new database connection."""
     return engine.connect()
 
 def init_db():
@@ -189,7 +190,7 @@ def fetch_weather():
         with get_db_connection() as conn:
             stmt = text("""
                 INSERT INTO weather.measurements (
-                    timestamp, station_id, temperature_c, humidity_percent, 
+                    timestamp, station_id, temperature_c, humidity_percent,
                     precipitation_mm, wind_speed_ms, cloud_cover_percent
                 ) VALUES (
                     :ts, :sid, :temp, :hum, :precip, :wind, :cloud
@@ -230,6 +231,7 @@ if __name__ == "__main__":
 
     # Status Helper
     def write_status(status_msg, station=None):
+        """Write the current status to a JSON file."""
         try:
             import psutil
             data = {
@@ -259,7 +261,8 @@ if __name__ == "__main__":
         try:
             schedule.run_pending()
             # Update status heartbeat
-            # We don't have the station ID easily accessible here without refactoring fetch_weather to return it,
+            # We don't have the station ID accessible here without refactoring
+            # fetch_weather to return it, but for heartbeat "Running" is enough.
             # but for heartbeat "Running" is enough.
             write_status("Running")
             time.sleep(1)

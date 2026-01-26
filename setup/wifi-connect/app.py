@@ -14,11 +14,13 @@ logger = logging.getLogger("webapp")
 
 @app.route('/')
 def index():
+    """Render the index page with listed networks."""
     networks = manager.scan_networks()
     return render_template('index.html', networks=networks)
 
 @app.route('/connect', methods=['POST'])
 def connect():
+    """Handle the connection request to a WiFi network."""
     data = request.form
     ssid = data.get('ssid')
     password = data.get('password')

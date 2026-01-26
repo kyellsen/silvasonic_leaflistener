@@ -7,11 +7,14 @@ from janitor import StorageJanitor
 
 
 class TestStorageJanitor:
+    """Tests for the StorageJanitor class."""
     @pytest.fixture
     def janitor(self, temp_fs):
+        """Fixture providing a StorageJanitor instance."""
         return StorageJanitor(temp_fs, threshold_percent=70, target_percent=60)
 
     def create_file(self, base_dir, name, size=1024, age_offset=0):
+        """Create a dummy file with specific size and age."""
         path = os.path.join(base_dir, name)
         with open(path, 'wb') as f:
             f.write(b'\0' * size)
@@ -21,6 +24,7 @@ class TestStorageJanitor:
         return path
 
     def test_no_cleanup_needed(self, janitor):
+        """Test that no cleanup happens when usage is below threshold."""
         # Mock usage 10%
         mock_usage = MagicMock(return_value=10.0)
         janitor.check_and_clean({}, mock_usage)
@@ -28,6 +32,7 @@ class TestStorageJanitor:
         mock_usage.assert_called_once()
 
     def test_cleanup_trigger(self, janitor, temp_fs):
+        """Test that cleanup is triggered when usage is above threshold."""
         # Create 3 files: older, old, new
         f1 = self.create_file(temp_fs, "old.flac", age_offset=300)
         f2 = self.create_file(temp_fs, "mid.flac", age_offset=200)
@@ -53,6 +58,7 @@ class TestStorageJanitor:
         assert os.path.exists(f3), "Newest file should remain"
 
     def test_safety_check_missing_on_remote(self, janitor, temp_fs):
+        """Test that files not present on remote are not deleted locally."""
         f1 = self.create_file(temp_fs, "local_only.flac", age_offset=300)
 
         # Remote empty
@@ -65,6 +71,7 @@ class TestStorageJanitor:
         assert os.path.exists(f1), "File NOT on remote should NOT be deleted"
 
     def test_safety_check_remote_failure(self, janitor, temp_fs):
+        """Test that no files are deleted if remote status cannot be determined."""
         f1 = self.create_file(temp_fs, "safe.flac", age_offset=300)
 
         # Remote status unknown (None)
@@ -77,6 +84,7 @@ class TestStorageJanitor:
         assert os.path.exists(f1), "File should not be deleted if remote status is unknown"
 
     def test_remote_size_zero_check(self, janitor, temp_fs):
+        """Test that files reported as 0 size on remote are not deleted."""
         f1 = self.create_file(temp_fs, "bad_upload.flac", size=1024, age_offset=300)
 
         # Remote says size is 0
@@ -91,6 +99,7 @@ class TestStorageJanitor:
         assert os.path.exists(f1), "File should not be deleted if remote size is 0"
 
     def test_list_local_files_handles_file_not_found(self, janitor, temp_fs):
+        """Test that file listing handles files disappearing (FileNotFoundError) gracefully."""
         # This is hard to trigger with real FS as it happens between os.walk and os.stat
         # So we mock os.walk and os.stat
 
@@ -104,6 +113,7 @@ class TestStorageJanitor:
             assert len(files) == 0
 
     def test_exception_during_deletion(self, janitor, temp_fs, caplog):
+        """Test that exceptions during deletion are logged and do not crash the process."""
         # Create a file
         f1 = self.create_file(temp_fs, "readonly.flac", age_offset=300)
 

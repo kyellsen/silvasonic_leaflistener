@@ -14,6 +14,7 @@ CHUNK_SIZE = 4096 # Samples per packet
 CHANNELS = 1
 
 def load_playlist(audio_dir: Path):
+    """Load all .flac and .wav files from the directory."""
     files = list(audio_dir.glob("*.flac")) + list(audio_dir.glob("*.wav"))
     if not files:
         print(f"No .flac or .wav files found in {audio_dir}")
@@ -22,6 +23,7 @@ def load_playlist(audio_dir: Path):
     return sorted(files)
 
 def process_track(file_path):
+    """Load and process an audio track for streaming."""
     print(f"Loading {file_path.name}...")
     try:
         data, samplerate = sf.read(file_path, dtype='float32')
@@ -52,6 +54,7 @@ def process_track(file_path):
         return None
 
 def stream_loop(audio_dir: Path):
+    """Continuously stream audio files from the directory."""
     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 
     print(f"Target: {HOST}:{PORT}")
@@ -74,7 +77,10 @@ def stream_loop(audio_dir: Path):
                 continue
 
             total_chunks = len(audio_data) // CHUNK_SIZE
-            print(f"Streaming {track_path.name} ({total_chunks} chunks, ~{total_chunks * CHUNK_SIZE / SAMPLE_RATE:.1f}s)")
+            print(
+                f"Streaming {track_path.name} "
+                f"({total_chunks} chunks, ~{total_chunks * CHUNK_SIZE / SAMPLE_RATE:.1f}s)"
+            )
 
             # Streaming Loop
             for i in range(0, len(audio_data), CHUNK_SIZE):
@@ -89,7 +95,8 @@ def stream_loop(audio_dir: Path):
 
                 # Pacing
                 # Realtime pacing: Chunk duration = 4096 / 48000 = ~0.0853s
-                # We should sleep a bit less to account for overhead, but simple sleep is usually fine for Mock.
+                # We should sleep a bit less to account for overhead,
+                # but simple sleep is usually fine for Mock.
                 time.sleep(CHUNK_SIZE / SAMPLE_RATE)
 
             # Small pause between tracks

@@ -4,15 +4,17 @@ import subprocess
 logger = logging.getLogger("wifi_manager")
 
 class WifiManager:
+    """Manage WiFi connections and Access Point mode."""
     AP_SSID = "Silvasonic-Setup"
     AP_IP = "10.0.0.1"
     INTERFACE = "wlan0"
 
     @staticmethod
     def run_command(cmd):
+        """Execute a shell command and return the output."""
         try:
             result = subprocess.run(
-                cmd, shell=True, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True
+                cmd, shell=True, check=True, capture_output=True, text=True
             )
             return result.stdout.strip()
         except subprocess.CalledProcessError as e:
@@ -20,7 +22,7 @@ class WifiManager:
             return None
 
     def is_connected(self):
-        """Check if we have an active connection to the internet (or just local router)"""
+        """Check if we have an active connection to the internet (or just local router)."""
         # Simple check: do we have an active connection that is NOT our AP?
         cmd = "nmcli -t -f TYPE,STATE,CONNECTION device"
         output = self.run_command(cmd)
@@ -39,7 +41,7 @@ class WifiManager:
         return False
 
     def scan_networks(self):
-        """Return list of available SSIDs"""
+        """Return list of available SSIDs."""
         cmd = "nmcli -t -f SSID,SIGNAL,SECURITY dev wifi list --rescan yes"
         output = self.run_command(cmd)
         networks = []
@@ -90,7 +92,7 @@ class WifiManager:
         return False
 
     def start_ap(self):
-        """Start the Access Point"""
+        """Start the Access Point."""
         logger.info("Starting Access Point...")
         # Check if AP connection exists
         check = self.run_command(f"nmcli connection show '{self.AP_SSID}'")
@@ -110,7 +112,7 @@ class WifiManager:
         self.run_command(f"nmcli connection up '{self.AP_SSID}'")
 
     def is_ap_running(self):
-        """Check if the Access Point is currently active"""
+        """Check if the Access Point is currently active."""
         # List active connections and look for our SSID
         cmd = "nmcli -t -f NAME connection show --active"
         output = self.run_command(cmd)

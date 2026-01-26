@@ -7,6 +7,7 @@ BASE_URL = "http://localhost:8080" # Dashboard Port
 # Credentials are in .env usually, but default is admin/silvasonic
 
 def login(page: Page):
+    """Log in to the dashboard."""
     page.goto(f"{BASE_URL}/auth/login")
     if "login" in page.url:
         page.fill("input[name='username']", "admin")

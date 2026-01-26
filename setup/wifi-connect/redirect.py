@@ -10,20 +10,22 @@ logger = logging.getLogger("redirector")
 app = Flask(__name__)
 
 def get_ip():
+    """Get the local IP address of the device."""
     s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     try:
         # doesn't even have to be reachable
         s.connect(('10.255.255.255', 1))
-        IP = s.getsockname()[0]
+        ip_addr = s.getsockname()[0]
     except Exception:
-        IP = '127.0.0.1'
+        ip_addr = '127.0.0.1'
     finally:
         s.close()
-    return IP
+    return ip_addr
 
 @app.route('/', defaults={'path': ''})
 @app.route('/<path:path>')
 def catch_all(path):
+    """Handle all requests and redirect to the captive portal."""
     # Determine Hostname or IP to redirect to
     # Ideally use the Host header from the request to preserve "silvasonic.local" vs IP
     from flask import request
