@@ -145,9 +145,21 @@ class BirdNetService:
                 result_top = await conn.execute(query_top)
                 top_species = [dict(row._mapping) for row in result_top]
 
+                # Species Count
+                query_species = text("SELECT COUNT(DISTINCT scientific_name) FROM birdnet.detections")
+                species_count = (await conn.execute(query_species)).scalar() or 0
+
+                # Biodiversity (Menhinick's Index: D = S / sqrt(N))
+                # S = Species Count, N = Total Count
+                biodiversity = 0.0
+                if total_count > 0:
+                    biodiversity = round(species_count / (total_count ** 0.5), 3)
+
                 return {
                     "today": today_count,
                     "total": total_count,
+                    "species_count": species_count,
+                    "biodiversity": biodiversity,
                     "top_species": top_species
                 }
         except Exception as e:

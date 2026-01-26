@@ -30,11 +30,11 @@
             Input Device
           </div>
           <div
-            class="text-xl font-bold text-gray-900 dark:text-white mt-2 truncate group-hover:text-pink-500 transition"
+            class="text-xl font-bold text-gray-900 dark:text-white mt-2 break-words group-hover:text-pink-500 transition"
             title="{{ stats.device.description if stats.device is mapping else stats.device_raw or stats.device }}"
           >
-            {{ stats.device.description if stats.device is mapping else
-            stats.device or 'Unknown Device' }}
+            {{ (stats.device.description if stats.device is mapping else
+            stats.device or 'Unknown Device') | truncate(30, True, '...') }}
           </div>
         </div>
         <svg

@@ -19,7 +19,9 @@
       >
         Today (Top 20)
       </h3>
-      <div class="h-32 w-full relative"><canvas id="distToday"></canvas></div>
+      <div class="h-32 w-full relative">
+        <div id="distToday" class="w-full h-full"></div>
+      </div>
     </div>
     <!-- Week -->
     <div class="bg-gray-800 rounded-xl p-4 border border-gray-700 shadow-xl">
@@ -28,7 +30,9 @@
       >
         Last 7 Days
       </h3>
-      <div class="h-32 w-full relative"><canvas id="distWeek"></canvas></div>
+      <div class="h-32 w-full relative">
+        <div id="distWeek" class="w-full h-full"></div>
+      </div>
     </div>
     <!-- Month -->
     <div class="bg-gray-800 rounded-xl p-4 border border-gray-700 shadow-xl">
@@ -37,7 +41,9 @@
       >
         Last 30 Days
       </h3>
-      <div class="h-32 w-full relative"><canvas id="distMonth"></canvas></div>
+      <div class="h-32 w-full relative">
+        <div id="distMonth" class="w-full h-full"></div>
+      </div>
     </div>
     <!-- Year -->
     <div class="bg-gray-800 rounded-xl p-4 border border-gray-700 shadow-xl">
@@ -46,7 +52,9 @@
       >
         Last Year
       </h3>
-      <div class="h-32 w-full relative"><canvas id="distYear"></canvas></div>
+      <div class="h-32 w-full relative">
+        <div id="distYear" class="w-full h-full"></div>
+      </div>
     </div>
   </div>
 
@@ -71,7 +79,7 @@
       </h3>
     </div>
     <div class="h-64 w-full relative">
-      <canvas id="dailyChart"></canvas>
+      <div id="dailyChart" class="w-full h-full"></div>
     </div>
   </div>
 
@@ -96,7 +104,7 @@
         Peak Activity Hours
       </h3>
       <div class="h-64 w-full relative">
-        <canvas id="hourlyChart"></canvas>
+        <div id="hourlyChart" class="w-full h-full"></div>
       </div>
     </div>
 
@@ -140,7 +148,7 @@
       </div>
 
       <div class="h-64 w-full relative">
-        <canvas id="histChart"></canvas>
+        <div id="histChart" class="w-full h-full"></div>
       </div>
     </div>
   </div>
@@ -211,105 +219,86 @@
   </div>
 </div>
 {% endblock %} {% block scripts %}
-<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+
 <script>
-  if (typeof Chart === 'undefined') {
-      document.querySelectorAll('canvas').forEach(c => {
+  // Robust Loading Check
+  if (typeof Plotly === 'undefined') {
+      document.querySelectorAll('[id^="dist"], [id$="Chart"]').forEach(el => {
+          el.innerHTML = ""; // Clear
           const err = document.createElement('div');
           err.className = "flex items-center justify-center h-full text-red-500 text-xs text-center p-2 border border-red-500/20 rounded bg-red-500/10";
-          err.innerText = "Chart.js failed to load. Check internet.";
-          c.parentNode.replaceChild(err, c);
+          err.innerText = "Plotly failed to load. Check internet.";
+          el.appendChild(err);
       });
-  }
-  let histChart = null;
-  let isLogScale = false;
-
-  function toggleLogScale() {
-      if(!histChart) return;
-      isLogScale = !isLogScale;
-
-      // Update UI
-      const btn = document.getElementById('logToggleBtn');
-      const circle = document.getElementById('logToggleCircle');
-
-      if(isLogScale) {
-          btn.classList.replace('bg-gray-700', 'bg-silva-600');
-          btn.classList.replace('border-gray-600', 'border-silva-500');
-          circle.classList.replace('left-1', 'left-5');
-          circle.classList.replace('bg-gray-400', 'bg-white');
-      } else {
-          btn.classList.replace('bg-silva-600', 'bg-gray-700');
-          btn.classList.replace('border-silva-500', 'border-gray-600');
-          circle.classList.replace('left-5', 'left-1');
-          circle.classList.replace('bg-white', 'bg-gray-400');
-      }
-
-      // Update Chart
-      histChart.options.scales.y.type = isLogScale ? 'logarithmic' : 'linear';
-      histChart.update();
   }
 
   document.addEventListener('DOMContentLoaded', function() {
+      if (typeof Plotly === 'undefined') return;
 
-      // Configs
-      Chart.defaults.color = '#9ca3af';
-      Chart.defaults.borderColor = 'rgba(255, 255, 255, 0.05)';
+      // --- Common Config ---
+      const commonConfig = {
+          displayModeBar: false,
+          responsive: true
+      };
 
-      // Colors
+      const commonLayout = {
+          paper_bgcolor: 'rgba(0,0,0,0)',
+          plot_bgcolor: 'rgba(0,0,0,0)',
+          font: { color: '#9ca3af', family: 'Inter, sans-serif' },
+          margin: { t: 10, b: 30, l: 40, r: 10 },
+          xaxis: {
+              gridcolor: 'rgba(255,255,255,0.05)',
+              zerolinecolor: 'rgba(255,255,255,0.05)'
+          },
+          yaxis: {
+              gridcolor: 'rgba(255,255,255,0.05)',
+              zerolinecolor: 'rgba(255,255,255,0.05)'
+          }
+      };
+
       const palette = [
          '#3b82f6', '#8b5cf6', '#f43f5e', '#f97316', '#eab308',
          '#10b981', '#06b6d4', '#ec4899', '#6366f1', '#14b8a6'
       ];
 
       // --- Pie Charts Helper ---
-      function createPie(id, labels, data) {
-           const ctx = document.getElementById(id);
-           if(!ctx) return;
+      function createPie(id, labels, values) {
+           if (!document.getElementById(id) || values.length === 0) return;
 
-           if(data.length === 0) return;
+           const data = [{
+               values: values,
+               labels: labels,
+               type: 'pie',
+               hole: 0.7,
+               marker: { colors: palette },
+               textinfo: 'none',
+               hoverinfo: 'label+value',
+               showlegend: false
+           }];
 
-           new Chart(ctx.getContext('2d'), {
-              type: 'doughnut',
-              data: {
-                  labels: labels,
-                  datasets: [{
-                      data: data,
-                      backgroundColor: palette,
-                      borderWidth: 0,
-                      hoverOffset: 4
-                  }]
-              },
-              options: {
-                  responsive: true,
-                  maintainAspectRatio: false,
-                  cutout: '70%',
-                  onClick: (e, activeEls) => {
-                      if(activeEls.length > 0) {
-                          const index = activeEls[0].index;
-                          // Use labels array directly as fallback
-                          const label = labels[index];
-                          if(label) window.location.href = `/birdnet/discover/${encodeURIComponent(label)}`;
-                      }
-                  },
-                  onHover: (e, activeEls) => {
-                      e.native.target.style.cursor = activeEls.length > 0 ? 'pointer' : 'default';
-                  },
-                  plugins: {
-                      legend: { display: false },
-                      tooltip: {
-                          callbacks: {
-                              label: function(context) {
-                                  let label = context.label || '';
-                                  let val = context.raw || 0;
-                                  let total = context.dataset.data.reduce((a, b) => a + b, 0);
-                                  let perc = Math.round((val/total)*100) + '%';
-                                  return label + ': ' + val + ' (' + perc + ')';
-                              }
-                          }
-                      }
-                  }
-              }
-          });
+           const layout = {
+               ...commonLayout,
+               margin: { t: 0, b: 0, l: 0, r: 0 },
+               showlegend: false,
+               annotations: [
+                   {
+                       font: { size: 14, color: '#9ca3af' },
+                       showarrow: false,
+                       text: values.reduce((a, b) => a + b, 0).toString(),
+                       x: 0.5,
+                       y: 0.5
+                   }
+               ]
+           };
+
+           Plotly.newPlot(id, data, layout, commonConfig);
+
+           document.getElementById(id).on('plotly_click', function(data){
+                if(data.points.length > 0) {
+                    const label = data.points[0].label;
+                    window.location.href = `/birdnet/discover/${encodeURIComponent(label)}`;
+                }
+           });
       }
 
       createPie('distToday', {{ distributions.today.labels|tojson }}, {{ distributions.today.values|tojson }});
@@ -317,103 +306,120 @@
       createPie('distMonth', {{ distributions.month.labels|tojson }}, {{ distributions.month.values|tojson }});
       createPie('distYear', {{ distributions.year.labels|tojson }}, {{ distributions.year.values|tojson }});
 
-      // --- Daily Line Chart ---
-      const dailyCtx = document.getElementById('dailyChart').getContext('2d');
-      new Chart(dailyCtx, {
-          type: 'line',
-          data: {
-              labels: {{ daily.labels|tojson }},
-              datasets: [{
-                  label: 'Detections',
-                  data: {{ daily.values|tojson }},
-                  borderColor: '#60a5fa',
-                  backgroundColor: 'rgba(96, 165, 250, 0.1)',
-                  tension: 0.4,
-                  fill: true,
-                  pointRadius: 3,
-                  pointHoverRadius: 5
-              }]
-          },
-          options: {
-              responsive: true,
-              maintainAspectRatio: false,
-              plugins: { legend: { display: false } },
-              scales: {
-                  y: { beginAtZero: true, grid: { color: 'rgba(255,255,255,0.05)' } },
-                  x: { grid: { display: false } }
-              }
-          }
-      });
+      // --- Daily Activity (Area Chart) ---
+      const dailyLabels = {{ daily.labels|tojson }};
+      const dailyValues = {{ daily.values|tojson }};
 
-      // --- Hourly Bar Chart ---
-      const hourlyCtx = document.getElementById('hourlyChart').getContext('2d');
-      new Chart(hourlyCtx, {
-          type: 'bar',
-          data: {
-              labels: Array.from({length: 24}, (_, i) => i + ":00"),
-              datasets: [{
-                  label: 'Activity',
-                  data: {{ hourly.values|tojson }},
-                  backgroundColor: 'rgba(251, 191, 36, 0.8)',
-                  borderRadius: 4
-              }]
-          },
-          options: {
-              responsive: true,
-              maintainAspectRatio: false,
-              plugins: { legend: { display: false } },
-              scales: {
-                  x: { grid: { display: false } },
-                  y: { grid: { color: 'rgba(255,255,255,0.05)' } }
-              }
-          }
-      });
+      if(document.getElementById('dailyChart')) {
+          const trace1 = {
+              x: dailyLabels,
+              y: dailyValues,
+              fill: 'tozeroy',
+              type: 'scatter',
+              mode: 'lines',
+              line: { color: '#60a5fa', width: 2 }, // blue-400
+              fillcolor: 'rgba(96, 165, 250, 0.1)'
+          };
+
+          const layout = {
+              ...commonLayout,
+              margin: { t: 10, b: 30, l: 30, r: 10 },
+              xaxis: { ...commonLayout.xaxis, showgrid: false },
+              yaxis: { ...commonLayout.yaxis }
+          };
+
+          Plotly.newPlot('dailyChart', [trace1], layout, commonConfig);
+      }
+
+      // --- Hourly Activity (Bar) ---
+      const hourlyValues = {{ hourly.values|tojson }};
+      const hourlyLabels = Array.from({length: 24}, (_, i) => i + ":00");
+
+      if(document.getElementById('hourlyChart')) {
+           const trace1 = {
+               x: hourlyLabels,
+               y: hourlyValues,
+               type: 'bar',
+               marker: {
+                   color: '#fbbf24', // amber-400
+                   line: { color: 'transparent' }
+               }
+           };
+
+           const layout = {
+               ...commonLayout,
+               margin: { t: 10, b: 30, l: 30, r: 10 },
+               xaxis: { ...commonLayout.xaxis, showgrid: false },
+           };
+
+           Plotly.newPlot('hourlyChart', [trace1], layout, commonConfig);
+      }
+
 
       // --- Histogram (All Species) ---
-      const histCtx = document.getElementById('histChart').getContext('2d');
-      const histLabels = {{ histogram.labels|tojson }};
-      const histValues = {{ histogram.values|tojson }};
+      let histLabels = {{ histogram.labels|tojson }};
+      let histValues = {{ histogram.values|tojson }};
 
-      const showX = histLabels.length < 25;
+      function renderHist(logScale) {
+          if(!document.getElementById('histChart')) return;
 
-      histChart = new Chart(histCtx, {
-          type: 'bar',
-          data: {
-              labels: histLabels,
-              datasets: [{
-                  label: 'Count',
-                  data: histValues,
-                  backgroundColor: '#a78bfa',
-                  borderRadius: 2
-              }]
-          },
-          options: {
-              responsive: true,
-              maintainAspectRatio: false,
-              onClick: (e, activeEls) => {
-                  if(activeEls.length > 0) {
-                      const index = activeEls[0].index;
-                      const label = histLabels[index];
-                      if(label) window.location.href = `/birdnet/discover/${encodeURIComponent(label)}`;
-                  }
+          const trace1 = {
+               x: histLabels,
+               y: histValues,
+               type: 'bar',
+               marker: { color: '#a78bfa' } // purple-400
+          };
+
+          const layout = {
+              ...commonLayout,
+              margin: { t: 10, b: 100, l: 40, r: 10 },
+              yaxis: {
+                  ...commonLayout.yaxis,
+                  type: logScale ? 'log' : 'linear'
               },
-              onHover: (e, activeEls) => {
-                  e.native.target.style.cursor = activeEls.length > 0 ? 'pointer' : 'default';
-              },
-              plugins: { legend: { display: false } },
-              scales: {
-                  x: {
-                      display: true,
-                      grid: { display: false },
-                      ticks: { display: showX, autoSkip: false, maxRotation: 90, minRotation: 90 }
-                  },
-                  y: {
-                      grid: { color: 'rgba(255,255,255,0.05)' },
-                      type: 'linear' // Default start
-                  }
+              xaxis: {
+                  ...commonLayout.xaxis,
+                  showgrid: false,
+                  tickangle: -90
               }
+          };
+
+          Plotly.newPlot('histChart', [trace1], layout, commonConfig);
+
+          document.getElementById('histChart').on('plotly_click', function(data){
+                if(data.points.length > 0) {
+                    const label = data.points[0].x;
+                    window.location.href = `/birdnet/discover/${encodeURIComponent(label)}`;
+                }
+           });
+      }
+
+      renderHist(false);
+
+      // Expose toggle logic
+      window.toggleLogScale = function() {
+          const btn = document.getElementById('logToggleBtn');
+          const circle = document.getElementById('logToggleCircle');
+
+          // Toggle State
+          const isLog = circle.classList.contains('left-5'); // Check current UI state
+
+          if(!isLog) {
+               // Turn ON
+              btn.classList.replace('bg-gray-700', 'bg-silva-600');
+              btn.classList.replace('border-gray-600', 'border-silva-500');
+              circle.classList.replace('left-1', 'left-5');
+              circle.classList.replace('bg-gray-400', 'bg-white');
+              renderHist(true);
+          } else {
+               // Turn OFF
+              btn.classList.replace('bg-silva-600', 'bg-gray-700');
+              btn.classList.replace('border-silva-500', 'border-gray-600');
+              circle.classList.replace('left-5', 'left-1');
+              circle.classList.replace('bg-white', 'bg-gray-400');
+              renderHist(false);
           }
-      });
+      };
   });
 </script>
 {% endblock %} {% block inspector %}
