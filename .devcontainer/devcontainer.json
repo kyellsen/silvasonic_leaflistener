@@ -1,10 +1,13 @@
 {
-  "name": "Silvasonic ARM64 (QEMU)",
+  "name": "Silvasonic Native (Fedora/Podman)",
   "build": {
     "dockerfile": "Dockerfile",
     "context": ".."
   },
-  "runArgs": ["--platform", "linux/arm64", "--privileged"],
+  // Nur noch privileged für Hardware-Zugriff, keine Plattform-Einschränkung mehr
+  "runArgs": [
+    "--privileged"
+  ],
   "customizations": {
     "vscode": {
       "settings": {
@@ -36,8 +39,8 @@
   },
   "postCreateCommand": "bash .devcontainer/post-create.sh",
   "remoteUser": "vscode",
-  "mounts": [
-    "source=${localWorkspaceFolder},target=/workspace,type=bind,consistency=cached"
-  ],
-  "workspaceMount": "source=${localWorkspaceFolder},target=/workspace,type=bind"
+
+  // WICHTIG: SELinux Flag (:Z) muss bleiben!
+  "workspaceMount": "source=${localWorkspaceFolder},target=/mnt/data/services/silversonic,type=bind,Z",
+  "workspaceFolder": "/mnt/data/services/silversonic"
 }
