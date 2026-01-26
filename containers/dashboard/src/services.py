@@ -37,26 +37,41 @@ class SystemService:
     @staticmethod
     def get_stats():
         try:
-            cpu = psutil.cpu_percent(interval=None)
+            # CPU Cores
+            cpu_cores = psutil.cpu_percent(interval=None, percpu=True)
+            # Average for backward compatibility/summary
+            cpu = round(sum(cpu_cores) / len(cpu_cores), 1) if cpu_cores else 0
         except:
             cpu = 0
+            cpu_cores = []
             
         try:
             mem = psutil.virtual_memory()
             mem_percent = mem.percent
+            # RAM in GB
+            ram_used_gb = round(mem.used / (1024**3), 1)
+            ram_total_gb = round(mem.total / (1024**3), 1)
         except:
             class MockMem:
                 percent = 0
+                used = 0
+                total = 16 * (1024**3)
             mem = MockMem()
             mem_percent = 0
+            ram_used_gb = 0
+            ram_total_gb = 16
         
         # Disk usage for /mnt/data (mapped to /data/recording usually or root)
         # using /data/recording as proxy for NVMe
         try:
             disk = shutil.disk_usage("/data/recording")
             disk_percent = (disk.used / disk.total) * 100
+            disk_used_gb = round(disk.used / (1024**3), 0)
+            disk_total_gb = round(disk.total / (1024**3), 0)
         except:
             disk_percent = 0
+            disk_used_gb = 0
+            disk_total_gb = 0
 
         # Boot time
         try:
@@ -89,9 +104,14 @@ class SystemService:
             
         return {
             "cpu": cpu,
+            "cpu_cores": cpu_cores,
             "cpu_temp": cpu_temp,
             "ram_percent": mem_percent,
+            "ram_used_gb": ram_used_gb,
+            "ram_total_gb": ram_total_gb,
             "disk_percent": round(disk_percent, 1),
+            "disk_used_gb": int(disk_used_gb),
+            "disk_total_gb": int(disk_total_gb),
             "uptime_str": str(uptime).split('.')[0] if isinstance(uptime, datetime.timedelta) else str(uptime),
             "last_recording": last_rec,
             "last_recording_ago": int(datetime.datetime.now().timestamp() - last_rec_ts) if last_rec_ts > 0 else -1

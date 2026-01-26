@@ -14,20 +14,22 @@
       <span>CPU Usage</span>
       <span class="text-silva-400 font-mono">{{ stats.cpu_temp }}</span>
     </div>
-    <div
-      class="text-4xl font-heading font-bold text-gray-900 dark:text-white mt-3 relative z-10"
-    >
-      {{ stats.cpu }}<span class="text-lg text-gray-500 font-normal ml-1"
-        >%</span
-      >
-    </div>
-    <div
-      class="w-full bg-gray-200 dark:bg-gray-700/50 h-1.5 mt-5 rounded-full overflow-hidden"
-    >
+
+    <div class="mt-3 grid grid-cols-4 gap-1 relative z-10 h-10 items-end">
+      {% for core in stats.cpu_cores %}
       <div
-        class="bg-gradient-to-r from-silva-500 to-silva-400 h-full rounded-full transition-all duration-1000 ease-out"
-        style="width: {{ stats.cpu }}%"
-      ></div>
+        class="h-full bg-gray-200 dark:bg-gray-700/50 rounded-sm overflow-hidden flex flex-col justify-end w-full"
+        title="Core {{ loop.index }}: {{ core }}%"
+      >
+        <div
+          class="bg-gradient-to-t from-silva-500 to-silva-400 w-full"
+          style="height: {{ core }}%"
+        ></div>
+      </div>
+      {% endfor %}
+    </div>
+    <div class="text-right text-[10px] text-gray-500 mt-1 font-mono">
+      Avg: {{ stats.cpu }}%
     </div>
   </div>
 
@@ -44,12 +46,13 @@
       RAM Usage
     </div>
     <div
-      class="text-4xl font-heading font-bold text-gray-900 dark:text-white mt-3 relative z-10"
+      class="text-2xl font-heading font-bold text-gray-900 dark:text-white mt-3 relative z-10"
     >
-      {{ stats.ram_percent }}<span
-        class="text-lg text-gray-500 font-normal ml-1"
-        >%</span
-      >
+      {{ stats.ram_used_gb }}<span
+        class="text-sm text-gray-500 font-normal mx-1"
+        >/</span
+      >{{ stats.ram_total_gb }}
+      <span class="text-sm text-gray-500 font-normal">GB</span>
     </div>
     <div
       class="w-full bg-gray-200 dark:bg-gray-700/50 h-1.5 mt-5 rounded-full overflow-hidden"
@@ -71,17 +74,25 @@
     <div
       class="text-xs font-bold text-gray-400 uppercase tracking-wider relative z-10"
     >
-      NVMe Storage
+      SSD STORAGE
     </div>
     <div
-      class="text-4xl font-heading font-bold text-gray-900 dark:text-white mt-3 relative z-10"
+      class="text-2xl font-heading font-bold text-gray-900 dark:text-white mt-3 relative z-10"
     >
-      {{ stats.disk_percent }}<span
-        class="text-lg text-gray-500 font-normal ml-1"
-        >%</span
-      >
+      {{ stats.disk_used_gb }}<span
+        class="text-sm text-gray-500 font-normal mx-1"
+        >/</span
+      >{{ stats.disk_total_gb }}
+      <span class="text-sm text-gray-500 font-normal">GB</span>
     </div>
-    <div class="text-xs text-gray-500 mt-2 font-mono relative z-10">/data</div>
+    <div
+      class="w-full bg-gray-200 dark:bg-gray-700/50 h-1.5 mt-5 rounded-full overflow-hidden relative z-10"
+    >
+      <div
+        class="bg-gradient-to-r from-purple-500 to-pink-400 h-full rounded-full transition-all duration-1000 ease-out"
+        style="width: {{ stats.disk_percent }}%"
+      ></div>
+    </div>
   </div>
 
   <!-- Last Recording Card -->
@@ -136,7 +147,11 @@
     </div>
 
     <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3">
-      {% for c in containers.values()|sort(attribute='name') %}
+      {% for c in containers.values()|sort(attribute='name') %} {% set raw_name
+      = c.name.replace('silvasonic-', '') %} {% set display_name_map = {'brain':
+      'SoundAnalyser', 'carrier': 'Uploader', 'recorder': 'Recorder',
+      'healthchecker': 'HealthChecker', 'birdnet': 'BirdNET'} %} {% set
+      display_name = display_name_map.get(raw_name, raw_name|title) %}
       <div
         class="flex flex-col gap-1 p-3 rounded-xl bg-gray-50/50 dark:bg-white/5 border border-transparent hover:border-silva-200 dark:hover:border-white/10 transition-all group/card"
       >
@@ -148,7 +163,7 @@
             class="font-bold text-xs text-gray-700 dark:text-gray-200 truncate"
             title="{{ c.name }}"
           >
-            {{ c.name }}
+            {{ display_name }}
           </div>
         </div>
         <div
@@ -253,14 +268,18 @@
       System Overview
     </h3>
     <div class="space-y-3">
-      {% for c in containers.values()|sort(attribute='name') %}
+      {% for c in containers.values()|sort(attribute='name') %} {% set raw_name
+      = c.name.replace('silvasonic-', '') %} {% set display_name_map = {'brain':
+      'SoundAnalyser', 'carrier': 'Uploader', 'recorder': 'Recorder',
+      'healthchecker': 'HealthChecker', 'birdnet': 'BirdNET'} %} {% set
+      display_name = display_name_map.get(raw_name, raw_name|title) %}
       <div class="flex items-center justify-between">
         <div class="flex items-center gap-2">
           <div
             class="w-1.5 h-1.5 rounded-full {% if c.status == 'Running' %}bg-green-500{% elif c.status == 'Warning' %}bg-amber-500{% else %}bg-red-500{% endif %}"
           ></div>
           <span class="text-xs font-bold text-gray-600 dark:text-gray-300"
-            >{{ c.name.replace('silvasonic-', '').title() }}</span
+            >{{ display_name }}</span
           >
         </div>
         <span class="text-[10px] text-gray-400 font-mono">{{ c.status }}</span>
@@ -268,7 +287,9 @@
       {% endfor %}
     </div>
     <div class="mt-4 pt-4 border-t border-gray-200 dark:border-white/5">
-      <h4 class="text-xs font-bold text-gray-500 uppercase mb-2">Storage</h4>
+      <h4 class="text-xs font-bold text-gray-500 uppercase mb-2">
+        SSD Storage
+      </h4>
       <div
         class="w-full bg-gray-200 dark:bg-gray-700 h-1.5 rounded-full overflow-hidden"
       >
@@ -278,8 +299,8 @@
         ></div>
       </div>
       <div class="flex justify-between text-[10px] text-gray-400 mt-1">
-        <span>Used: {{ stats.disk_percent }}%</span>
-        <span>Free: {{ 100 - stats.disk_percent }}%</span>
+        <span>Used: {{ stats.disk_used_gb }} GB</span>
+        <span>Total: {{ stats.disk_total_gb }} GB</span>
       </div>
     </div>
   </div>

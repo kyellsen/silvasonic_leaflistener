@@ -133,6 +133,8 @@ def start_recording(profile, device, output_dir):
     logger.info(f"Starting Continuous Recording to {output_dir}")
     logger.info(f"Streaming to {udp_url}")
     logger.debug(f"CMD: {' '.join(cmd)}")
+    logger.info(f"CMD_DEBUG: {' '.join(cmd)}") # Temporary Debug
+    logger.info(f"PROFILE_DEBUG: Channels={profile.audio.channels} Rate={profile.audio.sample_rate}")
     
     # Use Popen
     ffmpeg_process = subprocess.Popen(
