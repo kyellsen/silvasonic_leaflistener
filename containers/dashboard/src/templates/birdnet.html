@@ -9,78 +9,8 @@
     BirdNET Detections
   </h2>
 
-  <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-    <!-- Stats Panel -->
-    <!-- Stats Panel (Plotly) -->
-    <div
-      class="bg-white dark:bg-gray-800 p-6 rounded-xl border border-gray-200 dark:border-gray-700 md:col-span-2"
-    >
-      <h3 class="font-bold text-gray-400 uppercase text-xs mb-4">
-        Top Species (All Time)
-      </h3>
-      <div id="topSpeciesChart" class="w-full h-80"></div>
-
-      <script>
-        (function() {
-            const data = [
-                {% for s in stats.top_species %}
-                {
-                    name: "{{ s.display_name|replace('"', '\\"') }}",
-                    count: {{ s.count }}
-                },
-                {% endfor %}
-            ];
-
-            const names = data.map(d => d.name);
-            const counts = data.map(d => d.count);
-
-            const isDark = document.documentElement.classList.contains('dark');
-            const textColor = isDark ? '#e5e7eb' : '#374151';
-            const gridColor = isDark ? '#374151' : '#e5e7eb';
-
-            const trace = {
-                x: names,
-                y: counts,
-                type: 'bar',
-                marker: {
-                    color: '#10b981', // silva-500
-                    line: {
-                        color: '#059669', // silva-600
-                        width: 1
-                    }
-                }
-            };
-
-            const layout = {
-                paper_bgcolor: 'rgba(0,0,0,0)',
-                plot_bgcolor: 'rgba(0,0,0,0)',
-                font: {
-                    family: 'Inter, sans-serif',
-                    color: textColor
-                },
-                margin: { t: 20, r: 20, l: 40, b: 80 },
-                xaxis: {
-                    tickangle: -45,
-                    gridcolor: gridColor,
-                    showgrid: false,
-                    automargin: true
-                },
-                yaxis: {
-                    gridcolor: gridColor,
-                    zerolinecolor: gridColor
-                },
-                autosize: true
-            };
-
-            const config = {
-                responsive: true,
-                displayModeBar: false
-            };
-
-            Plotly.newPlot('topSpeciesChart', [trace], layout, config);
-        })();
-      </script>
-    </div>
+  <div class="grid grid-cols-1 mb-8">
+    <!-- Stats Panel removed (Moved to Stats Page) -->
   </div>
 
   <div

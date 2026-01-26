@@ -25,7 +25,7 @@
   </div>
 
   <!-- Distribution Pies Row -->
-  <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+  <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
     <!-- Today -->
     <div
       class="bg-white dark:bg-gray-800 rounded-xl p-4 border border-gray-200 dark:border-gray-700 shadow-xl"
@@ -33,7 +33,7 @@
       <h3
         class="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-3 text-center"
       >
-        Today (Top 20)
+        Today
       </h3>
       <div class="h-32 w-full relative">
         <div id="distToday" class="w-full h-full"></div>
@@ -46,7 +46,7 @@
       <h3
         class="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-3 text-center"
       >
-        Last 7 Days
+        7 Days
       </h3>
       <div class="h-32 w-full relative">
         <div id="distWeek" class="w-full h-full"></div>
@@ -59,7 +59,7 @@
       <h3
         class="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-3 text-center"
       >
-        Last 30 Days
+        30 Days
       </h3>
       <div class="h-32 w-full relative">
         <div id="distMonth" class="w-full h-full"></div>
@@ -72,10 +72,23 @@
       <h3
         class="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-3 text-center"
       >
-        Last Year
+        Year
       </h3>
       <div class="h-32 w-full relative">
         <div id="distYear" class="w-full h-full"></div>
+      </div>
+    </div>
+    <!-- All Time -->
+    <div
+      class="bg-white dark:bg-gray-800 rounded-xl p-4 border border-gray-200 dark:border-gray-700 shadow-xl"
+    >
+      <h3
+        class="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-3 text-center"
+      >
+        All Time
+      </h3>
+      <div class="h-32 w-full relative">
+        <div id="distAll" class="w-full h-full"></div>
       </div>
     </div>
   </div>
@@ -342,6 +355,7 @@
       createPie('distWeek', {{ distributions.week.labels|tojson }}, {{ distributions.week.values|tojson }});
       createPie('distMonth', {{ distributions.month.labels|tojson }}, {{ distributions.month.values|tojson }});
       createPie('distYear', {{ distributions.year.labels|tojson }}, {{ distributions.year.values|tojson }});
+      createPie('distAll', {{ distributions.all_time.labels|tojson }}, {{ distributions.all_time.values|tojson }});
 
       // --- Daily Activity (Area Chart) ---
       const dailyLabels = {{ daily.labels|tojson }};

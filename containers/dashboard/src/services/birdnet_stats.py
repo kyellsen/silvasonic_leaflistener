@@ -136,6 +136,7 @@ class BirdNetStatsService:
                 dist_week = await get_top_species("7 DAYS")
                 dist_month = await get_top_species("30 DAYS")
                 dist_year = await get_top_species("1 YEAR")
+                dist_all = await get_top_species(None)
 
                 # 4. Histogram (All Species Ranked)
                 query_all = text("""
@@ -170,7 +171,8 @@ class BirdNetStatsService:
                         "today": dist_today,
                         "week": dist_week,
                         "month": dist_month,
-                        "year": dist_year
+                        "year": dist_year,
+                        "all_time": dist_all
                     },
                     "histogram": {
                         "labels": hist_labels,
@@ -186,7 +188,8 @@ class BirdNetStatsService:
                 "hourly": {"values": []},
                 "distributions": {
                     "today": empty_chart, "week": empty_chart,
-                    "month": empty_chart, "year": empty_chart
+                    "month": empty_chart, "year": empty_chart,
+                    "all_time": empty_chart
                 },
                 "histogram": empty_chart,
                 "rarest": []
