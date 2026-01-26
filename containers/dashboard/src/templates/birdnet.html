@@ -204,8 +204,15 @@
   <script>
     function ensureInspectorOpen() {
       const sidebar = document.getElementById("right-sidebar");
-      // Check if collapsed (w-0 class presence)
-      if (sidebar.classList.contains("w-0")) {
+      const isLg = window.innerWidth >= 1024;
+
+      // Determine if currently open (matching logic in toggleInspector)
+      let isOpen = sidebar.classList.contains("w-80");
+      if (!isOpen && isLg && sidebar.classList.contains("lg:w-80")) {
+        isOpen = true;
+      }
+
+      if (!isOpen) {
         toggleInspector();
       }
     }

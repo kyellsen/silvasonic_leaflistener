@@ -169,12 +169,23 @@
       </p>
 
       <script>
-        document.addEventListener("DOMContentLoaded", function () {
+        (function () {
           var latInput = document.getElementById("latitude");
           var lonInput = document.getElementById("longitude");
 
+          // Guard clause if elements are missing
+          if (!latInput || !lonInput) return;
+
           var lat = parseFloat(latInput.value) || 54.17301;
           var lon = parseFloat(lonInput.value) || 10.49468;
+
+          // Check if map container exists and doesn't already have a map
+          var mapContainer = document.getElementById("map");
+          if (!mapContainer) return;
+
+          // If map object already attached to container (Leaflet convention check?),
+          // actually standard Leaflet throws if initialized on same DOM element.
+          // Since HTMX overwrites the DOM, the old element is destroyed, so this is safe.
 
           var map = L.map("map").setView([lat, lon], 13);
 
@@ -219,7 +230,7 @@
           setTimeout(function () {
             map.invalidateSize();
           }, 500);
-        });
+        })();
       </script>
     </div>
 
