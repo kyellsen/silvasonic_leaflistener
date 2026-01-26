@@ -156,3 +156,47 @@ class RecorderService:
         except Exception as e:
             logger.error(f"Recorder Rate Error: {e}")
             return 0.0
+
+    @staticmethod
+    def get_latest_filename():
+        """Get the filename of the most recent recording on disk."""
+        try:
+            if not os.path.exists(REC_DIR): return None
+            # Find latest file. os.scandir is fast.
+            latest = None
+            # We assume YYYY-MM-DD naming sort works
+            # Optimization: check only recent folders if deeply nested?
+            # For now, recursive walk
+            all_files = []
+            for root, dirs, files in os.walk(REC_DIR):
+                for f in files:
+                    if f.endswith('.flac'):
+                        all_files.append(f)
+            
+            if not all_files: return None
+            return max(all_files)
+        except Exception:
+            return None
+
+    @staticmethod
+    def count_files_after(filename: str):
+        """Count how many files on disk are lexicographically 'after' the given filename."""
+        if not filename: 
+            # If no comparison file provided, count ALL files (queue is full)
+             # But this might be huge if starting fresh.
+             # If processed table is empty, lag is Everything.
+             # We should probably count all.
+             pass
+        
+        try:
+            if not os.path.exists(REC_DIR): return 0
+            count = 0
+            for root, dirs, files in os.walk(REC_DIR):
+                for f in files:
+                    if f.endswith('.flac'):
+                        if not filename or f > filename:
+                            count += 1
+            return count
+        except Exception as e:
+            logger.error(f"Recorder Count After Error: {e}")
+            return 0

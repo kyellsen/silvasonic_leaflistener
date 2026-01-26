@@ -136,27 +136,35 @@ async def dashboard(request: Request, auth=Depends(require_auth)):
     recorder_stats = RecorderService.get_status()
     raw_containers = HealthCheckerService.get_system_metrics()
 
-    # Throughput Metrics (Last 60 mins)
-    rec_rate = RecorderService.get_creation_rate(60)
-    process_rate = await BirdNetService.get_processing_rate(60)
-    upload_rate = await CarrierService.get_upload_rate(60)
+    # Throughput / Lag Metrics
+    # rec_rate = RecorderService.get_creation_rate(60) # Still useful info? User wants "concrete numbers" for lag.
+    # But maybe "Recorder" status needs a metric? Maybe "Active" or files last hour.
+    # Let's keep one rate for Recorder as "Heartbeat", but show Lag for others.
+    
+    # 1. Get Cursors
+    latest_processed = await BirdNetService.get_latest_processed_filename()
+    latest_uploaded = await CarrierService.get_latest_uploaded_filename()
+    
+    # 2. Calculate Lag (Files waiting)
+    analyzer_lag = RecorderService.count_files_after(latest_processed)
+    uploader_lag = RecorderService.count_files_after(latest_uploaded)
+    
+    # Status Logic (Thresholds)
+    # 0-2 files: OK
+    # 3-10: Pending
+    # >10: Lagging
+    def get_status(lag):
+        if lag <= 2: return "ok"
+        if lag <= 10: return "pending"
+        return "lagging"
 
     throughput = {
-        "recorder": rec_rate,
-        "analyzer": process_rate,
-        "uploader": upload_rate,
-        # Status Logic
-        # If analyzer < recorder (with margin), it's lagging.
-        # Margin: 10% tolerance? Or simple comparison.
-        # If analyzer is 0 and recorder > 0, strict lag.
-        "analyzer_status": "ok" if process_rate >= (rec_rate * 0.9) else "lagging",
-        "uploader_status": "ok" if upload_rate >= (rec_rate * 0.9) else "lagging"
+        "recorder_active": RecorderService.get_creation_rate(10) > 0, # Simple boolean if recording
+        "analyzer_lag": analyzer_lag,
+        "uploader_lag": uploader_lag,
+        "analyzer_status": get_status(analyzer_lag),
+        "uploader_status": get_status(uploader_lag)
     }
-    
-    # Correction: If recorder is 0, then we are not lagging even if 0.
-    if rec_rate == 0:
-        throughput["analyzer_status"] = "ok"
-        throughput["uploader_status"] = "ok"
         
     # Define Sort Order & Display Names
     # Order: Recorder, Carrier, LiveSound, Birdnet, Weather, PostgressDB, HealthChecker

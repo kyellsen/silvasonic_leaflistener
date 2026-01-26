@@ -145,3 +145,13 @@ class CarrierService:
         except Exception as e:
             print(f"Carrier Rate Error: {e}")
             return 0.0
+
+    @staticmethod
+    async def get_latest_uploaded_filename():
+        """Get the filename of the most recently uploaded file."""
+        try:
+            async with db.get_connection() as conn:
+                query = text("SELECT MAX(filename) FROM carrier.uploads WHERE status='success'")
+                return (await conn.execute(query)).scalar()
+        except Exception:
+            return None

@@ -180,6 +180,20 @@ class BirdNetService:
             return 0.0
 
     @staticmethod
+    async def get_latest_processed_filename():
+        """Get the filename of the most recently processed file."""
+        try:
+            async with db.get_connection() as conn:
+                # We want the file with the largest filename (latest timestamp), not necessarily processed_at
+                # But processed_at sort is safer if processing out of order.
+                # However, lag is defined by file order.
+                # So MAX(filename) is best cursor.
+                query = text("SELECT MAX(filename) FROM birdnet.processed_files")
+                return (await conn.execute(query)).scalar()
+        except Exception as e:
+            return None
+
+    @staticmethod
     async def get_all_species():
         """Returns all species with their counts and last seen date. Enriches with images if missing."""
         try:
