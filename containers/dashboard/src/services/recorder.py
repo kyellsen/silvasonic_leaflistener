@@ -114,106 +114,58 @@ class RecorderService:
             # Get current BPS setting for Duration Fallback
             current_status = RecorderService.get_status()
             current_bps = RecorderService.get_audio_settings(current_status.get('profile'))
+            
+            if not os.path.exists(REC_DIR):
+                return []
 
-            async with db.get_connection() as conn:
-                # Try fetching from birdnet schema (new architecture)
-                # Fallback to brain if needed, but for now we switch to birdnet.processed_files
-                query = text("""
-                    SELECT 
-                        filename,
-                        audio_duration_sec as duration_sec,
-                        0 as file_size_bytes,
-                        processed_at as created_at
-                    FROM birdnet.processed_files
-                    ORDER BY processed_at DESC
-                    LIMIT :limit
-                """)
-                result = await conn.execute(query, {"limit": limit})
-                items = []
-                for row in result:
-                    d = dict(row._mapping)
-                    
-                    # Date Handling
-                    created_at_dt = None
-                    if d.get('created_at'):
-                        created_at_dt = d['created_at']
-                        if created_at_dt.tzinfo is None:
-                             created_at_dt = created_at_dt.replace(tzinfo=UTC)
-                        d['created_at'] = created_at_dt.isoformat()
-                        d['created_at_iso'] = d['created_at']
-                        d['formatted_time'] = created_at_dt.strftime("%Y-%m-%d %H:%M:%S")
-                    else:
-                        d['created_at_iso'] = ""
-                        d['formatted_time'] = "Unknown"
-
-                    # Calculate Size in MB & Find File
-                    size_bytes = d.get('file_size_bytes') or 0
-                    fname = d.get('filename')
-                    
-                    # Try to find file to get real size
-                    if fname:
-                        possible_paths = []
-                        # 1. Direct path (if relative or absolute)
-                        possible_paths.append(os.path.join(REC_DIR, fname))
-                        
-                        # 2. Dated Subdirectory (YYYY-MM-DD/filename)
-                        if created_at_dt:
-                            date_folder = created_at_dt.strftime("%Y-%m-%d")
-                            possible_paths.append(os.path.join(REC_DIR, date_folder, fname))
-                        
-                        # 3. Profile Subdirectories (Profile/filename or Profile/YYYY-MM-DD/filename)
-                        # The audio files might be in profile subfolders, so we scan one level deep
+            files_found = []
+            # Recursive scan to find all audio files (support subdirs like YYYY-MM-DD or profile)
+            for root, dirs, files in os.walk(REC_DIR):
+                for f in files:
+                    if f.endswith(('.flac', '.wav', '.mp3')):
+                        full_path = os.path.join(root, f)
                         try:
-                            if os.path.isdir(REC_DIR):
-                                subdirs = [d for d in os.listdir(REC_DIR) if os.path.isdir(os.path.join(REC_DIR, d))]
-                                for d in subdirs:
-                                    # Profile/Filename
-                                    possible_paths.append(os.path.join(REC_DIR, d, fname))
-                                    # Profile/YYYY-MM-DD/Filename (Future proofing)
-                                    if created_at_dt:
-                                        possible_paths.append(os.path.join(REC_DIR, d, date_folder, fname))
+                            stats = os.stat(full_path)
+                            files_found.append({
+                                "path": full_path,
+                                "name": f,
+                                "size": stats.st_size,
+                                "mtime": stats.st_mtime
+                            })
                         except Exception:
                             pass
-
-                        found_path = None
-                        for p in possible_paths:
-                            if os.path.exists(p):
-                                found_path = p
-                                break
-                        
-                        if found_path:
-                            try:
-                                size_bytes = os.path.getsize(found_path)
-                                # Update relative path for audio playback API
-                                if found_path.startswith(REC_DIR):
-                                    d['audio_relative_path'] = found_path[len(REC_DIR):].lstrip('/')
-                            except Exception:
-                                pass
-                        else:
-                            # Fallback: if we didn't find it, assume name is relative
-                            d['audio_relative_path'] = fname
-
-                    d['size_mb'] = round(size_bytes / (1024*1024), 2)
-                    d['file_size_bytes'] = size_bytes
-
-                    # Sanitize Duration
-                    duration = d.get('duration_sec', 0.0)
-                    
-                    # Heuristic: If duration is insanely large or 0, recalculate
-                    if duration > 3600 or duration <= 0:
-                        if size_bytes > 0:
-                            # Estimate using BPS (assume 0.6 compression for FLAC)
-                            # BPS is uncompressed, so CompressedSize = Duration * BPS * 0.6
-                            # Duration = CompressedSize / (BPS * 0.6)
-                            duration = size_bytes / (current_bps * 0.6)
-                        else:
-                            duration = 30.0 # Default fallback
-                    
-                    d['duration_sec'] = duration
-                    d['duration_str'] = f"{duration:.2f}s"
-
-                    items.append(d)
-                return items
+            
+            # Sort by mtime DESC (newest first)
+            files_found.sort(key=lambda x: x['mtime'], reverse=True)
+            files_found = files_found[:limit]
+            
+            items = []
+            for f in files_found:
+                dt = datetime.datetime.fromtimestamp(f['mtime'])
+                size_bytes = f['size']
+                size_mb = round(size_bytes / (1024*1024), 2)
+                
+                # Sanitize Duration Estimate
+                # Duration = CompressedSize / (BPS * 0.6)
+                duration = 0.0
+                if size_bytes > 0:
+                    duration = size_bytes / (current_bps * 0.6)
+                
+                d = {
+                    "filename": f['name'],
+                    "file_size_bytes": size_bytes,
+                    "size_mb": size_mb,
+                    "formatted_time": dt.strftime("%Y-%m-%d %H:%M:%S"),
+                    "created_at_iso": dt.isoformat(),
+                    "duration_str": f"{duration:.2f}s",
+                    "duration_sec": duration,
+                    # Relative path for potential playback API usage
+                    "audio_relative_path": os.path.relpath(f['path'], REC_DIR)
+                }
+                items.append(d)
+                
+            return items
+            
         except Exception as e:
             logger.error(f"Recorder History Error: {e}")
             return []
