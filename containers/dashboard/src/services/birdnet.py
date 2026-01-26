@@ -136,14 +136,24 @@ class BirdNetService:
 
                 # Top Species
                 query_top = text("""
-                    SELECT common_name as com_name, COUNT(*) as count 
-                    FROM birdnet.detections 
-                    GROUP BY common_name 
+                    SELECT 
+                        d.common_name as com_name, 
+                        MAX(s.german_name) as german_name, 
+                        COUNT(*) as count 
+                    FROM birdnet.detections d
+                    LEFT JOIN birdnet.species_info s ON d.scientific_name = s.scientific_name
+                    GROUP BY d.common_name 
                     ORDER BY count DESC 
                     LIMIT 10
                 """)
                 result_top = await conn.execute(query_top)
-                top_species = [dict(row._mapping) for row in result_top]
+                
+                use_german = SettingsService.is_german_names_enabled()
+                top_species = []
+                for row in result_top:
+                    r = dict(row._mapping)
+                    r['display_name'] = r.get('german_name') if use_german and r.get('german_name') else r.get('com_name')
+                    top_species.append(r)
 
                 # Species Count
                 query_species = text("SELECT COUNT(DISTINCT scientific_name) FROM birdnet.detections")

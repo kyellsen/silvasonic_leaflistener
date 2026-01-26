@@ -12,6 +12,14 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libsndfile1 \
     && rm -rf /var/lib/apt/lists/*
 
+# Download frontend dependencies (Plotly)
+RUN mkdir -p /app/src/static/js && \
+    curl -L -o /app/src/static/js/plotly.min.js https://cdn.plot.ly/plotly-2.27.0.min.js
+
+# Download frontend dependencies (Plotly)
+RUN mkdir -p /app/src/static/js && \
+    curl -L -o /app/src/static/js/plotly.min.js https://cdn.plot.ly/plotly-2.27.0.min.js
+
 # Install python dependencies
 COPY pyproject.toml .
 RUN pip install --no-cache-dir .

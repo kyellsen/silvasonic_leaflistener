@@ -25,7 +25,7 @@
             const data = [
                 {% for s in stats.top_species %}
                 {
-                    name: "{{ s.display_name }}",
+                    name: "{{ s.display_name|replace('"', '\\"') }}",
                     count: {{ s.count }}
                 },
                 {% endfor %}
@@ -62,7 +62,8 @@
                 xaxis: {
                     tickangle: -45,
                     gridcolor: gridColor,
-                    showgrid: false
+                    showgrid: false,
+                    automargin: true
                 },
                 yaxis: {
                     gridcolor: gridColor,
