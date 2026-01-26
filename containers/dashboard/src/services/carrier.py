@@ -133,3 +133,15 @@ class CarrierService:
             print(f"Carrier stats error: {e}")
 
         return {"last_1h": 0, "last_24h": 0, "last_7d": 0, "last_30d": 0}
+
+    @staticmethod
+    async def get_upload_rate(minutes=60):
+        """Calculate files uploaded per minute over the last X minutes."""
+        try:
+            async with db.get_connection() as conn:
+                query = text("SELECT COUNT(*) FROM carrier.uploads WHERE status='success' AND upload_time >= NOW() - make_interval(mins => :mins)")
+                count = (await conn.execute(query, {"mins": minutes})).scalar() or 0
+                return round(count / minutes, 2)
+        except Exception as e:
+            print(f"Carrier Rate Error: {e}")
+            return 0.0

@@ -1,4 +1,5 @@
 {% extends base %} {% block content %}
+<div id="weather-content" hx-get="/weather" hx-trigger="every {{ auto_refresh_interval }}s" hx-swap="outerHTML">
 <div class="space-y-6">
   <!-- Header -->
   <div class="flex items-center justify-between">
@@ -159,14 +160,9 @@
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
   // Initialize Chart
-  const ctx = document.getElementById('weatherChart').getContext('2d');
-
-  // Gradient for Temp
-  const gradientTemp = ctx.createLinearGradient(0, 0, 0, 300);
-  gradientTemp.addColorStop(0, 'rgba(239, 68, 68, 0.5)'); // Red-500
-  gradientTemp.addColorStop(1, 'rgba(239, 68, 68, 0.0)');
-
-  const weatherChart = new Chart(ctx, {
+  var ctx = document.getElementById('weatherChart').getContext('2d');
+  var gradientTemp = ctx.createLinearGradient(0, 0, 0, 300);
+  var weatherChart = new Chart(ctx, {
       type: 'line',
       data: {
           labels: {{ history.labels | tojson }},
@@ -174,7 +170,7 @@
               {
                   label: 'Temperature (°C)',
                   data: {{ history.temp | tojson }},
-                  borderColor: '#ef4444', // Red
+                  borderColor: '#ef4444', 
                   backgroundColor: gradientTemp,
                   borderWidth: 2,
                   tension: 0.4,
@@ -184,7 +180,7 @@
               {
                   label: 'Humidity (%)',
                   data: {{ history.humidity | tojson }},
-                  borderColor: '#3b82f6', // Blue
+                  borderColor: '#3b82f6', 
                   borderWidth: 2,
                   tension: 0.4,
                   pointRadius: 0,
@@ -228,10 +224,10 @@
   });
 
   // --- Correlations ---
-  const corrData = {{ correlations | tojson }};
+  var corrData = {{ correlations | tojson }};
 
   // 1. Scatter Temp
-  const ctxScatter = document.getElementById('scatterTempChart').getContext('2d');
+  var ctxScatter = document.getElementById('scatterTempChart').getContext('2d');
   new Chart(ctxScatter, {
       type: 'scatter',
       data: {
@@ -261,7 +257,7 @@
   });
 
   // 2. Rain Overlay
-  const ctxRain = document.getElementById('rainOverlayChart').getContext('2d');
+  var ctxRain = document.getElementById('rainOverlayChart').getContext('2d');
   new Chart(ctxRain, {
       type: 'bar',
       data: {
@@ -277,7 +273,7 @@
               {
                   label: 'Detections',
                   data: corrData.series_count,
-                  borderColor: '#10b981', // Emerald
+                  borderColor: '#10b981', 
                   backgroundColor: 'rgba(16, 185, 129, 0.1)',
                   type: 'line',
                   tension: 0.3,
@@ -293,7 +289,7 @@
           scales: {
               x: { 
                   grid: { display: false },
-                  ticks: { display: false } // Hide dense labels
+                  ticks: { display: false }
               },
               yRain: {
                   type: 'linear', position: 'right',
@@ -309,6 +305,7 @@
       }
   });
 
+</div>
 {% endblock %} {% block inspector %}
 <div class="flex flex-col h-full space-y-6">
 

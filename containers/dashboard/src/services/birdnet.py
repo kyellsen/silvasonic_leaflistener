@@ -155,6 +155,31 @@ class BirdNetService:
             return {"today": 0, "total": 0, "top_species": []}
 
     @staticmethod
+    async def get_processing_rate(minutes=60):
+        """Calculate files processed per minute over the last X minutes."""
+        try:
+            async with db.get_connection() as conn:
+                # Count from processed_files table
+                query = text("""
+                    SELECT COUNT(*) 
+                    FROM birdnet.processed_files 
+                    WHERE processed_at >= NOW() - INTERVAL ':min MINUTES'
+                """)
+                # Parameter binding for interval string is tricky in some drivers, 
+                # safer to construct interval in python or use parameter.
+                
+                # Postgres logic:
+                query = text("SELECT COUNT(*) FROM birdnet.processed_files WHERE processed_at >= NOW() - make_interval(mins => :mins)")
+                
+                count = (await conn.execute(query, {"mins": minutes})).scalar() or 0
+                return round(count / minutes, 2)
+        except Exception as e:
+            # Table might not exist yet if migration failed or legacy system
+            # Fallback to detections count? No, that's misleading.
+            logger.warning(f"BirdNET Rate Error (probably missing table): {e}")
+            return 0.0
+
+    @staticmethod
     async def get_all_species():
         """Returns all species with their counts and last seen date. Enriches with images if missing."""
         try:
@@ -475,17 +500,15 @@ class BirdNetService:
                         ORDER BY count DESC 
                         LIMIT :limit
                     """)
-                    rows = await conn.execute(query, {"limit": limit})
+                    result = await conn.execute(query, {"limit": limit})
+                    rows = result.fetchall()
                     return {
                         "labels": [r.common_name for r in rows],
                         "values": [r.count for r in rows]
                     }
 
-                dist_today = await get_top_species("1 DAY") # Actually strictly today? User said "Today". 1 DAY interval is last 24h.
-                                                     # Usually "Today" means since 00:00.
-                                                     # Let's use DATE(timestamp) = CURRENT_DATE for Today.
-
                 # Correcting for "Today" (Calendar Day)
+                # Note: We use DATE(timestamp) which matches current server date provided by CURRENT_DATE
                 query_today_exact = text("""
                     SELECT common_name, COUNT(*) as count 
                     FROM birdnet.detections 
@@ -494,7 +517,8 @@ class BirdNetService:
                     ORDER BY count DESC 
                     LIMIT 20
                 """)
-                rows_today = await conn.execute(query_today_exact)
+                result_today = await conn.execute(query_today_exact)
+                rows_today = result_today.fetchall()
                 dist_today = {"labels": [r.common_name for r in rows_today], "values": [r.count for r in rows_today]}
 
                 dist_week = await get_top_species("7 DAYS")

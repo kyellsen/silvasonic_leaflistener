@@ -1,4 +1,5 @@
 {% extends base %} {% block content %}
+<div id="dashboard-content" hx-get="/dashboard" hx-trigger="every {{ auto_refresh_interval }}s" hx-swap="outerHTML">
 <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
   <!-- CPU Card -->
   <div
@@ -118,7 +119,10 @@
     </div>
   </div>
 
-  <!-- Container Status Grid -->
+
+  </div>
+
+  <!-- Throughput Analysis -->
   <div
     class="glass-panel p-5 rounded-2xl shadow-lg relative overflow-hidden group md:col-span-2 lg:col-span-4"
   >
@@ -127,7 +131,7 @@
         class="text-xs font-bold text-gray-400 uppercase tracking-wider flex items-center gap-2"
       >
         <svg
-          class="w-4 h-4 text-silva-500"
+          class="w-4 h-4 text-blue-500"
           fill="none"
           stroke="currentColor"
           viewBox="0 0 24 24"
@@ -136,44 +140,76 @@
             stroke-linecap="round"
             stroke-linejoin="round"
             stroke-width="2"
-            d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
+            d="M13 10V3L4 14h7v7l9-11h-7z"
           ></path>
         </svg>
-        Container Health
+        Pipeline Throughput (Files/min)
       </div>
       <div class="text-[10px] font-mono text-gray-400">
-        Powered by HealthChecker
+        Last 60 Minutes
       </div>
     </div>
 
-    <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3">
-      {% for c in containers %}
-      <div
-        class="flex flex-col gap-1 p-3 rounded-xl bg-gray-50/50 dark:bg-white/5 border border-transparent hover:border-silva-200 dark:hover:border-white/10 transition-all group/card"
-      >
-        <div class="flex items-center gap-2">
-          <div
-            class="w-2 h-2 rounded-full shrink-0 {% if c.status == 'Running' %}bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.4)]{% elif c.status == 'Warning' %}bg-amber-500{% else %}bg-red-500 animate-pulse shadow-[0_0_8px_rgba(239,68,68,0.6)]{% endif %}"
-          ></div>
-          <div
-            class="font-bold text-xs text-gray-700 dark:text-gray-200 truncate"
-            title="{{ c.name }}"
-          >
-            {{ c.display_name }}
-          </div>
+    <!-- Visualization Pipeline -->
+    <div class="flex items-center justify-around relative">
+      <!-- Recorder -->
+      <div class="flex flex-col items-center group/item relative z-10">
+        <div class="p-3 bg-gray-100 dark:bg-white/10 rounded-full mb-2 group-hover/item:scale-110 transition-transform shadow-lg border border-transparent group-hover/item:border-green-500/50">
+           <span class="text-2xl">🎤</span>
         </div>
-        <div
-          class="text-[10px] text-gray-500 font-mono truncate pl-4 group-hover/card:text-gray-700 dark:group-hover/card:text-gray-400 transition-colors"
-          title="{{ c.message }}"
-        >
-          {{ c.status }}
+        <div class="text-sm font-bold text-gray-700 dark:text-gray-200">Recorder</div>
+        <div class="text-xs font-mono text-gray-500 mt-1">{{ throughput.recorder }} f/m</div>
+        <div class="text-[10px] text-green-500 font-bold mt-0.5">SOURCE</div>
+      </div>
+
+      <!-- Arrow 1 -->
+      <div class="flex-1 h-0.5 bg-gray-200 dark:bg-gray-700 mx-4 relative overflow-hidden">
+        <div class="absolute inset-0 bg-gradient-to-r from-transparent via-blue-500/50 to-transparent w-1/2 animate-[shimmer_2s_infinite]"></div>
+      </div>
+
+      <!-- Analyzer -->
+      <div class="flex flex-col items-center group/item relative z-10">
+        <div class="p-3 bg-gray-100 dark:bg-white/10 rounded-full mb-2 group-hover/item:scale-110 transition-transform shadow-lg border border-transparent {% if throughput.analyzer_status == 'ok' %}group-hover/item:border-green-500/50{% else %}border-amber-500 animate-pulse{% endif %}">
+           <span class="text-2xl">🧠</span>
         </div>
+        <div class="text-sm font-bold text-gray-700 dark:text-gray-200">Analyzer</div>
+        <div class="text-xs font-mono text-gray-500 mt-1">{{ throughput.analyzer }} f/m</div>
+        
+        {% if throughput.analyzer_status == 'ok' %}
+        <div class="text-[10px] text-green-500 font-bold mt-0.5 flex items-center gap-1">
+          <span>✓</span> OK
+        </div>
+        {% else %}
+        <div class="text-[10px] text-amber-500 font-bold mt-0.5 flex items-center gap-1">
+          <span>⚠️</span> LAGGING
+        </div>
+        {% endif %}
       </div>
-      {% endfor %} {% if not containers %}
-      <div class="col-span-full py-4 text-center text-xs text-gray-400 italic">
-        Waiting for system status...
+
+      <!-- Arrow 2 -->
+      <div class="flex-1 h-0.5 bg-gray-200 dark:bg-gray-700 mx-4 relative overflow-hidden">
+         <div class="absolute inset-0 bg-gradient-to-r from-transparent via-cyan-500/50 to-transparent w-1/2 animate-[shimmer_2s_infinite] delay-1000"></div>
       </div>
-      {% endif %}
+
+      <!-- Uploader -->
+      <div class="flex flex-col items-center group/item relative z-10">
+        <div class="p-3 bg-gray-100 dark:bg-white/10 rounded-full mb-2 group-hover/item:scale-110 transition-transform shadow-lg border border-transparent {% if throughput.uploader_status == 'ok' %}group-hover/item:border-green-500/50{% else %}border-amber-500 animate-pulse{% endif %}">
+           <span class="text-2xl">☁️</span>
+        </div>
+        <div class="text-sm font-bold text-gray-700 dark:text-gray-200">Uploader</div>
+        <div class="text-xs font-mono text-gray-500 mt-1">{{ throughput.uploader }} f/m</div>
+        
+        {% if throughput.uploader_status == 'ok' %}
+         <div class="text-[10px] text-green-500 font-bold mt-0.5 flex items-center gap-1">
+          <span>✓</span> OK
+        </div>
+        {% else %}
+        <div class="text-[10px] text-amber-500 font-bold mt-0.5 flex items-center gap-1">
+          <span>⚠️</span> LAGGING
+        </div>
+        {% endif %}
+      </div>
+
     </div>
   </div>
 </div>
@@ -253,6 +289,7 @@
       {% endif %}
     </tbody>
   </table>
+</div>
 </div>
 {% endblock %} {% block inspector %}
 <div class="space-y-6">

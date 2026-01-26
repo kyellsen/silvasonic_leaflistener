@@ -39,6 +39,7 @@ class BirdNETAnalyzer:
         logger.info(f"Processing: {path.name}")
 
         # Setup temp paths
+        start_time_epoch = __import__('time').time()
         temp_dir = Path("/tmp/birdnet_processing")
         temp_dir.mkdir(parents=True, exist_ok=True)
         temp_resampled = temp_dir / f"{path.stem}_48k.wav"
@@ -153,6 +154,23 @@ class BirdNETAnalyzer:
                 logger.error(f"Failed to save results: {e}")
         else:
             logger.warning("No result file found. Input might be silent or too short.")
+
+        # Log Processing Stats (Always, even if no detections or silent)
+        try:
+            # Estimate audio duration from file or use a standard (30s)
+            # Better to read from audio metadata if possible, but SF read is slow.
+            # Assuming chunks are 30s as per recorder config, or use soundfile info.
+            try:
+                info = sf.info(str(path))
+                duration = info.duration
+            except:
+                duration = 30.0 # Fallback
+
+            import time
+            processing_time = time.time() - start_time_epoch
+            db.log_processed_file(path.name, duration, processing_time)
+        except Exception as e:
+            logger.error(f"Failed to log processing stats: {e}")
 
         # Cleanup
         try:

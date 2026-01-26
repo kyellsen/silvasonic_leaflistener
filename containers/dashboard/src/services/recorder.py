@@ -1,10 +1,12 @@
 import json
 import os
+import time
+import datetime
 from datetime import UTC
 
 from sqlalchemy import text
 
-from .common import REC_DIR, STATUS_DIR
+from .common import REC_DIR, STATUS_DIR, logger
 from .database import db
 
 
@@ -78,6 +80,78 @@ class RecorderService:
 
                     items.append(d)
                 return items
-        except Exception as e:
             print(f"Recorder History Error: {e}")
             return []
+
+    @staticmethod
+    def get_creation_rate(minutes=60):
+        """Calculate files created per minute over the last X minutes."""
+        try:
+            now = time.time()
+            cutoff = now - (minutes * 60)
+            count = 0
+            
+            if not os.path.exists(REC_DIR):
+                return 0.0
+
+            # Scan directory (non-recursive for now, assuming flat structure or dated folders?)
+            # Recorder uses dated folders typically?
+            # Actually pattern is "%Y-%m-%d_%H-%M-%S.flac" inside BASE_OUTPUT_DIR/profile_slug
+            # But REC_DIR should point to the active profile dir?
+            # Dashboard Config: AUDIO_DIR = "/data/recording"
+            # We might need to scan subdirs if profile is used.
+            # Let's assume recursion for robustness or check depth 1.
+            
+            for root, dirs, files in os.walk(REC_DIR):
+                for f in files:
+                    if not f.endswith('.flac'): continue
+                    
+                    # Parse time from filename
+                    # Pattern: YYYY-mm-dd_HH-MM-SS.flac
+                    try:
+                        # Extract timestamp string
+                        ts_str = f.split('.')[0]
+                        # Manual parsing is faster than strptime
+                        # 2023-10-27_10-00-00
+                        # 0123456789012345678
+                        # strict positions
+                        # This works only if matches pattern exactly.
+                        # Fallback: os.path.getmtime?
+                        # getmtime is disk IO, parsing name is CPU.
+                        # Let's use getmtime if we visit the file anyway?
+                        # No, getmtime might be unreliable if copied. Name is truth.
+                        
+                        # Use datetime.strptime
+                        # dt = datetime.datetime.strptime(ts_str, "%Y-%m-%d_%H-%M-%S")
+                        # ts = dt.timestamp()
+                        
+                        # Optimization: we only need to know if it's > cutoff
+                        # If filename format matches, use it.
+                        
+                        # Let's rely on mtime for MVP simplicity as we are already walking stats?
+                        # os.walk yields names. We have to stat for mtime.
+                        # Parsing name avoids stat call (IO).
+                        
+                        folder_date = root.split('/')[-1] # if folders are dates
+                        
+                        # Try parsing name first
+                        dt = datetime.datetime.strptime(ts_str, "%Y-%m-%d_%H-%M-%S")
+                        ts = dt.replace(tzinfo=datetime.timezone.utc).timestamp() # Assuming UTC filenames
+                        
+                        if ts >= cutoff:
+                            count += 1
+                    except:
+                        # Fallback to mtime
+                        try:
+                            mtime = os.path.getmtime(os.path.join(root, f))
+                            if mtime >= cutoff:
+                                count += 1
+                        except:
+                            pass
+                            
+            # Return rate per minute
+            return round(count / minutes, 2)
+            
+        except Exception as e:
+            logger.error(f"Recorder Rate Error: {e}")
+            return 0.0

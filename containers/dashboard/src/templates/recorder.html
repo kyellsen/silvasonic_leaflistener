@@ -1,298 +1,305 @@
 {% extends base %} {% block content %}
-<h2
-  class="text-xl font-bold mb-4 text-pink-600 dark:text-pink-400 flex items-center gap-2"
->
-  <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-    <path
-      stroke-linecap="round"
-      stroke-linejoin="round"
-      stroke-width="2"
-      d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z"
-    ></path>
-  </svg>
-  Recorder Status
-</h2>
-
-<div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-  <div
-    onclick="showConfig()"
-    class="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700 cursor-pointer hover:ring-2 hover:ring-pink-500 transition group"
-  >
-    <div class="flex justify-between items-start">
-      <div>
-        <div class="text-xs font-bold text-gray-500 uppercase">
-          Input Device
-        </div>
-        <div
-          class="text-xl font-bold text-gray-900 dark:text-white mt-2 truncate group-hover:text-pink-500 transition"
-          title="{{ stats.device.description if stats.device is mapping else stats.device }}"
-        >
-          {{ stats.device.description if stats.device is mapping else
-          stats.device or 'Unknown Device' }}
-        </div>
-      </div>
-      <svg
-        class="w-5 h-5 text-gray-400"
-        fill="none"
-        stroke="currentColor"
-        viewBox="0 0 24 24"
-      >
-        <path
-          stroke-linecap="round"
-          stroke-linejoin="round"
-          stroke-width="2"
-          d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-        ></path>
-      </svg>
-    </div>
-    <div class="mt-4 flex items-center gap-2">
-      <span
-        class="px-2 py-1 rounded text-xs font-bold uppercase {{ 'bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300' if stats.status == 'Running' else 'bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-300' }}"
-      >
-        {{ stats.status or 'Offline' }}
-      </span>
-    </div>
-  </div>
-
-  <div
-    onclick="showConfig()"
-    class="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700 cursor-pointer hover:ring-2 hover:ring-pink-500 transition group"
-  >
-    <div class="flex justify-between items-start">
-      <div>
-        <div class="text-xs font-bold text-gray-500 uppercase">
-          Active Profile
-        </div>
-        <div
-          class="text-2xl font-bold text-pink-600 dark:text-pink-400 mt-2 group-hover:text-pink-500 transition"
-        >
-          {{ stats.profile.name if stats.profile is mapping else stats.profile
-          or 'Default' }}
-        </div>
-      </div>
-      <svg
-        class="w-5 h-5 text-gray-400"
-        fill="none"
-        stroke="currentColor"
-        viewBox="0 0 24 24"
-      >
-        <path
-          stroke-linecap="round"
-          stroke-linejoin="round"
-          stroke-width="2"
-          d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"
-        ></path>
-        <path
-          stroke-linecap="round"
-          stroke-linejoin="round"
-          stroke-width="2"
-          d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
-        ></path>
-      </svg>
-    </div>
-    <div class="text-xs text-gray-400 mt-2">
-      Capturing audio to
-      <span class="font-mono text-gray-800 dark:text-gray-300"
-        >/data/recording</span
-      >
-    </div>
-  </div>
-</div>
-
 <div
-  class="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700 mb-8"
+  id="recorder-content"
+  hx-get="/recorder"
+  hx-trigger="every {{ auto_refresh_interval }}s"
+  hx-swap="outerHTML"
 >
-  <h3 class="font-bold text-gray-700 dark:text-gray-300 mb-4">
-    System Context
-  </h3>
-  <div class="grid grid-cols-2 gap-4 text-sm">
-    <div>
-      <span class="text-gray-500 block">Last Recording</span>
-      <span class="text-gray-900 dark:text-white font-mono"
-        >{{ sys_stats.last_recording }}</span
-      >
-    </div>
-    <div>
-      <span class="text-gray-500 block">Disk Usage</span>
-      <span class="text-gray-900 dark:text-white"
-        >{{ sys_stats.disk_percent }}%</span
-      >
-    </div>
-  </div>
-</div>
-
-<div
-  class="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700"
->
-  <h3
-    class="font-bold text-gray-700 dark:text-gray-300 mb-4 flex justify-between items-center"
+  <h2
+    class="text-xl font-bold mb-4 text-pink-600 dark:text-pink-400 flex items-center gap-2"
   >
-    <span>Recent Recordings</span>
-    <span class="text-xs text-gray-500 font-normal">Last 20 records</span>
-  </h3>
-  <div class="overflow-x-auto">
-    <table class="w-full text-sm text-left">
-      <thead
-        class="text-xs text-gray-700 uppercase bg-gray-50 dark:bg-gray-700 dark:text-gray-400"
-      >
-        <tr>
-          <th class="px-4 py-2">Timestamp</th>
-          <th class="px-4 py-2">File</th>
-          <th class="px-4 py-2 text-right">Size</th>
-        </tr>
-      </thead>
-      <tbody>
-        {% for r in recordings %}
-        <tr
-          class="bg-white border-b dark:bg-gray-800 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600 cursor-pointer transition-colors"
-          onclick="showRecording({{ r | tojson }})"
-        >
-          <td
-            class="px-4 py-2 text-gray-600 dark:text-gray-300 whitespace-nowrap"
+    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path
+        stroke-linecap="round"
+        stroke-linejoin="round"
+        stroke-width="2"
+        d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z"
+      ></path>
+    </svg>
+    Recorder Status
+  </h2>
+
+  <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+    <div
+      onclick="showConfig()"
+      class="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700 cursor-pointer hover:ring-2 hover:ring-pink-500 transition group"
+    >
+      <div class="flex justify-between items-start">
+        <div>
+          <div class="text-xs font-bold text-gray-500 uppercase">
+            Input Device
+          </div>
+          <div
+            class="text-xl font-bold text-gray-900 dark:text-white mt-2 truncate group-hover:text-pink-500 transition"
+            title="{{ stats.device.description if stats.device is mapping else stats.device }}"
           >
-            {{ r.formatted_time }}
-          </td>
-          <td class="px-4 py-2">
-            <div
-              class="font-bold text-gray-900 dark:text-white truncate max-w-[200px]"
-              title="{{ r.filename }}"
+            {{ stats.device.description if stats.device is mapping else
+            stats.device or 'Unknown Device' }}
+          </div>
+        </div>
+        <svg
+          class="w-5 h-5 text-gray-400"
+          fill="none"
+          stroke="currentColor"
+          viewBox="0 0 24 24"
+        >
+          <path
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            stroke-width="2"
+            d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+          ></path>
+        </svg>
+      </div>
+      <div class="mt-4 flex items-center gap-2">
+        <span
+          class="px-2 py-1 rounded text-xs font-bold uppercase {{ 'bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300' if stats.status == 'Running' else 'bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-300' }}"
+        >
+          {{ stats.status or 'Offline' }}
+        </span>
+      </div>
+    </div>
+
+    <div
+      onclick="showConfig()"
+      class="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700 cursor-pointer hover:ring-2 hover:ring-pink-500 transition group"
+    >
+      <div class="flex justify-between items-start">
+        <div>
+          <div class="text-xs font-bold text-gray-500 uppercase">
+            Active Profile
+          </div>
+          <div
+            class="text-2xl font-bold text-pink-600 dark:text-pink-400 mt-2 group-hover:text-pink-500 transition"
+          >
+            {{ stats.profile.name if stats.profile is mapping else stats.profile
+            or 'Default' }}
+          </div>
+        </div>
+        <svg
+          class="w-5 h-5 text-gray-400"
+          fill="none"
+          stroke="currentColor"
+          viewBox="0 0 24 24"
+        >
+          <path
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            stroke-width="2"
+            d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"
+          ></path>
+          <path
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            stroke-width="2"
+            d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
+          ></path>
+        </svg>
+      </div>
+      <div class="text-xs text-gray-400 mt-2">
+        Capturing audio to
+        <span class="font-mono text-gray-800 dark:text-gray-300"
+          >/data/recording</span
+        >
+      </div>
+    </div>
+  </div>
+
+  <div
+    class="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700 mb-8"
+  >
+    <h3 class="font-bold text-gray-700 dark:text-gray-300 mb-4">
+      System Context
+    </h3>
+    <div class="grid grid-cols-2 gap-4 text-sm">
+      <div>
+        <span class="text-gray-500 block">Last Recording</span>
+        <span class="text-gray-900 dark:text-white font-mono"
+          >{{ sys_stats.last_recording }}</span
+        >
+      </div>
+      <div>
+        <span class="text-gray-500 block">Disk Usage</span>
+        <span class="text-gray-900 dark:text-white"
+          >{{ sys_stats.disk_percent }}%</span
+        >
+      </div>
+    </div>
+  </div>
+
+  <div
+    class="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700"
+  >
+    <h3
+      class="font-bold text-gray-700 dark:text-gray-300 mb-4 flex justify-between items-center"
+    >
+      <span>Recent Recordings</span>
+      <span class="text-xs text-gray-500 font-normal">Last 20 records</span>
+    </h3>
+    <div class="overflow-x-auto">
+      <table class="w-full text-sm text-left">
+        <thead
+          class="text-xs text-gray-700 uppercase bg-gray-50 dark:bg-gray-700 dark:text-gray-400"
+        >
+          <tr>
+            <th class="px-4 py-2">Timestamp</th>
+            <th class="px-4 py-2">File</th>
+            <th class="px-4 py-2 text-right">Size</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for r in recordings %}
+          <tr
+            class="bg-white border-b dark:bg-gray-800 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600 cursor-pointer transition-colors"
+            onclick="showRecording({{ r | tojson }})"
+          >
+            <td
+              class="px-4 py-2 text-gray-600 dark:text-gray-300 whitespace-nowrap"
             >
-              {{ r.filename }}
-            </div>
-            <div class="text-xs text-pink-500 font-mono">
-              {{ r.duration_str }}
-            </div>
-          </td>
-          <td
-            class="px-4 py-2 text-right font-mono text-gray-600 dark:text-gray-400 whitespace-nowrap"
-          >
-            {{ r.size_mb }} MB
-          </td>
-        </tr>
-        {% else %}
-        <tr>
-          <td colspan="3" class="px-4 py-8 text-center text-gray-500">
-            No recordings found in database.
-          </td>
-        </tr>
-        {% endfor %}
-      </tbody>
-    </table>
+              {{ r.formatted_time }}
+            </td>
+            <td class="px-4 py-2">
+              <div
+                class="font-bold text-gray-900 dark:text-white truncate max-w-[200px]"
+                title="{{ r.filename }}"
+              >
+                {{ r.filename }}
+              </div>
+              <div class="text-xs text-pink-500 font-mono">
+                {{ r.duration_str }}
+              </div>
+            </td>
+            <td
+              class="px-4 py-2 text-right font-mono text-gray-600 dark:text-gray-400 whitespace-nowrap"
+            >
+              {{ r.size_mb }} MB
+            </td>
+          </tr>
+          {% else %}
+          <tr>
+            <td colspan="3" class="px-4 py-8 text-center text-gray-500">
+              No recordings found in database.
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
   </div>
+
+  <script>
+    var activeStats = {{ stats | tojson }};
+    var inspector = document.getElementById('inspector-content');
+
+    function renderConfig() {
+        if (!inspector) return;
+        if (!activeStats) {
+             inspector.innerHTML = '<div class="p-4 text-gray-500">No active status data.</div>';
+             return;
+        }
+
+        // Safely access nested props if dict, or use value if string
+        let p = activeStats.profile || 'Unknown';
+        let d = activeStats.device || 'Unknown';
+
+        let pName = (typeof p === 'object' && p !== null) ? (p.name || 'Unknown') : p;
+        let dName = (typeof d === 'object' && d !== null) ? (d.description || 'Unknown') : d;
+
+        let html = `
+            <div class="bg-white dark:bg-gray-700/50 p-4 rounded-lg border border-gray-200 dark:border-transparent animate-fade-in">
+                <h3 class="font-bold text-gray-700 dark:text-gray-300 mb-2 border-b border-gray-200 dark:border-gray-600 pb-2 flex items-center gap-2">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
+                    Active Configuration
+                </h3>
+
+                <div class="mb-4">
+                    <div class="text-xs font-bold text-gray-500 uppercase">Profile</div>
+                    <div class="text-sm font-bold text-gray-900 dark:text-gray-200">${pName}</div>
+                    ${(p.slug) ? `<div class="text-xs text-gray-400">Slug: ${p.slug}</div>` : ''}
+                </div>
+
+                ${(p.audio) ? `
+                <div class="mb-4 bg-gray-50 dark:bg-gray-800/50 p-2 rounded">
+                    <div class="text-xs font-bold text-gray-500 uppercase mb-1">Audio Settings</div>
+                    <div class="grid grid-cols-2 gap-y-1 gap-x-2 text-xs text-gray-600 dark:text-gray-300">
+                        <div>Sample Rate:</div><div class="font-mono text-right">${p.audio.sample_rate} Hz</div>
+                        <div>Channels:</div><div class="font-mono text-right">${p.audio.channels}</div>
+                        <div>Format:</div><div class="font-mono text-right">${p.audio.format}</div>
+                        <div>Bit Depth:</div><div class="font-mono text-right">${p.audio.bit_depth}-bit</div>
+                    </div>
+                </div>` : ''}
+
+                ${(p.recording) ? `
+                <div class="mb-4 bg-gray-50 dark:bg-gray-800/50 p-2 rounded">
+                    <div class="text-xs font-bold text-gray-500 uppercase mb-1">Recording</div>
+                    <div class="grid grid-cols-2 gap-y-1 gap-x-2 text-xs text-gray-600 dark:text-gray-300">
+                        <div>Chunk Duration:</div><div class="font-mono text-right">${p.recording.chunk_duration_seconds}s</div>
+                        <div>Format:</div><div class="font-mono text-right">${p.recording.output_format}</div>
+                         <div>Compression:</div><div class="font-mono text-right">${p.recording.compression_level}</div>
+                    </div>
+                </div>` : ''}
+
+                <div class="mb-4">
+                     <div class="text-xs font-bold text-gray-500 uppercase">Input Device</div>
+                     <div class="text-sm text-gray-900 dark:text-gray-200 break-words" title="${dName}">${dName}</div>
+                     ${(d.hw_address) ? `<div class="text-xs text-gray-400 font-mono mt-1">${d.hw_address}</div>` : ''}
+                </div>
+            </div>
+        `;
+        inspector.innerHTML = html;
+    }
+
+    function showConfig() {
+        renderConfig();
+    }
+
+    function showRecording(rec) {
+        if (!inspector) return;
+        let html = `
+             <div class="bg-white dark:bg-gray-700/50 p-4 rounded-lg border border-gray-200 dark:border-transparent animate-fade-in">
+                <h3 class="font-bold text-gray-700 dark:text-gray-300 mb-2 border-b border-gray-200 dark:border-gray-600 pb-2 flex items-center gap-2">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19V6l12-3v13M9 19c0 1.105-1.343 2-3 2s-3-.895-3-2 3-2 3-2zm0 0v-4.9"></path></svg>
+                    Recording Details
+                </h3>
+
+                <div class="mb-4">
+                    <div class="text-xs font-bold text-gray-500 uppercase">Filename</div>
+                    <div class="text-sm font-mono text-gray-900 dark:text-gray-200 break-all select-all">${rec.filename}</div>
+                </div>
+                 <div class="grid grid-cols-2 gap-4 mb-4">
+                    <div class="bg-gray-50 dark:bg-gray-800/50 p-2 rounded">
+                        <div class="text-xs font-bold text-gray-500 uppercase">Duration</div>
+                        <div class="text-lg font-bold text-pink-500">${rec.duration_str}</div>
+                    </div>
+                     <div class="bg-gray-50 dark:bg-gray-800/50 p-2 rounded">
+                        <div class="text-xs font-bold text-gray-500 uppercase">Size</div>
+                        <div class="text-lg font-bold text-pink-500">${rec.size_mb} MB</div>
+                    </div>
+                </div>
+
+                <div class="mb-4">
+                    <div class="text-xs font-bold text-gray-500 uppercase">Timestamp</div>
+                    <div class="text-sm text-gray-600 dark:text-gray-400">${rec.formatted_time}</div>
+                </div>
+
+                <div class="mt-4 pt-4 border-t border-gray-200 dark:border-gray-600">
+                     <button onclick="showConfig()" class="w-full py-2 bg-gray-200 dark:bg-gray-600 hover:bg-gray-300 dark:hover:bg-gray-500 text-gray-700 dark:text-gray-300 rounded transition text-sm font-bold flex items-center justify-center gap-2">
+                        <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path></svg>
+                        Back to Configuration
+                     </button>
+                </div>
+            </div>
+        `;
+        inspector.innerHTML = html;
+    }
+
+    // Initialize
+    document.addEventListener('DOMContentLoaded', () => {
+        // Wait for element to exist (it's in a block in base, so it should be there)
+        renderConfig();
+    });
+  </script>
 </div>
-
-<script>
-  const activeStats = {{ stats | tojson }};
-  const inspector = document.getElementById('inspector-content');
-
-  function renderConfig() {
-      if (!inspector) return;
-      if (!activeStats) {
-           inspector.innerHTML = '<div class="p-4 text-gray-500">No active status data.</div>';
-           return;
-      }
-
-      // Safely access nested props if dict, or use value if string
-      let p = activeStats.profile || 'Unknown';
-      let d = activeStats.device || 'Unknown';
-
-      let pName = (typeof p === 'object' && p !== null) ? (p.name || 'Unknown') : p;
-      let dName = (typeof d === 'object' && d !== null) ? (d.description || 'Unknown') : d;
-
-      let html = `
-          <div class="bg-white dark:bg-gray-700/50 p-4 rounded-lg border border-gray-200 dark:border-transparent animate-fade-in">
-              <h3 class="font-bold text-gray-700 dark:text-gray-300 mb-2 border-b border-gray-200 dark:border-gray-600 pb-2 flex items-center gap-2">
-                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
-                  Active Configuration
-              </h3>
-
-              <div class="mb-4">
-                  <div class="text-xs font-bold text-gray-500 uppercase">Profile</div>
-                  <div class="text-sm font-bold text-gray-900 dark:text-gray-200">${pName}</div>
-                  ${(p.slug) ? `<div class="text-xs text-gray-400">Slug: ${p.slug}</div>` : ''}
-              </div>
-
-              ${(p.audio) ? `
-              <div class="mb-4 bg-gray-50 dark:bg-gray-800/50 p-2 rounded">
-                  <div class="text-xs font-bold text-gray-500 uppercase mb-1">Audio Settings</div>
-                  <div class="grid grid-cols-2 gap-y-1 gap-x-2 text-xs text-gray-600 dark:text-gray-300">
-                      <div>Sample Rate:</div><div class="font-mono text-right">${p.audio.sample_rate} Hz</div>
-                      <div>Channels:</div><div class="font-mono text-right">${p.audio.channels}</div>
-                      <div>Format:</div><div class="font-mono text-right">${p.audio.format}</div>
-                      <div>Bit Depth:</div><div class="font-mono text-right">${p.audio.bit_depth}-bit</div>
-                  </div>
-              </div>` : ''}
-
-              ${(p.recording) ? `
-              <div class="mb-4 bg-gray-50 dark:bg-gray-800/50 p-2 rounded">
-                  <div class="text-xs font-bold text-gray-500 uppercase mb-1">Recording</div>
-                  <div class="grid grid-cols-2 gap-y-1 gap-x-2 text-xs text-gray-600 dark:text-gray-300">
-                      <div>Chunk Duration:</div><div class="font-mono text-right">${p.recording.chunk_duration_seconds}s</div>
-                      <div>Format:</div><div class="font-mono text-right">${p.recording.output_format}</div>
-                       <div>Compression:</div><div class="font-mono text-right">${p.recording.compression_level}</div>
-                  </div>
-              </div>` : ''}
-
-              <div class="mb-4">
-                   <div class="text-xs font-bold text-gray-500 uppercase">Input Device</div>
-                   <div class="text-sm text-gray-900 dark:text-gray-200 break-words" title="${dName}">${dName}</div>
-                   ${(d.hw_address) ? `<div class="text-xs text-gray-400 font-mono mt-1">${d.hw_address}</div>` : ''}
-              </div>
-          </div>
-      `;
-      inspector.innerHTML = html;
-  }
-
-  function showConfig() {
-      renderConfig();
-  }
-
-  function showRecording(rec) {
-      if (!inspector) return;
-      let html = `
-           <div class="bg-white dark:bg-gray-700/50 p-4 rounded-lg border border-gray-200 dark:border-transparent animate-fade-in">
-              <h3 class="font-bold text-gray-700 dark:text-gray-300 mb-2 border-b border-gray-200 dark:border-gray-600 pb-2 flex items-center gap-2">
-                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19V6l12-3v13M9 19c0 1.105-1.343 2-3 2s-3-.895-3-2 3-2 3-2zm0 0v-4.9"></path></svg>
-                  Recording Details
-              </h3>
-
-              <div class="mb-4">
-                  <div class="text-xs font-bold text-gray-500 uppercase">Filename</div>
-                  <div class="text-sm font-mono text-gray-900 dark:text-gray-200 break-all select-all">${rec.filename}</div>
-              </div>
-               <div class="grid grid-cols-2 gap-4 mb-4">
-                  <div class="bg-gray-50 dark:bg-gray-800/50 p-2 rounded">
-                      <div class="text-xs font-bold text-gray-500 uppercase">Duration</div>
-                      <div class="text-lg font-bold text-pink-500">${rec.duration_str}</div>
-                  </div>
-                   <div class="bg-gray-50 dark:bg-gray-800/50 p-2 rounded">
-                      <div class="text-xs font-bold text-gray-500 uppercase">Size</div>
-                      <div class="text-lg font-bold text-pink-500">${rec.size_mb} MB</div>
-                  </div>
-              </div>
-
-              <div class="mb-4">
-                  <div class="text-xs font-bold text-gray-500 uppercase">Timestamp</div>
-                  <div class="text-sm text-gray-600 dark:text-gray-400">${rec.formatted_time}</div>
-              </div>
-
-              <div class="mt-4 pt-4 border-t border-gray-200 dark:border-gray-600">
-                   <button onclick="showConfig()" class="w-full py-2 bg-gray-200 dark:bg-gray-600 hover:bg-gray-300 dark:hover:bg-gray-500 text-gray-700 dark:text-gray-300 rounded transition text-sm font-bold flex items-center justify-center gap-2">
-                      <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path></svg>
-                      Back to Configuration
-                   </button>
-              </div>
-          </div>
-      `;
-      inspector.innerHTML = html;
-  }
-
-  // Initialize
-  document.addEventListener('DOMContentLoaded', () => {
-      // Wait for element to exist (it's in a block in base, so it should be there)
-      renderConfig();
-  });
-</script>
 {% endblock %} {% block inspector %}
 <div id="inspector-content" class="space-y-6">
   <!-- Default State: Storage Info -->

@@ -1,4 +1,5 @@
 {% extends base %} {% block content %}
+<div id="uploader-content" hx-get="/uploader" hx-trigger="every {{ auto_refresh_interval }}s" hx-swap="outerHTML">
 <h2
   class="text-xl font-bold mb-4 text-cyan-600 dark:text-cyan-400 flex items-center gap-2"
 >
@@ -221,5 +222,6 @@
       Uploader ensures your recordings are safely stored in the cloud.
     </p>
   </div>
+</div>
 </div>
 {% endblock %}

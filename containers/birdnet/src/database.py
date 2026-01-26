@@ -66,6 +66,16 @@ class Watchlist(Base):
     # Notification Settings (Future Proofing)
     min_confidence = Column(Float, default=0.0) # 0.0 = Use global default
 
+class ProcessedFile(Base):
+    __tablename__ = 'processed_files'
+    __table_args__ = {'schema': 'birdnet'}
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    filename = Column(String(255), nullable=False)
+    processed_at = Column(DateTime, default=lambda: datetime.now(UTC))
+    processing_time_sec = Column(Float, nullable=True) # How long analysis took
+    audio_duration_sec = Column(Float, nullable=True) # Duration of the audio file in seconds
+
 class DatabaseHandler:
     def __init__(self):
         self.user = os.getenv("POSTGRES_USER", "silvasonic")
@@ -197,6 +207,25 @@ class DatabaseHandler:
         try:
             # We trust scientific name to be stable
             return session.query(Watchlist).filter_by(scientific_name=scientific_name, enabled=1).count() > 0
+        finally:
+            session.close()
+
+    def log_processed_file(self, filename: str, duration: float, processing_time: float):
+        """Log that a file was processed (regardless of detections)."""
+        if not self.Session: return
+        session = self.Session()
+        try:
+            entry = ProcessedFile(
+                filename=filename,
+                audio_duration_sec=duration,
+                processing_time_sec=processing_time,
+                processed_at=datetime.now(UTC)
+            )
+            session.add(entry)
+            session.commit()
+        except Exception as e:
+            logger.error(f"Failed to log processed file: {e}")
+            session.rollback()
         finally:
             session.close()
 

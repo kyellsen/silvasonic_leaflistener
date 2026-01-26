@@ -136,15 +136,37 @@ async def dashboard(request: Request, auth=Depends(require_auth)):
     recorder_stats = RecorderService.get_status()
     raw_containers = HealthCheckerService.get_system_metrics()
 
+    # Throughput Metrics (Last 60 mins)
+    rec_rate = RecorderService.get_creation_rate(60)
+    process_rate = await BirdNetService.get_processing_rate(60)
+    upload_rate = await CarrierService.get_upload_rate(60)
+
+    throughput = {
+        "recorder": rec_rate,
+        "analyzer": process_rate,
+        "uploader": upload_rate,
+        # Status Logic
+        # If analyzer < recorder (with margin), it's lagging.
+        # Margin: 10% tolerance? Or simple comparison.
+        # If analyzer is 0 and recorder > 0, strict lag.
+        "analyzer_status": "ok" if process_rate >= (rec_rate * 0.9) else "lagging",
+        "uploader_status": "ok" if upload_rate >= (rec_rate * 0.9) else "lagging"
+    }
+    
+    # Correction: If recorder is 0, then we are not lagging even if 0.
+    if rec_rate == 0:
+        throughput["analyzer_status"] = "ok"
+        throughput["uploader_status"] = "ok"
+        
     # Define Sort Order & Display Names
     # Order: Recorder, Carrier, LiveSound, Birdnet, Weather, PostgressDB, HealthChecker
     container_config = [
         {"key": "recorder", "name": "Recorder"},
-        {"key": "uploader", "name": "Carrier"},
-        {"key": "brain", "name": "LiveSound"},
+        {"key": "uploader", "name": "Uploader"},
+        {"key": "livesound", "name": "Livesound"},
         {"key": "birdnet", "name": "Birdnet"},
         {"key": "weather", "name": "Weather"},
-        {"key": "postgres", "name": "PostgressDB"},
+        {"key": "postgres", "name": "Postgress"},
         {"key": "healthchecker", "name": "HealthChecker"},
     ]
     
@@ -193,7 +215,10 @@ async def dashboard(request: Request, auth=Depends(require_auth)):
         "birdnet_stats": birdnet_stats,
         "carrier_stats": carrier_stats,
         "recorder_stats": recorder_stats,
+        "carrier_stats": carrier_stats,
+        "recorder_stats": recorder_stats,
         "containers": containers_sorted,
+        "throughput": throughput,
         "status_label": "System:",
         "status_value": "Online",
         "status_color": "text-green-600 dark:text-green-400",
