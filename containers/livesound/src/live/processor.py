@@ -107,6 +107,12 @@ class AudioIngestor:
                 # 1. Distribute Raw Audio (Bytes)
                 self._broadcast_safe(self._audio_queues, data)
 
+                # OPTIMIZATION: Skip processing if no one is watching the spectrogram
+                if not self._spectrogram_queues:
+                    if len(fft_buffer) > 0:
+                        fft_buffer = np.zeros(0, dtype=np.float32)
+                    continue
+
                 # 2. Process Spectrogram
                 # int16 -> float32
                 audio_chunk = np.frombuffer(data, dtype=np.int16).astype(np.float32) / 32768.0

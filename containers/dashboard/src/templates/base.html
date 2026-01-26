@@ -985,7 +985,14 @@
         const label = document.getElementById("global-player-label");
 
         container.classList.remove("hidden");
-        player.src = `/api/audio/${filename}`;
+
+        // If filename starts with /, use it as is (Clip URL)
+        // Otherwise, prepend /api/audio/ (Legacy/Relative URL)
+        let src = filename.startsWith("/")
+          ? filename
+          : `/api/audio/${filename}`;
+
+        player.src = src;
         label.innerText = `${name}`;
         player.play();
       }

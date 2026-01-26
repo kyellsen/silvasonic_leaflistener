@@ -235,6 +235,8 @@ class BirdNetStatsService:
                 """)
                 res_recent = await conn.execute(query_recent, {"name": species_name})
                 recent = []
+                import os # Local import
+
                 for row in res_recent:
                     d = dict(row._mapping)
                     if d.get('timestamp'):
@@ -248,6 +250,11 @@ class BirdNetStatsService:
                         d['audio_relative_path'] = fp[len(REC_DIR):].lstrip('/')
                     else:
                         d['audio_relative_path'] = d.get('filename')
+
+                    if d.get('clip_path'):
+                        d['playback_url'] = f"/api/clips/{os.path.basename(d['clip_path'])}"
+                    else:
+                        d['playback_url'] = f"/api/audio/{d.get('audio_relative_path')}"
 
                     recent.append(d)
 

@@ -313,9 +313,9 @@
               >
             </div>
           </div>
-          {% if item.audio_relative_path %}
+          {% if item.playback_url %}
           <button
-            onclick="event.stopPropagation(); playGlobalAudio('{{ item.audio_relative_path|replace('\\', '/') }}', '{{ item.common_name|replace('\'', '\\\'') }}', {{ item.confidence }})"
+            onclick="event.stopPropagation(); playGlobalAudio('{{ item.playback_url }}', '{{ item.common_name|replace('\'', '\\\'') }}', {{ item.confidence }})"
             class="p-2 rounded-full bg-white dark:bg-gray-800 hover:bg-green-100 dark:hover:bg-green-600 text-gray-400 hover:text-green-600 dark:hover:text-white transition shadow-sm border border-gray-200 dark:border-gray-700"
           >
             <svg

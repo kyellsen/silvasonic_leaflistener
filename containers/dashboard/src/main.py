@@ -12,6 +12,7 @@ from fastapi.templating import Jinja2Templates
 from src.auth import COOKIE_NAME, SESSION_SECRET, require_auth, verify_credentials
 from starlette.status import HTTP_302_FOUND
 import time
+import datetime
 import json
 import psutil
 import asyncio
@@ -39,6 +40,7 @@ TEMPLATES_DIR = os.path.join(BASE_DIR, "templates")
 AUDIO_DIR = "/data/recording"
 LOG_DIR = "/var/log/silvasonic"
 ARTIFACTS_DIR = "/data/processed/artifacts"
+CLIPS_DIR = "/data/db/results/clips"
 os.makedirs(ARTIFACTS_DIR, exist_ok=True)
 
 VERSION = "0.1.0"
@@ -93,7 +95,7 @@ def write_status():
         except Exception as e:
             logger.error(f"Failed to write dashboard status: {e}")
             
-        time.sleep(30) # Check every 30s
+        time.sleep(5) # Check every 5s
 
 @app.on_event("startup")
 async def startup_event():
@@ -267,7 +269,7 @@ async def dashboard(request: Request, auth=Depends(require_auth)):
         "status_label": "System:",
         "status_value": "Online",
         "status_color": "text-green-600 dark:text-green-400",
-        "auto_refresh_interval": 15
+        "auto_refresh_interval": 5
     })
 
 @app.get("/settings", response_class=HTMLResponse)
@@ -436,7 +438,7 @@ async def birdnet_page(request: Request, auth=Depends(require_auth)):
         "status_label": "BirdNET:",
         "status_value": stats.get("status", "Active"),
         "status_color": "text-green-600 dark:text-green-400",
-        "auto_refresh_interval": 15
+        "auto_refresh_interval": 5
     })
 
 @app.get("/birdnet/discover", response_class=HTMLResponse)
@@ -483,33 +485,6 @@ async def birdnet_species_page(request: Request, species_name: str, auth=Depends
         "status_color": "text-amber-500 dark:text-amber-400"
     })
 
-@app.get("/birdnet/export/csv", name="birdnet_export_csv")
-async def birdnet_export_csv(auth=Depends(require_auth)):
-    if isinstance(auth, RedirectResponse): return auth
-
-    async def iter_csv():
-        yield "Selection,View,Channel,Begin File,Begin Time (s),End Time (s),Low Freq (Hz),High Freq (Hz),Species Code,Common Name,Confidence,Date,Time,File Name\n"
-        import csv
-        import io
-        output = io.StringIO()
-        writer = csv.writer(output)
-        idx = 1
-        async for row in BirdNetStatsService.get_all_detections_cursor():
-            ts = row.get('timestamp')
-            writer.writerow([
-                idx, "Spectrogram", 1, row.get('filename'), row.get('start_time'), row.get('end_time'), 
-                0, 0, row.get('scientific_name'), row.get('common_name'), row.get('confidence'), 
-                ts.strftime("%Y-%m-%d") if ts else "", ts.strftime("%H:%M:%S") if ts else "", row.get('filename')
-            ])
-            output.seek(0)
-            data = output.read()
-            output.seek(0)
-            output.truncate(0)
-            yield data
-            idx += 1
-
-    filename = f"birdnet_export_{datetime.datetime.now().strftime('%Y%m%d_%H%M%S')}.csv"
-    return StreamingResponse(iter_csv(), media_type="text/csv", headers={"Content-Disposition": f"attachment; filename={filename}"})
 
 
 @app.get("/stats", response_class=HTMLResponse)
@@ -549,7 +524,7 @@ async def recorder_page(request: Request, auth=Depends(require_auth)):
         "status_label": "Recorder:",
         "status_value": stats.get("status", "Unknown"),
         "status_color": "text-green-600 dark:text-green-400" if stats.get("status") == "Running" else "text-red-600 dark:text-red-400",
-        "auto_refresh_interval": 15
+        "auto_refresh_interval": 5
     })
 
 @app.get("/uploader", response_class=HTMLResponse)
@@ -571,7 +546,7 @@ async def uploader_page(request: Request, auth=Depends(require_auth)):
         "status_label": "Uploader:",
         "status_value": stats.get("status", "Idle"),
         "status_color": "text-cyan-600 dark:text-cyan-400",
-        "auto_refresh_interval": 15
+        "auto_refresh_interval": 5
     })
 
 @app.get("/livesound", response_class=HTMLResponse)
@@ -609,7 +584,7 @@ async def weather_page(request: Request, auth=Depends(require_auth)):
         "status_label": "Weather:",
         "status_value": status_data.get("status", "Unknown"),
         "status_color": "text-blue-500 dark:text-blue-400" if status_data.get("status") == "Running" else "text-red-500",
-        "auto_refresh_interval": 15
+        "auto_refresh_interval": 5
     })
 
 # --- Inspector API Partials ---
@@ -659,7 +634,7 @@ async def export_birdnet_csv(auth=Depends(require_auth)):
         yield "Date,Time,Scientific Name,Common Name,Confidence,Start (s),End (s),Filename\n"
         
         # Rows
-        iterator = BirdNetService.get_all_detections_cursor()
+        iterator = BirdNetStatsService.get_all_detections_cursor()
         async for row in iterator:
             # Format fields
             ts = row.get('timestamp')
@@ -748,6 +723,25 @@ async def stream_audio(filename: str, auth=Depends(require_auth)):
         raise HTTPException(404, "File not found")
 
     return FileResponse(safe_path, media_type="audio/flac")
+
+@app.get("/api/clips/{filename:path}")
+async def stream_clip(filename: str, auth=Depends(require_auth)):
+    """Stream clip from clips dir"""
+    if isinstance(auth, RedirectResponse): raise HTTPException(401)
+
+    # Sanitize
+    clean_path = os.path.normpath(filename).lstrip('/')
+    full_path = os.path.join(CLIPS_DIR, clean_path)
+    safe_path = os.path.abspath(full_path)
+
+    # Security check
+    if not safe_path.startswith(os.path.abspath(CLIPS_DIR)):
+        raise HTTPException(403, "Access denied")
+
+    if not os.path.exists(safe_path):
+        raise HTTPException(404, "Clip not found")
+
+    return FileResponse(safe_path, media_type="audio/wav")
 
 @app.get("/api/spectrogram/{filename:path}")
 async def stream_spectrogram(filename: str, auth=Depends(require_auth)):

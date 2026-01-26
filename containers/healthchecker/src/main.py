@@ -47,7 +47,7 @@ SERVICES_CONFIG = {
 STATUS_DIR = f"{BASE_DIR}/status"
 ERROR_DIR = f"{BASE_DIR}/errors"
 ARCHIVE_DIR = f"{BASE_DIR}/errors/archive"
-CHECK_INTERVAL = 60 # Check every minute
+CHECK_INTERVAL = 5 # Check every 5 seconds
 
 def ensure_dirs():
     """Ensure all required directories exist."""

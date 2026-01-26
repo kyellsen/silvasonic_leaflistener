@@ -25,6 +25,7 @@ class BirdNetService:
                         d.scientific_name as sci_name, 
                         d.timestamp,
                         d.filename,
+                        d.clip_path,
                         s.german_name,
                         s.image_url,
                         s.description
@@ -37,6 +38,7 @@ class BirdNetService:
 
                 detections = []
                 use_german = SettingsService.is_german_names_enabled()
+                import os # Ensure os is available
 
                 for row in result:
                     d = dict(row._mapping) # SQLAlchemy Row to dict
@@ -56,6 +58,17 @@ class BirdNetService:
 
                     # Audio Path Logic
                     fp = d.get('filepath')
+                    if fp and fp.startswith(REC_DIR):
+                        d['audio_relative_path'] = fp[len(REC_DIR):].lstrip('/')
+                    else:
+                        d['audio_relative_path'] = d.get('filename')
+
+                    # Playback URL Logic (Clip vs Full)
+                    if d.get('clip_path'):
+                        d['playback_url'] = f"/api/clips/{os.path.basename(d['clip_path'])}"
+                    else:
+                        d['playback_url'] = f"/api/audio/{d.get('audio_relative_path')}"
+                    
                     # Image Logic (Fallback & Enrichment Trigger)
                     if not d.get('image_url'):
                         d['image_url'] = None
@@ -120,6 +133,7 @@ class BirdNetService:
                         d.scientific_name as sci_name, 
                         d.timestamp,
                         d.filename,
+                        d.clip_path,
                         s.image_url,
                         s.description,
                         s.german_name,
@@ -155,6 +169,12 @@ class BirdNetService:
                     d['audio_relative_path'] = fp[len(REC_DIR):].lstrip('/')
                 else:
                     d['audio_relative_path'] = d.get('filename')
+
+                # Playback URL
+                if d.get('clip_path'):
+                     d['playback_url'] = f"/api/clips/{os.path.basename(d['clip_path'])}"
+                else:
+                     d['playback_url'] = f"/api/audio/{d.get('audio_relative_path')}"
 
                 return d
         except Exception as e:

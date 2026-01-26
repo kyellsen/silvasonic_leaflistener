@@ -54,7 +54,7 @@ class WatcherService:
         try:
             while True:
                 self.write_status("Idle (Watching)")
-                time.sleep(10) # Update status every 10s
+                time.sleep(5) # Update status every 5s
         except KeyboardInterrupt:
             self.observer.stop()
         self.observer.join()

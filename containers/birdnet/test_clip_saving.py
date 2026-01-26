@@ -66,11 +66,17 @@ class TestClipSaving(unittest.TestCase):
             writer.writerow(['3.0', '4.0', 'Erithacus rubecula', 'European Robin', '0.90'])
         return csv_path
 
+    @patch('src.analyzer.BirdNETAnalyzer._trigger_alert')
     @patch('src.analyzer.bn_analyze')
     @patch('src.analyzer.BirdNETAnalyzer._run_ffmpeg_resampling')
-    def test_clip_saving(self, mock_ffmpeg, mock_bn):
+    def test_clip_saving(self, mock_ffmpeg, mock_bn, mock_alert):
         # Setup Mocks
-        mock_ffmpeg.return_value = True
+        def ffmpeg_side_effect(input_path, output_path):
+            output_path.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copy(input_path, output_path)
+            return True
+        
+        mock_ffmpeg.side_effect = ffmpeg_side_effect
 
         # Mock bn_analyze to write a CSV file to the output directory
         def side_effect(**kwargs):
@@ -90,7 +96,8 @@ class TestClipSaving(unittest.TestCase):
         # Verify filenames
         # {original_name}_{start}_{end}_{species}.wav
         # validation for Blackbird: 1.0 - 2.0
-        expected_1 = f"{self.test_audio.stem}_1.0_2.0_Common_Blackbird.wav"
+        # Analyzer adds _48k to the resampled filename used for clipping
+        expected_1 = f"{self.test_audio.stem}_48k_1.0_2.0_Common_Blackbird.wav"
         clip_path = config.CLIPS_DIR / expected_1
         self.assertTrue(clip_path.exists(), f"Clip {expected_1} not found")
 
