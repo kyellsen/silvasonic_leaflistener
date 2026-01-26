@@ -58,7 +58,13 @@
   </div>
   {% endif %}
 
-  <form method="POST" action="/settings" class="space-y-6">
+  <form
+    method="POST"
+    action="/settings"
+    class="space-y-6"
+    hx-target="#main-content"
+    hx-swap="innerHTML"
+  >
     <!-- Localization Settings -->
     <div
       class="glass-panel p-6 rounded-2xl border border-gray-200 dark:border-white/5"
