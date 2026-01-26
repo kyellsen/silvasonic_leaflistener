@@ -2,15 +2,17 @@ from PIL import Image
 import os
 
 base_dir = "/mnt/data/dev/packages/silvasonic/containers/dashboard/src/static/images"
-generated_bg_path = "/home/kyellsen/.gemini/antigravity/brain/def98c5a-ef52-4e98-8477-294b19526e41/login_nature_waves_1769437203387.png"
-
 # 1. Process Background Image
+bg_source = os.path.join(base_dir, "login_bg_nature.jpg")
+target_bg = os.path.join(base_dir, "login_bg_nature.webp")
+
 try:
-    with Image.open(generated_bg_path) as img:
-        # Convert to WebP
-        target_bg = os.path.join(base_dir, "login_bg_nature.webp")
-        img.save(target_bg, "WEBP", quality=90)
-        print(f"Background saved to {target_bg}")
+    if os.path.exists(bg_source):
+        with Image.open(bg_source) as img:
+            img.save(target_bg, "WEBP", quality=90)
+            print(f"Background converted: {bg_source} -> {target_bg}")
+    else:
+        print(f"Source not found: {bg_source}")
 except Exception as e:
     print(f"Error processing background: {e}")
 
