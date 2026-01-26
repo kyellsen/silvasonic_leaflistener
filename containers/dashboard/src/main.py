@@ -271,6 +271,107 @@ async def dashboard(request: Request, auth=Depends(require_auth)):
         "status_color": "text-green-600 dark:text-green-400",
         "auto_refresh_interval": 5
     })
+    
+    
+@app.get("/api/events/system")
+async def sse_system_status(request: Request, auth=Depends(require_auth)):
+    if isinstance(auth, RedirectResponse): return auth
+
+    async def event_generator():
+        # Watch system_status.json for changes
+        status_file = "/mnt/data/services/silvasonic/status/system_status.json"
+        dashboard_stats_file = "/mnt/data/services/silvasonic/status/dashboard.json" # Watch this too as it has disk stats
+        
+        last_mtime = 0
+        last_dash_mtime = 0
+        
+        while True:
+            # Check if client disconnected
+            if await request.is_disconnected():
+                break
+
+            try:
+                changed = False
+                
+                # Check System Status File
+                if os.path.exists(status_file):
+                    mtime = os.path.getmtime(status_file)
+                    if mtime > last_mtime:
+                        last_mtime = mtime
+                        changed = True
+                
+                # Check Dashboard Stats File (Disk usage)
+                if os.path.exists(dashboard_stats_file):
+                    mtime = os.path.getmtime(dashboard_stats_file)
+                    if mtime > last_dash_mtime:
+                        last_dash_mtime = mtime
+                        changed = True # Update if disk stats change
+                
+                if changed:
+                    # Logic duplicated from dashboard route (refactor ideally, but inline for now is robust)
+                    stats = SystemService.get_stats() # Fresh stats
+                    raw_containers = HealthChecker.get_system_metrics()
+                    
+                    # Construct Containers List (Same logic as dashboard view)
+                    container_config = [
+                        {"key": "livesound", "name": "Liveaudio"},
+                        {"key": "recorder", "name": "Recorder"},
+                        {"key": "carrier", "name": "Uploader"},
+                        {"key": "birdnet", "name": "BirdNet"},
+                        {"key": "dashboard", "name": "Dashboard"},
+                        {"key": "postgres", "name": "PostgressDB"},
+                        {"key": "healthchecker", "name": "HealthChecker"},
+                    ]
+                    containers = []
+                    
+                    for config in container_config:
+                        c = raw_containers.get(config["key"])
+                        if not c:
+                             # Fuzzy search fallback
+                             for k, v in raw_containers.items():
+                                 if config["key"] in k:
+                                     c = v
+                                     break
+                        
+                        if not c:
+                             c = {"id": config["key"], "display_name": config["name"], "status": "Down", "message": "Not Reported"}
+
+                        c_copy = c.copy()
+                        c_copy["display_name"] = config["name"]
+                        containers.append(c_copy)
+                        
+                    # Render Partial
+                    # We render the PARTIAL 'partials/system_overview.html'
+                    # We must pass 'containers' and 'stats' as context
+                    content = templates.get_template("partials/system_overview.html").render(
+                        containers=containers,
+                        stats=stats
+                    )
+                    
+                    # Remove newlines for SSE safety (one line per data) - actually spec allows multi-line data if prefixed
+                    # But htmx expects the payload.
+                    # SSE Format:
+                    # event: message
+                    # data: <html>...</html>
+                    # \n
+                    
+                    # Escape newlines in data is properly handled if we prefix every line with data: 
+                    # But simplest is to compact it or just let stream_response handle it?
+                    # No, we must format manually as per SSE spec or use sse-starlette.
+                    # Manual implementation:
+                    
+                    yield f"event: system-overview\n"
+                    # Handle multiline data
+                    for line in content.splitlines():
+                        yield f"data: {line}\n"
+                    yield "\n" # End of event
+
+            except Exception as e:
+                logger.error(f"SSE Error: {e}")
+                
+            await asyncio.sleep(1) # Check frequency (Internal loop) faster than poll
+
+    return StreamingResponse(event_generator(), media_type="text/event-stream")
 
 @app.get("/settings", response_class=HTMLResponse)
 async def settings_page(request: Request, auth=Depends(require_auth)):
@@ -642,12 +743,12 @@ async def export_birdnet_csv(auth=Depends(require_auth)):
             date_str = ts.strftime("%Y-%m-%d") if ts else ""
             time_str = ts.strftime("%H:%M:%S") if ts else ""
             
-            sci = row.get('scientific_name', '').replace(',', ' ') # Simple CSV escape
-            com = row.get('common_name', '').replace(',', ' ')
+            sci = (row.get('scientific_name') or '').replace(',', ' ') # Simple CSV escape
+            com = (row.get('common_name') or '').replace(',', ' ')
             conf = f"{row.get('confidence', 0.0):.2f}"
             start = f"{row.get('start_time', 0.0):.1f}"
             end = f"{row.get('end_time', 0.0):.1f}"
-            fname = row.get('filename', '')
+            fname = (row.get('filename') or '')
 
             line = f"{date_str},{time_str},{sci},{com},{conf},{start},{end},{fname}\n"
             yield line

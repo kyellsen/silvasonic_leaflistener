@@ -57,6 +57,8 @@
     <script src="/static/js/plotly.min.js"></script>
     <!-- HTMX (Local) -->
     <script src="/static/js/htmx.min.js"></script>
+    <!-- HTMX SSE Extension -->
+    <script src="/static/js/sse.js"></script>
     <style>
       /* Custom Scrollbar */
       ::-webkit-scrollbar {
@@ -1328,6 +1330,26 @@
 
       document.addEventListener("DOMContentLoaded", () => {
         // Clean up old modal listeners if any exist
+      });
+
+      // Force Inspector Refresh on Main Content Navigation
+      document.body.addEventListener("htmx:beforeSwap", function (evt) {
+        if (evt.detail.target.id === "main-content") {
+          // We clear the inspector content to ensure no stale data remains
+          // The incoming response OOB swap will repopulate it if needed.
+          // If OOB is missing, we at least eliminate the stale "Details" view.
+          const inspector = document.getElementById("inspector-content");
+          if (inspector) {
+            // Reset to "Loading..." or Empty
+            // We can insert a generic placeholder if we want
+            inspector.innerHTML = `
+                <div class="flex flex-col items-center justify-center h-full text-center text-gray-400 dark:text-gray-600 animate-pulse">
+                    <svg class="w-8 h-8 mb-2 opacity-50" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
+                    </svg>
+                </div>`;
+          }
+        }
       });
     </script>
 

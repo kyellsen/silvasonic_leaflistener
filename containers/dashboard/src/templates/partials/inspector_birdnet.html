@@ -61,7 +61,7 @@
         />
 
         <button
-          onclick="playGlobalAudio('{{ d.audio_relative_path|replace('\\', '/') }}', '{{ d.display_name|replace('\'', '\\\'') }}', '{{ d.confidence }}')"
+          onclick="playGlobalAudio('{{ d.playback_url }}', '{{ d.display_name|replace('\'', '\\\'') }}', '{{ d.confidence }}')"
           class="absolute inset-0 flex items-center justify-center bg-black/30 hover:bg-black/10 transition group"
         >
           <div

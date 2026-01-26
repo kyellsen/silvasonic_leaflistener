@@ -53,14 +53,14 @@
             <div class="text-sm font-bold text-gray-900 dark:text-gray-100">
               Live Stream
             </div>
-            <div class="text-xs text-green-500 font-mono" id="statusText">
+            <div class="text-xs text-gray-500 font-mono" id="statusText">
               Connecting...
             </div>
           </div>
         </div>
 
-        <div class="text-xs text-gray-400">
-          Host: <span class="font-mono">port 8000</span>
+        <div class="text-xs text-gray-400 host-info">
+          Host: <span class="font-mono" id="hostLabel">port 8000</span>
         </div>
       </div>
 
@@ -147,7 +147,7 @@
       ctx: null,
       tempCanvas: document.createElement("canvas"),
       tempCtx: null,
-      maxReconnects: 5,
+      maxReconnects: 10,
       reconnectCount: 0,
       isActive: true // Flag to stop loops if we navigate away
     };
@@ -159,11 +159,38 @@
       pauseIcon: document.getElementById("pauseIcon"),
       status: document.getElementById("statusText"),
       vol: document.getElementById("volumeSlider"),
-      connStatus: document.getElementById("connectionStatus")
+      connStatus: document.getElementById("connectionStatus"),
+      hostLabel: document.getElementById("hostLabel") // Need to add ID to host label span
     };
+
+    // --- Helpers ---
+    function setStatus(text, type) {
+      ui.status.innerText = text;
+      
+      // Reset classes
+      ui.status.className = "text-xs font-mono";
+      
+      switch(type) {
+        case "success":
+          ui.status.classList.add("text-green-500");
+          break;
+        case "error":
+          ui.status.classList.add("text-red-500", "font-bold");
+          break;
+        case "warning":
+          ui.status.classList.add("text-yellow-600", "dark:text-yellow-400");
+          break;
+        default: // info/neutral
+          ui.status.classList.add("text-gray-500", "dark:text-gray-400");
+      }
+    }
 
     // --- Initialization ---
     function init() {
+      // Update Host Label
+      const hostSpan = document.querySelector(".host-info span");
+      if (hostSpan) hostSpan.innerText = `${window.location.hostname}:8000`;
+
       // Setup Audio Element
       state.audioEl.crossOrigin = "anonymous";
       
@@ -196,7 +223,7 @@
       if (state.audioEl) {
         state.audioEl.pause();
         state.audioEl.src = "";
-        state.audioEl.load();
+        state.audioEl.load(); // Release stream
         state.audioEl = null;
       }
 
@@ -209,52 +236,69 @@
 
       // 3. Remove Global Listeners
       window.removeEventListener("resize", resizeCanvas);
-      
-      // Note: Event listeners on DOM elements (playBtn) are removed automatically 
-      // when the elements are removed from the DOM by HTMX.
     }
 
     // --- WebSocket Logic ---
     function connectWebSocket() {
       if (!state.isActive) return;
 
-      state.ws = new WebSocket(state.wsUrl);
+      setStatus("Connecting WS...", "neutral");
 
-      state.ws.onopen = () => {
-        ui.status.innerText = "Connected";
-        ui.status.className = "text-xs text-green-500 font-mono";
-        ui.connStatus.innerText = "Real-time";
-        state.reconnectCount = 0;
-      };
+      try {
+        state.ws = new WebSocket(state.wsUrl);
 
-      state.ws.onmessage = (event) => {
-        if (!state.isActive) return;
-        const msg = JSON.parse(event.data);
-        if (msg.type === "spectrogram") {
-          drawSpectrogramColumn(msg.data);
-        }
-      };
+        state.ws.onopen = () => {
+          setStatus("Connected", "success");
+          ui.connStatus.innerText = "Real-time";
+          state.reconnectCount = 0;
+        };
 
-      state.ws.onclose = () => {
-        if (!state.isActive) return;
-        ui.status.innerText = "Disconnected";
-        ui.status.className = "text-xs text-red-500 font-mono";
-        
-        if (state.reconnectCount < state.maxReconnects) {
-          state.reconnectCount++;
-          setTimeout(connectWebSocket, 2000);
-        }
-      };
+        state.ws.onmessage = (event) => {
+          if (!state.isActive) return;
+          try {
+            const msg = JSON.parse(event.data);
+            if (msg.type === "spectrogram") {
+              drawSpectrogramColumn(msg.data);
+            }
+          } catch(e) { console.error("Parse error", e); }
+        };
+
+        state.ws.onclose = () => {
+          if (!state.isActive) return;
+          setStatus("WS Disconnected", "error");
+          ui.connStatus.innerText = "Offline";
+          
+          if (state.reconnectCount < state.maxReconnects) {
+            state.reconnectCount++;
+            setStatus(`Reconnecting (${state.reconnectCount})...`, "warning");
+            setTimeout(connectWebSocket, 2000);
+          } else {
+             setStatus("Connection Failed", "error");
+          }
+        };
+
+        state.ws.onerror = (err) => {
+          console.error("WS Error", err);
+          if (state.isActive) setStatus("WS Error", "error");
+        };
+
+      } catch (e) {
+        console.error("WS Setup Error", e);
+        setStatus("WS Setup Failed", "error");
+      }
     }
 
     // --- Audio Control ---
     function startStream() {
-      ui.status.innerText = "Connecting Audio...";
+      setStatus("Connecting Audio...", "warning");
+      
       // Cache buster to force new stream
-      state.audioEl.src = `${state.streamUrl}?t=${Date.now()}`;
+      const streamUrl = `${state.streamUrl}?t=${Date.now()}`;
+      state.audioEl.src = streamUrl;
+      
       state.audioEl.play().catch(e => {
         console.error("Play failed:", e);
-        ui.status.innerText = "Stream Error";
+        setStatus("Autoplay Blocked / Error", "error");
       });
     }
 
@@ -262,6 +306,8 @@
       state.audioEl.pause();
       state.audioEl.src = "";
       state.audioEl.load();
+      setStatus("Stopped", "neutral");
+      updateUI(false); // Ensure button resets
     }
 
     // --- Spectrogram Drawing ---
@@ -301,11 +347,19 @@
     function setupAudioListeners() {
       state.audioEl.addEventListener("play", () => updateUI(true));
       state.audioEl.addEventListener("pause", () => updateUI(false));
-      state.audioEl.addEventListener("playing", () => ui.status.innerText = "Live Audio");
-      state.audioEl.addEventListener("waiting", () => ui.status.innerText = "Buffering...");
-      state.audioEl.addEventListener("error", () => {
+      
+      state.audioEl.addEventListener("playing", () => setStatus("Live Audio", "success"));
+      state.audioEl.addEventListener("waiting", () => setStatus("Buffering...", "warning"));
+      
+      state.audioEl.addEventListener("error", (e) => {
+        console.error("Audio Error", e);
         updateUI(false);
-        ui.status.innerText = "Error";
+        setStatus("Stream Error", "error");
+      });
+      
+      state.audioEl.addEventListener("ended", () => {
+         updateUI(false);
+         setStatus("Stream Ended", "neutral");
       });
     }
 

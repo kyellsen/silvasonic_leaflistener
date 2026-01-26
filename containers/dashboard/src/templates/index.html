@@ -379,7 +379,7 @@
 
         <button
           class="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-white/10 text-gray-500 dark:text-gray-400 transition"
-          onclick='playGlobalAudio("{{ d.audio_relative_path|replace("\\", "/") }}", "{{ d.display_name|replace("\"", "\\\"") }}", "{{ d.confidence }}")'
+          onclick='playGlobalAudio("{{ d.playback_url }}", "{{ d.display_name|replace("\"", "\\\"") }}", "{{ d.confidence }}")'
           title="Play Audio"
         >
           <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
@@ -399,45 +399,9 @@
 </div>
 {% endblock %} {% block inspector %}
 <div class="space-y-6">
-  <!-- System Health -->
-  <div class="glass-panel p-6 rounded-2xl">
-    <h3
-      class="font-bold text-gray-900 dark:text-white mb-4 border-b border-gray-200 dark:border-white/10 pb-2 text-sm uppercase tracking-wide"
-    >
-      System Overview
-    </h3>
-    <div class="space-y-3">
-      {% for c in containers %}
-      <div class="flex items-center justify-between">
-        <div class="flex items-center gap-2">
-          <div
-            class="w-1.5 h-1.5 rounded-full {% if c.status == 'Running' %}bg-green-500{% elif c.status == 'Warning' %}bg-amber-500{% else %}bg-red-500{% endif %}"
-          ></div>
-          <span class="text-xs font-bold text-gray-600 dark:text-gray-300"
-            >{{ c.display_name }}</span
-          >
-        </div>
-        <span class="text-[10px] text-gray-400 font-mono">{{ c.status }}</span>
-      </div>
-      {% endfor %}
-    </div>
-    <div class="mt-4 pt-4 border-t border-gray-200 dark:border-white/5">
-      <h4 class="text-xs font-bold text-gray-500 uppercase mb-2">
-        SSD Storage
-      </h4>
-      <div
-        class="w-full bg-gray-200 dark:bg-gray-700 h-1.5 rounded-full overflow-hidden"
-      >
-        <div
-          class="bg-gray-500 h-full rounded-full"
-          style="width: {{ stats.disk_percent }}%"
-        ></div>
-      </div>
-      <div class="flex justify-between text-[10px] text-gray-400 mt-1">
-        <span>Used: {{ stats.disk_used_gb }} GB</span>
-        <span>Total: {{ stats.disk_total_gb }} GB</span>
-      </div>
-    </div>
+  <!-- System Health (SSE) -->
+  <div hx-ext="sse" sse-connect="/api/events/system">
+    {% include "partials/system_overview.html" %}
   </div>
 
   <!-- Quick Stats -->
