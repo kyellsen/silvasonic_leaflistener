@@ -545,7 +545,7 @@ async def api_toggle_watchlist(req: WatchlistToggleRequest, auth=Depends(require
     else:
         raise HTTPException(500, "Failed to toggle watchlist")
 
-@app.get("/api/details/birdnet/{filename}", response_class=HTMLResponse)
+@app.get("/api/details/birdnet/{filename:path}", response_class=HTMLResponse)
 async def get_birdnet_details(request: Request, filename: str, auth=Depends(require_auth)):
     if isinstance(auth, RedirectResponse): return auth
 
@@ -618,7 +618,7 @@ async def stream_logs(service: str, auth=Depends(require_auth)):
 
     return StreamingResponse(log_generator(), media_type="text/event-stream")
 
-@app.get("/api/audio/{filename}")
+@app.get("/api/audio/{filename:path}")
 async def stream_audio(filename: str, auth=Depends(require_auth)):
     """Stream audio file from recording dir"""
     if isinstance(auth, RedirectResponse): raise HTTPException(401)
@@ -642,7 +642,7 @@ async def stream_audio(filename: str, auth=Depends(require_auth)):
 
     return FileResponse(safe_path, media_type="audio/flac")
 
-@app.get("/api/spectrogram/{filename}")
+@app.get("/api/spectrogram/{filename:path}")
 async def stream_spectrogram(filename: str, auth=Depends(require_auth)):
     """Stream spectrogram from artifacts dir, generating it if needed (Lazy Loading)"""
     if isinstance(auth, RedirectResponse): raise HTTPException(401)
