@@ -217,7 +217,10 @@
       <div class="flex-1 overflow-y-auto space-y-3 pr-2 scrollbar-thin">
         {% for item in recent %}
         <div
-          class="bg-gray-900/50 p-3 rounded-lg border border-gray-700 flex justify-between items-center group hover:bg-gray-750 transition cursor-default"
+          class="bg-gray-900/50 p-3 rounded-lg border border-gray-700 flex justify-between items-center group hover:bg-gray-750 transition cursor-pointer"
+          hx-get="/api/details/birdnet/{{ item.audio_relative_path|replace('\\', '/') }}"
+          hx-target="#inspector-content"
+          onclick="if(document.getElementById('right-sidebar').classList.contains('w-0')) toggleInspector()"
         >
           <div>
             <div class="text-amber-500 text-sm font-bold">
@@ -234,9 +237,9 @@
               >
             </div>
           </div>
-          {% if item.filename %}
+          {% if item.audio_relative_path %}
           <button
-            onclick="playGlobalAudio('{{ item.filename }}', '{{ item.common_name }} ({{ item.time_str }})', {{ item.confidence }})"
+            onclick="event.stopPropagation(); playGlobalAudio('{{ item.audio_relative_path|replace('\\', '/') }}', '{{ item.common_name|replace('\'', '\\\'') }}', {{ item.confidence }})"
             class="p-2 rounded-full bg-gray-800 hover:bg-green-600 text-gray-400 hover:text-white transition shadow-sm border border-gray-700"
           >
             <svg
