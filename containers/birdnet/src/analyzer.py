@@ -192,10 +192,14 @@ class BirdNETAnalyzer:
             clip_name = f"{audio_path.stem}_{start_time:.1f}_{end_time:.1f}_{safe_species}.wav"
             clip_path = config.CLIPS_DIR / clip_name
 
-            # Read the specific segment
+            # Read the specific segment with padding
             # We use soundfile for precision reading
             # Note: start/end are in seconds
-            data, samplerate = sf.read(str(audio_path), start=int(start_time * 48000), stop=int(end_time * 48000), always_2d=True)
+            PADDING = 3.0
+            clip_start = max(0.0, start_time - PADDING)
+            clip_end = end_time + PADDING
+            
+            data, samplerate = sf.read(str(audio_path), start=int(clip_start * 48000), stop=int(clip_end * 48000), always_2d=True)
 
             sf.write(str(clip_path), data, samplerate)
 

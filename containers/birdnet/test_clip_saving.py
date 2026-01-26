@@ -91,7 +91,20 @@ class TestClipSaving(unittest.TestCase):
         # {original_name}_{start}_{end}_{species}.wav
         # validation for Blackbird: 1.0 - 2.0
         expected_1 = f"{self.test_audio.stem}_1.0_2.0_Common_Blackbird.wav"
-        self.assertTrue((config.CLIPS_DIR / expected_1).exists(), f"Clip {expected_1} not found")
+        clip_path = config.CLIPS_DIR / expected_1
+        self.assertTrue(clip_path.exists(), f"Clip {expected_1} not found")
+
+        # Verify Duration (padded)
+        # Original: 1.0s. Padded: 3s + 1s + 3s = 7s.
+        # But file is only 5s long.
+        # Start: 1.0 - 3 = -2 -> 0
+        # End: 2.0 + 3 = 5.0 -> 5.0
+        # Result length: 5.0s
+        import soundfile as sf
+        info = sf.info(str(clip_path))
+        # Allow small floating point tolerance, but with integer samples it should be exact for 48k?
+        # Duration might be float.
+        self.assertAlmostEqual(info.duration, 5.0, delta=0.1, msg="Clip should be padded to full file duration in this case")
 
         # Verify DB calls
         # We expect 2 save_detection calls
