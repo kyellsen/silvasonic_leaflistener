@@ -3,13 +3,14 @@ import json
 import os
 import time
 from datetime import UTC
+from typing import Any
 
 from .common import REC_DIR, STATUS_DIR, logger
 
 
 class RecorderService:
     @staticmethod
-    def get_audio_settings(profile):
+    def get_audio_settings(profile: dict[str, Any] | None) -> float:
         """Extract audio BPS (Bytes per Second) from profile."""
         try:
             if isinstance(profile, dict) and "audio" in profile:
@@ -25,12 +26,12 @@ class RecorderService:
         return 48000 * 1 * 2  # Default to 48kHz, Mono, 16-bit (96000 Bps)
 
     @staticmethod
-    def get_status():
+    def get_status() -> dict[str, Any]:
         try:
             status_file = os.path.join(STATUS_DIR, "recorder.json")
             if os.path.exists(status_file):
                 with open(status_file) as f:
-                    data = json.load(f)
+                    data: dict[str, Any] = json.load(f)
 
                     # Flatten meta for compatibility or just return rich data
                     meta = data.get("meta", {})
@@ -108,7 +109,7 @@ class RecorderService:
         }
 
     @staticmethod
-    async def get_recent_recordings(limit=20):
+    async def get_recent_recordings(limit: int = 20) -> list[dict[str, Any]]:
         try:
             # Get current BPS setting for Duration Fallback
             current_status = RecorderService.get_status()
@@ -117,7 +118,7 @@ class RecorderService:
             if not os.path.exists(REC_DIR):
                 return []
 
-            files_found = []
+            files_found: list[dict[str, Any]] = []
             # Recursive scan to find all audio files (support subdirs like YYYY-MM-DD or profile)
             for root, _dirs, files in os.walk(REC_DIR):
                 for f in files:
@@ -141,9 +142,9 @@ class RecorderService:
             files_found = files_found[:limit]
 
             items = []
-            for f in files_found:
-                dt = datetime.datetime.fromtimestamp(f["mtime"])
-                size_bytes = f["size"]
+            for item in files_found:
+                dt = datetime.datetime.fromtimestamp(item["mtime"])
+                size_bytes = item["size"]
                 size_mb = round(size_bytes / (1024 * 1024), 2)
 
                 # Sanitize Duration Estimate
@@ -153,7 +154,7 @@ class RecorderService:
                     duration = size_bytes / (current_bps * 0.6)
 
                 d = {
-                    "filename": f["name"],
+                    "filename": item["name"],
                     "file_size_bytes": size_bytes,
                     "size_mb": size_mb,
                     "formatted_time": dt.strftime("%Y-%m-%d %H:%M:%S"),
@@ -161,7 +162,7 @@ class RecorderService:
                     "duration_str": f"{duration:.2f}s",
                     "duration_sec": duration,
                     # Relative path for potential playback API usage
-                    "audio_relative_path": os.path.relpath(f["path"], REC_DIR),
+                    "audio_relative_path": os.path.relpath(item["path"], REC_DIR),
                 }
                 items.append(d)
 
@@ -172,7 +173,7 @@ class RecorderService:
             return []
 
     @staticmethod
-    def get_creation_rate(minutes=60):
+    def get_creation_rate(minutes: int = 60) -> float:
         """Calculate files created per minute over the last X minutes."""
         try:
             now = time.time()
@@ -246,7 +247,7 @@ class RecorderService:
             return 0.0
 
     @staticmethod
-    def get_latest_filename():
+    def get_latest_filename() -> str | None:
         """Get the filename of the most recent recording on disk."""
         try:
             if not os.path.exists(REC_DIR):
@@ -268,7 +269,7 @@ class RecorderService:
             return None
 
     @staticmethod
-    def count_files_after(filename: str):
+    def count_files_after(filename: str | None) -> int:
         """Count how many files on disk are lexicographically 'after' the given filename."""
         if not filename:
             # If no comparison file provided, count ALL files (queue is full)

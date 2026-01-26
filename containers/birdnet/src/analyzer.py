@@ -105,7 +105,7 @@ class BirdNETAnalyzer:
 
                     with open(final_output_file, encoding="utf-8") as f:
                         reader = csv.reader(f)
-                        header = next(reader, None)  # Skip header usage
+                        next(reader, None)  # Skip header usage
 
                         for row in reader:
                             detection_count += 1
@@ -168,7 +168,7 @@ class BirdNETAnalyzer:
             try:
                 info = sf.info(str(path))
                 duration = info.duration
-            except:
+            except Exception:
                 duration = 30.0  # Fallback
 
             import time
@@ -182,7 +182,7 @@ class BirdNETAnalyzer:
         try:
             if temp_resampled.exists():
                 temp_resampled.unlink()
-        except:
+        except Exception:
             pass
 
     def _save_clip(self, audio_path: Path, start_time: float, end_time: float, species: str) -> str:

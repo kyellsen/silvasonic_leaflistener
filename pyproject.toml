@@ -35,6 +35,7 @@ dev = [
     "PyYAML",
     "psutil",
     "psycopg2-binary",
+    "podman-compose",
 ]
 
 [tool.uv]
@@ -60,7 +61,10 @@ ignore = [
     "D104", # Missing docstring in public package
     "D",    # Ignore all docstyle issues for now
     "E501", # Ignore line length
+    "E501", # Ignore line length
     "W291", # Ignore trailing whitespace
+    "B008", # Ignore function call in argument defaults (standard for FastAPI Depends)
+    "N",    # Ignore naming conventions (legacy uppercase properties)
 ]
 
 [tool.ruff.lint.pydocstyle]
@@ -73,4 +77,12 @@ ignore_missing_imports = true
 
 [tool.pytest.ini_options]
 addopts = "--ignore=containers/birdnet_test"
+
+[[tool.mypy.overrides]]
+module = [
+    "tests.*",
+    "containers.*.tests.*", 
+    "containers.*.tests",
+]
+ignore_errors = true
 

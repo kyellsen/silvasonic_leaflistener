@@ -13,8 +13,8 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__))))
 sys.modules["src.database"] = MagicMock()
 sys.modules["src.config"] = MagicMock()
 
-from src.config import config
-from src.database import db
+from src.config import config  # noqa: E402
+from src.database import db  # noqa: E402
 
 # Setup Mock Config
 config.RESULTS_DIR = Path("/tmp/birdnet_test_results")
@@ -32,7 +32,7 @@ config.LATITUDE = 10
 config.LONGITUDE = 10
 
 # Now import analyzer
-from src.analyzer import BirdNETAnalyzer
+from src.analyzer import BirdNETAnalyzer  # noqa: E402
 
 
 class TestClipSaving(unittest.TestCase):

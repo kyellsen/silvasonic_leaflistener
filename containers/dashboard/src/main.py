@@ -15,7 +15,19 @@ from fastapi import Depends, FastAPI, Form, HTTPException, Request
 from fastapi.responses import FileResponse, HTMLResponse, RedirectResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
+from pydantic import BaseModel
 from src.auth import COOKIE_NAME, SESSION_SECRET, require_auth, verify_credentials
+from src.services import (
+    # AnalyzerService, # Deprecated
+    BirdNetService,
+    BirdNetStatsService,
+    CarrierService,
+    HealthCheckerService,
+    RecorderService,
+    SystemService,
+    WeatherService,
+)
+from src.settings import SettingsService
 from starlette.status import HTTP_302_FOUND
 
 os.makedirs("/var/log/silvasonic", exist_ok=True)
@@ -75,8 +87,8 @@ def render(request: Request, template: str, context: dict):
 # --- Self-Monitoring ---
 def write_status():
     """Writes the Dashboard's own heartbeat."""
-    STATUS_FILE = "/mnt/data/services/silvasonic/status/dashboard.json"
-    os.makedirs(os.path.dirname(STATUS_FILE), exist_ok=True)
+    status_file = "/mnt/data/services/silvasonic/status/dashboard.json"
+    os.makedirs(os.path.dirname(status_file), exist_ok=True)
 
     while True:
         try:
@@ -89,10 +101,10 @@ def write_status():
                 "pid": os.getpid(),
             }
 
-            tmp_file = f"{STATUS_FILE}.tmp"
+            tmp_file = f"{status_file}.tmp"
             with open(tmp_file, "w") as f:
                 json.dump(data, f)
-            os.rename(tmp_file, STATUS_FILE)
+            os.rename(tmp_file, status_file)
         except Exception as e:
             logger.error(f"Failed to write dashboard status: {e}")
 
@@ -164,18 +176,6 @@ async def logout():
 
 
 # --- Protected Routes ---
-
-from src.services import (
-    # AnalyzerService, # Deprecated
-    BirdNetService,
-    BirdNetStatsService,
-    CarrierService,
-    HealthCheckerService,
-    RecorderService,
-    SystemService,
-    WeatherService,
-)
-from src.settings import SettingsService
 
 
 @app.get("/dashboard", response_class=HTMLResponse)
@@ -280,8 +280,6 @@ async def dashboard(request: Request, auth=Depends(require_auth)):
             "birdnet_stats": birdnet_stats,
             "carrier_stats": carrier_stats,
             "recorder_stats": recorder_stats,
-            "carrier_stats": carrier_stats,
-            "recorder_stats": recorder_stats,
             "containers": containers_sorted,
             "throughput": throughput,
             "status_label": "System:",
@@ -330,7 +328,7 @@ async def sse_system_status(request: Request, auth=Depends(require_auth)):
                 if changed:
                     # Logic duplicated from dashboard route (refactor ideally, but inline for now is robust)
                     stats = SystemService.get_stats()  # Fresh stats
-                    raw_containers = HealthChecker.get_system_metrics()
+                    raw_containers = HealthCheckerService.get_system_metrics()
 
                     # Construct Containers List (Same logic as dashboard view)
                     container_config = [
@@ -793,7 +791,7 @@ async def weather_page(request: Request, auth=Depends(require_auth)):
 
 
 # --- Inspector API Partials ---
-from pydantic import BaseModel
+# --- Inspector API Partials ---
 
 
 class WatchlistToggleRequest(BaseModel):
@@ -895,7 +893,7 @@ async def get_logs(service: str, lines: int = 200, auth=Depends(require_auth)):
 
         import aiofiles
 
-        async with aiofiles.open(log_file) as f:
+        async with aiofiles.open(log_file):
             # Quick & Dirty: Read all lines? No, might be huge.
             # Seek to end and back up?
             # Subprocess tail is actually safest for large files on Linux.

@@ -2,6 +2,7 @@ import datetime
 import json
 import os
 import time
+from typing import Any
 
 from sqlalchemy import text
 
@@ -11,7 +12,7 @@ from .database import db
 
 class WeatherService:
     @staticmethod
-    async def get_current_weather():
+    async def get_current_weather() -> dict[str, Any] | None:
         """Get the latest weather measurement."""
         try:
             async with db.get_connection() as conn:
@@ -31,7 +32,7 @@ class WeatherService:
         return None
 
     @staticmethod
-    async def get_history(hours=24):
+    async def get_history(hours: int = 24) -> dict[str, list[Any]]:
         """Get weather history for charts."""
         try:
             async with db.get_connection() as conn:
@@ -41,7 +42,13 @@ class WeatherService:
                 )
 
                 result = await conn.execute(query)
-                data = {"labels": [], "temp": [], "humidity": [], "rain": [], "wind": []}
+                data: dict[str, list[Any]] = {
+                    "labels": [],
+                    "temp": [],
+                    "humidity": [],
+                    "rain": [],
+                    "wind": [],
+                }
 
                 for row in result:
                     d = dict(row._mapping)
@@ -61,7 +68,7 @@ class WeatherService:
             return {"labels": [], "temp": [], "humidity": [], "rain": [], "wind": []}
 
     @staticmethod
-    async def get_correlations(days=30):
+    async def get_correlations(days: int = 30) -> dict[str, list[Any]]:
         """Get correlation stats for charts (Hourly buckets)."""
         try:
             async with db.get_connection() as conn:
@@ -76,7 +83,7 @@ class WeatherService:
 
                 result = await conn.execute(query)
 
-                data = {
+                data: dict[str, list[Any]] = {
                     "labels": [],
                     "scatter_temp": [],  # {x: temp, y: count}
                     "scatter_rain": [],
@@ -125,13 +132,13 @@ class WeatherService:
             }
 
     @staticmethod
-    def get_status():
+    def get_status() -> dict[str, Any]:
         """Get service status from JSON file."""
         try:
             status_file = os.path.join(STATUS_DIR, "weather.json")
             if os.path.exists(status_file):
                 with open(status_file) as f:
-                    data = json.load(f)
+                    data: dict[str, Any] = json.load(f)
                     # Check staleness (20 mins schedule, so maybe 25 min stale check)
                     if time.time() - data.get("timestamp", 0) > 1500:
                         data["status"] = "Stalen"

@@ -421,12 +421,6 @@ class BirdNetService:
             if not sci_names:
                 return {}
             async with db.get_connection() as conn:
-                query = text(
-                    "SELECT scientific_name FROM birdnet.watchlist WHERE enabled = 1 AND scientific_name IN :names"
-                )
-                # SQL Alchemy IN clause handling with text?
-                # Better: SELECT scientific_name FROM birdnet.watchlist WHERE enabled = 1
-                # And filter in python if list is small, or bind parameters dynamically.
                 # For safety/simplicity let's fetch all enabled (watchlist is usually small).
 
                 query_all = text("SELECT scientific_name FROM birdnet.watchlist WHERE enabled = 1")

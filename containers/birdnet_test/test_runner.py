@@ -96,7 +96,7 @@ def analyze_file(input_path: Path, results_dir: Path):
             logger.info(
                 f"Contents of {temp_output_dir}: {[p.name for p in temp_output_dir.iterdir()]}"
             )
-        except:
+        except Exception:
             pass
         return
 
@@ -127,7 +127,7 @@ def analyze_file(input_path: Path, results_dir: Path):
     try:
         if temp_resampled.exists():
             temp_resampled.unlink()
-    except:
+    except Exception:
         pass
 
 
