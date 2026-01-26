@@ -196,7 +196,7 @@ services:
       # Shared Logs (Read/Write)
       - /mnt/data/services/silvasonic/logs:/var/log/silvasonic:z
       # Shared Status
-      - /mnt/data/services/silvasonic/status:/mnt/data/services/silvasonic/status:ro
+      - /mnt/data/services/silvasonic/status:/mnt/data/services/silvasonic/status:z
       # System Stats (Optional, depends on host)
       # - /etc/localtime:/etc/localtime:ro
 

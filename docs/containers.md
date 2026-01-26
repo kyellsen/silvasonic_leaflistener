@@ -1,6 +1,17 @@
 # Container Architecture
 
-The Silvasonic architecture is designed around resiliency. The system is split into logical blocks, each isolated in its own container to ensure that critical functions (recording) are not affected by secondary tasks (UI, Uploads).
+The Silvasonic architecture is designed as a **Producer-Consumer pipeline** centered around the filesystem.
+
+1. **Producer**: The **Recorder** captures live audio and writes files to the SSD.
+2. **Consumers**: The **BirdNET** (Analyzer) and **Uploader** independently watch the filesystem to process these files.
+
+This ensures that critical recording is never blocked by analysis or network speeds.
+
+## Data Flow
+
+`Ultramic` -> **Recorder** -> `[SSD Storage]` -> **BirdNET** (Analysis)
+-> **Uploader** (Cloud Sync)
+-> **Dashboard** (Playback)
 
 ## 1. Recorder
 

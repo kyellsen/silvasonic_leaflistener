@@ -161,6 +161,20 @@ class RecorderService:
                             date_folder = created_at_dt.strftime("%Y-%m-%d")
                             possible_paths.append(os.path.join(REC_DIR, date_folder, fname))
                         
+                        # 3. Profile Subdirectories (Profile/filename or Profile/YYYY-MM-DD/filename)
+                        # The audio files might be in profile subfolders, so we scan one level deep
+                        try:
+                            if os.path.isdir(REC_DIR):
+                                subdirs = [d for d in os.listdir(REC_DIR) if os.path.isdir(os.path.join(REC_DIR, d))]
+                                for d in subdirs:
+                                    # Profile/Filename
+                                    possible_paths.append(os.path.join(REC_DIR, d, fname))
+                                    # Profile/YYYY-MM-DD/Filename (Future proofing)
+                                    if created_at_dt:
+                                        possible_paths.append(os.path.join(REC_DIR, d, date_folder, fname))
+                        except Exception:
+                            pass
+
                         found_path = None
                         for p in possible_paths:
                             if os.path.exists(p):
