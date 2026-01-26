@@ -1,8 +1,12 @@
 import json
 import os
+import sys
 from unittest.mock import ANY, patch
-
 import pytest
+
+# Ensure local src is used instead of installed src from other containers
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+
 import src.main as main
 from src.main import calculate_queue_size, report_error, write_status
 

@@ -10,7 +10,8 @@ from unittest.mock import MagicMock, patch
 import numpy as np
 
 # Adjust path to import main from containers/recorder/src
-sys.path.append(os.path.abspath(os.path.join(
+# Use insert(0) to prioritize this path over installed packages
+sys.path.insert(0, os.path.abspath(os.path.join(
     os.path.dirname(__file__), '../containers/recorder/src'
 )))
 

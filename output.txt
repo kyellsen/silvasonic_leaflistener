@@ -1,0 +1,24 @@
+============================= test session starts ==============================
+platform linux -- Python 3.12.12, pytest-9.0.2, pluggy-1.6.0
+rootdir: /mnt/data/dev/packages/silvasonic
+configfile: pyproject.toml
+plugins: base-url-2.1.0, playwright-0.7.2
+collected 0 items / 1 error
+
+==================================== ERRORS ====================================
+___________ ERROR collecting containers/uploader/tests/test_main.py ____________
+ImportError while importing test module '/mnt/data/dev/packages/silvasonic/containers/uploader/tests/test_main.py'.
+Hint: make sure your test modules/packages have valid Python names.
+Traceback:
+/usr/lib64/python3.12/importlib/__init__.py:90: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+containers/uploader/tests/test_main.py:10: in <module>
+    import src.main as main
+containers/uploader/src/main.py:9: in <module>
+    import psutil
+E   ModuleNotFoundError: No module named 'psutil'
+=========================== short test summary info ============================
+ERROR containers/uploader/tests/test_main.py
+!!!!!!!!!!!!!!!!!!!! Interrupted: 1 error during collection !!!!!!!!!!!!!!!!!!!!
+=============================== 1 error in 0.05s ===============================
