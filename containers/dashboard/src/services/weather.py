@@ -25,7 +25,7 @@ class WeatherService:
                         d['timestamp'] = d['timestamp'].replace(tzinfo=timezone.utc)
                     return d
         except Exception as e:
-        except Exception as e:
+
             logger.error(f"Weather DB Error: {e}", exc_info=True)
         return None
 
@@ -59,7 +59,7 @@ class WeatherService:
                     
                 return data
         except Exception as e:
-        except Exception as e:
+
             logger.error(f"Weather History Error: {e}", exc_info=True)
             return {"labels": [], "temp": [], "humidity": [], "rain": [], "wind": []}
 
@@ -115,7 +115,7 @@ class WeatherService:
                     
                 return data
         except Exception as e:
-        except Exception as e:
+
             logger.error(f"Weather Correlation Error: {e}", exc_info=True)
             return {
                 "labels": [], 

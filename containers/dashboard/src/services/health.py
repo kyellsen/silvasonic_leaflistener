@@ -19,7 +19,7 @@ class HealthCheckerService:
                      
                      return data
         except Exception as e:
-        except Exception as e:
+
             logger.error(f"HealthChecker status error: {e}", exc_info=True)
             
         return {"status": "Unknown"}
@@ -33,7 +33,7 @@ class HealthCheckerService:
                 with open(status_file, 'r') as f:
                      return json.load(f)
         except Exception as e:
-        except Exception as e:
+
             logger.error(f"System metrics error: {e}", exc_info=True)
             
         return {}
