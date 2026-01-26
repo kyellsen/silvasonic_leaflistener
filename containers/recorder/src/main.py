@@ -17,6 +17,7 @@ import logging
 import psutil
 import json
 import socket
+import threading
 from dataclasses import asdict
 
 # --- Logging ---
@@ -75,12 +76,7 @@ def write_status(status: str, profile=None, device=None, last_file: str = None):
     except Exception as e:
         logger.error(f"Failed to write status: {e}")
 
-def resolve_target_ip(hostname: str) -> str:
-    try:
-        return socket.gethostbyname(hostname)
-    except Exception:
-        # Fallback for local dev if container unavailable
-        return "127.0.0.1"
+
 
 def start_recording(profile, device, output_dir):
     """
@@ -101,8 +97,8 @@ def start_recording(profile, device, output_dir):
     
     file_pattern = os.path.join(output_dir, "%Y-%m-%d_%H-%M-%S.flac")
     
-    target_ip = resolve_target_ip(LIVE_STREAM_TARGET)
-    udp_url = f"udp://{target_ip}:{LIVE_STREAM_PORT}"
+    # Use hostname directly, let FFmpeg resolve it
+    udp_url = f"udp://{LIVE_STREAM_TARGET}:{LIVE_STREAM_PORT}"
     
     cmd = [
         "ffmpeg",
@@ -147,21 +143,25 @@ def start_recording(profile, device, output_dir):
     
     return ffmpeg_process
 
-def monitor_process(proc):
+def consume_stderr(proc):
     """
-    Monitors the FFmpeg process logs.
+    Reads stderr in a separate thread to prevent buffer deadlock.
     """
-    # Simply read stderr to log errors
-    # In a real expanded version, we parse this for progress.
-    while True:
-        line = proc.stderr.readline()
-        if not line:
-            break
-        line_str = line.decode().strip()
-        if "Error" in line_str or "fail" in line_str.lower():
-            logger.error(f"[FFmpeg] {line_str}")
-        # else:
-            # logger.debug(f"[FFmpeg] {line_str}")
+    try:
+        for line in iter(proc.stderr.readline, b''):
+            line_str = line.decode('utf-8', errors='replace').strip()
+            if line_str:
+                if "Error" in line_str or "fail" in line_str.lower():
+                    logger.error(f"[FFmpeg] {line_str}")
+                # else:
+                #    logger.debug(f"[FFmpeg] {line_str}")
+    except Exception as e:
+        logger.error(f"Log consumer error: {e}")
+    finally:
+        try:
+            proc.stderr.close()
+        except:
+            pass
 
 def main():
     global running, ffmpeg_process
@@ -194,15 +194,16 @@ def main():
         write_status("Recording", profile, device)
         
         # Monitor Loop
-        # We need to detect if it crashes
+        # Start log consumer thread
+        log_thread = threading.Thread(target=consume_stderr, args=(proc,), daemon=True)
+        log_thread.start()
+
         try:
-             # We can't use proc.wait() because we want to update status/heartbeat
+             # Loop while process is running
              while running and proc.poll() is None:
                  write_status("Recording", profile, device)
-                 # Check stderr non-blocking? Hard with standard pipes.
-                 # Python's subprocess buffering makes this tricky without threads.
-                 # For now, just sleep. The log handling above isn't hooked up to a thread yet.
                  time.sleep(5)
+
         except Exception as e:
             logger.error(f"Monitor Loop Error: {e}")
             
@@ -212,16 +213,13 @@ def main():
         if not running:
             break
             
-        logger.warning(f"FFmpeg exited with code {proc.returncode}. Restarting in 5s...")
+        # Cleanup
+        if running: 
+            logger.warning(f"FFmpeg exited with code {proc.returncode}. Restarting in 5s...")
         
-        # Read stderr to see why it crashed
-        if proc.stderr:
-            try:
-                stderr_output = proc.stderr.read().decode().strip()
-                if stderr_output:
-                    logger.error(f"FFmpeg Error Output:\n{stderr_output}")
-            except Exception as e:
-                logger.error(f"Failed to read stderr: {e}")
+        # Determine if we should print stderr manually (only if thread missed it/implementation changed)
+        # But our thread covers it.
+
 
         write_status("Error: Restarting", profile, device)
         time.sleep(5)

@@ -43,8 +43,8 @@ class TestStorageJanitor(unittest.TestCase):
             "new.flac": 1024
         }
         
-        # Mock usage to trigger cleanup: 80% -> 70% -> 50%
-        mock_usage = MagicMock(side_effect=[80.0, 75.0, 50.0])
+        # Mock usage to trigger cleanup: 80% -> 75% -> 65% -> 50%
+        mock_usage = MagicMock(side_effect=[80.0, 75.0, 65.0, 50.0])
         
         self.janitor.check_and_clean(remote_files, mock_usage)
         
@@ -66,6 +66,18 @@ class TestStorageJanitor(unittest.TestCase):
         self.janitor.check_and_clean(remote_files, mock_usage)
         
         self.assertTrue(os.path.exists(f1), "File NOT on remote should NOT be deleted")
+        
+    def test_safety_check_remote_failure(self):
+        f1 = self.create_file("safe.flac", age_offset=300)
+        
+        # Remote status unknown (None)
+        remote_files = None
+        
+        mock_usage = MagicMock(return_value=90.0)
+        
+        self.janitor.check_and_clean(remote_files, mock_usage)
+        
+        self.assertTrue(os.path.exists(f1), "File should not be deleted if remote status is unknown")
 
 if __name__ == '__main__':
     unittest.main()

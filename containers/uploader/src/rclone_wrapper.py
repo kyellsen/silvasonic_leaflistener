@@ -120,9 +120,10 @@ class RcloneWrapper:
             logger.error(f"Transfer execution error: {e}")
             return False
 
-    def list_files(self, remote: str) -> dict:
+    def list_files(self, remote: str) -> Optional[dict]:
         """
         Lists files on the remote and returns a dict {filename: size}.
+        Returns None if listing fails.
         Uses 'rclone lsjson' for parsing.
         """
         cmd = [
@@ -141,7 +142,7 @@ class RcloneWrapper:
             
         except Exception as e:
             logger.error(f"Failed to list remote files: {e}")
-            return {}
+            return None
 
     def get_disk_usage_percent(self, path: str) -> float:
         """Checks disk usage percentage for the given path."""

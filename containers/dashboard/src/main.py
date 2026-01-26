@@ -122,8 +122,8 @@ async def dashboard(request: Request, auth=Depends(require_auth)):
     if isinstance(auth, RedirectResponse): return auth
     
     stats = SystemService.get_stats()
-    detections = BirdNetService.get_recent_detections(limit=5)
-    birdnet_stats = BirdNetService.get_stats()
+    detections = await BirdNetService.get_recent_detections(limit=5)
+    birdnet_stats = await BirdNetService.get_stats()
     carrier_stats = CarrierService.get_status()
     recorder_stats = RecorderService.get_status()
     containers = HealthCheckerService.get_system_metrics()
@@ -286,8 +286,8 @@ async def logs_page(request: Request, auth=Depends(require_auth)):
 async def birdnet_page(request: Request, auth=Depends(require_auth)):
     if isinstance(auth, RedirectResponse): return auth
     
-    detections = BirdNetService.get_recent_detections(limit=50) # More for browser
-    stats = BirdNetService.get_stats()
+    detections = await BirdNetService.get_recent_detections(limit=50) # More for browser
+    stats = await BirdNetService.get_stats()
     
     return render(request, "birdnet.html", {
         "request": request, 
@@ -308,7 +308,7 @@ async def birdnet_discover_page(request: Request, auth=Depends(require_auth)):
     
     # Enrich with Watchlist Status
     sci_names = [s['sci_name'] for s in species_list]
-    watchlist_status = BirdNetService.get_watchlist_status(sci_names)
+    watchlist_status = await BirdNetService.get_watchlist_status(sci_names)
     
     for s in species_list:
         s['is_watched'] = watchlist_status.get(s['sci_name'], False)
@@ -326,7 +326,7 @@ async def birdnet_discover_page(request: Request, auth=Depends(require_auth)):
 async def birdnet_species_page(request: Request, species_name: str, auth=Depends(require_auth)):
     if isinstance(auth, RedirectResponse): return auth
     
-    data = BirdNetService.get_species_stats(species_name)
+    data = await BirdNetService.get_species_stats(species_name)
     if not data:
         raise HTTPException(status_code=404, detail="Species not found")
         
@@ -348,7 +348,7 @@ async def birdnet_species_page(request: Request, species_name: str, auth=Depends
 async def stats_page(request: Request, auth=Depends(require_auth)):
     if isinstance(auth, RedirectResponse): return auth
     
-    stats_data = BirdNetService.get_advanced_stats()
+    stats_data = await BirdNetService.get_advanced_stats()
     
     return render(request, "stats.html", {
         "request": request,
@@ -370,7 +370,7 @@ async def recorder_page(request: Request, auth=Depends(require_auth)):
     stats = RecorderService.get_status()
     # Also get system stats for context if needed
     sys_stats = SystemService.get_stats()
-    recordings = RecorderService.get_recent_recordings()
+    recordings = await RecorderService.get_recent_recordings()
     
     return render(request, "recorder.html", {
         "request": request, 
@@ -405,8 +405,8 @@ async def analyzer_page(request: Request, auth=Depends(require_auth)):
     if isinstance(auth, RedirectResponse): return auth
     
     # Brain/Analyzer specific stats
-    recent_analysis = AnalyzerService.get_recent_analysis(limit=20)
-    stats = AnalyzerService.get_stats()
+    recent_analysis = await AnalyzerService.get_recent_analysis(limit=20)
+    stats = await AnalyzerService.get_stats()
     sys_stats = SystemService.get_stats()
     
     return render(request, "analyzer.html", {
@@ -425,10 +425,10 @@ async def analyzer_page(request: Request, auth=Depends(require_auth)):
 async def weather_page(request: Request, auth=Depends(require_auth)):
     if isinstance(auth, RedirectResponse): return auth
     
-    current = WeatherService.get_current_weather()
-    history = WeatherService.get_history(hours=24)
+    current = await WeatherService.get_current_weather()
+    history = await WeatherService.get_history(hours=24)
     status_data = WeatherService.get_status()
-    correlations = WeatherService.get_correlations(days=30)
+    correlations = await WeatherService.get_correlations(days=30)
     
     return render(request, "weather.html", {
         "request": request,
@@ -454,7 +454,7 @@ class WatchlistToggleRequest(BaseModel):
 async def api_toggle_watchlist(req: WatchlistToggleRequest, auth=Depends(require_auth)):
     if isinstance(auth, RedirectResponse): raise HTTPException(401)
     
-    success = BirdNetService.toggle_watchlist(req.scientific_name, req.common_name, req.enabled)
+    success = await BirdNetService.toggle_watchlist(req.scientific_name, req.common_name, req.enabled)
     if success:
         return {"status": "ok", "enabled": req.enabled}
     else:
@@ -464,7 +464,7 @@ async def api_toggle_watchlist(req: WatchlistToggleRequest, auth=Depends(require
 async def get_birdnet_details(request: Request, filename: str, auth=Depends(require_auth)):
     if isinstance(auth, RedirectResponse): return auth
     
-    data = BirdNetService.get_detection(filename)
+    data = await BirdNetService.get_detection(filename)
     if not data:
         return "<div class='p-4 text-red-500'>Detection not found</div>"
         
@@ -475,7 +475,7 @@ async def get_birdnet_details(request: Request, filename: str, auth=Depends(requ
          # We trigger a background fetch or just Await it (better for user exp here)
          await BirdNetService.enrich_species_data(data)
          # Refresh data
-         data = BirdNetService.get_detection(filename) or data
+         data = await BirdNetService.get_detection(filename) or data
 
     return render(request, "partials/inspector_birdnet.html", {"request": request, "d": data})
 

@@ -159,4 +159,7 @@ sudo podman logs -f silvasonic_ear
 
 
 # Löscht alle ungenutzten Images, Container und Netzwerke
+sudo podman system prune
+
+Die Atombombe:
 sudo podman system prune -a --volumes

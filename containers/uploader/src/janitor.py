@@ -1,6 +1,6 @@
 import os
 import logging
-from typing import List, Dict
+from typing import List, Dict, Optional
 
 logger = logging.getLogger("Janitor")
 
@@ -10,14 +10,18 @@ class StorageJanitor:
         self.threshold_percent = threshold_percent
         self.target_percent = target_percent
 
-    def check_and_clean(self, remote_files: Dict[str, int], get_usage_callback) -> None:
+    def check_and_clean(self, remote_files: Optional[Dict[str, int]], get_usage_callback) -> None:
         """
         Checks disk usage and deletes old files if threshold is exceeded.
         
         Args:
-            remote_files: Dict of {relative_path: size} from the remote.
+            remote_files: Dict of {relative_path: size} from the remote, or None if network failed.
             get_usage_callback: Function that returns current disk usage %.
         """
+        if remote_files is None:
+            logger.warning("Remote file list is unknown (None). Aborting cleanup to prevent data loss.")
+            return
+
         current_usage = get_usage_callback(self.source_dir)
         
         if current_usage < self.threshold_percent:

@@ -6,7 +6,8 @@ from datetime import timezone
 import shutil
 from pathlib import Path
 import json
-from sqlalchemy import create_engine, text
+from sqlalchemy import text
+from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
 from sqlalchemy.orm import sessionmaker
 from src.settings import SettingsService
 
@@ -23,9 +24,9 @@ class DatabaseHandler:
         self.host = os.getenv("POSTGRES_HOST", "db")
         self.port = os.getenv("POSTGRES_PORT", "5432")
         
-        self.db_url = f"postgresql://{self.user}:{self.password}@{self.host}:{self.port}/{self.db_name}"
-        self.engine = create_engine(self.db_url, pool_pre_ping=True)
-        self.Session = sessionmaker(bind=self.engine)
+        self.db_url = f"postgresql+asyncpg://{self.user}:{self.password}@{self.host}:{self.port}/{self.db_name}"
+        self.engine = create_async_engine(self.db_url, pool_pre_ping=True)
+        # self.Session = sessionmaker(bind=self.engine) # We primarily use direct connection in this legacy code
 
     def get_connection(self):
         return self.engine.connect()
@@ -98,9 +99,9 @@ class SystemService:
 
 class BirdNetService:
     @staticmethod
-    def get_recent_detections(limit=10):
+    async def get_recent_detections(limit=10):
         try:
-            with db.get_connection() as conn:
+            async with db.get_connection() as conn:
                 # Query matches BirdNET schema: birdnet.detections table
                 # We need to manually split timestamp into date/time map for value compatibility with template
                 query = text("""
@@ -119,7 +120,7 @@ class BirdNetService:
                     ORDER BY d.timestamp DESC 
                     LIMIT :limit
                 """)
-                result = conn.execute(query, {"limit": limit})
+                result = await conn.execute(query, {"limit": limit})
                 
                 detections = []
                 use_german = SettingsService.is_german_names_enabled()
@@ -155,9 +156,9 @@ class BirdNetService:
             return []
 
     @staticmethod
-    def get_detection(filename: str):
+    async def get_detection(filename: str):
         try:
-            with db.get_connection() as conn:
+            async with db.get_connection() as conn:
                 query = text("""
                     SELECT 
                         d.filepath, 
@@ -176,7 +177,7 @@ class BirdNetService:
                     LEFT JOIN birdnet.species_info s ON d.scientific_name = s.scientific_name
                     WHERE d.filename = :filename
                 """)
-                row = conn.execute(query, {"filename": filename}).fetchone()
+                row = (await conn.execute(query, {"filename": filename})).fetchone()
                 
                 if not row:
                     return None
@@ -210,17 +211,17 @@ class BirdNetService:
             return None
 
     @staticmethod
-    def get_stats():
+    async def get_stats():
         try:
-            with db.get_connection() as conn:
+            async with db.get_connection() as conn:
                 # Today
                 today_start = datetime.datetime.utcnow().date()
                 query_today = text("SELECT COUNT(*) FROM birdnet.detections WHERE timestamp >= :today")
-                today_count = conn.execute(query_today, {"today": today_start}).scalar()
+                today_count = (await conn.execute(query_today, {"today": today_start})).scalar()
                 
                 # Total
                 query_total = text("SELECT COUNT(*) FROM birdnet.detections")
-                total_count = conn.execute(query_total).scalar()
+                total_count = (await conn.execute(query_total)).scalar()
                 
                 # Top Species
                 query_top = text("""
@@ -230,7 +231,7 @@ class BirdNetService:
                     ORDER BY count DESC 
                     LIMIT 5
                 """)
-                result_top = conn.execute(query_top)
+                result_top = await conn.execute(query_top)
                 top_species = [dict(row._mapping) for row in result_top]
                 
                 return {
@@ -246,7 +247,7 @@ class BirdNetService:
         """Returns all species with their counts and last seen date. Enriches with images if missing."""
         import asyncio
         try:
-            with db.get_connection() as conn:
+            async with db.get_connection() as conn:
                 query = text("""
                     SELECT 
                         d.common_name as com_name, 
@@ -262,7 +263,7 @@ class BirdNetService:
                     GROUP BY d.common_name, d.scientific_name, si.image_url, si.german_name
                     ORDER BY count DESC
                 """)
-                result = conn.execute(query)
+                result = await conn.execute(query)
                 species = []
                 
                 # List of species that need enrichment
@@ -313,10 +314,10 @@ class BirdNetService:
             return []
 
     @staticmethod
-    def get_species_stats(species_name: str):
+    async def get_species_stats(species_name: str):
         """Get detailed stats for a specific species."""
         try:
-            with db.get_connection() as conn:
+            async with db.get_connection() as conn:
                 # Basic Info & Aggregate stats
                 query_info = text("""
                     SELECT 
@@ -331,7 +332,7 @@ class BirdNetService:
                     WHERE common_name = :name
                     GROUP BY common_name, scientific_name
                 """)
-                res_info = conn.execute(query_info, {"name": species_name}).fetchone()
+                res_info = (await conn.execute(query_info, {"name": species_name})).fetchone()
                 if not res_info:
                     return None
                     
@@ -351,7 +352,7 @@ class BirdNetService:
                     ORDER BY timestamp DESC 
                     LIMIT 20
                 """)
-                res_recent = conn.execute(query_recent, {"name": species_name})
+                res_recent = await conn.execute(query_recent, {"name": species_name})
                 recent = []
                 for row in res_recent:
                     d = dict(row._mapping)
@@ -398,7 +399,7 @@ class BirdNetService:
                     GROUP BY hour
                     ORDER BY hour
                 """)
-                res_hourly = conn.execute(query_hourly, {"name": species_name})
+                res_hourly = await conn.execute(query_hourly, {"name": species_name})
                 hourly_dist = {int(r.hour): r.count for r in res_hourly}
                 # Fill missing hours
                 hourly_data = [hourly_dist.get(h, 0) for h in range(24)]
@@ -421,10 +422,10 @@ class BirdNetService:
         sci_name = info['sci_name']
         
         try:
-             with db.get_connection() as conn:
+             async with db.get_connection() as conn:
                 # 1. Check Cache
                 query_cache = text("SELECT * FROM birdnet.species_info WHERE scientific_name = :sci_name")
-                cache = conn.execute(query_cache, {"sci_name": sci_name}).fetchone()
+                cache = (await conn.execute(query_cache, {"sci_name": sci_name})).fetchone()
                 
                 wiki_data = None
                 if cache:
@@ -459,8 +460,8 @@ class BirdNetService:
                         wiki_data['common_name'] = info.get('com_name')
                         wiki_data['family'] = "" # ToDo
                         
-                        conn.execute(query_upsert, wiki_data)
-                        conn.commit()
+                        await conn.execute(query_upsert, wiki_data)
+                        await conn.commit()
                         
                 # 4. Merge
                 if wiki_data:
@@ -475,36 +476,36 @@ class BirdNetService:
         return info
 
     @staticmethod
-    def toggle_watchlist(sci_name: str, com_name: str, enabled: bool) -> bool:
+    async def toggle_watchlist(sci_name: str, com_name: str, enabled: bool) -> bool:
         """Toggle watchlist status for a species."""
         try:
-            with db.get_connection() as conn:
+            async with db.get_connection() as conn:
                 # Upsert logic (Postgres specific) or check/update
                 # Check if exists
                 check = text("SELECT id FROM birdnet.watchlist WHERE scientific_name = :sci")
-                res = conn.execute(check, {"sci": sci_name}).fetchone()
+                res = (await conn.execute(check, {"sci": sci_name})).fetchone()
                 
                 if res:
                     # Update
                     upd = text("UPDATE birdnet.watchlist SET enabled = :en, common_name = :com WHERE scientific_name = :sci")
-                    conn.execute(upd, {"en": 1 if enabled else 0, "com": com_name, "sci": sci_name})
+                    await conn.execute(upd, {"en": 1 if enabled else 0, "com": com_name, "sci": sci_name})
                 else:
                     # Insert
                     ins = text("INSERT INTO birdnet.watchlist (scientific_name, common_name, enabled) VALUES (:sci, :com, :en)")
-                    conn.execute(ins, {"sci": sci_name, "com": com_name, "en": 1 if enabled else 0})
+                    await conn.execute(ins, {"sci": sci_name, "com": com_name, "en": 1 if enabled else 0})
                     
-                conn.commit()
+                await conn.commit()
                 return True
         except Exception as e:
             print(f"Watchlist toggle error: {e}")
             return False
 
     @staticmethod
-    def get_watchlist_status(sci_names: list) -> dict:
+    async def get_watchlist_status(sci_names: list) -> dict:
         """Get watchlist status for a list of scientific names. Returns dict {sci_name: bool}"""
         try:
             if not sci_names: return {}
-            with db.get_connection() as conn:
+            async with db.get_connection() as conn:
                 query = text("SELECT scientific_name FROM birdnet.watchlist WHERE enabled = 1 AND scientific_name IN :names")
                 # SQL Alchemy IN clause handling with text? 
                 # Better: SELECT scientific_name FROM birdnet.watchlist WHERE enabled = 1
@@ -512,7 +513,7 @@ class BirdNetService:
                 # For safety/simplicity let's fetch all enabled (watchlist is usually small).
                 
                 query_all = text("SELECT scientific_name FROM birdnet.watchlist WHERE enabled = 1")
-                res = conn.execute(query_all)
+                res = await conn.execute(query_all)
                 watched = {row.scientific_name for row in res}
                 
                 return {name: (name in watched) for name in sci_names}
@@ -521,10 +522,10 @@ class BirdNetService:
             return {}
 
     @staticmethod
-    def get_advanced_stats():
+    async def get_advanced_stats():
         """Get comprehensive stats for the BirdStats dashboard."""
         try:
-            with db.get_connection() as conn:
+            async with db.get_connection() as conn:
                 # 1. Daily Trend (Last 30 Days) - Keep existing
                 query_daily = text("""
                     SELECT DATE(timestamp) as date, COUNT(*) as count
@@ -533,7 +534,7 @@ class BirdNetService:
                     GROUP BY date
                     ORDER BY date ASC
                 """)
-                res_daily = conn.execute(query_daily)
+                res_daily = await conn.execute(query_daily)
                 daily = {"labels": [], "values": []}
                 for row in res_daily:
                     daily["labels"].append(row.date.strftime("%Y-%m-%d"))
@@ -545,13 +546,13 @@ class BirdNetService:
                     FROM birdnet.detections
                     GROUP BY hour
                 """)
-                res_hourly = conn.execute(query_hourly)
+                res_hourly = await conn.execute(query_hourly)
                 dist_map = {int(r.hour): r.count for r in res_hourly}
                 hourly = {"values": [dist_map.get(h, 0) for h in range(24)]}
                 
                 # 3. Top Species Distributions (Pie Charts)
                 # Helper for top species
-                def get_top_species(interval_clause, limit=20):
+                async def get_top_species(interval_clause, limit=20):
                     where_sql = ""
                     params = {}
                     if interval_clause:
@@ -565,13 +566,13 @@ class BirdNetService:
                         ORDER BY count DESC 
                         LIMIT :limit
                     """)
-                    rows = conn.execute(query, {"limit": limit})
+                    rows = await conn.execute(query, {"limit": limit})
                     return {
                         "labels": [r.common_name for r in rows], 
                         "values": [r.count for r in rows]
                     }
 
-                dist_today = get_top_species("1 DAY") # Actually strictly today? User said "Today". 1 DAY interval is last 24h. 
+                dist_today = await get_top_species("1 DAY") # Actually strictly today? User said "Today". 1 DAY interval is last 24h. 
                                                      # Usually "Today" means since 00:00. 
                                                      # Let's use DATE(timestamp) = CURRENT_DATE for Today.
                 
@@ -584,12 +585,12 @@ class BirdNetService:
                     ORDER BY count DESC 
                     LIMIT 20
                 """)
-                rows_today = conn.execute(query_today_exact)
+                rows_today = await conn.execute(query_today_exact)
                 dist_today = {"labels": [r.common_name for r in rows_today], "values": [r.count for r in rows_today]}
 
-                dist_week = get_top_species("7 DAYS")
-                dist_month = get_top_species("30 DAYS")
-                dist_year = get_top_species("1 YEAR")
+                dist_week = await get_top_species("7 DAYS")
+                dist_month = await get_top_species("30 DAYS")
+                dist_year = await get_top_species("1 YEAR")
 
                 # 4. Histogram (All Species Ranked)
                 # We fetch all species and their counts
@@ -599,7 +600,7 @@ class BirdNetService:
                     GROUP BY common_name
                     ORDER BY count DESC
                 """)
-                res_all = conn.execute(query_all)
+                res_all = await conn.execute(query_all)
                 hist_labels = []
                 hist_values = []
                 rarest_list = []
@@ -720,9 +721,9 @@ class RecorderService:
         return {"status": "Unknown", "profile": "Unknown", "device": "Unknown"}
 
     @staticmethod
-    def get_recent_recordings(limit=20):
+    async def get_recent_recordings(limit=20):
         try:
-             with db.get_connection() as conn:
+             async with db.get_connection() as conn:
                 query = text("""
                     SELECT 
                         filename,
@@ -733,7 +734,7 @@ class RecorderService:
                     ORDER BY created_at DESC
                     LIMIT :limit
                 """)
-                result = conn.execute(query, {"limit": limit})
+                result = await conn.execute(query, {"limit": limit})
                 items = []
                 for row in result:
                     d = dict(row._mapping)
@@ -806,9 +807,9 @@ class HealthCheckerService:
 
 class AnalyzerService:
     @staticmethod
-    def get_recent_analysis(limit=20):
+    async def get_recent_analysis(limit=20):
         try:
-            with db.get_connection() as conn:
+            async with db.get_connection() as conn:
                 query = text("""
                     SELECT 
                         af.filename,
@@ -824,7 +825,7 @@ class AnalyzerService:
                     ORDER BY af.created_at DESC
                     LIMIT :limit
                 """)
-                result = conn.execute(query, {"limit": limit})
+                result = await conn.execute(query, {"limit": limit})
                 items = []
                 for row in result:
                     d = dict(row._mapping)
@@ -859,9 +860,9 @@ class AnalyzerService:
             return []
 
     @staticmethod
-    def get_stats():
+    async def get_stats():
          try:
-            with db.get_connection() as conn:
+            async with db.get_connection() as conn:
                 query = text("""
                     SELECT 
                         COUNT(*) as total_files,
@@ -870,7 +871,7 @@ class AnalyzerService:
                         AVG(file_size_bytes) as avg_size
                     FROM brain.audio_files
                 """)
-                res = conn.execute(query).fetchone()
+                res = (await conn.execute(query)).fetchone()
                 if res:
                     d = dict(res._mapping)
                     d['total_duration_hours'] = round(d['total_duration'] / 3600, 2)
@@ -883,16 +884,16 @@ class AnalyzerService:
              return {}
 class WeatherService:
     @staticmethod
-    def get_current_weather():
+    async def get_current_weather():
         """Get the latest weather measurement."""
         try:
-            with db.get_connection() as conn:
+            async with db.get_connection() as conn:
                 query = text("""
                     SELECT * FROM weather.measurements 
                     ORDER BY timestamp DESC 
                     LIMIT 1
                 """)
-                row = conn.execute(query).fetchone()
+                row = (await conn.execute(query)).fetchone()
                 if row:
                     d = dict(row._mapping)
                     if d.get('timestamp') and d['timestamp'].tzinfo is None:
@@ -903,10 +904,10 @@ class WeatherService:
         return None
 
     @staticmethod
-    def get_history(hours=24):
+    async def get_history(hours=24):
         """Get weather history for charts."""
         try:
-            with db.get_connection() as conn:
+            async with db.get_connection() as conn:
                 query = text("""
                     SELECT * FROM weather.measurements 
                     WHERE timestamp >= NOW() - INTERVAL ':hours HOURS'
@@ -915,7 +916,7 @@ class WeatherService:
                 # Bind param properly or safe f-string for int
                 query = text(f"SELECT * FROM weather.measurements WHERE timestamp >= NOW() - INTERVAL '{int(hours)} HOURS' ORDER BY timestamp ASC")
                 
-                result = conn.execute(query)
+                result = await conn.execute(query)
                 data = {
                     "labels": [],
                     "temp": [],
@@ -941,10 +942,10 @@ class WeatherService:
             return {"labels": [], "temp": [], "humidity": [], "rain": [], "wind": []}
 
     @staticmethod
-    def get_correlations(days=30):
+    async def get_correlations(days=30):
         """Get correlation stats for charts (Hourly buckets)."""
         try:
-            with db.get_connection() as conn:
+            async with db.get_connection() as conn:
                 # Fetch aggregated stats from weather.bird_stats
                 # We order by timestamp ASC for the time series
                 query = text(f"""
@@ -954,7 +955,7 @@ class WeatherService:
                     ORDER BY timestamp ASC
                 """)
                 
-                result = conn.execute(query)
+                result = await conn.execute(query)
                 
                 data = {
                     "labels": [],
