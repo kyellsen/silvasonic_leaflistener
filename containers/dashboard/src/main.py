@@ -114,7 +114,7 @@ async def logout():
 # --- Protected Routes ---
 
 from src.services import (
-    AnalyzerService,
+    # AnalyzerService, # Deprecated
     BirdNetService,
     CarrierService,
     HealthCheckerService,
@@ -463,25 +463,21 @@ async def uploader_page(request: Request, auth=Depends(require_auth)):
         "auto_refresh_interval": 15
     })
 
-@app.get("/analyzer", response_class=HTMLResponse)
-async def analyzer_page(request: Request, auth=Depends(require_auth)):
+@app.get("/livesound", response_class=HTMLResponse)
+async def livesound_page(request: Request, auth=Depends(require_auth)):
     if isinstance(auth, RedirectResponse): return auth
 
-    # Brain/Analyzer specific stats
-    recent_analysis = await AnalyzerService.get_recent_analysis(limit=20)
-    stats = await AnalyzerService.get_stats()
-    sys_stats = SystemService.get_stats()
-
-    return render(request, "analyzer.html", {
+    # No stats needed for pure live stream page initially
+    # If we want livesound container stats, we could fetch them, but for now just render UI
+    
+    return render(request, "livesound.html", {
         "request": request,
-        "page": "analyzer",
-        "recent": recent_analysis,
-        "stats": stats,
-        "sys_stats": sys_stats,
-        "status_label": "Analyzer:",
-        "status_value": "Monitoring",
+        "page": "livesound",
+        "status_label": "Livesound:",
+        "status_value": "Streaming",
         "status_color": "text-purple-600 dark:text-purple-400",
-        "auto_refresh_interval": 15
+        # Auto refresh not needed for live canvas/audio
+        # "auto_refresh_interval": 15
     })
 
 @app.get("/weather", response_class=HTMLResponse)
@@ -555,7 +551,6 @@ async def stream_logs(service: str, auth=Depends(require_auth)):
 
     async def log_generator():
         import asyncio
-
         import aiofiles
 
         # Wait for file to exist
@@ -565,8 +560,28 @@ async def stream_logs(service: str, auth=Depends(require_auth)):
 
         try:
             async with aiofiles.open(log_file) as f:
-                # Seek to end
+                # --- Initial Tail (Last 8KB) ---
+                file_size = os.path.getsize(log_file)
+                tail_size = 8192 # 8KB
+                
+                if file_size > 0:
+                    seek_pos = max(0, file_size - tail_size)
+                    await f.seek(seek_pos)
+                    
+                    # If we seeked to middle, skip partial line
+                    if seek_pos > 0:
+                        await f.readline() 
+                    
+                    # Read remaining existing content
+                    while True:
+                        line = await f.readline()
+                        if not line: break
+                        yield f"data: {line}\n\n"
+                        
+                # --- Continuous Tail ---
+                # Ensure we are at the end (though reading to end above should have done it)
                 await f.seek(0, 2)
+                
                 while True:
                     line = await f.readline()
                     if line:

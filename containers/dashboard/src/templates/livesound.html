@@ -7,210 +7,286 @@
       stroke-linecap="round"
       stroke-linejoin="round"
       stroke-width="2"
-      d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"
+      d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z"
     ></path>
   </svg>
-  Sound Analyzer (Brain)
+  Livesound Stream
 </h2>
 
-<!-- Stats Grid -->
-<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+  <!-- Main Player Card -->
   <div
-    class="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700"
+    class="lg:col-span-2 bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700 overflow-hidden"
   >
-    <div class="text-xs font-bold text-gray-500 uppercase">Total Files</div>
-    <div class="text-3xl font-bold text-gray-900 dark:text-white mt-2">
-      {{ stats.total_files|default(0) }}
-    </div>
-  </div>
-  <div
-    class="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700"
-  >
-    <div class="text-xs font-bold text-gray-500 uppercase">Total Duration</div>
-    <div class="text-3xl font-bold text-blue-600 dark:text-blue-400 mt-2">
-      {{ stats.total_duration_fmt|default('0s') }}
-    </div>
-  </div>
-  <div
-    class="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700"
-  >
-    <div class="text-xs font-bold text-gray-500 uppercase">Avg Duration</div>
-    <div class="text-3xl font-bold text-green-600 dark:text-green-400 mt-2">
-      {{ stats.avg_duration_fmt|default('0s') }}
-    </div>
-  </div>
-  <div
-    class="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700"
-  >
-    <div class="text-xs font-bold text-gray-500 uppercase">Avg Size</div>
-    <div class="text-3xl font-bold text-orange-600 dark:text-orange-400 mt-2">
-      {{ stats.avg_size_fmt|default('0 B') }}
-    </div>
-  </div>
-</div>
+    <div class="p-6">
+      <h3 class="font-bold text-lg text-gray-700 dark:text-gray-300 mb-4">
+        Live Audio & Spectrogram
+      </h3>
 
-<!-- Recent Spectrograms -->
-<h3 class="font-bold text-lg text-gray-700 dark:text-gray-300 mb-4">
-  Latest Spectrograms
-</h3>
-{% if recent %}
-<div class="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-4 mb-8">
-  {% for item in recent[:4] %} {% if item.spec_url %}
-  <div
-    class="bg-white dark:bg-gray-800 rounded-lg overflow-hidden shadow border border-gray-200 dark:border-gray-700 relative group"
-  >
-    <img
-      src="{{ item.spec_url }}"
-      alt="{{ item.filename }}"
-      class="w-full h-32 object-cover bg-black"
-    />
-    <div
-      class="absolute bottom-0 left-0 right-0 bg-black/60 text-white text-xs p-1 truncate"
-    >
-      {{ item.filename }}
-    </div>
-    <!-- Hover details -->
-    <div
-      class="absolute inset-0 bg-black/80 flex flex-col items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity p-4 text-center"
-    >
-      <span class="text-white font-bold text-sm"
-        >{{ item.peak_frequency_hz }} Hz</span
+      <!-- Audio Player -->
+      <div
+        class="mb-6 bg-gray-100 dark:bg-gray-900 rounded-lg p-4 flex items-center justify-between"
       >
-      <span class="text-gray-300 text-xs">{{ item.rms_loudness }} dB</span>
-    </div>
-  </div>
-  {% endif %} {% endfor %}
-</div>
-{% else %}
-<div
-  class="bg-gray-100 dark:bg-gray-800 rounded-lg p-6 mb-8 text-center text-gray-500"
->
-  No spectrograms available yet.
-</div>
-{% endif %}
+        <div class="flex items-center gap-4">
+          <button
+            id="playButton"
+            class="w-12 h-12 flex items-center justify-center rounded-full bg-purple-600 hover:bg-purple-700 text-white transition-colors"
+          >
+            <svg
+              class="w-6 h-6"
+              fill="currentColor"
+              viewBox="0 0 24 24"
+              id="playIcon"
+            >
+              <path d="M8 5v14l11-7z" />
+            </svg>
+            <svg
+              class="w-6 h-6 hidden"
+              fill="currentColor"
+              viewBox="0 0 24 24"
+              id="pauseIcon"
+            >
+              <path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z" />
+            </svg>
+          </button>
+          <div>
+            <div class="text-sm font-bold text-gray-900 dark:text-gray-100">
+              Live Stream
+            </div>
+            <div class="text-xs text-green-500 font-mono" id="statusText">
+              Connecting...
+            </div>
+          </div>
+        </div>
 
-<!-- Data Table -->
-<h3 class="font-bold text-lg text-gray-700 dark:text-gray-300 mb-4">
-  Analysis Data
-</h3>
-<div
-  class="bg-white dark:bg-gray-800 rounded-lg shadow overflow-hidden border border-gray-200 dark:border-gray-700"
->
-  <div class="overflow-x-auto">
-    <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-      <thead class="bg-gray-50 dark:bg-gray-700">
-        <tr>
-          <th
-            class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider"
-          >
-            Timestamp
-          </th>
-          <th
-            class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider"
-          >
-            Filename
-          </th>
-          <th
-            class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider"
-          >
-            Duration
-          </th>
-          <th
-            class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider"
-          >
-            Size
-          </th>
-          <th
-            class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider"
-          >
-            Metrics
-          </th>
-        </tr>
-      </thead>
-      <tbody class="divide-y divide-gray-200 dark:divide-gray-700">
-        {% for item in recent %}
-        <tr
-          class="hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors"
+        <div class="text-xs text-gray-400">
+          Host: <span class="font-mono">port 8000</span>
+        </div>
+      </div>
+
+      <!-- Spectrogram Canvas -->
+      <div
+        class="relative w-full h-64 bg-black rounded-lg overflow-hidden ring-1 ring-gray-900/5"
+      >
+        <canvas id="spectrogramCanvas" class="w-full h-full"></canvas>
+        <div
+          class="absolute top-2 right-2 text-xs text-white/50 bg-black/50 px-2 py-1 rounded"
         >
-          <td
-            class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400"
-          >
-            {{ item.created_at_iso[:19].replace('T', ' ') }}
-          </td>
-          <td
-            class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white truncate max-w-xs"
-            title="{{ item.filename }}"
-          >
-            {{ item.filename }}
-          </td>
-          <td
-            class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400"
-          >
-            {{ item.duration_fmt }}
-          </td>
-          <td
-            class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400"
-          >
-            {{ item.size_fmt }}
-          </td>
-          <td
-            class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400"
-          >
-            {% if item.peak_frequency_hz %}
-            <span
-              class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200"
-            >
-              {{ item.peak_frequency_hz }} Hz
-            </span>
-            {% endif %} {% if item.rms_loudness %}
-            <span
-              class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200 ml-1"
-            >
-              {{ item.rms_loudness }} dB
-            </span>
-            {% endif %}
-          </td>
-        </tr>
-        {% else %}
-        <tr>
-          <td colspan="5" class="px-6 py-4 text-center text-sm text-gray-500">
-            No data available
-          </td>
-        </tr>
-        {% endfor %}
-      </tbody>
-    </table>
+          Live FFT
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Info / Controls -->
+  <div
+    class="bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700 p-6"
+  >
+    <h3 class="font-bold text-lg text-gray-700 dark:text-gray-300 mb-4">
+      Stream Info
+    </h3>
+
+    <div class="space-y-4">
+      <div
+        class="flex justify-between items-center py-2 border-b border-gray-100 dark:border-gray-700"
+      >
+        <span class="text-sm text-gray-500">Status</span>
+        <span
+          class="px-2 py-1 rounded text-xs font-bold bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200"
+          id="connectionStatus"
+        >
+          Online
+        </span>
+      </div>
+      <div
+        class="flex justify-between items-center py-2 border-b border-gray-100 dark:border-gray-700"
+      >
+        <span class="text-sm text-gray-500">Latency</span>
+        <span class="text-sm font-mono text-gray-700 dark:text-gray-300"
+          >~200ms</span
+        >
+      </div>
+      <div
+        class="flex justify-between items-center py-2 border-b border-gray-100 dark:border-gray-700"
+      >
+        <span class="text-sm text-gray-500">Sample Rate</span>
+        <span class="text-sm font-mono text-gray-700 dark:text-gray-300"
+          >44.1 kHz</span
+        >
+      </div>
+
+      <div class="mt-6 pt-4">
+        <div class="text-xs text-gray-400 mb-2">Volume</div>
+        <input
+          type="range"
+          id="volumeSlider"
+          min="0"
+          max="1"
+          step="0.1"
+          value="1"
+          class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer dark:bg-gray-700"
+        />
+      </div>
+    </div>
   </div>
 </div>
 
+<script>
+  const playBtn = document.getElementById("playButton");
+  const playIcon = document.getElementById("playIcon");
+  const pauseIcon = document.getElementById("pauseIcon");
+  const statusText = document.getElementById("statusText");
+  const volumeSlider = document.getElementById("volumeSlider");
+
+  // Audio Context
+  let audioCtx;
+  let audioSource;
+  let audioEl = new Audio();
+  audioEl.crossOrigin = "anonymous";
+
+  // Determine Stream URL (Assuming port 8000 on same host)
+  const streamUrl = `http://${window.location.hostname}:8000/stream`;
+
+  // Spectrogram WebSocket
+  const wsUrl = `ws://${window.location.hostname}:8000/ws/spectrogram`;
+  let ws;
+
+  // Canvas
+  const canvas = document.getElementById("spectrogramCanvas");
+  const ctx = canvas.getContext("2d");
+
+  // Adjust canvas resolution
+  function resize() {
+    canvas.width = canvas.offsetWidth;
+    canvas.height = canvas.offsetHeight;
+  }
+  window.addEventListener("resize", resize);
+  resize();
+
+  // Waterfall Buffer
+  // We scroll the image left
+  let tempCanvas = document.createElement("canvas");
+  let tempCtx = tempCanvas.getContext("2d");
+
+  function initWebSocket() {
+    ws = new WebSocket(wsUrl);
+
+    ws.onopen = () => {
+      statusText.innerText = "Connected";
+      statusText.className = "text-xs text-green-500 font-mono";
+      document.getElementById("connectionStatus").innerText = "Real-time";
+    };
+
+    ws.onmessage = (event) => {
+      const msg = JSON.parse(event.data);
+      if (msg.type === "spectrogram") {
+        drawColumn(msg.data);
+      }
+    };
+
+    ws.onclose = () => {
+      statusText.innerText = "Disconnected (Retrying...)";
+      statusText.className = "text-xs text-red-500 font-mono";
+      setTimeout(initWebSocket, 3000);
+    };
+  }
+
+  function drawColumn(dataArray) {
+    // dataArray is list of ints 0-255 (intensity)
+    // length 128 (mel bands)
+    // We draw 1 pixel width column at the right, shift everything left
+
+    const w = canvas.width;
+    const h = canvas.height;
+
+    // 1. Save current canvas to temp
+    tempCanvas.width = w;
+    tempCanvas.height = h;
+    tempCtx.drawImage(canvas, 0, 0);
+
+    // 2. Draw saved image shifted left by 1 pixel
+    ctx.clearRect(0, 0, w, h);
+    ctx.drawImage(tempCanvas, -1, 0); // Shift left
+
+    // 3. Draw new column at x = w-1
+    // We map freq bins (0=low, 127=high) to Y axis (h to 0)
+    const barHeight = h / dataArray.length;
+
+    for (let i = 0; i < dataArray.length; i++) {
+      const val = dataArray[i]; // 0-255
+
+      // Color Map: Purple (low) -> Cyan -> Yellow (high)
+      // Simple: HSL
+      // 255 -> 60deg (Yellow)
+      // 0 -> 260deg (Purple)
+      const hue = 260 - (val / 255) * 200;
+      const lightness = (val / 255) * 50; // 0 -> 50%
+
+      ctx.fillStyle = `hsl(${hue}, 100%, ${lightness}%)`;
+
+      // Draw rect
+      // Y grows down, so low freq (i=0) at bottom
+      const y = h - i * barHeight - barHeight;
+
+      ctx.fillRect(w - 1, y, 2, barHeight + 1); // +1 overlap
+    }
+  }
+
+  // Audio Player Logic
+  let isPlaying = false;
+
+  playBtn.addEventListener("click", () => {
+    if (!isPlaying) {
+      startStream();
+    } else {
+      stopStream();
+    }
+  });
+
+  function startStream() {
+    audioEl.src = streamUrl;
+    audioEl
+      .play()
+      .then(() => {
+        isPlaying = true;
+        toggleIcons(true);
+        statusText.innerText = "Streaming Audio";
+      })
+      .catch((e) => {
+        console.error(e);
+        statusText.innerText = "Stream Error";
+      });
+  }
+
+  function stopStream() {
+    audioEl.pause();
+    audioEl.src = "";
+    isPlaying = false;
+    toggleIcons(false);
+    statusText.innerText = "Paused";
+  }
+
+  function toggleIcons(playing) {
+    if (playing) {
+      playIcon.classList.add("hidden");
+      pauseIcon.classList.remove("hidden");
+      playBtn.classList.replace("bg-purple-600", "bg-red-500");
+      playBtn.classList.replace("hover:bg-purple-700", "hover:bg-red-600");
+    } else {
+      playIcon.classList.remove("hidden");
+      pauseIcon.classList.add("hidden");
+      playBtn.classList.replace("bg-red-500", "bg-purple-600");
+      playBtn.classList.replace("hover:bg-red-600", "hover:bg-purple-700");
+    }
+  }
+
+  volumeSlider.addEventListener("input", (e) => {
+    audioEl.volume = e.target.value;
+  });
+
+  // Start WS
+  initWebSocket();
+</script>
 {% endblock %} {% block inspector %}
-<div class="space-y-6">
-  <div
-    class="bg-white dark:bg-gray-700/50 p-4 rounded-lg border border-gray-200 dark:border-transparent"
-  >
-    <h3
-      class="font-bold text-gray-700 dark:text-gray-300 mb-2 border-b border-gray-200 dark:border-gray-600 pb-2"
-    >
-      System Load
-    </h3>
-    <div class="flex justify-between text-sm py-1">
-      <span class="text-gray-500 dark:text-gray-400">Core</span>
-      <span class="text-gray-700 dark:text-gray-200 font-bold"
-        >{{ sys_stats.cpu }}%</span
-      >
-    </div>
-    <div class="flex justify-between text-sm py-1">
-      <span class="text-gray-500 dark:text-gray-400">Mem</span>
-      <span class="text-gray-700 dark:text-gray-200 font-bold"
-        >{{ sys_stats.ram_percent }}%</span
-      >
-    </div>
-    <div class="flex justify-between text-sm py-1">
-      <span class="text-gray-500 dark:text-gray-400">Temp</span>
-      <span class="text-gray-700 dark:text-gray-200 font-bold"
-        >{{ sys_stats.cpu_temp }}</span
-      >
-    </div>
-  </div>
-</div>
+<!-- No inspector needed for live stream page -->
 {% endblock %}
