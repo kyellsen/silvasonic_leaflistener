@@ -42,8 +42,8 @@ class HealthCheckerSettings(BaseModel):
         return v
 
 class LocationSettings(BaseModel):
-    latitude: float = Field(default=52.52, ge=-90, le=90)
-    longitude: float = Field(default=13.40, ge=-180, le=180)
+    latitude: float = Field(default=54.17301, ge=-90, le=90)
+    longitude: float = Field(default=10.49468, ge=-180, le=180)
 
 class Settings(BaseModel):
     locale: LocaleSettings = Field(default_factory=LocaleSettings)
