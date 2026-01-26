@@ -77,6 +77,7 @@ echo "Running Ansible Provisioning via SSH to '$TARGET'..."
 # Remote execution via SSH
 # ansible_host = $TARGET (can be IP, hostname, or SSH alias)
 # ansible_connection = ssh
+CONN_ARGS_SSH="$TARGET"
 CONN_ARGS="-e ansible_host=$TARGET -e ansible_connection=ssh"
 
 ansible-playbook "$SCRIPT_DIR/provision/main.yml" \
@@ -89,7 +90,24 @@ ansible-playbook "$SCRIPT_DIR/provision/main.yml" \
     $CONN_ARGS
 
 echo "=========================================="
+echo "Phase 2: Building Images (Logging enabled)"
+echo "This may take a while (10-20 min) on a Pi..."
+echo "=========================================="
+
+REPO_DEST="/mnt/data/dev/silvasonic"
+
+# Explicitly build images (streaming output)
+ssh -t $CONN_ARGS_SSH "cd $REPO_DEST && sudo podman-compose build"
+
+echo "=========================================="
+echo "Phase 3: Starting Service"
+echo "=========================================="
+
+# Restart service (picks up new images)
+ssh -t $CONN_ARGS_SSH "sudo systemctl enable --now silvasonic && sudo systemctl restart silvasonic"
+
+
+echo "=========================================="
 echo "Setup Complete!"
-echo "You may need to reboot the Pi for all changes to take effect."
-echo "  ssh $TARGET 'sudo reboot'"
+echo "You may check logs with: ssh $TARGET 'journalctl -fu silvasonic'"
 echo "=========================================="

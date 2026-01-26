@@ -150,14 +150,6 @@
         remote_src: yes
       tags: [tools, audio]
 
-    # --- 6.5. BUILD IMAGES ---
-    - name: Build Silvasonic Images
-      become: true
-      command: podman-compose build
-      args:
-        chdir: "{{ repo_dest }}"
-      tags: [build, upgrade]
-
     # --- 7. SERVICE INSTALLATION ---
     - name: Install Silvasonic Service
       copy:
@@ -168,13 +160,6 @@
         mode: "0644"
         remote_src: yes
       notify: Reload Systemd
-
-    - name: Enable & Start Silvasonic Service
-      systemd:
-        name: silvasonic
-        enabled: yes
-        state: started
-        daemon_reload: yes
 
     # --- 8. WIFI BOOTSTRAP INSTALLATION ---
     - name: Create WiFi Bootstrap Directory
