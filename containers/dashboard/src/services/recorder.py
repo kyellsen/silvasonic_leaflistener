@@ -33,7 +33,7 @@ class RecorderService:
     @staticmethod
     async def get_recent_recordings(limit=20):
         try:
-             async with db.get_connection() as conn:
+            async with db.get_connection() as conn:
                 query = text("""
                     SELECT 
                         filename,
@@ -80,7 +80,8 @@ class RecorderService:
 
                     items.append(d)
                 return items
-            print(f"Recorder History Error: {e}")
+        except Exception as e:
+            logger.error(f"Recorder History Error: {e}")
             return []
 
     @staticmethod
