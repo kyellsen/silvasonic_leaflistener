@@ -1,16 +1,34 @@
-FROM python:3.13-slim
+FROM python:3.11-slim-bookworm AS builder
 
-WORKDIR /app
-
-# Install system dependencies (if any needed for psutil or others)
-# psutil often needs gcc if no wheel is available, but usually wheels exist.
-# curl is useful for healthchecks.
+# Install build dependencies
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    curl \
-    gcc \
     build-essential \
     pkg-config \
     libpq-dev \
+    libsndfile1-dev \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /app
+
+# Install uv
+COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
+
+# Create venv and install dependencies
+COPY pyproject.toml .
+ENV VIRTUAL_ENV=/app/.venv
+ENV PATH="/app/.venv/bin:$PATH"
+RUN uv venv && uv pip install --no-cache .
+
+# --- Final Stage ---
+FROM python:3.11-slim-bookworm
+
+WORKDIR /app
+
+# Install runtime dependencies only
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    curl \
+    libpq5 \
     libsndfile1 \
     && rm -rf /var/lib/apt/lists/*
 
@@ -18,9 +36,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 RUN mkdir -p /app/src/static/js && \
     curl -L -o /app/src/static/js/plotly.min.js https://cdn.plot.ly/plotly-2.27.0.min.js
 
-# Install python dependencies
-COPY pyproject.toml .
-RUN pip install --no-cache-dir .
+# Copy venv from builder
+COPY --from=builder /app/.venv /app/.venv
+ENV PATH="/app/.venv/bin:$PATH"
 
 # Copy application code
 COPY src /app/src

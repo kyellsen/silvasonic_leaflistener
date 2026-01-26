@@ -11,6 +11,11 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from src.auth import COOKIE_NAME, SESSION_SECRET, require_auth, verify_credentials
 from starlette.status import HTTP_302_FOUND
+import time
+import json
+import psutil
+import asyncio
+import threading
 
 logging.basicConfig(
     level=logging.INFO,
@@ -61,7 +66,38 @@ def render(request: Request, template: str, context: dict):
 
     return templates.TemplateResponse(template, context)
 
-# We need a partial base that outputs only the blocks
+
+# --- Self-Monitoring ---
+def write_status():
+    """Writes the Dashboard's own heartbeat."""
+    STATUS_FILE = "/mnt/data/services/silvasonic/status/dashboard.json"
+    os.makedirs(os.path.dirname(STATUS_FILE), exist_ok=True)
+    
+    while True:
+        try:
+            data = {
+                "service": "dashboard",
+                "timestamp": time.time(),
+                "status": "Running",
+                "cpu_percent": psutil.cpu_percent(),
+                "memory_usage_mb": psutil.Process(os.getpid()).memory_info().rss / 1024 / 1024,
+                "pid": os.getpid()
+            }
+            
+            tmp_file = f"{STATUS_FILE}.tmp"
+            with open(tmp_file, 'w') as f:
+                json.dump(data, f)
+            os.rename(tmp_file, STATUS_FILE)
+        except Exception as e:
+            logger.error(f"Failed to write dashboard status: {e}")
+            
+        time.sleep(30) # Check every 30s
+
+@app.on_event("startup")
+async def startup_event():
+    # Start status writer in thread
+    t = threading.Thread(target=write_status, daemon=True)
+    t.start()
 
 
 # Mount Static
@@ -167,14 +203,14 @@ async def dashboard(request: Request, auth=Depends(require_auth)):
     }
         
     # Define Sort Order & Display Names
-    # Order: Recorder, Carrier, LiveSound, Birdnet, Weather, PostgressDB, HealthChecker
+    # Order: Liveaudio, Recorder, Uploader, BirdNet, Dashboard, PostgressDB, HealthChecker
     container_config = [
+        {"key": "livesound", "name": "Liveaudio"},
         {"key": "recorder", "name": "Recorder"},
         {"key": "uploader", "name": "Uploader"},
-        {"key": "livesound", "name": "Livesound"},
-        {"key": "birdnet", "name": "Birdnet"},
-        {"key": "weather", "name": "Weather"},
-        {"key": "postgres", "name": "Postgress"},
+        {"key": "birdnet", "name": "BirdNet"},
+        {"key": "dashboard", "name": "Dashboard"},
+        {"key": "postgres", "name": "PostgressDB"},
         {"key": "healthchecker", "name": "HealthChecker"},
     ]
     
@@ -193,21 +229,19 @@ async def dashboard(request: Request, auth=Depends(require_auth)):
         if not c:
             c = find_container(config["key"], raw_containers)
         
-        if c:
-            # Clone to avoid mutating original if cached
-            c_copy = c.copy()
-            c_copy["display_name"] = config["name"]
-            containers.append(c_copy)
-        else:
-            # Optional: Add placeholder if missing? Or skip.
-            # User wants specific order, maybe show even if missing/unknown status?
-            # For now, let's add a placeholder to ensure the grid structure is preserved if that's desired,
-            # but usually we only show what's reported.
-            # However, looking at the template, it iterates what's there.
-            # Let's try to simulate a 'down' state if missing?
-            # actually, if HealthChecker doesn't report it, it might not exist. 
-            # safe to skip or add as 'Unknown'.
-            pass
+        # If still not found, create a placeholder so the order is preserved
+        if not c:
+             c = {
+                 "id": config["key"],
+                 "display_name": config["name"],
+                 "status": "Down",  # Default to Down if missing
+                 "message": "Not Reported"
+             }
+
+        # Clone to avoid mutating original if cached
+        c_copy = c.copy()
+        c_copy["display_name"] = config["name"]
+        containers.append(c_copy)
 
     # Add any others that weren't in the config?
     # Logic: simple Reorder.

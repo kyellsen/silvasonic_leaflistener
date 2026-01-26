@@ -1,4 +1,4 @@
-FROM python:3.13-slim-bookworm
+FROM python:3.11-slim-bookworm
 
 # Install system dependencies for audio
 # alsa-utils for arecord, ffmpeg for FLAC encoding

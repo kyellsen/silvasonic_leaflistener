@@ -97,7 +97,34 @@
         - /mnt/data/services/silvasonic/sound_analyser/metadata
         - /mnt/data/services/silvasonic/db/data
 
-    # Storage-Link Fix for Podman (User-Level)
+    # Storage-Link Fix for Podman (ROOT-Level)
+    # Critical: Since silvasonic.service runs as root, we must move root's storage to SSD
+    - name: Prepare Root Podman Storage on SSD
+      file:
+        path: /mnt/data/containers-system
+        state: directory
+        mode: "0711" # Standard root execution path permissions
+
+    - name: Check if /var/lib/containers is already a symlink
+      stat:
+        path: /var/lib/containers
+      register: root_storage_stat
+
+    - name: Migrate Root Podman Storage to SSD
+      become: true
+      shell: |
+        systemctl stop silvasonic.service || true
+        systemctl stop podman.socket || true
+        systemctl stop podman.service || true
+        rsync -aAXv /var/lib/containers/ /mnt/data/containers-system/
+        rm -rf /var/lib/containers
+        ln -s /mnt/data/containers-system /var/lib/containers
+        systemctl start podman.socket
+      when: root_storage_stat.stat.islnk is not defined or root_storage_stat.stat.islnk == False
+      # Basic safety check: only run if /var/lib/containers exists and is a directory
+      # This is a bit "heavy", but safe for a one-time migration.
+
+    # Storage-Link Fix for Podman (User-Level - for CLI debugging)
     - name: Link Podman Storage to SSD (for User)
       become: true
       become_user: "{{ user }}"

@@ -8,6 +8,7 @@ import os
 import shutil
 import sys
 import time
+import socket
 
 from mailer import Mailer
 
@@ -34,7 +35,10 @@ SERVICES_CONFIG = {
     "carrier": {"name": "Carrier (Uploader)", "timeout": 3600}, # 60 mins
     "recorder": {"name": "Recorder", "timeout": 120}, # 2 mins
     "birdnet": {"name": "BirdNET", "timeout": 300}, # 5 mins
-    "sound_analyser": {"name": "Brain", "timeout": 300}, # 5 mins
+    "livesound": {"name": "Liveaudio", "timeout": 120}, # 2 mins
+    "dashboard": {"name": "Dashboard", "timeout": 120}, # 2 mins
+    "postgres": {"name": "PostgressDB", "timeout": 300}, # 5 mins
+    "sound_analyser": {"name": "Brain", "timeout": 300}, # 5 mins (Legacy Name, keep for now or remove if unused?)
     # "weather": {"name": "Weather Station", "timeout": 300} # 5 mins
 }
 
@@ -47,6 +51,14 @@ def ensure_dirs():
     """Ensure all required directories exist."""
     for d in [STATUS_DIR, ERROR_DIR, ARCHIVE_DIR]:
         os.makedirs(d, exist_ok=True)
+
+def check_postgres_connection(host="silvasonic_db", port=5432):
+    """Checks if Postgres is accepting connections."""
+    try:
+        with socket.create_connection((host, port), timeout=5):
+            return True
+    except OSError:
+        return False
 
 
 def check_services_status(mailer: Mailer):
@@ -80,6 +92,23 @@ def check_services_status(mailer: Mailer):
             "message": "No heartbeat found",
             "timeout_threshold": timeout_val
         }
+
+        # Special Case: Postgres (Probe)
+        if service_id == "postgres":
+            if check_postgres_connection():
+                service_data["status"] = "Running"
+                service_data["message"] = "Active (Port 5432 Open)"
+                service_data["last_seen"] = current_time
+            else:
+                 service_data["status"] = "Down"
+                 service_data["message"] = "Connection Failed"
+                 # Only alert if it persists? For now, standard alert logic.
+                 msg = "Postgres DB is unreachable."
+                 logger.error(msg)
+                 # mailer.send_alert("Postgres Down", msg) # Uncomment if desired, maybe noisy on startup
+            
+            system_status[service_id] = service_data
+            continue
 
         if os.path.exists(status_file):
             try:

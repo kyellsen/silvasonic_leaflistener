@@ -1,9 +1,9 @@
-FROM python:3.13-slim
+FROM python:3.11-slim-bookworm AS builder
 
 # System dependencies for audio analysis (libsndfile for librosa/soundfile)
 # and basic tools
-RUN apt-get update && apt-get install -y \
-    libsndfile1 \
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    libsndfile1-dev \
     ffmpeg \
     build-essential \
     pkg-config \
@@ -15,10 +15,24 @@ WORKDIR /app
 COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
 
 # Install Python dependencies
-# Install Python dependencies
 COPY pyproject.toml .
-RUN uv pip compile pyproject.toml -o requirements.txt && \
-    uv pip install --system --no-cache -r requirements.txt
+ENV VIRTUAL_ENV=/app/.venv
+ENV PATH="/app/.venv/bin:$PATH"
+RUN uv venv && uv pip install --no-cache .
+
+# --- Final Stage ---
+FROM python:3.11-slim-bookworm
+
+WORKDIR /app
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    libsndfile1 \
+    ffmpeg \
+    && rm -rf /var/lib/apt/lists/*
+
+# Copy venv from builder
+COPY --from=builder /app/.venv /app/.venv
+ENV PATH="/app/.venv/bin:$PATH"
 
 # Copy source code
 COPY src/ /app/src/
