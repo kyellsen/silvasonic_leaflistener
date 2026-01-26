@@ -102,7 +102,7 @@ def write_status(
 
 
 def start_recording(
-    profile: typing.Any, device: typing.Any, output_dir: str
+    profile: typing.Any, device: typing.Any, output_dir: str, strategy: typing.Any
 ) -> subprocess.Popen[bytes]:
     """Starts the continuous FFmpeg process."""
     global ffmpeg_process
@@ -110,35 +110,24 @@ def start_recording(
     # Ensure output dir
     os.makedirs(output_dir, exist_ok=True)
 
-    # 1. Input: ALSA Device
-    # 2. Output 1: Segment Muxer (FLAC files)
-    # 3. Output 2: UDP Stream (Raw PCM)
-
-    # Filename Pattern for strftime
-    # We use %Y-%m-%d_%H-%M-%S.flac
-    # Note: We must escape % for python string formatting if needed, but here it's fine.
-
     file_pattern = os.path.join(output_dir, "%Y-%m-%d_%H-%M-%S.flac")
-
-    # Use hostname directly, let FFmpeg resolve it
     udp_url = f"udp://{LIVE_STREAM_TARGET}:{LIVE_STREAM_PORT}"
+
+    # Get Input Args from Strategy
+    input_args = strategy.get_ffmpeg_input_args()
+    input_source = strategy.get_input_source()
 
     cmd = [
         "ffmpeg",
-        "-f",
-        "alsa",
-        "-ac",
-        str(profile.audio.channels),
-        "-ar",
-        str(profile.audio.sample_rate),
+        # --- Input Strategy ---
+        *input_args,
         "-i",
-        device.hw_address,
-        # Audio Filtering (Optional: Highpass/Denoise? No, keep it raw for analysis)
+        input_source,
         # --- Output 1: Files (Segment Muxer) ---
         "-f",
         "segment",
         "-segment_time",
-        str(profile.recording.chunk_duration_seconds),  # Should be 30
+        str(profile.recording.chunk_duration_seconds),
         "-strftime",
         "1",
         "-c:a",
@@ -156,21 +145,18 @@ def start_recording(
         udp_url,
     ]
 
-    if profile.is_mock:
-        # Replace input with lavfi noise
-        cmd[1] = "lavfi"
-        cmd[2] = f"anoisesrc=c=pink:r={profile.audio.sample_rate}:a=0.1"
-        logger.warning("🔧 MOCK Source Enabled")
-
     logger.info(f"Starting Continuous Recording to {output_dir}")
     logger.info(f"Streaming to {udp_url}")
     logger.debug(f"CMD: {' '.join(cmd)}")
-    logger.info(f"CMD_DEBUG: {' '.join(cmd)}")  # Temporary Debug
-    logger.info(
-        f"PROFILE_DEBUG: Channels={profile.audio.channels} Rate={profile.audio.sample_rate}"
+
+    # Needs stdin for FileMockStrategy
+    ffmpeg_process = subprocess.Popen(
+        cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, stdin=subprocess.PIPE
     )
 
-    ffmpeg_process = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    # Start background tasks (e.g. file reading thread)
+    strategy.start_background_tasks(ffmpeg_process)
+
     assert ffmpeg_process.stderr is not None
     return ffmpeg_process
 
@@ -201,13 +187,17 @@ def main() -> None:
     ensure_status_dir()
     global running, ffmpeg_process
 
-    from mic_profiles import get_active_profile
+    from mic_profiles import create_strategy_for_profile, get_active_profile
 
     profile, device = get_active_profile()
 
     if not profile:
         logger.critical("No profile found.")
         sys.exit(1)
+
+    # Create Strategy
+    # Using type: ignore because mypy might not like dynamic imports inside function above, but here it's fine
+    strategy = create_strategy_for_profile(profile, device)  # type: ignore
 
     output_dir = os.path.join(BASE_OUTPUT_DIR, profile.slug)
 
@@ -216,6 +206,7 @@ def main() -> None:
         global running
         logger.info("Stopping...")
         running = False
+        strategy.stop()  # Stop strategy threads
         if ffmpeg_process:
             ffmpeg_process.terminate()
 
@@ -226,8 +217,13 @@ def main() -> None:
 
     while running:
         logger.info("Launching FFmpeg...")
-        proc = start_recording(profile, device, output_dir)
-        write_status("Recording", profile, device)
+        try:
+            proc = start_recording(profile, device, output_dir, strategy)
+            write_status("Recording", profile, device)
+        except Exception as e:
+            logger.error(f"Failed to start recording: {e}")
+            time.sleep(5)
+            continue
 
         # Monitor Loop
         # Start log consumer thread

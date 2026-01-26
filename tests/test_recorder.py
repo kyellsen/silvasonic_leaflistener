@@ -73,7 +73,9 @@ class TestRecorder(unittest.TestCase):
 
     @patch("recorder_main.subprocess.Popen")
     @patch("recorder_main.os.makedirs")
-    def test_start_recording_mock_mode(self, mock_makedirs: typing.Any, mock_popen: typing.Any) -> None:
+    def test_start_recording_mock_mode(
+        self, mock_makedirs: typing.Any, mock_popen: typing.Any
+    ) -> None:
         """Test that mock mode changes input source."""
         self.profile.is_mock = True
 

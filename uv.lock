@@ -1317,14 +1317,18 @@ name = "silvasonic-ear"
 version = "0.1.0"
 source = { editable = "containers/recorder" }
 dependencies = [
+    { name = "numpy" },
     { name = "psutil" },
     { name = "pyyaml" },
+    { name = "soundfile" },
 ]
 
 [package.metadata]
 requires-dist = [
+    { name = "numpy" },
     { name = "psutil" },
     { name = "pyyaml" },
+    { name = "soundfile" },
 ]
 
 [[package]]

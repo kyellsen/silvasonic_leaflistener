@@ -1,0 +1,16 @@
+name: "Røde NT-USB"
+manufacturer: "Røde"
+model: "NT-USB"
+priority: 10
+device_patterns:
+  - "Røde"
+  - "NT-USB"
+  - "Rode"
+audio:
+  sample_rate: 48000
+  channels: 1
+  bit_depth: 16
+  format: "S16_LE"
+recording:
+  chunk_duration_seconds: 30
+  output_format: "flac"

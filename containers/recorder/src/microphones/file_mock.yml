@@ -1,0 +1,12 @@
+name: "File Mock Injection"
+slug: "file_mock"
+manufacturer: "Virtual"
+model: "File Injector"
+priority: 99
+mock:
+  enabled: true
+audio:
+  sample_rate: 48000
+  channels: 1
+recording:
+  chunk_duration_seconds: 30
