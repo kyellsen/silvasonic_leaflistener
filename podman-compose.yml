@@ -18,7 +18,7 @@ services:
       - /dev:/dev:ro
       - /run/udev:/run/udev:ro
       # 3. Source Code (Deployment)
-      - ./containers/recorder/mic_profiles:/app/mic_profiles:ro
+      - ./containers/recorder/src/microphones:/app/mic_profiles:ro
       # 4. Logs
       - ${SILVASONIC_DATA_DIR}/logs:/var/log/silvasonic:z
     restart: always
@@ -88,7 +88,7 @@ services:
     restart: "no"
     volumes:
       - ./containers/recorder/src:/app/src:z
-      - ./containers/recorder/mic_profiles:/app/mic_profiles:ro
+      - ./containers/recorder/src/microphones:/app/mic_profiles:ro
       - ${SILVASONIC_DATA_DIR}/recorder/recordings:/data/recording:z
       - ${SILVASONIC_DATA_DIR}/logs:/var/log/silvasonic:z
 
