@@ -17,8 +17,8 @@ from fastapi.responses import FileResponse, HTMLResponse, RedirectResponse, Stre
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from pydantic import BaseModel
-from src.auth import COOKIE_NAME, SESSION_SECRET, require_auth, verify_credentials
-from src.services import (
+from silvasonic_dashboard.auth import COOKIE_NAME, SESSION_SECRET, require_auth, verify_credentials
+from silvasonic_dashboard.services import (
     # AnalyzerService, # Deprecated
     BirdNetService,
     BirdNetStatsService,
@@ -28,7 +28,7 @@ from src.services import (
     SystemService,
     WeatherService,
 )
-from src.settings import SettingsService
+from silvasonic_dashboard.settings import SettingsService
 from starlette.status import HTTP_302_FOUND
 
 os.makedirs("/var/log/silvasonic", exist_ok=True)
@@ -136,7 +136,7 @@ async def add_security_headers(
 @app.get("/", response_class=HTMLResponse)  # type: ignore
 async def root(request: Request) -> typing.Any:
     # Redirect to dashboard if authed, else login
-    from src.auth import check_auth
+    from silvasonic_dashboard.auth import check_auth
 
     if check_auth(request):
         return RedirectResponse("/dashboard", status_code=HTTP_302_FOUND)

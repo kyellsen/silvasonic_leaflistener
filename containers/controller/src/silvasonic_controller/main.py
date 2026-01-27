@@ -13,22 +13,23 @@ from dataclasses import dataclass
 # Setup Path to find modules
 sys.path.append("/app")
 
-from src.device_manager import DeviceManager, AudioDevice
-from src.podman_client import PodmanOrchestrator
-from src.profiles_loader import load_profiles, find_matching_profile, MicrophoneProfile
+from silvasonic_controller.device_manager import DeviceManager, AudioDevice
+from silvasonic_controller.podman_client import PodmanOrchestrator
+from silvasonic_controller.profiles_loader import load_profiles, find_matching_profile, MicrophoneProfile
 
 # Logging
-os.makedirs("/var/log/silvasonic", exist_ok=True)
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s [%(levelname)s] [Controller] %(message)s",
-    handlers=[
-        logging.StreamHandler(sys.stdout),
-        logging.handlers.TimedRotatingFileHandler(
-            "/var/log/silvasonic/controller.log", when="midnight", backupCount=30
-        )
-    ]
-)
+def setup_logging():
+    os.makedirs("/var/log/silvasonic", exist_ok=True)
+    logging.basicConfig(
+        level=logging.INFO,
+        format="%(asctime)s [%(levelname)s] [Controller] %(message)s",
+        handlers=[
+            logging.StreamHandler(sys.stdout),
+            logging.handlers.TimedRotatingFileHandler(
+                "/var/log/silvasonic/controller.log", when="midnight", backupCount=30
+            )
+        ]
+    )
 logger = logging.getLogger("Main")
 
 STATUS_DIR = "/mnt/data/services/silvasonic/status"
@@ -193,6 +194,7 @@ class Controller:
         self.running = False
 
 if __name__ == "__main__":
+    setup_logging()
     controller = Controller()
     signal.signal(signal.SIGTERM, controller.stop)
     signal.signal(signal.SIGINT, controller.stop)

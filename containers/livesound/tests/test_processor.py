@@ -5,7 +5,7 @@ import numpy as np
 from unittest.mock import MagicMock, patch
 
 # Assuming src is in path via conftest
-from src.live.processor import AudioIngestor, StreamConfig
+from silvasonic_livesound.live.processor import AudioIngestor, StreamConfig
 
 @pytest.mark.asyncio
 async def test_ingestor_initialization():

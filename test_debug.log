@@ -1,0 +1,14 @@
+============================= test session starts ==============================
+platform linux -- Python 3.12.12, pytest-9.0.2, pluggy-1.6.0
+rootdir: /mnt/data/dev/packages/silvasonic
+configfile: pyproject.toml
+plugins: cov-7.0.0
+collected 42 items
+
+containers/controller/tests/test_device_manager.py ......                [ 14%]
+containers/controller/tests/test_main.py ............
+
+!!!!!!!!!!!!!!!!!!!!!!!!!!! KeyboardInterrupt: Stop !!!!!!!!!!!!!!!!!!!!!!!!!!!!
+/usr/lib64/python3.12/unittest/mock.py:1202: KeyboardInterrupt: Stop
+(to show a full traceback on KeyboardInterrupt use --full-trace)
+============================== 18 passed in 0.18s ==============================

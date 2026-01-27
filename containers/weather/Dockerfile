@@ -41,7 +41,7 @@ COPY src /app/src
 
 # Environment variables
 ENV PYTHONUNBUFFERED=1
-ENV PYTHONPATH=/app
+ENV PYTHONPATH=/app/src
 
 # Run the application
-CMD ["python", "-m", "src.main"]
+CMD ["python", "-m", "silvasonic_weather.main"]

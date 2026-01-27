@@ -19,6 +19,9 @@ packages = ["scripts"]
 members = [
     "containers/birdnet",
     "containers/recorder",
+    "containers/livesound",
+    "containers/weather",
+    "containers/dashboard",
 ]
 
 [dependency-groups]

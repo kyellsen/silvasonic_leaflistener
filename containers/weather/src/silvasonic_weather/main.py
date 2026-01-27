@@ -11,11 +11,14 @@ from wetterdienst.metadata.parameter import Parameter
 from wetterdienst.provider.dwd.observation import DwdObservationRequest
 
 # Setup Logging
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
-    handlers=[logging.StreamHandler(), logging.FileHandler("/var/log/silvasonic/weather.log")],
-)
+def setup_logging():
+    os.makedirs("/var/log/silvasonic", exist_ok=True)
+    logging.basicConfig(
+        level=logging.INFO,
+        format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+        handlers=[logging.StreamHandler(), logging.FileHandler("/var/log/silvasonic/weather.log")],
+    )
+
 logger = logging.getLogger("Weather")
 
 # Configuration
@@ -228,8 +231,34 @@ def fetch_weather() -> None:
         logger.error(f"Fetch failed: {e}")
 
 
+
+def write_status(status_msg: str, station: str | None = None) -> None:
+    """Write the current status to a JSON file."""
+    try:
+        import psutil
+
+        data = {
+            "service": "weather",
+            "timestamp": time.time(),
+            "status": status_msg,
+            "cpu_percent": psutil.cpu_percent(),
+            "memory_usage_mb": psutil.Process(os.getpid()).memory_info().rss / 1024 / 1024,
+            "meta": {"station_id": station},
+            "pid": os.getpid(),
+        }
+        s_file = "/mnt/data/services/silvasonic/status/weather.json"
+        os.makedirs(os.path.dirname(s_file), exist_ok=True)
+        tmp = f"{s_file}.tmp"
+        with open(tmp, "w") as f:
+            json.dump(data, f)
+        os.rename(tmp, s_file)
+    except Exception as e:
+        logger.error(f"Status write failed: {e}")
+
+
 if __name__ == "__main__":
     try:
+        setup_logging()
         init_db()
     except Exception as e:
         logger.exception(f"Startup failed: {e}")
@@ -243,37 +272,13 @@ if __name__ == "__main__":
     schedule.every(20).minutes.do(fetch_weather)
 
     # Analysis aggregation (every hour)
-    from src.analysis import init_analysis_db, run_analysis
+    from silvasonic_weather.analysis import init_analysis_db, run_analysis
 
     init_analysis_db()
     run_analysis()  # Run once on startup
     schedule.every(1).hours.do(run_analysis)
 
     logger.info("Weather service started.")
-
-    # Status Helper
-    def write_status(status_msg: str, station: str | None = None) -> None:
-        """Write the current status to a JSON file."""
-        try:
-            import psutil
-
-            data = {
-                "service": "weather",
-                "timestamp": time.time(),
-                "status": status_msg,
-                "cpu_percent": psutil.cpu_percent(),
-                "memory_usage_mb": psutil.Process(os.getpid()).memory_info().rss / 1024 / 1024,
-                "meta": {"station_id": station},
-                "pid": os.getpid(),
-            }
-            s_file = "/mnt/data/services/silvasonic/status/weather.json"
-            os.makedirs(os.path.dirname(s_file), exist_ok=True)
-            tmp = f"{s_file}.tmp"
-            with open(tmp, "w") as f:
-                json.dump(data, f)
-            os.rename(tmp, s_file)
-        except Exception as e:
-            logger.error(f"Status write failed: {e}")
 
     # Initial Status
     write_status("Starting")

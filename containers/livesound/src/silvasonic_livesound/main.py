@@ -69,7 +69,7 @@ def main() -> None:
     import uvicorn
 
     # Loading via string to allow reload support if mapped, though we run direct here
-    uvicorn.run("src.live.server:app", host="0.0.0.0", port=8000, log_level="info")
+    uvicorn.run("silvasonic_livesound.live.server:app", host="0.0.0.0", port=8000, log_level="info")
 
 
 if __name__ == "__main__":

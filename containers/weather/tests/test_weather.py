@@ -2,8 +2,9 @@
 import pytest
 from unittest.mock import MagicMock, call
 import pandas as pd
+import sys
 from datetime import datetime
-import main
+from silvasonic_weather import main
 from wetterdienst.metadata.parameter import Parameter
 
 def test_init_db(mock_db_engine):
@@ -109,3 +110,64 @@ def test_fetch_weather_no_data(mock_wetterdienst, mock_db_engine):
     # If we return early, `engine.connect()` is not called.
     
     assert not mock_engine.connect.called
+
+def test_get_location_default(monkeypatch):
+    """Test get_location returns default when config missing."""
+    monkeypatch.setattr("os.path.exists", MagicMock(return_value=False))
+    lat, lon = main.get_location()
+    assert lat == main.DEFAULT_LAT
+    assert lon == main.DEFAULT_LON
+
+def test_get_location_config(monkeypatch, tmp_path):
+    """Test get_location reads from config."""
+    config_file = tmp_path / "settings.json"
+    config_file.write_text('{"location": {"latitude": 10.0, "longitude": 20.0}}')
+    
+    monkeypatch.setattr("silvasonic_weather.main.CONFIG_PATH", str(config_file))
+    
+    lat, lon = main.get_location()
+    assert lat == 10.0
+    assert lon == 20.0
+
+def test_find_station_success(mock_wetterdienst):
+    """Test finding a station."""
+    mock_cls, mock_req = mock_wetterdienst
+    
+    # Mock result df
+    mock_df = pd.DataFrame({"station_id": ["00123"]})
+    mock_req.filter_by_rank.return_value.df = mock_df
+    
+    sid = main.find_station(50.0, 10.0)
+    assert sid == "00123"
+
+def test_find_station_empty(mock_wetterdienst):
+    """Test finding station failure."""
+    mock_cls, mock_req = mock_wetterdienst
+    mock_req.filter_by_rank.return_value.df = pd.DataFrame()
+    
+    sid = main.find_station(50.0, 10.0)
+    assert sid is None
+
+def test_write_status(monkeypatch):
+    """Test writing status file."""
+    mock_open = MagicMock()
+    mock_file = MagicMock()
+    mock_open.return_value.__enter__.return_value = mock_file
+    
+    monkeypatch.setattr("builtins.open", mock_open)
+    monkeypatch.setattr("os.makedirs", MagicMock())
+    monkeypatch.setattr("os.rename", MagicMock())
+    monkeypatch.setattr("os.getpid", MagicMock(return_value=123))
+    
+    # Mock psutil
+    mock_psutil = MagicMock()
+    mock_psutil.cpu_percent.return_value = 10.0
+    mock_mem = MagicMock()
+    mock_mem.rss = 1024 * 1024 * 10 
+    mock_psutil.Process.return_value.memory_info.return_value = mock_mem
+    sys.modules["psutil"] = mock_psutil
+    
+    main.write_status("Testing")
+    
+    assert mock_open.called
+    assert mock_psutil.cpu_percent.called

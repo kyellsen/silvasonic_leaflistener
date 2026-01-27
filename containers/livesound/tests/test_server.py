@@ -2,7 +2,7 @@ import pytest
 import asyncio
 from fastapi.testclient import TestClient
 from unittest.mock import AsyncMock, MagicMock, patch
-from src.live.server import app, processor
+from silvasonic_livesound.live.server import app, processor
 
 @pytest.fixture
 def client():

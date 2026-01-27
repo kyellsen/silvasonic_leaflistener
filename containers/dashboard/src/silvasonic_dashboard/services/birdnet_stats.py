@@ -2,7 +2,7 @@ import datetime
 import typing
 
 from sqlalchemy import text
-from src.settings import SettingsService
+from silvasonic_dashboard.settings import SettingsService
 
 from .common import REC_DIR, logger
 from .database import db

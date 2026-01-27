@@ -4,7 +4,7 @@ import os
 import typing
 
 from sqlalchemy import text
-from src.settings import SettingsService
+from silvasonic_dashboard.settings import SettingsService
 
 from .common import REC_DIR, logger
 from .database import db
@@ -340,7 +340,7 @@ class BirdNetService:
 
                 # 2. Fetch if missing
                 if not wiki_data:
-                    from src.wikimedia import WikimediaService
+                    from silvasonic_dashboard.wikimedia import WikimediaService
 
                     print(f"Fetching Wikimedia data for {sci_name}...")
                     wiki_data = await WikimediaService.fetch_species_data(sci_name)

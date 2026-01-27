@@ -48,6 +48,6 @@ COPY src /app/src
 
 
 ENV PYTHONUNBUFFERED=1
-ENV PYTHONPATH=/app
+ENV PYTHONPATH=/app/src
 
-CMD ["python", "-m", "src.main"]
+CMD ["python", "-m", "silvasonic_controller.main"]

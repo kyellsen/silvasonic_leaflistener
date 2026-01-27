@@ -5,6 +5,7 @@ import sys
 import os
 import pandas as pd
 from datetime import datetime
+import builtins
 
 # Add src to pythonpath
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../src")))
@@ -17,7 +18,7 @@ def mock_wetterdienst(monkeypatch):
     # Mock class to return our mock instance
     mock_cls = MagicMock(return_value=mock_request)
     
-    monkeypatch.setattr("main.DwdObservationRequest", mock_cls)
+    monkeypatch.setattr("silvasonic_weather.main.DwdObservationRequest", mock_cls)
     
     return mock_cls, mock_request
 
@@ -28,7 +29,8 @@ def mock_db_engine(monkeypatch):
     mock_conn = MagicMock()
     mock_engine.connect.return_value.__enter__.return_value = mock_conn
     
-    monkeypatch.setattr("main.engine", mock_engine)
+    monkeypatch.setattr("silvasonic_weather.main.engine", mock_engine)
+    monkeypatch.setattr("silvasonic_weather.analysis.engine", mock_engine)
     
     return mock_engine, mock_conn
 

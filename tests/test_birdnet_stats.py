@@ -2,7 +2,7 @@ import pytest
 import datetime
 from sqlalchemy import text
 from unittest.mock import AsyncMock, MagicMock, patch
-from src.services.birdnet_stats import BirdNetStatsService
+from silvasonic_dashboard.services.birdnet_stats import BirdNetStatsService
 
 @pytest.mark.asyncio
 async def test_get_advanced_stats_defaults():
@@ -18,7 +18,7 @@ async def test_get_advanced_stats_defaults():
 
     mock_conn.execute.return_value = mock_result
 
-    with patch("src.services.database.db.get_connection", return_value=mock_conn):
+    with patch("silvasonic_dashboard.services.database.db.get_connection", return_value=mock_conn):
         stats = await BirdNetStatsService.get_advanced_stats()
         
         assert "period" in stats
@@ -42,7 +42,7 @@ async def test_get_advanced_stats_with_dates():
     start = datetime.date(2023, 1, 1)
     end = datetime.date(2023, 1, 7)
 
-    with patch("src.services.database.db.get_connection", return_value=mock_conn):
+    with patch("silvasonic_dashboard.services.database.db.get_connection", return_value=mock_conn):
         stats = await BirdNetStatsService.get_advanced_stats(start, end)
         
         assert stats["period"]["start"] == start.isoformat()
