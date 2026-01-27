@@ -49,7 +49,7 @@ def test_fetch_weather_success(mock_wetterdienst, mock_db_engine, sample_weather
     # Verify request param setup
     mock_cls.assert_called_once()
     args, kwargs = mock_cls.call_args
-    params = kwargs['parameter']
+    params = kwargs['parameters']
     
     assert Parameter.SUNSHINE_DURATION in params
     assert Parameter.WIND_GUST_MAX in params
