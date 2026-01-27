@@ -87,7 +87,7 @@ class Controller:
             tmp_file = f"{status_file}.tmp"
 
             # File writing
-            def _write():
+            def _write() -> None:
                 with open(tmp_file, "w") as f:
                     json.dump(data, f)
                 os.rename(tmp_file, status_file)
@@ -113,7 +113,7 @@ class Controller:
             config_file = f"{STATUS_DIR}/livesound_sources.json"
             tmp_file = f"{config_file}.tmp"
 
-            def _write():
+            def _write() -> None:
                 with open(tmp_file, "w") as f:
                     json.dump(sources, f)
                 os.rename(tmp_file, config_file)

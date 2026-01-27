@@ -4,9 +4,7 @@ version = "0.1.0"
 description = "Bioacoustic recording station for Raspberry Pi 5"
 readme = "README.md"
 requires-python = ">=3.11, <3.12"
-dependencies = [
-    "pydantic>=2.0",
-]
+dependencies = ["pydantic>=2.0"]
 
 [build-system]
 requires = ["hatchling"]
@@ -69,14 +67,14 @@ target-version = "py311"
 
 [tool.ruff.lint]
 select = [
-    "E",    # pycodestyle errors
-    "W",    # pycodestyle warnings
-    "F",    # pyflakes
-    "I",    # isort
-    "B",    # flake8-bugbear
-    "UP",   # pyupgrade
-    "N",    # pep8-naming
-    "D",    # pydocstyle (Google style)
+    "E",  # pycodestyle errors
+    "W",  # pycodestyle warnings
+    "F",  # pyflakes
+    "I",  # isort
+    "B",  # flake8-bugbear
+    "UP", # pyupgrade
+    "N",  # pep8-naming
+    "D",  # pydocstyle (Google style)
 ]
 ignore = [
     "D100", # Missing docstring in public module
@@ -96,7 +94,7 @@ convention = "google"
 python_version = "3.11"
 strict = true
 ignore_missing_imports = true
-follow_imports = "skip"
+follow_imports = "silent"
 exclude = [
     "tests/.*",
     "containers/.*/tests/.*",
@@ -109,11 +107,7 @@ exclude = [
 addopts = "--ignore=containers/birdnet_test --ignore=tests/e2e"
 
 [[tool.mypy.overrides]]
-module = [
-    "tests.*",
-    "containers.*.tests.*", 
-    "containers.*.tests",
-]
+module = ["tests.*", "containers.*.tests.*", "containers.*.tests"]
 ignore_errors = true
 
 [[tool.mypy.overrides]]
@@ -135,4 +129,3 @@ silvasonic-dashboard = { workspace = true }
 birdnet-container = { workspace = true }
 silvasonic-healthchecker = { workspace = true }
 silvasonic-uploader = { workspace = true }
-
