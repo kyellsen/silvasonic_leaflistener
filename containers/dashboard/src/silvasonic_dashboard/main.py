@@ -682,6 +682,10 @@ async def birdnet_page(request: Request, auth: typing.Any = Depends(require_auth
     detections = await BirdNetService.get_recent_detections(limit=50)  # More for browser
     stats = await BirdNetStatsService.get_stats()
 
+    # New Data for "Analysis" view (Files)
+    recent_files = await BirdNetService.get_recent_processed_files(limit=50)
+    proc_stats = await BirdNetService.get_processing_stats()
+
     return render(
         request,
         "birdnet.html",
@@ -689,7 +693,9 @@ async def birdnet_page(request: Request, auth: typing.Any = Depends(require_auth
             "request": request,
             "page": "birdnet",
             "detections": detections,
+            "recent_files": recent_files,  # New
             "stats": stats,
+            "proc_stats": proc_stats,  # New
             "status_label": "BirdNET:",
             "status_value": stats.get("status", "Active"),
             "status_color": "text-green-600 dark:text-green-400",

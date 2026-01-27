@@ -68,7 +68,7 @@ class Watchlist(Base):  # type: ignore[misc]
     common_name = Column(String(255), nullable=True)  # Cache for display if needed
     enabled = Column(
         Integer, default=1
-    )  # 1=Enabled, 0=Disabled. Using Integer for SQLite/PG compat just in case, though Boolean is fine in PG.
+    )  # 1=Enabled, 0=Disabled. Using Integer for PG compat just in case, though Boolean is fine in PG.
     last_notification = Column(DateTime, nullable=True)
 
     # Notification Settings (Future Proofing)

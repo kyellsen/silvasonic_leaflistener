@@ -2,19 +2,15 @@ import re
 
 from playwright.sync_api import Page, expect
 
-# Base URL for the dashboard - assuming running locally or in container network
-# If running e2e from outside, it needs to hit the dashboard container
-BASE_URL = "http://localhost:8080"  # Default Dashboard Port
 
-
-def test_livesound_page_load(page: Page) -> None:
-    page.goto(f"{BASE_URL}/livesound")
+def test_livesound_page_load(page: Page, base_url: str) -> None:
+    page.goto(f"{base_url}/livesound")
     expect(page).to_have_title(re.compile("Silvasonic"))
     expect(page.get_by_role("heading", name="Livesound Stream")).to_be_visible()
 
 
-def test_start_stop_stream(page: Page) -> None:
-    page.goto(f"{BASE_URL}/livesound")
+def test_start_stop_stream(page: Page, base_url: str) -> None:
+    page.goto(f"{base_url}/livesound")
 
     # Check initial state
     play_btn = page.locator("#playButton")
@@ -34,8 +30,8 @@ def test_start_stop_stream(page: Page) -> None:
     expect(pause_icon).not_to_be_visible()
 
 
-def test_volume_control(page: Page) -> None:
-    page.goto(f"{BASE_URL}/livesound")
+def test_volume_control(page: Page, base_url: str) -> None:
+    page.goto(f"{base_url}/livesound")
 
     slider = page.locator("#volumeSlider")
 
@@ -48,8 +44,8 @@ def test_volume_control(page: Page) -> None:
     assert vol == 0.5
 
 
-def test_source_switching(page: Page) -> None:
-    page.goto(f"{BASE_URL}/livesound")
+def test_source_switching(page: Page, base_url: str) -> None:
+    page.goto(f"{base_url}/livesound")
 
     select = page.locator("#sourceSelect")
     # Get options, assume at least 'default' and maybe mock others if backend provided them
@@ -80,8 +76,8 @@ def test_source_switching(page: Page) -> None:
         assert current_source == val
 
 
-def test_spectrogram_visualization(page: Page) -> None:
-    page.goto(f"{BASE_URL}/livesound")
+def test_spectrogram_visualization(page: Page, base_url: str) -> None:
+    page.goto(f"{base_url}/livesound")
 
     # Canvas should exist
     canvas = page.locator("#spectrogramCanvas")

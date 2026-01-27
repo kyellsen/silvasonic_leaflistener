@@ -35,7 +35,7 @@ app.add_middleware(
 
 @app.get("/")  # type: ignore[untyped-decorator]
 async def get() -> HTMLResponse:
-    return HTMLResponse("<h1>Silvasonic Brain Live</h1><p>Active.</p>")
+    return HTMLResponse("<h1>Silvasonic LiveSound</h1><p>Active.</p>")
 
 
 @app.websocket("/ws/spectrogram")  # type: ignore[untyped-decorator]

@@ -78,7 +78,7 @@ This ensures that critical recording is never blocked by analysis or network spe
   - **Alerting**: Sends notifications on critical failures.
 - **Why separate?**: Monitoring must be independent of the monitored services.
 
-## 8. The Dashboard ("The Face")
+## 8. The Dashboard
 
 **Role:** Local Status & Diagnostics
 **Status:** Standard priority

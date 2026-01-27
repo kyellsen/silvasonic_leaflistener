@@ -75,6 +75,7 @@ Code is not "done" until it passes the strict quality checks.
 - **Lint/Format**: `uv run ruff check .`
 - **Type Check**: `uv run mypy .`
 - **Test**: `uv run pytest`
+- **E2E Test**: `./scripts/run_e2e.sh` (Requires running stack)
 
 ---
 

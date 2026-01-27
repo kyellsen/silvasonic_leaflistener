@@ -167,21 +167,74 @@
   </div>
 
   <script>
-    function ensureInspectorOpen() {
-      const sidebar = document.getElementById("right-sidebar");
-      const isLg = window.innerWidth >= 1024;
-
-      // Determine if currently open (matching logic in toggleInspector)
-      let isOpen = sidebar.classList.contains("w-80");
-      if (!isOpen && isLg && sidebar.classList.contains("lg:w-80")) {
-        isOpen = true;
-      }
-
-      if (!isOpen) {
-        toggleInspector();
       }
     }
   </script>
+
+  <!-- Processed Files Section (Merged from old Analysis page) -->
+  <div class="mt-12">
+    <h3 class="text-lg font-bold mb-4 text-gray-700 dark:text-gray-200 border-b border-b-gray-200 dark:border-b-gray-700 pb-2">
+      Processed Files Monitor
+    </h3>
+
+    <!-- Processing Stats -->
+    <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+       <div class="bg-white dark:bg-gray-800 p-4 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
+           <div class="text-[10px] font-bold text-gray-400 uppercase">Total Files</div>
+           <div class="text-xl font-bold text-gray-900 dark:text-white">{{ proc_stats.total_files|default(0) }}</div>
+       </div>
+       <div class="bg-white dark:bg-gray-800 p-4 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
+           <div class="text-[10px] font-bold text-gray-400 uppercase">Total Audio</div>
+           <div class="text-xl font-bold text-blue-600 dark:text-blue-400">{{ proc_stats.total_duration_fmt|default('0s') }}</div>
+       </div>
+       <div class="bg-white dark:bg-gray-800 p-4 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
+           <div class="text-[10px] font-bold text-gray-400 uppercase">Avg Duration</div>
+           <div class="text-xl font-bold text-gray-700 dark:text-gray-300">{{ proc_stats.avg_duration_fmt|default('0s') }}</div>
+       </div>
+       <div class="bg-white dark:bg-gray-800 p-4 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
+           <div class="text-[10px] font-bold text-gray-400 uppercase">Avg Size</div>
+           <div class="text-xl font-bold text-orange-600 dark:text-orange-400">{{ proc_stats.avg_size_fmt|default('0 B') }}</div>
+       </div>
+    </div>
+
+    <!-- Files Table -->
+    <div class="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden shadow-sm">
+      <div class="overflow-x-auto">
+        <table class="w-full text-left text-sm whitespace-nowrap">
+            <thead class="bg-gray-50 dark:bg-gray-900/50 text-gray-500 dark:text-gray-400 uppercase font-bold text-[10px] tracking-wider border-b border-gray-200 dark:border-gray-700">
+                <tr>
+                    <th class="p-4 pl-6">Processed At</th>
+                    <th class="p-4">Filename</th>
+                    <th class="p-4">Duration</th>
+                    <th class="p-4 pr-6">Size</th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-gray-100 dark:divide-gray-800/50">
+                {% for f in recent_files %}
+                <tr class="hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors">
+                    <td class="p-4 pl-6 text-xs text-gray-500 font-mono">
+                        {{ f.created_at_iso[:19].replace('T', ' ') }}
+                    </td>
+                    <td class="p-4 font-medium text-gray-900 dark:text-white text-xs truncate max-w-xs" title="{{ f.filename }}">
+                        {{ f.filename }}
+                    </td>
+                    <td class="p-4 text-xs text-gray-500">
+                        {{ f.duration_fmt }}
+                    </td>
+                    <td class="p-4 pr-6 text-xs font-mono text-gray-500">
+                        {{ f.size_fmt }}
+                    </td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="4" class="p-8 text-center text-gray-400 text-sm">No processed files found yet.</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
 </div>
 {% endblock %} {% block inspector %}
 <!-- Default Inspector Content for this page -->

@@ -15,7 +15,7 @@ def client():
 async def test_root_endpoint(client):
     response = client.get("/")
     assert response.status_code == 200
-    assert "Silvasonic Brain Live" in response.text
+    assert "Silvasonic LiveSound" in response.text
 
 
 @pytest.mark.asyncio
