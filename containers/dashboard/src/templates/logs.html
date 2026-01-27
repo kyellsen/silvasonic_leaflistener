@@ -53,16 +53,20 @@
   }
 </script>
 {% endblock %} {% block inspector %}
-<div class="text-gray-600 dark:text-gray-400 text-sm p-4">
-  <h3 class="font-bold text-gray-900 dark:text-white mb-2">Log Viewer Help</h3>
-  <p class="mb-2">Select a service tab to stream logs in real-time.</p>
-  <p>
-    Logs are read from the shared volume at <code>/var/log/silvasonic/</code>.
-  </p>
-  <div
-    class="mt-4 p-2 bg-yellow-900/20 text-yellow-200 text-xs rounded border border-yellow-800"
-  >
-    Navigating away will stop the log stream.
+<div id="inspector-content" hx-swap-oob="innerHTML:#inspector-content">
+  <div class="text-gray-600 dark:text-gray-400 text-sm p-4">
+    <h3 class="font-bold text-gray-900 dark:text-white mb-2">
+      Log Viewer Help
+    </h3>
+    <p class="mb-2">Select a service tab to stream logs in real-time.</p>
+    <p>
+      Logs are read from the shared volume at <code>/var/log/silvasonic/</code>.
+    </p>
+    <div
+      class="mt-4 p-2 bg-yellow-900/20 text-yellow-200 text-xs rounded border border-yellow-800"
+    >
+      Navigating away will stop the log stream.
+    </div>
   </div>
 </div>
 {% endblock %}

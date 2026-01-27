@@ -1,2 +1,9 @@
 {% extends base %} {% block content %} {% include
-"partials/uploader_content.html" %} {% endblock %}
+"partials/uploader_content.html" %} {% endblock %} {% block inspector %}
+<div id="inspector-content" hx-swap-oob="innerHTML:#inspector-content">
+  <div class="silva-card p-6 text-center text-sm text-gray-500">
+    <h3 class="font-bold text-gray-900 dark:text-white mb-2">Uploader</h3>
+    <p>Drag and drop files to upload recordings manually.</p>
+  </div>
+</div>
+{% endblock %}

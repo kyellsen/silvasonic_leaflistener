@@ -381,61 +381,64 @@
   });
 </script>
 {% endblock %} {% block inspector %}
-<div class="space-y-6">
-  <!-- Data Export -->
-  <div class="silva-card p-6">
-    <h3
-      class="font-bold text-gray-900 dark:text-white mb-4 border-b border-gray-200 dark:border-white/10 pb-2 text-sm uppercase tracking-wide"
-    >
-      Data Export
-    </h3>
-    <a
-      href="/api/export/birdnet/csv"
-      download="birdnet_export.csv"
-      hx-boost="false"
-      class="flex items-center justify-center gap-2 w-full py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl transition shadow-lg font-medium text-sm"
-    >
-      <svg
-        class="w-4 h-4"
-        fill="none"
-        stroke="currentColor"
-        viewBox="0 0 24 24"
+<div id="inspector-content" hx-swap-oob="innerHTML:#inspector-content">
+  <div class="space-y-6">
+    <!-- Data Export -->
+    <div class="silva-card p-6">
+      <h3
+        class="font-bold text-gray-900 dark:text-white mb-4 border-b border-gray-200 dark:border-white/10 pb-2 text-sm uppercase tracking-wide"
       >
-        <path
-          stroke-linecap="round"
-          stroke-linejoin="round"
-          stroke-width="2"
-          d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
-        ></path>
-      </svg>
-      Download Full CSV
-    </a>
-    <p class="text-xs text-center text-gray-500 mt-2">
-      Includes all historical detections.
-    </p>
-  </div>
+        Data Export
+      </h3>
+      <a
+        href="/api/export/birdnet/csv"
+        download="birdnet_export.csv"
+        hx-boost="false"
+        class="flex items-center justify-center gap-2 w-full py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl transition shadow-lg font-medium text-sm"
+      >
+        <svg
+          class="w-4 h-4"
+          fill="none"
+          stroke="currentColor"
+          viewBox="0 0 24 24"
+        >
+          <path
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            stroke-width="2"
+            d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+          ></path>
+        </svg>
+        Download Full CSV
+      </a>
+      <p class="text-xs text-center text-gray-500 mt-2">
+        Includes all historical detections.
+      </p>
+    </div>
 
-  <!-- Metric Definitions -->
-  <div class="glass-panel p-6 rounded-2xl">
-    <h3
-      class="font-bold text-gray-900 dark:text-white mb-4 border-b border-gray-200 dark:border-white/10 pb-2 text-sm uppercase tracking-wide"
-    >
-      Metric Guide
-    </h3>
-    <div class="space-y-4 text-xs text-gray-600 dark:text-gray-300">
-      <div>
-        <strong class="text-gray-900 dark:text-white block mb-1"
-          >Activity Trend</strong
-        >
-        <p>Number of detections per day over the selected period.</p>
-      </div>
-      <div>
-        <strong class="text-gray-900 dark:text-white block mb-1"
-          >Peak Hours</strong
-        >
-        <p>
-          Accumulated detections by hour of day (0-23h) for the selected period.
-        </p>
+    <!-- Metric Definitions -->
+    <div class="glass-panel p-6 rounded-2xl">
+      <h3
+        class="font-bold text-gray-900 dark:text-white mb-4 border-b border-gray-200 dark:border-white/10 pb-2 text-sm uppercase tracking-wide"
+      >
+        Metric Guide
+      </h3>
+      <div class="space-y-4 text-xs text-gray-600 dark:text-gray-300">
+        <div>
+          <strong class="text-gray-900 dark:text-white block mb-1"
+            >Activity Trend</strong
+          >
+          <p>Number of detections per day over the selected period.</p>
+        </div>
+        <div>
+          <strong class="text-gray-900 dark:text-white block mb-1"
+            >Peak Hours</strong
+          >
+          <p>
+            Accumulated detections by hour of day (0-23h) for the selected
+            period.
+          </p>
+        </div>
       </div>
     </div>
   </div>

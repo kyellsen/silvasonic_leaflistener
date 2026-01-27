@@ -74,4 +74,14 @@
     </div>
   </div>
 </div>
+{% endblock %} {% block inspector %}
+<div id="inspector-content" hx-swap-oob="innerHTML:#inspector-content">
+  <div class="silva-card p-6 text-center">
+    <img
+      src="/static/images/logo_no_text.webp"
+      class="w-16 h-16 mx-auto mb-4 opacity-50 grayscale hover:grayscale-0 transition"
+    />
+    <p class="text-xs text-gray-500">Built with ❤️ by the Silvasonic Team.</p>
+  </div>
+</div>
 {% endblock %}

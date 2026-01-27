@@ -184,32 +184,34 @@
 </div>
 
 {% endblock %} {% block inspector %}
-<div class="space-y-6">
-  <div
-    class="bg-white dark:bg-gray-700/50 p-6 rounded-lg border border-gray-200 dark:border-transparent"
-  >
-    <h3
-      class="font-bold text-gray-700 dark:text-gray-300 mb-2 border-b border-gray-200 dark:border-gray-600 pb-2"
+<div id="inspector-content" hx-swap-oob="innerHTML:#inspector-content">
+  <div class="space-y-6">
+    <div
+      class="bg-white dark:bg-gray-700/50 p-6 rounded-lg border border-gray-200 dark:border-transparent"
     >
-      System Load
-    </h3>
-    <div class="flex justify-between text-sm py-1">
-      <span class="text-gray-500 dark:text-gray-400">Core</span>
-      <span class="text-gray-700 dark:text-gray-200 font-bold"
-        >{{ sys_stats.cpu }}%</span
+      <h3
+        class="font-bold text-gray-700 dark:text-gray-300 mb-2 border-b border-gray-200 dark:border-gray-600 pb-2"
       >
-    </div>
-    <div class="flex justify-between text-sm py-1">
-      <span class="text-gray-500 dark:text-gray-400">Mem</span>
-      <span class="text-gray-700 dark:text-gray-200 font-bold"
-        >{{ sys_stats.ram_percent }}%</span
-      >
-    </div>
-    <div class="flex justify-between text-sm py-1">
-      <span class="text-gray-500 dark:text-gray-400">Temp</span>
-      <span class="text-gray-700 dark:text-gray-200 font-bold"
-        >{{ sys_stats.cpu_temp }}</span
-      >
+        System Load
+      </h3>
+      <div class="flex justify-between text-sm py-1">
+        <span class="text-gray-500 dark:text-gray-400">Core</span>
+        <span class="text-gray-700 dark:text-gray-200 font-bold"
+          >{{ sys_stats.cpu }}%</span
+        >
+      </div>
+      <div class="flex justify-between text-sm py-1">
+        <span class="text-gray-500 dark:text-gray-400">Mem</span>
+        <span class="text-gray-700 dark:text-gray-200 font-bold"
+          >{{ sys_stats.ram_percent }}%</span
+        >
+      </div>
+      <div class="flex justify-between text-sm py-1">
+        <span class="text-gray-500 dark:text-gray-400">Temp</span>
+        <span class="text-gray-700 dark:text-gray-200 font-bold"
+          >{{ sys_stats.cpu_temp }}</span
+        >
+      </div>
     </div>
   </div>
 </div>

@@ -185,71 +185,73 @@
 </div>
 {% endblock %} {% block inspector %}
 <!-- Default Inspector Content for this page -->
-<div class="p-6 space-y-6">
-  <div
-    class="bg-white dark:bg-gray-700/50 p-6 rounded-lg border border-gray-200 dark:border-transparent"
-  >
-    <h3
-      class="font-bold text-gray-700 dark:text-gray-300 mb-2 border-b border-gray-200 dark:border-gray-600 pb-2"
+<div id="inspector-content" hx-swap-oob="innerHTML:#inspector-content">
+  <div class="p-6 space-y-6">
+    <div
+      class="bg-white dark:bg-gray-700/50 p-6 rounded-lg border border-gray-200 dark:border-transparent"
     >
-      Quick Stats
-    </h3>
-    <div class="flex justify-between text-sm py-1">
-      <span class="text-gray-400">Today</span>
-      <span class="font-bold text-gray-900 dark:text-white"
-        >{{ stats.today if stats else '0' }}</span
+      <h3
+        class="font-bold text-gray-700 dark:text-gray-300 mb-2 border-b border-gray-200 dark:border-gray-600 pb-2"
       >
-    </div>
-    <div class="flex justify-between text-sm py-1">
-      <span class="text-gray-400">Total</span>
-      <span class="font-bold text-gray-900 dark:text-white"
-        >{{ stats.total if stats else '0' }}</span
-      >
-    </div>
-  </div>
-
-  <div
-    class="bg-white dark:bg-gray-800 p-6 rounded-lg border border-gray-200 dark:border-gray-700 mt-4"
-  >
-    <h3 class="font-bold text-gray-400 uppercase text-xs mb-4">
-      Filter Detections
-    </h3>
-
-    <!-- Search Input -->
-    <div class="mb-4">
-      <label class="block text-xs font-bold text-gray-500 mb-1">Search</label>
-      <input
-        type="text"
-        placeholder="Species, Scientific Name..."
-        class="w-full bg-gray-50 dark:bg-gray-900 border border-gray-300 dark:border-gray-600 rounded p-2 text-sm text-gray-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-lime-500"
-        onkeyup="filterTable()"
-        id="searchInput"
-      />
-      <p class="text-[10px] text-gray-400 mt-1">
-        Tip: Search for 'Turdus' to find all thrushes.
-      </p>
+        Quick Stats
+      </h3>
+      <div class="flex justify-between text-sm py-1">
+        <span class="text-gray-400">Today</span>
+        <span class="font-bold text-gray-900 dark:text-white"
+          >{{ stats.today if stats else '0' }}</span
+        >
+      </div>
+      <div class="flex justify-between text-sm py-1">
+        <span class="text-gray-400">Total</span>
+        <span class="font-bold text-gray-900 dark:text-white"
+          >{{ stats.total if stats else '0' }}</span
+        >
+      </div>
     </div>
 
-    <!-- Date Filter (UI Placeholder for now) -->
-    <div class="mb-4">
-      <label class="block text-xs font-bold text-gray-500 mb-1">Date</label>
-      <input
-        type="date"
-        class="w-full bg-gray-50 dark:bg-gray-900 border border-gray-300 dark:border-gray-600 rounded p-2 text-sm text-gray-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-lime-500"
-      />
-    </div>
+    <div
+      class="bg-white dark:bg-gray-800 p-6 rounded-lg border border-gray-200 dark:border-gray-700 mt-4"
+    >
+      <h3 class="font-bold text-gray-400 uppercase text-xs mb-4">
+        Filter Detections
+      </h3>
 
-    <!-- Confidence Filter (UI Placeholder) -->
-    <div class="mb-2">
-      <label class="block text-xs font-bold text-gray-500 mb-1"
-        >Min. Confidence</label
-      >
-      <div class="flex items-center gap-2">
+      <!-- Search Input -->
+      <div class="mb-4">
+        <label class="block text-xs font-bold text-gray-500 mb-1">Search</label>
         <input
-          type="range"
-          class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer dark:bg-gray-700 accent-lime-500"
+          type="text"
+          placeholder="Species, Scientific Name..."
+          class="w-full bg-gray-50 dark:bg-gray-900 border border-gray-300 dark:border-gray-600 rounded p-2 text-sm text-gray-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-lime-500"
+          onkeyup="filterTable()"
+          id="searchInput"
         />
-        <span class="text-xs text-gray-500">70%</span>
+        <p class="text-[10px] text-gray-400 mt-1">
+          Tip: Search for 'Turdus' to find all thrushes.
+        </p>
+      </div>
+
+      <!-- Date Filter (UI Placeholder for now) -->
+      <div class="mb-4">
+        <label class="block text-xs font-bold text-gray-500 mb-1">Date</label>
+        <input
+          type="date"
+          class="w-full bg-gray-50 dark:bg-gray-900 border border-gray-300 dark:border-gray-600 rounded p-2 text-sm text-gray-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-lime-500"
+        />
+      </div>
+
+      <!-- Confidence Filter (UI Placeholder) -->
+      <div class="mb-2">
+        <label class="block text-xs font-bold text-gray-500 mb-1"
+          >Min. Confidence</label
+        >
+        <div class="flex items-center gap-2">
+          <input
+            type="range"
+            class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer dark:bg-gray-700 accent-lime-500"
+          />
+          <span class="text-xs text-gray-500">70%</span>
+        </div>
       </div>
     </div>
   </div>

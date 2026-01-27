@@ -457,5 +457,7 @@
   })();
 </script>
 {% endblock %} {% block inspector %}
-<!-- No inspector needed for live stream page -->
+<div id="inspector-content" hx-swap-oob="innerHTML:#inspector-content">
+  <!-- No inspector needed for live stream page -->
+</div>
 {% endblock %}
