@@ -10,7 +10,8 @@ dependencies = [
     "psycopg2",
     "schedule",
     "pandas",
-    "polars"
+    "polars",
+    "psutil"
 ]
 
 [build-system]

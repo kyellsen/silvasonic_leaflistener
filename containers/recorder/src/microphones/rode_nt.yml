@@ -12,5 +12,5 @@ audio:
   bit_depth: 16
   format: "S16_LE"
 recording:
-  chunk_duration_seconds: 30
+  chunk_duration_seconds: 10
   output_format: "flac"

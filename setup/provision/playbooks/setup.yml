@@ -67,6 +67,12 @@
         state: started
         enabled: yes
 
+    - name: Enable Podman Socket (System-Wide)
+      systemd:
+        name: podman.socket
+        enabled: yes
+        state: started
+
     - name: Add User to 'audio' and 'docker'/'podman' related groups if needed
       user:
         name: "{{ user }}"

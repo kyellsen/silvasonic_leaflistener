@@ -157,7 +157,9 @@ def main() -> None:
     from src.database import DatabaseHandler
 
     db = DatabaseHandler()
-    db.connect()
+    while not db.connect():
+        logger.warning(f"Database not accessible at {db.host}:{db.port}. Retrying in 5s...")
+        time.sleep(5)
 
     def upload_callback(filename: str, status: str, error: str | None = None) -> None:
         """Callback for rclone wrapper."""

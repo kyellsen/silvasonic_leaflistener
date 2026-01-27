@@ -34,7 +34,7 @@ class AudioConfig:
 class RecordingConfig:
     """Recording output configuration."""
 
-    chunk_duration_seconds: int = 30
+    chunk_duration_seconds: int = 10
     output_format: str = "flac"
     compression_level: int = 5
 
@@ -84,7 +84,7 @@ class MicrophoneProfile:
                 format=audio_data.get("format", "S16_LE"),
             ),
             recording=RecordingConfig(
-                chunk_duration_seconds=recording_data.get("chunk_duration_seconds", 30),
+                chunk_duration_seconds=recording_data.get("chunk_duration_seconds", 10),
                 output_format=recording_data.get("output_format", "flac"),
                 compression_level=recording_data.get("compression_level", 5),
             ),

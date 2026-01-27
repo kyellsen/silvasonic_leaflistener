@@ -11,7 +11,7 @@ audio:
   channels: 1
   format: "S16_LE"
 recording:
-  chunk_duration_seconds: 60
+  chunk_duration_seconds: 10
   output_format: "flac"
 mock:
   enabled: false

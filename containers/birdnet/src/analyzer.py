@@ -171,7 +171,7 @@ class BirdNETAnalyzer:
                 info = sf.info(str(path))
                 duration = info.duration
             except Exception:
-                duration = 30.0  # Fallback
+                duration = 10.0  # Fallback
 
             import time
 

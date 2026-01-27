@@ -89,15 +89,34 @@
     <div class="space-y-4">
       <!-- Source Selector -->
       <div>
-        <label for="sourceSelect" class="block text-xs font-bold text-gray-500 uppercase mb-1">Microphone Source</label>
-        <select id="sourceSelect" class="w-full bg-gray-50 dark:bg-gray-900 border border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white text-sm rounded-lg focus:ring-purple-500 focus:border-purple-500 block p-2.5">
-            <option value="default" {% if not recorder_stats %}selected{% endif %}>Default (Auto)</option>
-            {% for stat in recorder_stats %}
-                {% set p = stat.profile if stat.profile is mapping else {} %}
-                {% set slug = p.slug or 'default' %}
-                {% set name = p.name or ('Recorder ' + loop.index|string) %}
-                <option value="{{ slug }}" {% if loop.first %}selected{% endif %}>{{ name }} ({{ slug }})</option>
-            {% endfor %}
+        <label
+          for="sourceSelect"
+          class="block text-xs font-bold text-gray-500 uppercase mb-1"
+          >Microphone Source</label
+        >
+        <select
+          id="sourceSelect"
+          class="w-full bg-gray-50 dark:bg-gray-900 border border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white text-sm rounded-lg focus:ring-purple-500 focus:border-purple-500 block p-2.5"
+        >
+          <option
+            value="default"
+            {%
+            if
+            not
+            recorder_stats
+            %}selected{%
+            endif
+            %}
+          >
+            Default (Auto)
+          </option>
+          {% for stat in recorder_stats %} {% set p = stat.profile if
+          stat.profile is mapping else {} %} {% set slug = p.slug or 'default'
+          %} {% set name = p.name or ('Recorder ' + loop.index|string) %}
+          <option value="{{ slug }}" {% if loop.first %}selected{% endif %}>
+            {{ name }} ({{ slug }})
+          </option>
+          {% endfor %}
         </select>
         <p class="text-[10px] text-gray-400 mt-1">Select input to stream.</p>
       </div>
@@ -138,27 +157,30 @@
   </div>
 </div>
 
-  /* 
-   * Livesound Lifecycle Management 
+<script>
+  /*
+   * Livesound Lifecycle Management
    * Handles initialization and cleanup for HTMX navigation
    */
-  (function() {
+  (function () {
     // --- State ---
     const state = {
       audioCtx: null,
       audioEl: new Audio(),
       ws: null,
-      currentSource: document.getElementById("sourceSelect") ? document.getElementById("sourceSelect").value : "default",
+      currentSource: document.getElementById("sourceSelect")
+        ? document.getElementById("sourceSelect").value
+        : "default",
       // Dynamic Protocol Selection
-      wsBaseUrl: `${window.location.protocol === 'https:' ? 'wss' : 'ws'}://${window.location.hostname}:8000/ws/spectrogram`,
-      streamBaseUrl: `${window.location.protocol === 'https:' ? 'https' : 'http'}://${window.location.hostname}:8000/stream`,
+      wsBaseUrl: `${window.location.protocol === "https:" ? "wss" : "ws"}://${window.location.hostname}:8000/ws/spectrogram`,
+      streamBaseUrl: `${window.location.protocol === "https:" ? "https" : "http"}://${window.location.hostname}:8000/stream`,
       canvas: document.getElementById("spectrogramCanvas"),
       ctx: null,
       tempCanvas: document.createElement("canvas"),
       tempCtx: null,
       maxReconnects: 10,
       reconnectCount: 0,
-      isActive: true
+      isActive: true,
     };
 
     // --- DOM Elements ---
@@ -170,18 +192,18 @@
       vol: document.getElementById("volumeSlider"),
       connStatus: document.getElementById("connectionStatus"),
       hostLabel: document.getElementById("hostLabel"),
-      sourceSelect: document.getElementById("sourceSelect")
+      sourceSelect: document.getElementById("sourceSelect"),
     };
 
     // --- Helpers ---
     function setStatus(text, type) {
       if (!ui.status) return;
       ui.status.innerText = text;
-      
+
       // Reset classes
       ui.status.className = "text-xs font-mono";
-      
-      switch(type) {
+
+      switch (type) {
         case "success":
           ui.status.classList.add("text-green-500");
           break;
@@ -197,25 +219,25 @@
     }
 
     function getWsUrl() {
-        return `${state.wsBaseUrl}?source=${state.currentSource}`;
+      return `${state.wsBaseUrl}?source=${state.currentSource}`;
     }
 
     function getStreamUrl() {
-        return `${state.streamBaseUrl}?source=${state.currentSource}&t=${Date.now()}`;
+      return `${state.streamBaseUrl}?source=${state.currentSource}&t=${Date.now()}`;
     }
 
     // --- Initialization ---
     function init() {
       console.log("[Livesound] Initializing...");
-      
+
       // Update Host Label
       if (ui.hostLabel) {
-         ui.hostLabel.innerText = `${window.location.hostname}:8000`;
+        ui.hostLabel.innerText = `${window.location.hostname}:8000`;
       }
 
       // Setup Audio Element
       state.audioEl.crossOrigin = "anonymous";
-      
+
       // Setup Canvas
       if (state.canvas) {
         state.ctx = state.canvas.getContext("2d");
@@ -227,12 +249,14 @@
       // Setup Listeners
       setupAudioListeners();
       setupUIListeners();
-      
+
       // Auto-connect WS
       connectWebSocket();
 
       // Register Cleanup for HTMX
-      document.body.addEventListener('htmx:beforeSwap', cleanup, { once: true });
+      document.body.addEventListener("htmx:beforeSwap", cleanup, {
+        once: true,
+      });
     }
 
     // --- Cleanup ---
@@ -267,7 +291,7 @@
 
       try {
         if (state.ws) {
-            state.ws.close();
+          state.ws.close();
         }
         state.ws = new WebSocket(getWsUrl());
 
@@ -284,23 +308,24 @@
             if (msg.type === "spectrogram") {
               drawSpectrogramColumn(msg.data);
             }
-          } catch(e) { console.error("Parse error", e); }
+          } catch (e) {
+            console.error("Parse error", e);
+          }
         };
 
         state.ws.onclose = () => {
           if (!state.isActive) return;
           setStatus("WS Disconnected", "error");
-          
+
           if (state.reconnectCount < state.maxReconnects) {
             state.reconnectCount++;
             setTimeout(connectWebSocket, 2000);
           }
         };
-        
-         state.ws.onerror = (err) => {
-            if (state.isActive) setStatus("WS Error", "error");
-         };
 
+        state.ws.onerror = (err) => {
+          if (state.isActive) setStatus("WS Error", "error");
+        };
       } catch (e) {
         setStatus("WS Setup Failed", "error");
       }
@@ -309,11 +334,11 @@
     // --- Audio Control ---
     function startStream() {
       setStatus(`Connecting Audio (${state.currentSource})...`, "warning");
-      
-      const streamUrl = getStreamUrl(); 
+
+      const streamUrl = getStreamUrl();
       state.audioEl.src = streamUrl;
-      
-      state.audioEl.play().catch(e => {
+
+      state.audioEl.play().catch((e) => {
         console.error("Play failed:", e);
         setStatus("Autoplay Blocked / Error", "error");
       });
@@ -337,7 +362,7 @@
       state.tempCanvas.width = w;
       state.tempCanvas.height = h;
       state.tempCtx.drawImage(state.canvas, 0, 0);
-      
+
       state.ctx.clearRect(0, 0, w, h);
       state.ctx.drawImage(state.tempCanvas, -1, 0);
 
@@ -347,7 +372,7 @@
         const val = dataArray[i];
         const hue = 260 - (val / 255) * 200;
         const light = (val / 255) * 50;
-        
+
         state.ctx.fillStyle = `hsl(${hue}, 100%, ${light}%)`;
         state.ctx.fillRect(w - 1, h - i * barH - barH, 2, barH + 1);
       }
@@ -364,19 +389,23 @@
     function setupAudioListeners() {
       state.audioEl.addEventListener("play", () => updateUI(true));
       state.audioEl.addEventListener("pause", () => updateUI(false));
-      
-      state.audioEl.addEventListener("playing", () => setStatus("Live Audio", "success"));
-      state.audioEl.addEventListener("waiting", () => setStatus("Buffering...", "warning"));
-      
+
+      state.audioEl.addEventListener("playing", () =>
+        setStatus("Live Audio", "success"),
+      );
+      state.audioEl.addEventListener("waiting", () =>
+        setStatus("Buffering...", "warning"),
+      );
+
       state.audioEl.addEventListener("error", (e) => {
         console.error("Audio Error", e);
         updateUI(false);
         setStatus("Stream Error", "error");
       });
-      
+
       state.audioEl.addEventListener("ended", () => {
-         updateUI(false);
-         setStatus("Stream Ended", "neutral");
+        updateUI(false);
+        setStatus("Stream Ended", "neutral");
       });
     }
 
@@ -385,27 +414,27 @@
         if (state.audioEl.paused) startStream();
         else stopStream();
       };
-      
+
       ui.vol.oninput = (e) => {
         const v = parseFloat(e.target.value);
         if (!isNaN(v)) state.audioEl.volume = v;
       };
 
       ui.sourceSelect.onchange = (e) => {
-         const newSource = e.target.value;
-         if (newSource !== state.currentSource) {
-             state.currentSource = newSource;
-             console.log("Switching source to:", newSource);
-             
-             // 1. Reconnect WS
-             connectWebSocket();
-             
-             // 2. Restart Audio if playing
-             if (!state.audioEl.paused) {
-                 stopStream();
-                 setTimeout(startStream, 500); // Short delay to allow WS switch
-             }
-         }
+        const newSource = e.target.value;
+        if (newSource !== state.currentSource) {
+          state.currentSource = newSource;
+          console.log("Switching source to:", newSource);
+
+          // 1. Reconnect WS
+          connectWebSocket();
+
+          // 2. Restart Audio if playing
+          if (!state.audioEl.paused) {
+            stopStream();
+            setTimeout(startStream, 500); // Short delay to allow WS switch
+          }
+        }
       };
     }
 
@@ -425,7 +454,6 @@
 
     // Start
     init();
-
   })();
 </script>
 {% endblock %} {% block inspector %}

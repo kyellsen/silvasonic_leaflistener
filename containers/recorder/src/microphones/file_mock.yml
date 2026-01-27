@@ -9,4 +9,4 @@ audio:
   sample_rate: 48000
   channels: 1
 recording:
-  chunk_duration_seconds: 30
+  chunk_duration_seconds: 10

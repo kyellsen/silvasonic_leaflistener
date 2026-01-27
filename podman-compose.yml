@@ -154,6 +154,7 @@ services:
       - "127.0.0.1:5432:5432"
     volumes:
       - ${SILVASONIC_DATA_DIR}/db/data:/var/lib/postgresql/data:z
+      - ./containers/db/init:/docker-entrypoint-initdb.d:z
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U silvasonic"]
       interval: 10s

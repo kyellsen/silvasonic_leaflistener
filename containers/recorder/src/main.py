@@ -2,7 +2,7 @@
 
 Records audio from USB microphones using a single continuous FFmpeg process.
 Outputs:
-1. FLAC files in 30s segments (User Critical Priority)
+1. FLAC files in 10s segments (User Critical Priority)
 2. Raw PCM stream via UDP to Sound Analyser (Live Stream)
 """
 
