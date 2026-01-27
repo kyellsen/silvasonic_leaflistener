@@ -149,8 +149,9 @@
       audioEl: new Audio(),
       ws: null,
       currentSource: document.getElementById("sourceSelect") ? document.getElementById("sourceSelect").value : "default",
-      wsBaseUrl: `ws://${window.location.hostname}:8000/ws/spectrogram`,
-      streamBaseUrl: `http://${window.location.hostname}:8000/stream`,
+      // Dynamic Protocol Selection
+      wsBaseUrl: `${window.location.protocol === 'https:' ? 'wss' : 'ws'}://${window.location.hostname}:8000/ws/spectrogram`,
+      streamBaseUrl: `${window.location.protocol === 'https:' ? 'https' : 'http'}://${window.location.hostname}:8000/stream`,
       canvas: document.getElementById("spectrogramCanvas"),
       ctx: null,
       tempCanvas: document.createElement("canvas"),
@@ -174,6 +175,7 @@
 
     // --- Helpers ---
     function setStatus(text, type) {
+      if (!ui.status) return;
       ui.status.innerText = text;
       
       // Reset classes
@@ -204,9 +206,12 @@
 
     // --- Initialization ---
     function init() {
+      console.log("[Livesound] Initializing...");
+      
       // Update Host Label
-      const hostSpan = document.querySelector(".host-info span");
-      if (hostSpan) hostSpan.innerText = `${window.location.hostname}:8000`;
+      if (ui.hostLabel) {
+         ui.hostLabel.innerText = `${window.location.hostname}:8000`;
+      }
 
       // Setup Audio Element
       state.audioEl.crossOrigin = "anonymous";

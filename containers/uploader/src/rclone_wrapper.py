@@ -69,6 +69,9 @@ class RcloneWrapper:
             "--verbose",
             "--config",
             self.config_path,
+            "--disable-http2",
+            "--retries",
+            "5",
         ]
 
         return self._run_transfer(cmd, source, dest, callback=callback)
@@ -98,6 +101,9 @@ class RcloneWrapper:
             "--verbose",
             "--config",
             self.config_path,
+            "--disable-http2",
+            "--retries",
+            "5",
         ]
 
         if min_age:
