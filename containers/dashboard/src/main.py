@@ -749,11 +749,30 @@ async def birdnet_species_page(
 
 
 @app.get("/stats", response_class=HTMLResponse)  # type: ignore
-async def stats_page(request: Request, auth: typing.Any = Depends(require_auth)) -> typing.Any:
+async def stats_page(
+    request: Request,
+    start: str | None = None,
+    end: str | None = None,
+    auth: typing.Any = Depends(require_auth),
+) -> typing.Any:
     if isinstance(auth, RedirectResponse):
         return auth
 
-    stats_data = await BirdNetStatsService.get_advanced_stats()
+    # Parse dates
+    start_date = None
+    end_date = None
+    if start:
+        try:
+            start_date = datetime.date.fromisoformat(start)
+        except ValueError:
+            pass
+    if end:
+        try:
+            end_date = datetime.date.fromisoformat(end)
+        except ValueError:
+            pass
+
+    stats_data = await BirdNetStatsService.get_advanced_stats(start_date, end_date)
 
     return render(
         request,
@@ -761,11 +780,7 @@ async def stats_page(request: Request, auth: typing.Any = Depends(require_auth))
         {
             "request": request,
             "page": "stats",
-            "daily": stats_data["daily"],
-            "hourly": stats_data["hourly"],
-            "distributions": stats_data["distributions"],
-            "histogram": stats_data["histogram"],
-            "rarest": stats_data["rarest"],
+            "stats": stats_data,
             "status_label": "Statistics:",
             "status_value": "Detailed",
             "status_color": "text-blue-500 dark:text-blue-400",
