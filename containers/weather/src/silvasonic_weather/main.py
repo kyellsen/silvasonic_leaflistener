@@ -3,39 +3,29 @@ import logging
 import os
 import time
 import typing
-from datetime import datetime
 
 import schedule
 from sqlalchemy import create_engine, text
 from wetterdienst.provider.dwd.observation import DwdObservationRequest
 
+from silvasonic_weather.config import settings
+from silvasonic_weather.models import WeatherMeasurement
+
 
 # Setup Logging
 def setup_logging() -> None:
-    os.makedirs("/var/log/silvasonic", exist_ok=True)
+    os.makedirs(os.path.dirname(settings.log_file), exist_ok=True)
     logging.basicConfig(
-        level=logging.INFO,
+        level=settings.log_level,
         format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
-        handlers=[logging.StreamHandler(), logging.FileHandler("/var/log/silvasonic/weather.log")],
+        handlers=[logging.StreamHandler(), logging.FileHandler(settings.log_file)],
     )
 
 
 logger = logging.getLogger("Weather")
 
-# Configuration
-CONFIG_PATH = "/config/settings.json"
-DEFAULT_LAT = 52.52  # Berlin
-DEFAULT_LON = 13.40
-
 # Database
-DB_USER = os.getenv("POSTGRES_USER", "silvasonic")
-DB_PASSWORD = os.getenv("POSTGRES_PASSWORD", "silvasonic")
-DB_NAME = os.getenv("POSTGRES_DB", "silvasonic")
-DB_HOST = os.getenv("POSTGRES_HOST", "db")
-DB_PORT = os.getenv("POSTGRES_PORT", "5432")
-DB_URL = f"postgresql://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
-
-engine = create_engine(DB_URL)
+engine = create_engine(settings.database_url)
 
 
 def get_db_connection() -> typing.Any:
@@ -70,65 +60,13 @@ def init_db() -> None:
     logger.info("Database initialized.")
 
 
-def get_location() -> tuple[float, float]:
-    """Read location from settings or default."""
-    try:
-        if os.path.exists(CONFIG_PATH):
-            with open(CONFIG_PATH) as f:
-                data = json.load(f)
-                loc = data.get("location", {})
-                lat = loc.get("latitude", DEFAULT_LAT)
-                lon = loc.get("longitude", DEFAULT_LON)
-                # Ensure they are floats
-                return float(lat), float(lon)
-    except Exception as e:
-        logger.error(f"Error reading location: {e}")
-    return DEFAULT_LAT, DEFAULT_LON
-
-
-def find_station(lat: float, lon: float) -> str | None:
-    """Find the nearest DWD station."""
-    try:
-        request = DwdObservationRequest(
-            parameter=["temperature_air_mean_2m"],
-            resolution="10_minutes",
-            start_date=datetime.now(),
-            end_date=datetime.now(),
-        )
-        # Using built-in filter
-        result = request.filter_by_rank(latlon=(lat, lon), rank=1)
-
-        # Wetterdienst filter_by_rank returns a values result actually?
-        # Check docs or inspect.
-        # Actually filter_by_rank returns a filtered request/stations df.
-
-        # Let's use filter_by_distance if Rank is not returning exactly what we expect immediately.
-        # But filter_by_rank is good.
-
-        df = result.df
-        if not df.empty:
-            station_id = df.iloc[0]["station_id"]
-            logger.info(f"Found nearest station: {station_id} for {lat}, {lon}")
-            return str(station_id)
-    except Exception as e:
-        logger.error(f"Error finding station: {e}")
-    return None
-
-
 def fetch_weather() -> None:
     """Fetch weather data and store it."""
     logger.info("Fetching weather data...")
-    lat, lon = get_location()
+    lat, lon = settings.get_location()
 
-    # We ideally want a 'current' reading.
-    # DWD 'observation' '10_minutes' resolution is best for 'current'.
     try:
-        # We ideally want a 'current' reading.
-        # DWD 'observation' '10_minutes' resolution is best for 'current'.
-
-        # Using string literals to avoid Enum mismatch issues
-        # Common DWD parameters:
-        # temperature_air_mean_2m, humidity, precipitation_height, wind_speed, wind_gust_max, sunshine_duration, cloud_cover_total
+        # Common DWD parameters
         request = DwdObservationRequest(
             parameter=[
                 "temperature_air_mean_2m",
@@ -142,13 +80,7 @@ def fetch_weather() -> None:
             resolution="10_minutes",
         ).filter_by_rank(latlon=(lat, lon), rank=1)
 
-        # Value extraction
-        # values() fetches the data
         values = request.values.all().df
-
-        # We want the LATEST value for each parameter
-        # Pivot or just iterate?
-        # The DF has columns: station_id, dataset, parameter, date, value, quality
 
         if values.empty:
             logger.warning("No data received.")
@@ -159,26 +91,16 @@ def fetch_weather() -> None:
         current = values[values["date"] == latest_ts]
 
         # Map parameters to our schema
-        # Parameter names in wetterdienst can be specific string keys.
-        # We need to check what they are.
-        # Usually: 'temperature_air_mean_200', 'humidity', etc.
-
         data_map = {}
         station_id = None
 
         for _, row in current.iterrows():
             param = row["parameter"]
             val = row["value"]
-            station_id = row["station_id"]
+            station_id = str(row["station_id"])
 
             if param == "temperature_air_mean_2m":
-                data_map["temperature_c"] = val - 273.15  # It's Kelvin usually?
-                # DWD 10 min usually Celsius?
-                # Checking docs: DWD observation is usually K for creating consistent units?
-                # Wetterdienst tries to be SI compliant.
-                # Kelvin = True is default.
-                pass
-
+                data_map["temperature_c"] = val - 273.15  # Convert Kelvin to Celsius
             elif param == "humidity":
                 data_map["humidity_percent"] = val
             elif param == "precipitation_height":
@@ -192,17 +114,19 @@ def fetch_weather() -> None:
             elif param == "cloud_cover_total":
                 data_map["cloud_cover_percent"] = val
 
-        # Adjust units if necessary (Checking standard behavior of Wetterdienst)
-        # Assuming Kelvin for Temp.
-        if "temperature_c" in data_map:
-            # If value is around 290, it's K. If around 20, it's C.
-            # Safe check or assume K as per library default.
-            if data_map["temperature_c"] > 200:
-                data_map["temperature_c"] -= 273.15
-
+        # Ensure we have a station_id
         if not station_id:
             logger.warning("No station ID found in data.")
             return
+
+        # Create and validate model
+        measurement = WeatherMeasurement(
+            timestamp=latest_ts.to_pydatetime(), station_id=station_id, **data_map
+        )
+
+        # Unit adjustment check (optional, but kept for logic parity)
+        if measurement.temperature_c and measurement.temperature_c > 200:
+            measurement.temperature_c -= 273.15
 
         # Insert into DB
         with get_db_connection() as conn:
@@ -212,24 +136,13 @@ def fetch_weather() -> None:
                     timestamp, station_id, temperature_c, humidity_percent,
                     precipitation_mm, wind_speed_ms, wind_gust_ms, sunshine_seconds, cloud_cover_percent
                 ) VALUES (
-                    :ts, :sid, :temp, :hum, :precip, :wind, :gust, :sun, :cloud
+                    :timestamp, :station_id, :temperature_c, :humidity_percent,
+                    :precipitation_mm, :wind_speed_ms, :wind_gust_ms, :sunshine_seconds, :cloud_cover_percent
                 ) ON CONFLICT (timestamp) DO NOTHING
             """
             )
-            conn.execute(
-                stmt,
-                {
-                    "ts": latest_ts.to_pydatetime(),
-                    "sid": station_id,
-                    "temp": data_map.get("temperature_c"),
-                    "hum": data_map.get("humidity_percent"),
-                    "precip": data_map.get("precipitation_mm"),
-                    "wind": data_map.get("wind_speed_ms"),
-                    "gust": data_map.get("wind_gust_ms"),
-                    "sun": data_map.get("sunshine_seconds"),
-                    "cloud": data_map.get("cloud_cover_percent"),
-                },
-            )
+            # Dump model to dict, excluding None/unset if needed, but here we want all fields
+            conn.execute(stmt, measurement.model_dump())
             conn.commit()
 
         logger.info(f"Stored weather data for {latest_ts} (Station {station_id})")
@@ -252,7 +165,7 @@ def write_status(status_msg: str, station: str | None = None) -> None:
             "meta": {"station_id": station},
             "pid": os.getpid(),
         }
-        s_file = "/mnt/data/services/silvasonic/status/weather.json"
+        s_file = settings.status_file
         os.makedirs(os.path.dirname(s_file), exist_ok=True)
         tmp = f"{s_file}.tmp"
         with open(tmp, "w") as f:
@@ -268,38 +181,29 @@ if __name__ == "__main__":
         init_db()
     except Exception as e:
         logger.exception(f"Startup failed: {e}")
-        time.sleep(10)  # Wait a bit to ensure log is written and avoid rapid restart loop
+        time.sleep(10)
         exit(1)
 
-    # Run once on startup
     fetch_weather()
 
-    # Schedule every 20 minutes (DWD updates are around that)
     schedule.every(20).minutes.do(fetch_weather)
 
-    # Analysis aggregation (every hour)
     from silvasonic_weather.analysis import init_analysis_db, run_analysis
 
     init_analysis_db()
-    run_analysis()  # Run once on startup
+    run_analysis()
     schedule.every(1).hours.do(run_analysis)
 
     logger.info("Weather service started.")
-
-    # Initial Status
     write_status("Starting")
 
     while True:
         try:
             schedule.run_pending()
-            # Update status heartbeat
-            # We don't have the station ID accessible here without refactoring
-            # fetch_weather to return it, but for heartbeat "Running" is enough.
-            # but for heartbeat "Running" is enough.
             write_status("Running")
             time.sleep(1)
         except KeyboardInterrupt:
             break
         except Exception:
             logger.exception("Weather Service Crashed:")
-            time.sleep(60)  # Prevent tight loop
+            time.sleep(60)

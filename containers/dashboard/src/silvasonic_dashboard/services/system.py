@@ -6,12 +6,12 @@ from pathlib import Path
 
 import psutil
 
-from .common import REC_DIR, logger
+from .common import REC_DIR, logger, run_in_executor
 
 
 class SystemService:
     @staticmethod
-    def get_stats() -> dict[str, typing.Any]:
+    async def get_stats() -> dict[str, typing.Any]:
         try:
             # CPU Cores
             cpu_cores = psutil.cpu_percent(interval=None, percpu=True)
@@ -44,7 +44,8 @@ class SystemService:
         # Disk usage for /mnt/data (mapped to /data/recording usually or root)
         # using /data/recording as proxy for NVMe
         try:
-            disk = shutil.disk_usage("/data/recording")
+            # Blocking IO -> Async
+            disk = await run_in_executor(shutil.disk_usage, "/data/recording")
             disk_percent = (disk.used / disk.total) * 100
             disk_used_gb = round(disk.used / (1024**3), 0)
             disk_total_gb = round(disk.total / (1024**3), 0)
@@ -56,7 +57,9 @@ class SystemService:
 
         # Boot time
         try:
-            boot_time = datetime.datetime.fromtimestamp(psutil.boot_time())
+            # psutil.boot_time can be IO
+            boot_ts = await run_in_executor(psutil.boot_time)
+            boot_time = datetime.datetime.fromtimestamp(boot_ts)
             uptime: datetime.timedelta | str = datetime.datetime.now() - boot_time
         except Exception as e:
             logger.error(f"Error getting Boot stats: {e}", exc_info=True)
@@ -67,9 +70,16 @@ class SystemService:
         last_rec_ts: float = 0.0
 
         try:
-            files = sorted(Path(REC_DIR).glob("**/*.flac"), key=os.path.getmtime, reverse=True)
-            if files:
-                last_rec_ts = files[0].stat().st_mtime
+            # Globbing is heavy IO
+            def find_latest_file() -> float:
+                files = sorted(Path(REC_DIR).glob("**/*.flac"), key=os.path.getmtime, reverse=True)
+                if files:
+                    return files[0].stat().st_mtime
+                return 0.0
+
+            last_rec_ts = await run_in_executor(find_latest_file)
+
+            if last_rec_ts > 0:
                 last_rec = datetime.datetime.fromtimestamp(last_rec_ts).strftime("%H:%M:%S")
         except Exception as e:
             logger.error(f"Error getting Last Recording: {e}", exc_info=True)
@@ -78,9 +88,13 @@ class SystemService:
         # CPU Temperature
         cpu_temp = "N/A"
         try:
-            with open("/sys/class/thermal/thermal_zone0/temp") as f:
-                temp_c = int(f.read().strip()) / 1000.0
-                cpu_temp = f"{temp_c:.1f}°C"
+            # File read -> Async
+            def read_temp() -> str:
+                with open("/sys/class/thermal/thermal_zone0/temp") as f:
+                    temp_c = int(f.read().strip()) / 1000.0
+                    return f"{temp_c:.1f}°C"
+
+            cpu_temp = await run_in_executor(read_temp)
         except Exception as e:
             logger.error(f"Error getting CPU Temp: {e}", exc_info=True)
             pass

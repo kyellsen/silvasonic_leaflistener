@@ -7,6 +7,7 @@ import logging
 import logging.handlers
 import os
 import shutil
+import signal
 import socket
 import sys
 import time
@@ -49,6 +50,17 @@ STATUS_DIR = f"{BASE_DIR}/status"
 ERROR_DIR = f"{BASE_DIR}/errors"
 ARCHIVE_DIR = f"{BASE_DIR}/errors/archive"
 CHECK_INTERVAL = 5  # Check every 5 seconds
+
+
+# Global flag for graceful shutdown
+running = True
+
+
+def signal_handler(signum, frame):
+    """Handle shutdown signals."""
+    global running
+    logger.info(f"Received signal {signum}, shutting down gracefully...")
+    running = False
 
 
 def ensure_dirs() -> None:
@@ -316,15 +328,18 @@ def check_notification_queue(mailer: Mailer) -> None:
 def main() -> None:
     """Start the HealthChecker service."""
     logger.info("--- Silvasonic HealthChecker Started ---")
+
+    # Install signal handlers
+    signal.signal(signal.SIGTERM, signal_handler)
+    signal.signal(signal.SIGINT, signal_handler)
+
     ensure_dirs()
     mailer = Mailer()
 
-    # Import psutil for status (ensuring it's imported if not global)
-
-    while True:
+    while running:
         try:
-            # Re-initialize Mailer to pick up dynamic settings changes (e.g. email)
-            mailer = Mailer()
+            # Efficient reload check instead of full re-instantiation
+            mailer.reload_if_needed()
 
             write_status()  # Heartbeat
             check_services_status(mailer)
@@ -333,7 +348,13 @@ def main() -> None:
         except Exception:
             logger.exception("HealthChecker loop crashed:")
 
-        time.sleep(CHECK_INTERVAL)
+        # Sleep in short intervals to be responsive to signals
+        for _ in range(CHECK_INTERVAL):
+            if not running:
+                break
+            time.sleep(1)
+
+    logger.info("--- Silvasonic HealthChecker Stopped ---")
 
 
 if __name__ == "__main__":

@@ -20,7 +20,8 @@ dependencies = [
     "matplotlib>=3.8.2",
     "numpy>=1.26.3",
     "soundfile>=0.12.1",
-    "aiofiles>=23.2.1"
+    "aiofiles>=23.2.1",
+    "async_lru>=2.0.4",
 ]
 
 [build-system]

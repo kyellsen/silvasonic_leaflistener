@@ -58,8 +58,13 @@ class TestRecorderService(unittest.TestCase):
     @patch("silvasonic_recorder.main.subprocess.Popen")
     @patch("silvasonic_recorder.main.get_active_profile")
     @patch("silvasonic_recorder.main.create_strategy_for_profile")
+    @patch("silvasonic_recorder.main.os.makedirs")
     def test_start_ffmpeg(
-        self, mock_create_strat: MagicMock, mock_get_profile: MagicMock, mock_popen: MagicMock
+        self,
+        mock_makedirs: MagicMock,
+        mock_create_strat: MagicMock,
+        mock_get_profile: MagicMock,
+        mock_popen: MagicMock,
     ) -> None:
         """Test that _start_ffmpeg calls FFmpeg correctly."""
         # Setup Service state manually or via init

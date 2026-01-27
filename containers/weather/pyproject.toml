@@ -12,7 +12,9 @@ dependencies = [
     "pandas",
     "polars",
     "psutil",
-    "pytest"
+    "pytest",
+    "pydantic>=2.0.0",
+    "pydantic-settings>=2.0.0",
 ]
 
 [build-system]

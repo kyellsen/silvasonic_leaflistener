@@ -159,6 +159,17 @@ class RecorderService:
             if not self.running:
                 break
 
+    def _write_status(self, status: str) -> None:
+        """Write status using global handler."""
+        write_status(status, self.profile, self.device)
+
+    def _start_ffmpeg(self) -> None:
+        """Start FFmpeg process using global handler."""
+        if not self.profile or not self.device or not self.strategy:
+            raise RuntimeError("Service not initialized or missing hardware.")
+
+        self.process = start_recording(self.profile, self.device, self.output_dir, self.strategy)
+
 
 # Global state for the main loop
 running: bool = True

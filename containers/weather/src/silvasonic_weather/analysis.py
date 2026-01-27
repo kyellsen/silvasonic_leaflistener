@@ -1,21 +1,14 @@
 import logging
-import os
 import typing
 from datetime import datetime, timedelta
 
 from sqlalchemy import create_engine, text
 
+from silvasonic_weather.config import settings
+
 logger = logging.getLogger("WeatherAnalysis")
 
-# Reuse DB connection settings from main or env
-DB_USER = os.getenv("POSTGRES_USER", "silvasonic")
-DB_PASSWORD = os.getenv("POSTGRES_PASSWORD", "silvasonic")
-DB_NAME = os.getenv("POSTGRES_DB", "silvasonic")
-DB_HOST = os.getenv("POSTGRES_HOST", "db")
-DB_PORT = os.getenv("POSTGRES_PORT", "5432")
-DB_URL = f"postgresql://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
-
-engine = create_engine(DB_URL)
+engine = create_engine(settings.database_url)
 
 
 def get_connection() -> typing.Any:

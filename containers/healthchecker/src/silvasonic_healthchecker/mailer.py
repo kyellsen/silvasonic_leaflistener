@@ -1,6 +1,7 @@
 import json
 import logging
 import os
+import time
 
 import apprise
 
@@ -10,12 +11,41 @@ logger = logging.getLogger("HealthChecker.Notifier")
 class Mailer:
     def __init__(self) -> None:
         self.apobj = apprise.Apprise()
+        self.config_path = "/config/settings.json"
+        self.last_mtime = 0.0
+        self.last_check_time = 0.0
         self._configure_notifications()
+
+    def reload_if_needed(self) -> None:
+        """Checks if settings file has changed and reloads if necessary."""
+        now = time.time()
+        # Rate limit checks to every 30 seconds to save I/O
+        if now - self.last_check_time < 30:
+            return
+
+        self.last_check_time = now
+
+        if not os.path.exists(self.config_path):
+            return
+
+        try:
+            mtime = os.path.getmtime(self.config_path)
+            if mtime > self.last_mtime:
+                logger.info("Settings change detected. Reloading notifications...")
+                self.apobj = apprise.Apprise()  # Reset apprise object
+                self._configure_notifications()
+        except OSError:
+            pass
 
     def _configure_notifications(self) -> None:
         """Configures Apprise with URLs from env vars or settings."""
-        # 1. Load from settings.json (Preferred)
-        config_path = "/config/settings.json"
+
+        # Update mtime if file exists
+        if os.path.exists(self.config_path):
+            try:
+                self.last_mtime = os.path.getmtime(self.config_path)
+            except OSError:
+                self.last_mtime = 0
 
         # We'll collect all valid URLs here
         urls = []
@@ -27,9 +57,9 @@ class Mailer:
         smtp_password = os.getenv("HEALTHCHECKER_SMTP_PASSWORD")
         recipient = os.getenv("HEALTHCHECKER_RECIPIENT_EMAIL")
 
-        if os.path.exists(config_path):
+        if os.path.exists(self.config_path):
             try:
-                with open(config_path) as f:
+                with open(self.config_path) as f:
                     settings = json.load(f)
                     hc_settings = settings.get("healthchecker", {})
 
