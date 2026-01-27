@@ -75,142 +75,120 @@ class BirdNetStatsService:
             return {"today": 0, "total": 0, "top_species": []}
 
     @staticmethod
-    async def get_advanced_stats() -> dict[str, typing.Any]:
-        """Get comprehensive stats for the BirdStats dashboard."""
+    async def get_advanced_stats(
+        start_date: datetime.date | None = None, end_date: datetime.date | None = None
+    ) -> dict[str, typing.Any]:
+        """Get comprehensive stats for the BirdStats dashboard with optional date filtering."""
         try:
+            # Defaults
+            if not start_date:
+                start_date = datetime.date.today() - datetime.timedelta(days=30)
+            if not end_date:
+                end_date = datetime.date.today()
+
+            # Ensure they are datetime objects for comparison if needed, but SQL parameters handle dates fine.
+            
             async with db.get_connection() as conn:
-                # 1. Daily Trend (Last 30 Days)
+                # 1. Activity Trend (Daily counts within range)
                 query_daily = text("""
                     SELECT DATE(timestamp) as date, COUNT(*) as count
                     FROM birdnet.detections
-                    WHERE timestamp >= NOW() - INTERVAL '30 DAYS'
-                      AND timestamp IS NOT NULL
+                    WHERE DATE(timestamp) >= :start_date 
+                      AND DATE(timestamp) <= :end_date
                     GROUP BY date
                     ORDER BY date ASC
                 """)
-                res_daily = await conn.execute(query_daily)
-                daily: dict[str, list[typing.Any]] = {"labels": [], "values": []}
-
+                res_daily = await conn.execute(
+                    query_daily, {"start_date": start_date, "end_date": end_date}
+                )
+                
+                # ApexCharts desires: { x: '2023-01-01', y: 10 }
+                daily_series = []
                 for row in res_daily:
                     if row.date:
-                        daily["labels"].append(row.date.strftime("%Y-%m-%d"))
-                        daily["values"].append(row.count)
+                        daily_series.append({
+                            "x": row.date.strftime("%Y-%m-%d"),
+                            "y": row.count
+                        })
 
-                # 2. Hourly Distribution (All Time)
+                # 2. Hourly Distribution (within range)
                 query_hourly = text("""
                     SELECT EXTRACT(HOUR FROM timestamp) as hour, COUNT(*) as count
                     FROM birdnet.detections
-                    WHERE timestamp IS NOT NULL
+                    WHERE DATE(timestamp) >= :start_date 
+                      AND DATE(timestamp) <= :end_date
                     GROUP BY hour
+                    ORDER BY hour ASC
                 """)
-                res_hourly = await conn.execute(query_hourly)
-                dist_map = {}
-                for r in res_hourly:
-                    if r.hour is not None:
-                        dist_map[int(r.hour)] = r.count
+                res_hourly = await conn.execute(
+                    query_hourly, {"start_date": start_date, "end_date": end_date}
+                )
+                
+                hourly_map = {r.hour: r.count for r in res_hourly if r.hour is not None}
+                # ApexCharts category series: data array matching categories [0, 1, ... 23]
+                hourly_data = [hourly_map.get(h, 0) for h in range(24)]
 
-                hourly = {"values": [dist_map.get(h, 0) for h in range(24)]}
-
-                # 3. Top Species Distributions (Pie Charts)
-                async def get_top_species(
-                    interval_clause: str | None, limit: int = 20
-                ) -> dict[str, list[typing.Any]]:
-                    where_sql = "WHERE timestamp IS NOT NULL"
-
-                    if interval_clause:
-                        where_sql += f" AND timestamp >= NOW() - INTERVAL '{interval_clause}'"
-
-                    query = text(f"""
-                        SELECT common_name, COUNT(*) as count 
-                        FROM birdnet.detections 
-                        {where_sql}
-                        GROUP BY common_name 
-                        ORDER BY count DESC 
-                        LIMIT :limit
-                    """)
-                    result = await conn.execute(query, {"limit": limit})
-                    rows = result.fetchall()
-                    return {
-                        "labels": [r.common_name for r in rows if r.common_name],
-                        "values": [r.count for r in rows if r.common_name],
-                    }
-
-                query_today_exact = text("""
+                # 3. Top Species Distribution (within range)
+                query_top = text("""
                     SELECT common_name, COUNT(*) as count 
                     FROM birdnet.detections 
-                    WHERE DATE(timestamp) = CURRENT_DATE
-                      AND timestamp IS NOT NULL
+                    WHERE DATE(timestamp) >= :start_date 
+                      AND DATE(timestamp) <= :end_date
+                      AND common_name IS NOT NULL
                     GROUP BY common_name 
                     ORDER BY count DESC 
-                    LIMIT 20
+                    LIMIT 10
                 """)
-                result_today = await conn.execute(query_today_exact)
-                rows_today = result_today.fetchall()
-                dist_today = {
-                    "labels": [r.common_name for r in rows_today if r.common_name],
-                    "values": [r.count for r in rows_today if r.common_name],
-                }
+                res_top = await conn.execute(
+                    query_top, {"start_date": start_date, "end_date": end_date}
+                )
+                
+                top_labels = []
+                top_values = []
+                for row in res_top:
+                    top_labels.append(row.common_name)
+                    top_values.append(row.count)
 
-                dist_week = await get_top_species("7 DAYS")
-                dist_month = await get_top_species("30 DAYS")
-                dist_year = await get_top_species("1 YEAR")
-                dist_all = await get_top_species(None)
-
-                # 4. Histogram (All Species Ranked)
-                query_all = text("""
+                # 4. Rarest Specifications (Just a list, maybe easiest within range too)
+                # To find "rarest" within this period might be just low counts. 
+                # Or "globally rare" seen in this period? Let's do "Least frequent in this period".
+                query_rarest = text("""
                     SELECT common_name, COUNT(*) as count
                     FROM birdnet.detections
-                    WHERE common_name IS NOT NULL
+                    WHERE DATE(timestamp) >= :start_date 
+                      AND DATE(timestamp) <= :end_date
+                      AND common_name IS NOT NULL
                     GROUP BY common_name
-                    ORDER BY count DESC
+                    ORDER BY count ASC
+                    LIMIT 10
                 """)
-                res_all = await conn.execute(query_all)
-                hist_labels = []
-                hist_values = []
-
-                all_rows = []
-                for row in res_all:
-                    d = dict(row._mapping)
-                    if d.get("common_name"):
-                        all_rows.append(d)
-                        hist_labels.append(d["common_name"])
-                        hist_values.append(d["count"])
-
-                # 5. Rarest Species (List)
-                rarest_list = []
-                if len(all_rows) > 0:
-                    rarest_slice = all_rows[-20:]
-                    rarest_list = sorted(rarest_slice, key=lambda x: x["count"])
+                res_rarest = await conn.execute(
+                    query_rarest, {"start_date": start_date, "end_date": end_date}
+                )
+                rarest_list = [dict(row._mapping) for row in res_rarest]
 
                 return {
-                    "daily": daily,
-                    "hourly": hourly,
-                    "distributions": {
-                        "today": dist_today,
-                        "week": dist_week,
-                        "month": dist_month,
-                        "year": dist_year,
-                        "all_time": dist_all,
+                    "period": {
+                        "start": start_date.isoformat(),
+                        "end": end_date.isoformat()
                     },
-                    "histogram": {"labels": hist_labels, "values": hist_values},
-                    "rarest": rarest_list,
+                    "daily": daily_series,
+                    "hourly": hourly_data,
+                    "top_species": {
+                        "labels": top_labels,
+                        "values": top_values
+                    },
+                    "rarest": rarest_list
                 }
+
         except Exception as e:
             logger.error(f"Error get_advanced_stats: {e}", exc_info=True)
-            empty_chart: dict[str, list[typing.Any]] = {"labels": [], "values": []}
-
             return {
-                "daily": empty_chart,
-                "hourly": {"values": []},
-                "distributions": {
-                    "today": empty_chart,
-                    "week": empty_chart,
-                    "month": empty_chart,
-                    "year": empty_chart,
-                    "all_time": empty_chart,
-                },
-                "histogram": empty_chart,
-                "rarest": [],
+                "period": {"start": str(start_date), "end": str(end_date)},
+                "daily": [],
+                "hourly": [],
+                "top_species": {"labels": [], "values": []},
+                "rarest": []
             }
 
     @staticmethod
