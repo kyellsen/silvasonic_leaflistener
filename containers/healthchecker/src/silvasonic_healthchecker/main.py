@@ -134,9 +134,9 @@ def check_services_status(mailer: Mailer) -> None:
                     mailer.send_alert(f"{config['name']} Down", msg)
 
                     service_data["status"] = "Down"
-                    service_data[
-                        "message"
-                    ] = f"Timeout ({int(current_time - last_ts)}s > {timeout_val}s)"
+                    service_data["message"] = (
+                        f"Timeout ({int(current_time - last_ts)}s > {timeout_val}s)"
+                    )
                 else:
                     service_data["status"] = "Running"
                     service_data["message"] = "Active"
