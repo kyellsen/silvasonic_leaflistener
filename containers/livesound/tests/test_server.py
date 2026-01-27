@@ -21,17 +21,23 @@ async def test_root_endpoint(client):
 @pytest.mark.asyncio
 async def test_websocket_spectrogram(client):
     """Test WebSocket connection and data reception."""
+    import json
+
     # Mock processor.subscribe_spectrogram to return a dummy queue
     mock_queue = asyncio.Queue()
-    await mock_queue.put([1, 2, 3])  # Fake spectrogram frame
+    # Processor sends bytes (verified in server.py: await websocket.send_bytes(data))
+    # Processor creates bytes via: orjson.dumps(frame)
+    # We simulate this by sending bytes of a JSON list
+    await mock_queue.put(b"[1, 2, 3]")  # Fake spectrogram frame (bytes)
 
     with patch.object(processor, "subscribe_spectrogram", return_value=mock_queue) as mock_sub:
         with patch.object(processor, "unsubscribe_spectrogram") as mock_unsub:
             with client.websocket_connect("/ws/spectrogram?source=test_mic") as websocket:
-                data = websocket.receive_json()
-                assert data["type"] == "spectrogram"
-                assert data["data"] == [1, 2, 3]
-                assert data["source"] == "test_mic"
+                # Server sends binary frame
+                data_bytes = websocket.receive_bytes()
+                data = json.loads(data_bytes)
+
+                assert data == [1, 2, 3]
 
             mock_sub.assert_called_with("test_mic")
             mock_unsub.assert_called()

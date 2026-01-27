@@ -6,7 +6,6 @@ import pytest
 from silvasonic_uploader.rclone_wrapper import RcloneWrapper
 
 
-@pytest.mark.asyncio
 class TestRcloneWrapper:
     """Tests for the RcloneWrapper class (AsyncIO)."""
 
@@ -23,6 +22,7 @@ class TestRcloneWrapper:
         assert os.path.exists(os.path.dirname(config_path))
 
     @patch("asyncio.create_subprocess_exec", new_callable=AsyncMock)
+    @pytest.mark.asyncio
     async def test_configure_webdav(self, mock_exec: AsyncMock, rclone: RcloneWrapper) -> None:
         """Test configuring a WebDAV remote."""
         # Setup mock process
@@ -41,6 +41,7 @@ class TestRcloneWrapper:
         # Check password method? Just check structure.
 
     @patch("asyncio.create_subprocess_exec", new_callable=AsyncMock)
+    @pytest.mark.asyncio
     async def test_configure_webdav_failure(
         self, mock_exec: AsyncMock, rclone: RcloneWrapper
     ) -> None:
@@ -54,6 +55,7 @@ class TestRcloneWrapper:
             await rclone.configure_webdav("remote", "http://url", "user", "pass")
 
     @patch("asyncio.create_subprocess_exec", new_callable=AsyncMock)
+    @pytest.mark.asyncio
     async def test_sync_success_callbacks(
         self, mock_exec: AsyncMock, rclone: RcloneWrapper
     ) -> None:
@@ -88,6 +90,7 @@ class TestRcloneWrapper:
         assert ("file2.txt", "success", "") in calls
 
     @patch("asyncio.create_subprocess_exec", new_callable=AsyncMock)
+    @pytest.mark.asyncio
     async def test_copy_failure_callbacks(
         self, mock_exec: AsyncMock, rclone: RcloneWrapper
     ) -> None:
@@ -109,6 +112,7 @@ class TestRcloneWrapper:
         callback.assert_called_once_with("badfile.txt", "failed", "Network Error")
 
     @patch("asyncio.create_subprocess_exec", new_callable=AsyncMock)
+    @pytest.mark.asyncio
     async def test_list_files(self, mock_exec: AsyncMock, rclone: RcloneWrapper) -> None:
         """Test listing files from a remote."""
         json_output = json.dumps(
@@ -132,6 +136,7 @@ class TestRcloneWrapper:
         assert "subdir" not in files
 
     @patch("asyncio.create_subprocess_exec", new_callable=AsyncMock)
+    @pytest.mark.asyncio
     async def test_list_files_failure(self, mock_exec: AsyncMock, rclone: RcloneWrapper) -> None:
         """Test failure handling when listing files."""
         process_mock = MagicMock()

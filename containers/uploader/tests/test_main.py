@@ -9,7 +9,6 @@ import pytest
 # Ensure local src is used directly to avoid namespace collision with 'src' from other containers
 
 
-@pytest.mark.asyncio
 class TestMain:
     """Tests for the main application logic."""
 
@@ -75,6 +74,7 @@ class TestMain:
     @patch("silvasonic_uploader.main.RcloneWrapper")
     @patch("silvasonic_uploader.main.StorageJanitor")
     @patch("asyncio.sleep")
+    @pytest.mark.asyncio
     async def test_main_loop_flow(
         self,
         mock_sleep: AsyncMock,
@@ -130,6 +130,7 @@ class TestMain:
     @patch("silvasonic_uploader.main.RcloneWrapper")
     @patch("silvasonic_uploader.main.StorageJanitor")
     @patch("asyncio.sleep")
+    @pytest.mark.asyncio
     async def test_main_loop_failure(
         self,
         mock_sleep: AsyncMock,
