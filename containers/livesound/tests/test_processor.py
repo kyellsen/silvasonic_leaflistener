@@ -63,6 +63,8 @@ async def test_ingest_loop_logic():
         
         # Prepare mock data
         # We need chunk_size * 2 * 2 (safety buffer)
+        fake_audio = b'\x00' * 1024
+        
         # Custom side effect to break the loop
         def breaking_recv(*args):
             # First call: return data

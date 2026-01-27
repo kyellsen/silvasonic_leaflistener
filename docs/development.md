@@ -107,3 +107,9 @@ If you prefer VS Code DevContainers:
 If you prefer to run Python natively on your host (e.g., for direct PyCharm/VSCode integration without DevContainers) while keeping services in containers:
 
 👉 **See [Native Podman Guide](native_podman_dev.md)**
+
+
+More Commands:
+git pull
+sudo podman-compose down --volumes
+sudo podman-compose -f podman-compose.yml up -d --build
