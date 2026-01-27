@@ -63,19 +63,21 @@ async def test_ingest_loop_logic():
         
         # Prepare mock data
         # We need chunk_size * 2 * 2 (safety buffer)
-        # But sock.recvfrom returns (bytes, address)
-        fake_audio = b'\x00' * 1024
-        mock_sock.recvfrom.side_effect = [(fake_audio, ("127.0.0.1", 12345)), Exception("Stop Loop")]
+        # Custom side effect to break the loop
+        def breaking_recv(*args):
+            # First call: return data
+            if mock_sock.recvfrom.call_count == 1:
+                return (fake_audio, ("127.0.0.1", 12345))
+            # Second call: stop loop and raise to exit recv
+            ingestor.running = False
+            raise Exception("Stop Loop")
+            
+        mock_sock.recvfrom.side_effect = breaking_recv
         
-        # Run the loop in a separate thread implies integration test, 
-        # but here we can just call the protected method _ingest_loop directly for unit testing
-        # We need to mock _broadcast_safe or verify side effects
-        
+        # Run
         with patch.object(ingestor, "_broadcast_safe") as mock_broadcast:
-            try:
-                ingestor._ingest_loop("test_mic", mock_sock)
-            except Exception:
-                pass # Expected "Stop Loop"
+            ingestor._ingest_loop("test_mic", mock_sock)
+
         
             # Checks
             assert mock_broadcast.called
