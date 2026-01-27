@@ -141,6 +141,7 @@ services:
     env_file: .env
     volumes:
       - ./containers/weather/src:/app/src:z
+      - ./containers/weather/tests:/app/tests:z
       - ${SILVASONIC_DATA_DIR}/config:/config:z
       - ${SILVASONIC_DATA_DIR}/logs:/var/log/silvasonic:z
       - ${SILVASONIC_DATA_DIR}/status:/mnt/data/services/silvasonic/status:z

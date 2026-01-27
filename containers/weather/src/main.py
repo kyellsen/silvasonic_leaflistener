@@ -53,6 +53,8 @@ def init_db() -> None:
                 humidity_percent FLOAT,
                 precipitation_mm FLOAT,
                 wind_speed_ms FLOAT,
+                wind_gust_ms FLOAT,
+                sunshine_seconds FLOAT,
                 cloud_cover_percent FLOAT,
                 condition_code TEXT
             );
@@ -125,6 +127,8 @@ def fetch_weather() -> None:
                 Parameter.HUMIDITY,
                 Parameter.PRECIPITATION_HEIGHT,
                 Parameter.WIND_SPEED,
+                Parameter.WIND_GUST_MAX,
+                Parameter.SUNSHINE_DURATION,
                 Parameter.CLOUD_COVER_TOTAL,
             ],
             resolution="10_minutes",
@@ -173,6 +177,10 @@ def fetch_weather() -> None:
                 data_map["precipitation_mm"] = val
             elif param == "wind_speed":
                 data_map["wind_speed_ms"] = val
+            elif param == "wind_gust_max":
+                data_map["wind_gust_ms"] = val
+            elif param == "sunshine_duration":
+                data_map["sunshine_seconds"] = val
             elif param == "cloud_cover_total":
                 data_map["cloud_cover_percent"] = val
 
@@ -193,9 +201,9 @@ def fetch_weather() -> None:
             stmt = text("""
                 INSERT INTO weather.measurements (
                     timestamp, station_id, temperature_c, humidity_percent,
-                    precipitation_mm, wind_speed_ms, cloud_cover_percent
+                    precipitation_mm, wind_speed_ms, wind_gust_ms, sunshine_seconds, cloud_cover_percent
                 ) VALUES (
-                    :ts, :sid, :temp, :hum, :precip, :wind, :cloud
+                    :ts, :sid, :temp, :hum, :precip, :wind, :gust, :sun, :cloud
                 ) ON CONFLICT (timestamp) DO NOTHING
             """)
             conn.execute(
@@ -207,6 +215,8 @@ def fetch_weather() -> None:
                     "hum": data_map.get("humidity_percent"),
                     "precip": data_map.get("precipitation_mm"),
                     "wind": data_map.get("wind_speed_ms"),
+                    "gust": data_map.get("wind_gust_ms"),
+                    "sun": data_map.get("sunshine_seconds"),
                     "cloud": data_map.get("cloud_cover_percent"),
                 },
             )

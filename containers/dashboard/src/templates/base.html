@@ -96,15 +96,17 @@
         border: 1px solid #e5e7eb; /* gray-200 */
         border-radius: 0.75rem; /* rounded-xl */
         box-shadow:
-          0 10px 15px -3px rgba(0, 0, 0, 0.1),
-          0 4px 6px -2px rgba(0, 0, 0, 0.05); /* shadow-lg */
+          0 4px 6px -1px rgba(0, 0, 0, 0.1),
+          0 2px 4px -1px rgba(0, 0, 0, 0.06); /* shadow-md */
         position: relative;
         overflow: hidden;
         transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
       }
       .dark .silva-card {
-        background-color: #1f2937; /* gray-800 */
-        border-color: #374151; /* gray-700 */
+        background-color: rgba(30, 41, 59, 0.7); /* slate-800 with opacity */
+        border-color: rgba(255, 255, 255, 0.05);
+        backdrop-filter: blur(20px);
+        -webkit-backdrop-filter: blur(20px);
       }
 
       .silva-card-hover {
@@ -122,7 +124,7 @@
 
       /* Legacy Glass Support (for non-card elements if needed) */
       .glass-panel {
-        @apply silva-card; /* Alias to new style for ease of migration if missed */
+        @apply silva-card;
       }
 
       /* Sidebar Label Visibility */

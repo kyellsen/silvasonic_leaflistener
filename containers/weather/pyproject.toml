@@ -11,7 +11,8 @@ dependencies = [
     "schedule",
     "pandas",
     "polars",
-    "psutil"
+    "psutil",
+    "pytest"
 ]
 
 [build-system]
