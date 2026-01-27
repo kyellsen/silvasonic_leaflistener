@@ -1,0 +1,15 @@
+[project]
+name = "silvasonic-controller"
+version = "0.1.0"
+description = "Dynamic Hardware Supervisor for Silvasonic"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "pyudev>=0.24.0",
+    "pyyaml>=6.0",
+    "psutil",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"

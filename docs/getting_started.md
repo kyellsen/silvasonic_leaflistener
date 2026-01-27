@@ -145,6 +145,24 @@ Open `http://silvasonic.local:8080` in your browser.
 
 ---
 
+## 🎙️ Advanced: Multi-Microphone Setup
+
+Silvasonic supports recording from multiple microphones simultaneously (e.g., a parabolic mic and an ambient mic).
+
+1.  **Identify your devices**: Run `arecord -l` on the Pi to see card numbers (e.g., `card 1`, `card 2`).
+2.  **Configure `podman-compose.yml`**:
+    - Duplicate the `recorder` service for each microphone.
+    - Give each a unique `container_name` (e.g., `silvasonic_recorder_back`).
+    - Set a unique `AUDIO_PROFILE` (e.g., `back_mic`).
+    - Set a unique `LIVE_STREAM_PORT` (e.g., `1235`).
+    - Map the specific hardware device (e.g., `/dev/snd/pcmC2D0c:/dev/snd/pcmC2D0c`).
+3.  **Update LiveSound**:
+    - Add `LISTEN_PORTS=front:1234,back:1235` to the `livesound` service environment.
+    - Expose the new UDP ports in the `ports` section.
+4.  **Deploy**: Run `./setup/install.sh` again to apply changes.
+
+---
+
 ## 🔄 Updates & Deployment
 
 To deploy code changes from your local machine to the Pi, simply run the installer again. It is designed to be idempotent (only changes what is necessary).

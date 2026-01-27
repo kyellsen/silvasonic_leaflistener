@@ -1,22 +1,26 @@
 version: "3.8"
 
 services:
-  recorder:
+  controller:
     build:
-      context: containers/recorder
-    image: silvasonic-recorder:latest
-    container_name: silvasonic_recorder
+      context: containers/controller
+    image: silvasonic-controller:latest
+    container_name: silvasonic_controller
+    privileged: true # To spawn privileged siblings and access Host hardware info
     environment:
-      - PYTHONUNBUFFERED=1
-      # - MOCK_HARDWARE=true  # Enable to simulate mic (no sudo needed)
-    devices:
-      - /dev/snd:/dev/snd
-    privileged: true
+      # Pass Host paths so Controller can map them into Child Recorders
+      - HOST_SILVASONIC_DATA_DIR=${SILVASONIC_DATA_DIR}
+      # - HOST_RECORDER_SRC=./containers/recorder/src  # Optional: For dev hot-reload in siblings
     volumes:
-      - ./containers/recorder/src:/app/src:z
-      - ${SILVASONIC_DATA_DIR}/recorder/recordings:/data/recording:z
+      # 1. Podman Socket (Orchestration)
+      - ${PODMAN_SOCKET}:/run/podman/podman.sock:z
+      # 2. Hardware Discovery
+      - /dev:/dev:ro
+      - /run/udev:/run/udev:ro
+      # 3. Source Code (Deployment)
+      - ./containers/recorder/mic_profiles:/app/mic_profiles:ro
+      # 4. Logs
       - ${SILVASONIC_DATA_DIR}/logs:/var/log/silvasonic:z
-      - ${SILVASONIC_DATA_DIR}/status:/mnt/data/services/silvasonic/status:z
     restart: always
 
   uploader:
@@ -140,3 +144,24 @@ services:
       timeout: 5s
       retries: 5
     restart: always
+
+    # --- Multi-Microphone Examples ---
+    # To add a second microphone (e.g. Back):
+    # 1. Duplicate the 'recorder' service block above.
+    # 2. Rename it to 'recorder_back'.
+    # 3. Set container_name: silvasonic_recorder_back
+    # 4. Set environment:
+    #      - AUDIO_PROFILE=back_mic  # Folder will be /data/recording/back_mic
+    #      - LIVE_STREAM_PORT=1235   # Unique port
+    # 5. Map correct device:
+    #      - /dev/snd/pcmC2D0c:/dev/snd/pcmC2D0c
+
+    #livesound:
+    #  environment:
+    #    - LISTEN_PORTS=front:1234,back:1235  # Map sources to ports
+    #  ports:
+    #    - "1235:1235/udp"  # Expose extra ports
+
+    #uploader:
+    #  environment:
+    #    - SENSOR_ID=my_sensor_01  # Optional: Override hostname for cloud upload path

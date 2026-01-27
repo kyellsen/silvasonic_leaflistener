@@ -18,7 +18,15 @@ logger = logging.getLogger("Carrier")
 NEXTCLOUD_URL = os.getenv("UPLOADER_NEXTCLOUD_URL")
 NEXTCLOUD_USER = os.getenv("UPLOADER_NEXTCLOUD_USER")
 NEXTCLOUD_PASSWORD = os.getenv("UPLOADER_NEXTCLOUD_PASSWORD")
-TARGET_DIR = os.getenv("UPLOADER_TARGET_DIR", "silvasonic")
+SOCKET_HOSTNAME = __import__("socket").gethostname()
+SENSOR_ID = os.getenv("SENSOR_ID", SOCKET_HOSTNAME)
+
+# Base Target Dir (e.g. "silvasonic")
+BASE_TARGET_DIR = os.getenv("UPLOADER_TARGET_DIR", "silvasonic")
+
+# Final Target Dir: silvasonic/<sensor_id>
+TARGET_DIR = f"{BASE_TARGET_DIR}/{SENSOR_ID}"
+
 SOURCE_DIR = "/data/recording"
 SYNC_INTERVAL = int(os.getenv("UPLOADER_SYNC_INTERVAL", 10))
 STATUS_FILE = "/mnt/data/services/silvasonic/status/carrier.json"

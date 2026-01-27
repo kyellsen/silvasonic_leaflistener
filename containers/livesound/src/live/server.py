@@ -39,11 +39,14 @@ async def get() -> HTMLResponse:
 
 
 @app.websocket("/ws/spectrogram")  # type: ignore
-async def websocket_endpoint(websocket: WebSocket) -> None:
+async def websocket_endpoint(websocket: WebSocket, source: str = "default") -> None:
+    """WebSocket endpoint for spectrogram data.
+    Usage: ws://host/ws/spectrogram?source=front
+    """
     await websocket.accept()
-    logger.debug("WS Connected")
+    logger.debug(f"WS Connected [Source: {source}]")
 
-    queue = await processor.subscribe_spectrogram()
+    queue = await processor.subscribe_spectrogram(source)
 
     try:
         while True:
@@ -51,23 +54,25 @@ async def websocket_endpoint(websocket: WebSocket) -> None:
             data = await queue.get()
 
             # Send binary or json
-            await websocket.send_json({"type": "spectrogram", "data": data})
+            await websocket.send_json({"type": "spectrogram", "data": data, "source": source})
 
     except WebSocketDisconnect:
         logger.debug("WS Disconnected")
     finally:
-        processor.unsubscribe_spectrogram(queue)
+        processor.unsubscribe_spectrogram(queue, source)
 
 
 @app.get("/stream")  # type: ignore
-async def stream_audio() -> StreamingResponse:
-    """Streams audio to the browser by piping the creation of MP3."""
+async def stream_audio(source: str = "default") -> StreamingResponse:
+    """Streams audio to the browser by piping the creation of MP3.
+    Usage: GET /stream?source=front
+    """
     return StreamingResponse(
-        audio_stream_generator(), media_type="audio/mpeg", headers={"Cache-Control": "no-cache"}
+        audio_stream_generator(source), media_type="audio/mpeg", headers={"Cache-Control": "no-cache"}
     )
 
 
-async def audio_stream_generator() -> typing.AsyncGenerator[bytes, None]:
+async def audio_stream_generator(source: str) -> typing.AsyncGenerator[bytes, None]:
     """1. Subscribes to Raw Audio Queue.
     2. Spawns FFmpeg process (Async).
     3. Writes Queue Data -> FFmpeg Stdin (Background Task).
@@ -107,7 +112,7 @@ async def audio_stream_generator() -> typing.AsyncGenerator[bytes, None]:
             proc.kill()
         return
 
-    queue = await processor.subscribe_audio()
+    queue = await processor.subscribe_audio(source)
 
     # Start background task to feed input to FFmpeg
     input_task = asyncio.create_task(feed_input(proc.stdin, queue))
@@ -125,7 +130,7 @@ async def audio_stream_generator() -> typing.AsyncGenerator[bytes, None]:
     finally:
         # Cleanup
         input_task.cancel()
-        processor.unsubscribe_audio(queue)
+        processor.unsubscribe_audio(queue, source)
 
         try:
             proc.terminate()

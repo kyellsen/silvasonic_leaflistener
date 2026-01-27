@@ -3,7 +3,8 @@ import logging
 import socket
 import threading
 import typing
-from dataclasses import dataclass
+import os
+from dataclasses import dataclass, field
 
 import librosa
 import numpy as np
@@ -16,9 +17,28 @@ class StreamConfig:
     """Configuration for the audio stream processing."""
 
     host: str = "0.0.0.0"
-    port: int = 1234
+    # Mapping of Source Name -> Port
+    # e.g. {"front": 1234, "back": 1235}
+    ports: dict[str, int] = field(default_factory=dict)
     sample_rate: int = 48000
     channels: int = 1
+
+    def __post_init__(self) -> None:
+        """Parse LISTEN_PORTS env var if ports not provided."""
+        if not self.ports:
+            env_ports = os.getenv("LISTEN_PORTS", "")
+            if env_ports:
+                # Format: "front:1234,back:1235"
+                try:
+                    for part in env_ports.split(","):
+                        name, port = part.split(":")
+                        self.ports[name.strip()] = int(port.strip())
+                except ValueError:
+                    logger.error(f"Invalid LISTEN_PORTS format: {env_ports}. Fallback to default.")
+            
+            if not self.ports:
+                # Default fallback
+                self.ports = {"default": 1234}
     # 4096 samples @ 48k = ~85ms latency chunks
     chunk_size: int = 4096
     fft_window: int = 2048
@@ -26,68 +46,124 @@ class StreamConfig:
 
 
 class AudioIngestor:
-    """Ingests audio from UDP stream and processes it for visualization."""
+    """Ingests audio from multiple UDP streams and processes them for visualization."""
 
     def __init__(self, config: StreamConfig | None = None):
         """Initialize the AudioIngestor."""
         if config is None:
             config = StreamConfig()
         self.config = config
-        self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        self.sock.bind((self.config.host, self.config.port))
+        
+        # Sockets: {source_name: socket}
+        self.sockets: dict[str, socket.socket] = {}
+        
+        # Threads: {source_name: thread}
+        self.threads: dict[str, threading.Thread] = {}
 
         self.running = False
-        self.thread: threading.Thread | None = None
-
+        
         # Thread-safe integration with AsyncIO
         self.loop: asyncio.AbstractEventLoop | None = None
 
-        # Listeners for different data types
-        self._spectrogram_queues: set[asyncio.Queue[list[int]]] = set()
-        self._audio_queues: set[asyncio.Queue[bytes]] = set()
+        # Listeners: {source_name: set(queues)}
+        self._spectrogram_queues: dict[str, set[asyncio.Queue[list[int]]]] = {}
+        self._audio_queues: dict[str, set[asyncio.Queue[bytes]]] = {}
 
-        logger.info(f"AudioIngestor initialized on UDP {self.config.host}:{self.config.port}")
+        # Initialize sockets
+        for source, port in self.config.ports.items():
+            self._setup_socket(source, port)
+            self._spectrogram_queues[source] = set()
+            self._audio_queues[source] = set()
+
+        logger.info(f"AudioIngestor initialized for sources: {list(self.config.ports.keys())}")
+
+    def _setup_socket(self, source: str, port: int) -> None:
+        try:
+            sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+            sock.bind((self.config.host, port))
+            self.sockets[source] = sock
+            logger.info(f"Bound source '{source}' to UDP {self.config.host}:{port}")
+        except Exception as e:
+            logger.error(f"Failed to bind source '{source}' on port {port}: {e}")
 
     def start(self, loop: asyncio.AbstractEventLoop) -> None:
-        """Start the ingestion thread."""
+        """Start the ingestion threads."""
         self.loop = loop
         self.running = True
-        self.thread = threading.Thread(target=self._ingest_loop, daemon=True)
-        self.thread.start()
-        logger.info("Audio ingestion started.")
+        
+        for source, sock in self.sockets.items():
+            t = threading.Thread(target=self._ingest_loop, args=(source, sock), daemon=True)
+            self.threads[source] = t
+            t.start()
+            
+        logger.info("Audio ingestion threads started.")
 
     def stop(self) -> None:
-        """Stop the ingestion thread."""
+        """Stop the ingestion threads."""
         self.running = False
-        if self.sock:
-            self.sock.close()
+        for sock in self.sockets.values():
+            try:
+                sock.close()
+            except Exception:
+                pass
+        self.sockets.clear()
 
-    async def subscribe_spectrogram(self) -> asyncio.Queue[list[int]]:
-        """Subscribe to spectrogram updates."""
+    async def subscribe_spectrogram(self, source: str = "default") -> asyncio.Queue[list[int]]:
+        """Subscribe to spectrogram updates for a specific source."""
+        # Use first available source if default requested but not present (fallback)
+        if source == "default" and "default" not in self._spectrogram_queues and self._spectrogram_queues:
+            source = next(iter(self._spectrogram_queues))
+
+        if source not in self._spectrogram_queues:
+             logger.warning(f"Subscribe request for unknown source: {source}")
+             # Return empty queue that will never get data? Or raise?
+             # Better to register it conceptually or just fail softly.
+             # Let's create an empty set to avoid crashes, but no data will come.
+             self._spectrogram_queues.setdefault(source, set())
+
         q: asyncio.Queue[list[int]] = asyncio.Queue()
-        self._spectrogram_queues.add(q)
+        self._spectrogram_queues[source].add(q)
         return q
 
-    def unsubscribe_spectrogram(self, q: asyncio.Queue[list[int]]) -> None:
+    def unsubscribe_spectrogram(self, q: asyncio.Queue[list[int]], source: str = "default") -> None:
         """Unsubscribe from spectrogram updates."""
-        if q in self._spectrogram_queues:
-            self._spectrogram_queues.remove(q)
+        # If we don't know the source, check all (expensive but safe) or require source
+        # Ideally caller knows source.
+        if source in self._spectrogram_queues and q in self._spectrogram_queues[source]:
+            self._spectrogram_queues[source].remove(q)
+            return
 
-    async def subscribe_audio(self) -> asyncio.Queue[bytes]:
+        # Fallback cleanup
+        for s in self._spectrogram_queues:
+            if q in self._spectrogram_queues[s]:
+                self._spectrogram_queues[s].remove(q)
+
+    async def subscribe_audio(self, source: str = "default") -> asyncio.Queue[bytes]:
         """Subscribe to raw audio updates."""
+        if source == "default" and "default" not in self._audio_queues and self._audio_queues:
+            source = next(iter(self._audio_queues))
+
+        if source not in self._audio_queues:
+             self._audio_queues.setdefault(source, set())
+
         # Limit queue size to prevent memory explosion if client is slow
         q: asyncio.Queue[bytes] = asyncio.Queue(maxsize=100)
-        self._audio_queues.add(q)
+        self._audio_queues[source].add(q)
         return q
 
-    def unsubscribe_audio(self, q: asyncio.Queue[bytes]) -> None:
+    def unsubscribe_audio(self, q: asyncio.Queue[bytes], source: str = "default") -> None:
         """Unsubscribe from raw audio updates."""
-        if q in self._audio_queues:
-            self._audio_queues.remove(q)
+        if source in self._audio_queues and q in self._audio_queues[source]:
+            self._audio_queues[source].remove(q)
+            return
+
+        for s in self._audio_queues:
+            if q in self._audio_queues[s]:
+                self._audio_queues[s].remove(q)
 
     def _broadcast_safe(self, queues: set[asyncio.Queue[typing.Any]], data: typing.Any) -> None:
         """Helper to put data into queues from a thread safely."""
-        if not self.loop or not self.running:
+        if not self.loop or not self.running or not queues:
             return
 
         for q in list(queues):
@@ -99,7 +175,7 @@ class AudioIngestor:
             except Exception:
                 pass
 
-    def _ingest_loop(self) -> None:
+    def _ingest_loop(self, source: str, sock: socket.socket) -> None:
         buffer_size = self.config.chunk_size * 2 * 2  # Safety buffer
 
         # Buffer for FFT
@@ -114,17 +190,20 @@ class AudioIngestor:
             fmax=14000,  # Birds range
         )
 
+        logger.info(f"Ingestion loop started for {source}")
+
         while self.running:
             try:
-                data, _ = self.sock.recvfrom(buffer_size)
+                data, _ = sock.recvfrom(buffer_size)
                 if not data:
                     continue
 
                 # 1. Distribute Raw Audio (Bytes)
-                self._broadcast_safe(self._audio_queues, data)
+                if source in self._audio_queues:
+                     self._broadcast_safe(self._audio_queues[source], data)
 
                 # OPTIMIZATION: Skip processing if no one is watching the spectrogram
-                if not self._spectrogram_queues:
+                if source not in self._spectrogram_queues or not self._spectrogram_queues[source]:
                     if len(fft_buffer) > 0:
                         fft_buffer = np.zeros(0, dtype=np.float32)
                     continue
@@ -171,7 +250,7 @@ class AudioIngestor:
 
                         # Pack simple JSON-friendly struct
                         payload = frame.tolist()
-                        self._broadcast_safe(self._spectrogram_queues, payload)
+                        self._broadcast_safe(self._spectrogram_queues[source], payload)
 
                     # Slide buffer
                     # step = self.config.chunk_size  # Advance by what we consumed?
@@ -185,8 +264,10 @@ class AudioIngestor:
 
             except Exception as e:
                 if self.running:
-                    logger.error(f"Ingest Error: {e}")
+                    logger.error(f"Ingest Error [{source}]: {e}")
 
 
 # Singleton
+# We can initialize with default config, but main.py might override it
+# For now, let's allow it to be configured via Env in main.py
 processor = AudioIngestor()

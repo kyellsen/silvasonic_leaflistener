@@ -173,6 +173,7 @@
             <table class="w-full text-sm text-left text-gray-500 dark:text-gray-400">
                 <thead class="text-xs text-gray-700 uppercase bg-gray-50 dark:bg-gray-700 dark:text-gray-400">
                     <tr>
+                        <th scope="col" class="px-6 py-3">Source</th>
                         <th scope="col" class="px-6 py-3">Filename</th>
                         <th scope="col" class="px-6 py-3">Size</th>
                         <th scope="col" class="px-6 py-3">Uploaded At</th>
@@ -182,8 +183,13 @@
                 <tbody>
                     {% for item in recent_uploads %}
                     <tr class="bg-white border-b dark:bg-gray-800 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600">
-                        <td class="px-6 py-4 font-medium text-gray-900 dark:text-white">
-                            {{ item.filename }}
+                        <td class="px-6 py-4">
+                            <span class="bg-blue-100 text-blue-800 text-xs font-medium mr-2 px-2.5 py-0.5 rounded dark:bg-blue-900 dark:text-blue-300">
+                                {{ item.source }}
+                            </span>
+                        </td>
+                        <td class="px-6 py-4 font-medium text-gray-900 dark:text-white" title="{{ item.filename }}">
+                            {{ item.filename_only }}
                         </td>
                         <td class="px-6 py-4">
                             {{ item.size_mb }} MB

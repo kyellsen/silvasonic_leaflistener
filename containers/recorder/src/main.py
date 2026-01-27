@@ -58,13 +58,13 @@ BASE_OUTPUT_DIR = os.getenv("AUDIO_OUTPUT_DIR", "/data/recording")
 LIVE_STREAM_TARGET = os.getenv("LIVE_STREAM_TARGET", "silvasonic_livesound")
 LIVE_STREAM_PORT = int(os.getenv("LIVE_STREAM_PORT", "1234"))
 
-STATUS_FILE = "/mnt/data/services/silvasonic/status/recorder.json"
+STATUS_DIR = "/mnt/data/services/silvasonic/status"
 
 
 def ensure_status_dir() -> None:
     """Ensure the status directory exists."""
     try:
-        os.makedirs(os.path.dirname(STATUS_FILE), exist_ok=True)
+        os.makedirs(STATUS_DIR, exist_ok=True)
     except OSError:
         pass
 
@@ -77,7 +77,9 @@ ffmpeg_process = None
 def write_status(
     status: str, profile: typing.Any = None, device: typing.Any = None, last_file: str | None = None
 ) -> None:
-    """Write current status to JSON file for dashboard."""
+    """Write current status to JSON file for dashboard.
+    Uses 'recorder_{profile_slug}.json' or 'recorder.json' if no profile.
+    """
     try:
         data = {
             "service": "recorder",
@@ -92,11 +94,25 @@ def write_status(
             },
             "pid": os.getpid(),
         }
+
+        # Determine filename
+        slug = "default"
+        if profile and hasattr(profile, "slug"):
+            slug = profile.slug
+        elif data["meta"].get("profile", {}).get("slug"):
+             slug = data["meta"]["profile"]["slug"]
+        
+        # If we have no profile info yet (e.g. startup error), we might fallback or skip?
+        # But we usually have profile in main() before writing status.
+        
+        filename = f"recorder_{slug}.json"
+        filepath = os.path.join(STATUS_DIR, filename)
+
         # Atomic write
-        tmp_file = f"{STATUS_FILE}.tmp"
+        tmp_file = f"{filepath}.tmp"
         with open(tmp_file, "w") as f:
             json.dump(data, f)
-        os.rename(tmp_file, STATUS_FILE)
+        os.rename(tmp_file, filepath)
     except Exception as e:
         logger.error(f"Failed to write status: {e}")
 

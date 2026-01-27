@@ -80,6 +80,16 @@ class CarrierService:
                         d["upload_time"] = d["upload_time"].isoformat()
 
                     d["size_mb"] = round((d.get("size_bytes") or 0) / (1024 * 1024), 2)
+                    
+                    # Derive Source from filename (e.g. "front/2023..." -> "front")
+                    fname = d.get("filename", "")
+                    if "/" in fname:
+                        d["source"] = fname.split("/")[0]
+                        d["filename_only"] = os.path.basename(fname)
+                    else:
+                        d["source"] = "Default"
+                        d["filename_only"] = fname
+                        
                     items.append(d)
                 return items
         except Exception as e:

@@ -26,94 +26,119 @@ class RecorderService:
         return 48000 * 1 * 2  # Default to 48kHz, Mono, 16-bit (96000 Bps)
 
     @staticmethod
-    def get_status() -> dict[str, Any]:
+    def get_status() -> list[dict[str, Any]]:
+        """Returns a list of status dicts for all detected recorders."""
+        statuses = []
         try:
-            status_file = os.path.join(STATUS_DIR, "recorder.json")
-            if os.path.exists(status_file):
-                with open(status_file) as f:
-                    data: dict[str, Any] = json.load(f)
+            import glob
+            # Find all recorder status files
+            files = glob.glob(os.path.join(STATUS_DIR, "recorder_*.json"))
+            # Also check legacy/default "recorder.json" if exists and not covered? 
+            # If we migrated, we shouldn't have it, but for safety check explicit file too if not in glob
+            if os.path.exists(os.path.join(STATUS_DIR, "recorder.json")):
+                 files.append(os.path.join(STATUS_DIR, "recorder.json"))
 
-                    # Flatten meta for compatibility or just return rich data
-                    meta = data.get("meta", {})
-                    profile = meta.get("profile", {})
+            # Dedup files
+            files = list(set(files))
 
-                    # 1. Device Name Cleaning
-                    raw_device = meta.get("device", "Unknown")
-                    clean_device = raw_device
-                    if isinstance(raw_device, str):
-                        # Extract content between first [] if present
-                        # Example: card 0: r0 [UltraMic384K_EVO 16bit r0], device 0...
-                        import re
+            if not files:
+                 return [{
+                    "status": "Unknown",
+                    "profile": "No Recorders Found",
+                    "device": "Unknown",
+                    "storage_forecast": {"daily_str": "?", "remaining_str": "?"},
+                }]
 
-                        match = re.search(r"\[(.*?)\]", raw_device)
-                        if match:
-                            clean_device = match.group(1)
+            for status_file in files:
+                try:
+                    with open(status_file) as f:
+                        data: dict[str, Any] = json.load(f)
 
-                    data["profile"] = profile
-                    data["device"] = clean_device
-                    data["device_raw"] = raw_device
+                        # Flatten meta for compatibility or just return rich data
+                        meta = data.get("meta", {})
+                        profile = meta.get("profile", {})
 
-                    # 2. Storage Forecast
-                    forecast = {
-                        "daily_gb": 0,
-                        "daily_str": "Unknown",
-                        "remaining_days": 0,
-                        "remaining_str": "Unknown",
-                    }
+                        # 1. Device Name Cleaning
+                        raw_device = meta.get("device", "Unknown")
+                        clean_device = raw_device
+                        if isinstance(raw_device, str):
+                            # Extract content between first [] if present
+                            # Example: card 0: r0 [UltraMic384K_EVO 16bit r0], device 0...
+                            import re
 
-                    if isinstance(profile, dict) and "audio" in profile:
-                        try:
-                            bps = RecorderService.get_audio_settings(profile)
+                            match = re.search(r"\[(.*?)\]", raw_device)
+                            if match:
+                                clean_device = match.group(1)
 
-                            # Compression Ratio (Estimate for FLAC)
-                            # 384kHz recordings might compress differently, but 0.6 is a safe standard for FLAC
-                            compression = 0.6
+                        data["profile"] = profile
+                        data["device"] = clean_device
+                        data["device_raw"] = raw_device
 
-                            # Bytes per day
-                            bytes_per_day = bps * 60 * 60 * 24 * compression
-                            gb_per_day = bytes_per_day / (1024**3)
+                        # 2. Storage Forecast
+                        forecast = {
+                            "daily_gb": 0,
+                            "daily_str": "Unknown",
+                            "remaining_days": 0,
+                            "remaining_str": "Unknown",
+                        }
 
-                            forecast["daily_gb"] = round(gb_per_day, 1)
-                            forecast["daily_str"] = f"~{gb_per_day:.1f} GB"
+                        if isinstance(profile, dict) and "audio" in profile:
+                            try:
+                                bps = RecorderService.get_audio_settings(profile)
+                                compression = 0.6
+                                bytes_per_day = bps * 60 * 60 * 24 * compression
+                                gb_per_day = bytes_per_day / (1024**3)
 
-                            # Calculate Remaining using shutil on the recording path
-                            import shutil
+                                forecast["daily_gb"] = round(gb_per_day, 1)
+                                forecast["daily_str"] = f"~{gb_per_day:.1f} GB"
 
-                            # Check if REC_DIR exists, else use current
-                            check_path = REC_DIR if os.path.exists(REC_DIR) else "/"
-                            usage = shutil.disk_usage(check_path)
-                            free_bytes = usage.free
+                                # Calculate Remaining using shutil on the recording path
+                                import shutil
+                                check_path = REC_DIR if os.path.exists(REC_DIR) else "/"
+                                usage = shutil.disk_usage(check_path)
+                                free_bytes = usage.free
 
-                            if bytes_per_day > 0:
-                                days_remaining = free_bytes / bytes_per_day
-                                forecast["remaining_days"] = int(days_remaining)
-                                if days_remaining > 365:
-                                    forecast["remaining_str"] = ">1y"
-                                else:
-                                    forecast["remaining_str"] = f"~{int(days_remaining)}d"
+                                if bytes_per_day > 0:
+                                    days_remaining = free_bytes / bytes_per_day
+                                    forecast["remaining_days"] = int(days_remaining)
+                                    if days_remaining > 365:
+                                        forecast["remaining_str"] = ">1y"
+                                    else:
+                                        forecast["remaining_str"] = f"~{int(days_remaining)}d"
 
-                        except Exception as e:
-                            logger.error(f"Forecast Error: {e}")
+                            except Exception as e:
+                                logger.error(f"Forecast Error: {e}")
 
-                    data["storage_forecast"] = forecast
+                        data["storage_forecast"] = forecast
+                        statuses.append(data)
+                except Exception as e:
+                    logger.error(f"Error reading {status_file}: {e}")
+            
+            # Sort by profile name or slug for stability
+            statuses.sort(key=lambda x: x.get("profile", {}).get("name", ""))
+            return statuses
 
-                    return data
         except Exception as e:
             logger.error(f"Recorder status error: {e}")
 
-        return {
+        return [{
             "status": "Unknown",
-            "profile": "Unknown",
+            "profile": "Error",
             "device": "Unknown",
             "storage_forecast": {"daily_str": "?", "remaining_str": "?"},
-        }
+        }]
 
     @staticmethod
     async def get_recent_recordings(limit: int = 20) -> list[dict[str, Any]]:
         try:
             # Get current BPS setting for Duration Fallback
-            current_status = RecorderService.get_status()
-            current_bps = RecorderService.get_audio_settings(current_status.get("profile"))
+            # Get first active profile for defaults?
+            # Or assume standard?
+            # We can try to get from get_status()[0] if exists
+            statuses = RecorderService.get_status()
+            current_bps = 48000 * 2 # Default
+            if statuses and "profile" in statuses[0]:
+                 current_bps = RecorderService.get_audio_settings(statuses[0]["profile"])
 
             if not os.path.exists(REC_DIR):
                 return []
@@ -164,6 +189,14 @@ class RecorderService:
                     # Relative path for potential playback API usage
                     "audio_relative_path": os.path.relpath(item["path"], REC_DIR),
                 }
+            
+                # Derive source
+                rel = d["audio_relative_path"]
+                if "/" in rel:
+                   d["source"] = rel.split("/")[0]
+                else:
+                   d["source"] = "Default"
+                   
                 items.append(d)
 
             return items

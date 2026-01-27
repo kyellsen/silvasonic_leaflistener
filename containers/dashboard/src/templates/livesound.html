@@ -83,10 +83,25 @@
     class="bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700 p-6"
   >
     <h3 class="font-bold text-lg text-gray-700 dark:text-gray-300 mb-4">
-      Stream Info
+      Stream Settings
     </h3>
 
     <div class="space-y-4">
+      <!-- Source Selector -->
+      <div>
+        <label for="sourceSelect" class="block text-xs font-bold text-gray-500 uppercase mb-1">Microphone Source</label>
+        <select id="sourceSelect" class="w-full bg-gray-50 dark:bg-gray-900 border border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white text-sm rounded-lg focus:ring-purple-500 focus:border-purple-500 block p-2.5">
+            <option value="default" {% if not recorder_stats %}selected{% endif %}>Default (Auto)</option>
+            {% for stat in recorder_stats %}
+                {% set p = stat.profile if stat.profile is mapping else {} %}
+                {% set slug = p.slug or 'default' %}
+                {% set name = p.name or ('Recorder ' + loop.index|string) %}
+                <option value="{{ slug }}" {% if loop.first %}selected{% endif %}>{{ name }} ({{ slug }})</option>
+            {% endfor %}
+        </select>
+        <p class="text-[10px] text-gray-400 mt-1">Select input to stream.</p>
+      </div>
+
       <div
         class="flex justify-between items-center py-2 border-b border-gray-100 dark:border-gray-700"
       >
@@ -104,14 +119,6 @@
         <span class="text-sm text-gray-500">Latency</span>
         <span class="text-sm font-mono text-gray-700 dark:text-gray-300"
           >~200ms</span
-        >
-      </div>
-      <div
-        class="flex justify-between items-center py-2 border-b border-gray-100 dark:border-gray-700"
-      >
-        <span class="text-sm text-gray-500">Sample Rate</span>
-        <span class="text-sm font-mono text-gray-700 dark:text-gray-300"
-          >44.1 kHz</span
         >
       </div>
 
@@ -141,15 +148,16 @@
       audioCtx: null,
       audioEl: new Audio(),
       ws: null,
-      wsUrl: `ws://${window.location.hostname}:8000/ws/spectrogram`,
-      streamUrl: `http://${window.location.hostname}:8000/stream`,
+      currentSource: document.getElementById("sourceSelect") ? document.getElementById("sourceSelect").value : "default",
+      wsBaseUrl: `ws://${window.location.hostname}:8000/ws/spectrogram`,
+      streamBaseUrl: `http://${window.location.hostname}:8000/stream`,
       canvas: document.getElementById("spectrogramCanvas"),
       ctx: null,
       tempCanvas: document.createElement("canvas"),
       tempCtx: null,
       maxReconnects: 10,
       reconnectCount: 0,
-      isActive: true // Flag to stop loops if we navigate away
+      isActive: true
     };
 
     // --- DOM Elements ---
@@ -160,7 +168,8 @@
       status: document.getElementById("statusText"),
       vol: document.getElementById("volumeSlider"),
       connStatus: document.getElementById("connectionStatus"),
-      hostLabel: document.getElementById("hostLabel") // Need to add ID to host label span
+      hostLabel: document.getElementById("hostLabel"),
+      sourceSelect: document.getElementById("sourceSelect")
     };
 
     // --- Helpers ---
@@ -183,6 +192,14 @@
         default: // info/neutral
           ui.status.classList.add("text-gray-500", "dark:text-gray-400");
       }
+    }
+
+    function getWsUrl() {
+        return `${state.wsBaseUrl}?source=${state.currentSource}`;
+    }
+
+    function getStreamUrl() {
+        return `${state.streamBaseUrl}?source=${state.currentSource}&t=${Date.now()}`;
     }
 
     // --- Initialization ---
@@ -210,7 +227,6 @@
       connectWebSocket();
 
       // Register Cleanup for HTMX
-      // This listener will fire when HTMX is about to swap OUT the content
       document.body.addEventListener('htmx:beforeSwap', cleanup, { once: true });
     }
 
@@ -242,17 +258,20 @@
     function connectWebSocket() {
       if (!state.isActive) return;
 
-      setStatus("Connecting WS...", "neutral");
+      setStatus(`Connecting WS (${state.currentSource})...`, "neutral");
 
       try {
-        state.ws = new WebSocket(state.wsUrl);
+        if (state.ws) {
+            state.ws.close();
+        }
+        state.ws = new WebSocket(getWsUrl());
 
         state.ws.onopen = () => {
           setStatus("Connected", "success");
           ui.connStatus.innerText = "Real-time";
           state.reconnectCount = 0;
         };
-
+        // ... rest of ws logic same as before ...
         state.ws.onmessage = (event) => {
           if (!state.isActive) return;
           try {
@@ -266,34 +285,27 @@
         state.ws.onclose = () => {
           if (!state.isActive) return;
           setStatus("WS Disconnected", "error");
-          ui.connStatus.innerText = "Offline";
           
           if (state.reconnectCount < state.maxReconnects) {
             state.reconnectCount++;
-            setStatus(`Reconnecting (${state.reconnectCount})...`, "warning");
             setTimeout(connectWebSocket, 2000);
-          } else {
-             setStatus("Connection Failed", "error");
           }
         };
-
-        state.ws.onerror = (err) => {
-          console.error("WS Error", err);
-          if (state.isActive) setStatus("WS Error", "error");
-        };
+        
+         state.ws.onerror = (err) => {
+            if (state.isActive) setStatus("WS Error", "error");
+         };
 
       } catch (e) {
-        console.error("WS Setup Error", e);
         setStatus("WS Setup Failed", "error");
       }
     }
 
     // --- Audio Control ---
     function startStream() {
-      setStatus("Connecting Audio...", "warning");
+      setStatus(`Connecting Audio (${state.currentSource})...`, "warning");
       
-      // Cache buster to force new stream
-      const streamUrl = `${state.streamUrl}?t=${Date.now()}`;
+      const streamUrl = getStreamUrl(); 
       state.audioEl.src = streamUrl;
       
       state.audioEl.play().catch(e => {
@@ -372,6 +384,23 @@
       ui.vol.oninput = (e) => {
         const v = parseFloat(e.target.value);
         if (!isNaN(v)) state.audioEl.volume = v;
+      };
+
+      ui.sourceSelect.onchange = (e) => {
+         const newSource = e.target.value;
+         if (newSource !== state.currentSource) {
+             state.currentSource = newSource;
+             console.log("Switching source to:", newSource);
+             
+             // 1. Reconnect WS
+             connectWebSocket();
+             
+             // 2. Restart Audio if playing
+             if (!state.audioEl.paused) {
+                 stopStream();
+                 setTimeout(startStream, 500); // Short delay to allow WS switch
+             }
+         }
       };
     }
 

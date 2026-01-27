@@ -251,7 +251,32 @@ async def dashboard(request: Request, auth: typing.Any = Depends(require_auth)) 
         return None
 
     for config in container_config:
-        # Try exact match first, then fuzzy
+        # Special handling for Recorder to support multiple
+        if config["key"] == "recorder":
+            # Find all keys starting with "recorder" in raw_containers
+            recorders_found = [
+                (k, v) for k, v in raw_containers.items() 
+                if k.startswith("recorder")
+            ]
+            
+            if not recorders_found:
+                 # Add placeholder if none
+                containers.append({
+                    "id": "recorder", "display_name": "Recorder",
+                    "status": "Down", "message": "Not Reported"
+                })
+            else:
+                # Add all found recorders
+                for k, v in recorders_found:
+                    c_copy = v.copy()
+                    # If name is generic "Recorder", append ID? 
+                    # HealthChecker already names them "Recorder (Front)" etc if profile matches
+                    # If not, we rely on v["name"]
+                    c_copy["display_name"] = v.get("name", "Recorder")
+                    containers.append(c_copy)
+            continue
+
+        # Normal logic for others
         c = raw_containers.get(config["key"])
         if not c:
             c = find_container(config["key"], raw_containers)
@@ -352,6 +377,26 @@ async def sse_system_status(
                     containers = []
 
                     for config in container_config:
+                        # Special handling for Recorder to support multiple
+                        if config["key"] == "recorder":
+                            # Find all keys starting with "recorder" in raw_containers
+                            recorders_found = [
+                                (k, v) for k, v in raw_containers.items() 
+                                if k.startswith("recorder")
+                            ]
+                            
+                            if not recorders_found:
+                                containers.append({
+                                    "id": "recorder", "display_name": "Recorder",
+                                    "status": "Down", "message": "Not Reported"
+                                })
+                            else:
+                                for k, v in recorders_found:
+                                    c_copy = v.copy()
+                                    c_copy["display_name"] = v.get("name", "Recorder")
+                                    containers.append(c_copy)
+                            continue
+
                         c = raw_containers.get(config["key"])
                         if not c:
                             # Fuzzy search fallback
@@ -713,11 +758,12 @@ async def recorder_page(request: Request, auth: typing.Any = Depends(require_aut
             "stats": stats,
             "sys_stats": sys_stats,
             "recordings": recordings,
-            "status_label": "Recorder:",
-            "status_value": stats.get("status", "Unknown"),
-            "status_color": "text-green-600 dark:text-green-400"
-            if stats.get("status") == "Running"
-            else "text-red-600 dark:text-red-400",
+            "stats": stats, # Now a list
+            "sys_stats": sys_stats,
+            "recordings": recordings,
+            "status_label": "Recorders:",
+            "status_value": f"{len(stats)} Active",
+            "status_color": "text-green-600 dark:text-green-400" if stats else "text-gray-500",
             "auto_refresh_interval": 5,
         },
     )
@@ -756,8 +802,8 @@ async def livesound_page(request: Request, auth: typing.Any = Depends(require_au
     if isinstance(auth, RedirectResponse):
         return auth
 
-    # No stats needed for pure live stream page initially
-    # If we want livesound container stats, we could fetch them, but for now just render UI
+    # Fetch recorder stats to populate source dropdown
+    recorder_stats = RecorderService.get_status()
 
     return render(
         request,
@@ -765,6 +811,7 @@ async def livesound_page(request: Request, auth: typing.Any = Depends(require_au
         {
             "request": request,
             "page": "livesound",
+            "recorder_stats": recorder_stats, 
             "status_label": "Livesound:",
             "status_value": "Streaming",
             "status_color": "text-purple-600 dark:text-purple-400",

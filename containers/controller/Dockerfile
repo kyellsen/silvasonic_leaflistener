@@ -1,14 +1,8 @@
-
 # --- Stage 1: Builder ---
 FROM python:3.11-slim-bookworm AS builder
 
-# Install build dependencies
 RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential \
-    git \
-    libpq-dev \
-    libsndfile1-dev \
-    gcc \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
@@ -16,27 +10,31 @@ WORKDIR /app
 # Install uv
 COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
 
-# Create venv and install dependencies
-# Install dependencies
-COPY pyproject.toml uv.lock ./
+# Copy pyproject.toml
+COPY pyproject.toml ./
+
 ENV VIRTUAL_ENV=/app/.venv
 ENV PATH="/app/.venv/bin:$PATH"
 
+# Create venv and install dependencies directly from pyproject.toml
+# We use --no-cache to avoid saving cache in the image
 RUN uv venv && \
-    uv lock && \
-    uv export --frozen --no-emit-project --no-dev --format requirements-txt > requirements.txt && \
-    uv pip install --no-cache -r requirements.txt
+    uv pip install --no-cache -r pyproject.toml
 
 
 # --- Stage 2: Runtime ---
 FROM python:3.11-slim-bookworm
 
-# Install runtime dependencies
-# libsndfile1 for audio, ffmpeg for resizing
+# Install system dependencies
+# - podman: For CLI orchestration
+# - alsa-utils: For 'arecord -l' device discovery
+# - udev: For device events
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    libsndfile1 \
-    ffmpeg \
-    libpq5 \
+    podman \
+    alsa-utils \
+    udev \
+    libasound2-dev \
+    gcc \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
@@ -46,16 +44,10 @@ COPY --from=builder /app/.venv /app/.venv
 ENV PATH="/app/.venv/bin:$PATH"
 
 # Copy source code
-COPY src/ src/
+COPY src /app/src
+COPY mic_profiles /app/mic_profiles
 
-# Copy default config
-RUN mkdir -p /etc/birdnet
-COPY config.yml /etc/birdnet/config.yml
-
-# Set environment variables
 ENV PYTHONUNBUFFERED=1
 ENV PYTHONPATH=/app
 
-# Command to run
-CMD ["python", "src/main.py"]
-
+CMD ["python", "-m", "src.main"]
