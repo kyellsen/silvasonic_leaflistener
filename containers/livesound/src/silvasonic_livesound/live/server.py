@@ -21,24 +21,24 @@ app.add_middleware(
 )
 
 
-@app.on_event("startup")  # type: ignore
+@app.on_event("startup")  # type: ignore[untyped-decorator]
 async def startup_event() -> None:
     # Pass the running loop to the processor
     loop = asyncio.get_running_loop()
     processor.start(loop)
 
 
-@app.on_event("shutdown")  # type: ignore
+@app.on_event("shutdown")  # type: ignore[untyped-decorator]
 async def shutdown_event() -> None:
     processor.stop()
 
 
-@app.get("/")  # type: ignore
+@app.get("/")  # type: ignore[untyped-decorator]
 async def get() -> HTMLResponse:
     return HTMLResponse("<h1>Silvasonic Brain Live</h1><p>Active.</p>")
 
 
-@app.websocket("/ws/spectrogram")  # type: ignore
+@app.websocket("/ws/spectrogram")  # type: ignore[untyped-decorator]
 async def websocket_endpoint(websocket: WebSocket, source: str = "default") -> None:
     """WebSocket endpoint for spectrogram data.
     Usage: ws://host/ws/spectrogram?source=front
@@ -62,13 +62,15 @@ async def websocket_endpoint(websocket: WebSocket, source: str = "default") -> N
         processor.unsubscribe_spectrogram(queue, source)
 
 
-@app.get("/stream")  # type: ignore
+@app.get("/stream")  # type: ignore[untyped-decorator]
 async def stream_audio(source: str = "default") -> StreamingResponse:
     """Streams audio to the browser by piping the creation of MP3.
     Usage: GET /stream?source=front
     """
     return StreamingResponse(
-        audio_stream_generator(source), media_type="audio/mpeg", headers={"Cache-Control": "no-cache"}
+        audio_stream_generator(source),
+        media_type="audio/mpeg",
+        headers={"Cache-Control": "no-cache"},
     )
 
 

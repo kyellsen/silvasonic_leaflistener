@@ -80,7 +80,7 @@ class CarrierService:
                         d["upload_time"] = d["upload_time"].isoformat()
 
                     d["size_mb"] = round((d.get("size_bytes") or 0) / (1024 * 1024), 2)
-                    
+
                     # Derive Source from filename (e.g. "front/2023..." -> "front")
                     fname = d.get("filename", "")
                     if "/" in fname:
@@ -89,7 +89,7 @@ class CarrierService:
                     else:
                         d["source"] = "Default"
                         d["filename_only"] = fname
-                        
+
                     items.append(d)
                 return items
         except Exception as e:
@@ -168,6 +168,6 @@ class CarrierService:
         try:
             async with db.get_connection() as conn:
                 query = text("SELECT MAX(filename) FROM carrier.uploads WHERE status='success'")
-                return (await conn.execute(query)).scalar()
+                return (await conn.execute(query)).scalar()  # type: ignore[no-any-return]
         except Exception:
             return None

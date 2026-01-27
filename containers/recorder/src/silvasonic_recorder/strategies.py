@@ -11,8 +11,8 @@ try:
     import numpy as np
     import soundfile as sf
 except ImportError:
-    np: typing.Any = None
-    sf: typing.Any = None
+    np: typing.Any = None  # type: ignore[no-redef]
+    sf: typing.Any = None  # type: ignore[no-redef]
 
 logger = logging.getLogger("recorder.strategies")
 

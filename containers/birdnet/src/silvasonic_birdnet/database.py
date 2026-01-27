@@ -16,7 +16,7 @@ logger = logging.getLogger("Database")
 Base: typing.Any = declarative_base()
 
 
-class BirdNETDetection(Base):  # type: ignore
+class BirdNETDetection(Base):  # type: ignore[misc]
     __tablename__ = "detections"
     __table_args__ = {"schema": "birdnet"}
 
@@ -43,7 +43,7 @@ class BirdNETDetection(Base):  # type: ignore
     clip_path = Column(String(1024), nullable=True)
 
 
-class SpeciesInfo(Base):  # type: ignore
+class SpeciesInfo(Base):  # type: ignore[misc]
     __tablename__ = "species_info"
     __table_args__ = {"schema": "birdnet"}
 
@@ -59,7 +59,7 @@ class SpeciesInfo(Base):  # type: ignore
     last_updated = Column(DateTime, default=lambda: datetime.now(UTC))
 
 
-class Watchlist(Base):  # type: ignore
+class Watchlist(Base):  # type: ignore[misc]
     __tablename__ = "watchlist"
     __table_args__ = {"schema": "birdnet"}
 
@@ -75,7 +75,7 @@ class Watchlist(Base):  # type: ignore
     min_confidence = Column(Float, default=0.0)  # 0.0 = Use global default
 
 
-class ProcessedFile(Base):  # type: ignore
+class ProcessedFile(Base):  # type: ignore[misc]
     __tablename__ = "processed_files"
     __table_args__ = {"schema": "birdnet"}
 

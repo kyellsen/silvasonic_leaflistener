@@ -1,15 +1,16 @@
-import pytest
 import datetime
-from sqlalchemy import text
 from unittest.mock import AsyncMock, MagicMock, patch
+
+import pytest
 from silvasonic_dashboard.services.birdnet_stats import BirdNetStatsService
+
 
 @pytest.mark.asyncio
 async def test_get_advanced_stats_defaults():
     # Mocking the database connection and execution
     mock_conn = AsyncMock()
     mock_result = MagicMock()
-    
+
     # Mock daily results
     row_daily = MagicMock()
     row_daily.date = datetime.date(2023, 1, 1)
@@ -20,7 +21,7 @@ async def test_get_advanced_stats_defaults():
 
     with patch("silvasonic_dashboard.services.database.db.get_connection", return_value=mock_conn):
         stats = await BirdNetStatsService.get_advanced_stats()
-        
+
         assert "period" in stats
         assert "daily" in stats
         assert "hourly" in stats
@@ -33,17 +34,18 @@ async def test_get_advanced_stats_defaults():
         assert stats["period"]["start"] == expected_start
         assert stats["period"]["end"] == today.isoformat()
 
+
 @pytest.mark.asyncio
 async def test_get_advanced_stats_with_dates():
     mock_conn = AsyncMock()
     # Setup minimal mocks for all queries
-    mock_conn.execute.return_value = MagicMock() # Generic result
+    mock_conn.execute.return_value = MagicMock()  # Generic result
 
     start = datetime.date(2023, 1, 1)
     end = datetime.date(2023, 1, 7)
 
     with patch("silvasonic_dashboard.services.database.db.get_connection", return_value=mock_conn):
         stats = await BirdNetStatsService.get_advanced_stats(start, end)
-        
+
         assert stats["period"]["start"] == start.isoformat()
         assert stats["period"]["end"] == end.isoformat()

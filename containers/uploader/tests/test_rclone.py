@@ -61,7 +61,7 @@ class TestRcloneWrapper:
         assert success is True
         assert callback.call_count == 2
         callback.assert_has_calls(
-            [call("file1.txt", "success"), call("file2.txt", "success")], any_order=True
+            [call("file1.txt", "success", ""), call("file2.txt", "success", "")], any_order=True
         )
 
     @patch("subprocess.Popen")
@@ -79,7 +79,7 @@ class TestRcloneWrapper:
         success = rclone.copy("/src", "remote:/dst", callback=callback)
 
         assert success is False
-        callback.assert_called_once_with("badfile.txt", "failed", error="Network Error")
+        callback.assert_called_once_with("badfile.txt", "failed", "Network Error")
 
     @patch("subprocess.Popen")
     def test_transfer_execution_exception(

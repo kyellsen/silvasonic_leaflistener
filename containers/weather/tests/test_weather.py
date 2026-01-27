@@ -1,60 +1,59 @@
-
-import pytest
-from unittest.mock import MagicMock, call
-import pandas as pd
 import sys
-from datetime import datetime
-from silvasonic_weather import main
-from wetterdienst.metadata.parameter import Parameter
+from unittest.mock import MagicMock
 
-def test_init_db(mock_db_engine):
+import pandas as pd
+from silvasonic_weather import main
+
+
+def test_init_db(mock_db_engine) -> None:
     """Test that init_db creates the schema and table."""
     mock_engine, mock_conn = mock_db_engine
-    
+
     main.init_db()
-    
+
     # Check that execute was called
     assert mock_conn.execute.called
-    
+
     # Check for specific SQL parts
     # Check for specific SQL parts
     calls = mock_conn.execute.call_args_list
-    
+
     # helper to get sql text from call
     def get_sql(call_obj):
-        arg = call_obj[0][0] # first arg
-        return str(arg) # str(TextClause) returns the SQL usually, or arg.text
+        arg = call_obj[0][0]  # first arg
+        return str(arg)  # str(TextClause) returns the SQL usually, or arg.text
 
     assert any("CREATE SCHEMA IF NOT EXISTS weather" in get_sql(c) for c in calls)
     assert any("CREATE TABLE IF NOT EXISTS weather.measurements" in get_sql(c) for c in calls)
     assert any("sunshine_seconds FLOAT" in get_sql(c) for c in calls)
     assert any("wind_gust_ms FLOAT" in get_sql(c) for c in calls)
 
-def test_fetch_weather_success(mock_wetterdienst, mock_db_engine, sample_weather_df):
+
+def test_fetch_weather_success(mock_wetterdienst, mock_db_engine, sample_weather_df) -> None:
     """Test successful weather fetch and storage."""
     mock_cls, mock_req = mock_wetterdienst
     mock_engine, mock_conn = mock_db_engine
-    
+
     # Setup mock return chain: request.filter_by_rank(...).values.all().df -> sample_df
     mock_values = MagicMock()
     mock_values.all.return_value.df = sample_weather_df
-    
+
     mock_filtered = MagicMock()
     mock_filtered.values = mock_values
-    
+
     mock_req.filter_by_rank.return_value = mock_filtered
-    
+
     # Run
     main.fetch_weather()
-    
+
     # Verify request param setup
     mock_cls.assert_called_once()
     args, kwargs = mock_cls.call_args
-    params = kwargs['parameters']
-    
-    assert Parameter.SUNSHINE_DURATION in params
-    assert Parameter.WIND_GUST_MAX in params
-    
+    params = kwargs["parameter"]
+
+    assert "sunshine_duration" in params
+    assert "wind_gust_max" in params
+
     # Verify DB insert
     # We look for the INSERT statement call
     insert_call = None
@@ -62,37 +61,38 @@ def test_fetch_weather_success(mock_wetterdienst, mock_db_engine, sample_weather
         if "INSERT INTO weather.measurements" in str(c[0][0]):  # str(text object)
             insert_call = c
             break
-            
+
     assert insert_call is not None
-    
+
     # Check values passed to execute
     # args[0] is the statement, args[1] is the params dict
     inserted_params = insert_call[0][1]
-    
-    assert inserted_params['sid'] == "00433"
-    assert inserted_params['temp'] == 20.0  # 293.15K - 273.15 = 20.0C
-    assert inserted_params['hum'] == 65.0
-    assert inserted_params['precip'] == 0.5
-    assert inserted_params['wind'] == 3.5
-    assert inserted_params['gust'] == 8.2
-    assert inserted_params['sun'] == 600.0
-    assert inserted_params['cloud'] == 45.0
-    
-def test_fetch_weather_no_data(mock_wetterdienst, mock_db_engine):
+
+    assert inserted_params["sid"] == "00433"
+    assert inserted_params["temp"] == 20.0  # 293.15K - 273.15 = 20.0C
+    assert inserted_params["hum"] == 65.0
+    assert inserted_params["precip"] == 0.5
+    assert inserted_params["wind"] == 3.5
+    assert inserted_params["gust"] == 8.2
+    assert inserted_params["sun"] == 600.0
+    assert inserted_params["cloud"] == 45.0
+
+
+def test_fetch_weather_no_data(mock_wetterdienst, mock_db_engine) -> None:
     """Test handling of empty API response."""
     mock_cls, mock_req = mock_wetterdienst
     mock_engine, mock_conn = mock_db_engine
-    
+
     # Return empty DF
     mock_values = MagicMock()
-    mock_values.all.return_value.df = pd.DataFrame() # Empty
-    
+    mock_values.all.return_value.df = pd.DataFrame()  # Empty
+
     mock_filtered = MagicMock()
     mock_filtered.values = mock_values
     mock_req.filter_by_rank.return_value = mock_filtered
-    
+
     main.fetch_weather()
-    
+
     # Should not call db execute with INSERT
     # mock_conn.execute might be called for other things? No, we use a new connection in fetch_weather context.
     # Actually fetch_weather calls get_db_connection() inside.
@@ -101,73 +101,78 @@ def test_fetch_weather_no_data(mock_wetterdienst, mock_db_engine):
     # 1. request...
     # 2. if values.empty: return
     # 3. with get_db_connection()...
-    
+
     # So get_db_connection should NOT be called if we strictly mock engine.connect
     # BUT main.py calls get_db_connection() inside fetch_weather ONLY after the check.
     # So mock_engine.connect() should NOT be called.
-    
+
     # Wait, get_db_connection call `engine.connect()`.
     # If we return early, `engine.connect()` is not called.
-    
+
     assert not mock_engine.connect.called
 
-def test_get_location_default(monkeypatch):
+
+def test_get_location_default(monkeypatch) -> None:
     """Test get_location returns default when config missing."""
     monkeypatch.setattr("os.path.exists", MagicMock(return_value=False))
     lat, lon = main.get_location()
     assert lat == main.DEFAULT_LAT
     assert lon == main.DEFAULT_LON
 
-def test_get_location_config(monkeypatch, tmp_path):
+
+def test_get_location_config(monkeypatch, tmp_path) -> None:
     """Test get_location reads from config."""
     config_file = tmp_path / "settings.json"
     config_file.write_text('{"location": {"latitude": 10.0, "longitude": 20.0}}')
-    
+
     monkeypatch.setattr("silvasonic_weather.main.CONFIG_PATH", str(config_file))
-    
+
     lat, lon = main.get_location()
     assert lat == 10.0
     assert lon == 20.0
 
-def test_find_station_success(mock_wetterdienst):
+
+def test_find_station_success(mock_wetterdienst) -> None:
     """Test finding a station."""
     mock_cls, mock_req = mock_wetterdienst
-    
+
     # Mock result df
     mock_df = pd.DataFrame({"station_id": ["00123"]})
     mock_req.filter_by_rank.return_value.df = mock_df
-    
+
     sid = main.find_station(50.0, 10.0)
     assert sid == "00123"
 
-def test_find_station_empty(mock_wetterdienst):
+
+def test_find_station_empty(mock_wetterdienst) -> None:
     """Test finding station failure."""
     mock_cls, mock_req = mock_wetterdienst
     mock_req.filter_by_rank.return_value.df = pd.DataFrame()
-    
+
     sid = main.find_station(50.0, 10.0)
     assert sid is None
 
-def test_write_status(monkeypatch):
+
+def test_write_status(monkeypatch) -> None:
     """Test writing status file."""
     mock_open = MagicMock()
     mock_file = MagicMock()
     mock_open.return_value.__enter__.return_value = mock_file
-    
+
     monkeypatch.setattr("builtins.open", mock_open)
     monkeypatch.setattr("os.makedirs", MagicMock())
     monkeypatch.setattr("os.rename", MagicMock())
     monkeypatch.setattr("os.getpid", MagicMock(return_value=123))
-    
+
     # Mock psutil
     mock_psutil = MagicMock()
     mock_psutil.cpu_percent.return_value = 10.0
     mock_mem = MagicMock()
-    mock_mem.rss = 1024 * 1024 * 10 
+    mock_mem.rss = 1024 * 1024 * 10
     mock_psutil.Process.return_value.memory_info.return_value = mock_mem
     sys.modules["psutil"] = mock_psutil
-    
+
     main.write_status("Testing")
-    
+
     assert mock_open.called
     assert mock_psutil.cpu_percent.called

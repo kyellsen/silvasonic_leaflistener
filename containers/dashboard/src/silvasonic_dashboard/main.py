@@ -112,7 +112,7 @@ def write_status() -> None:
         time.sleep(5)  # Check every 5s
 
 
-@app.on_event("startup")  # type: ignore
+@app.on_event("startup")  # type: ignore[untyped-decorator]
 async def startup_event() -> None:
     # Start status writer in thread
     t = threading.Thread(target=write_status, daemon=True)
@@ -123,7 +123,7 @@ async def startup_event() -> None:
 app.mount("/static", StaticFiles(directory=os.path.join(BASE_DIR, "static")), name="static")
 
 
-@app.middleware("http")  # type: ignore
+@app.middleware("http")  # type: ignore[untyped-decorator]
 async def add_security_headers(
     request: Request, call_next: typing.Callable[[Request], typing.Awaitable[typing.Any]]
 ) -> typing.Any:
@@ -133,7 +133,7 @@ async def add_security_headers(
     return response
 
 
-@app.get("/", response_class=HTMLResponse)  # type: ignore
+@app.get("/", response_class=HTMLResponse)  # type: ignore[untyped-decorator]
 async def root(request: Request) -> typing.Any:
     # Redirect to dashboard if authed, else login
     from silvasonic_dashboard.auth import check_auth
@@ -144,12 +144,12 @@ async def root(request: Request) -> typing.Any:
 
 
 # --- Auth Routes ---
-@app.get("/auth/login", response_class=HTMLResponse)  # type: ignore
+@app.get("/auth/login", response_class=HTMLResponse)  # type: ignore[untyped-decorator]
 async def login_page(request: Request) -> typing.Any:
     return templates.TemplateResponse("login.html", {"request": request})
 
 
-@app.post("/auth/login")  # type: ignore
+@app.post("/auth/login")  # type: ignore[untyped-decorator]
 async def login_submit(
     request: Request, username: str = Form(...), password: str = Form(...)
 ) -> typing.Any:
@@ -173,7 +173,7 @@ async def login_submit(
     )
 
 
-@app.get("/auth/logout")  # type: ignore
+@app.get("/auth/logout")  # type: ignore[untyped-decorator]
 async def logout() -> typing.Any:
     response = RedirectResponse(url="/auth/login", status_code=HTTP_302_FOUND)
     response.delete_cookie(COOKIE_NAME)
@@ -183,7 +183,7 @@ async def logout() -> typing.Any:
 # --- Protected Routes ---
 
 
-@app.get("/dashboard", response_class=HTMLResponse)  # type: ignore
+@app.get("/dashboard", response_class=HTMLResponse)  # type: ignore[untyped-decorator]
 async def dashboard(request: Request, auth: typing.Any = Depends(require_auth)) -> typing.Any:
     if isinstance(auth, RedirectResponse):
         return auth
@@ -222,37 +222,39 @@ async def dashboard(request: Request, auth: typing.Any = Depends(require_auth)) 
     # Fetch Recorder Statuses for Throughput
     recorder_statuses = RecorderService.get_status()
     recorders_throughput = []
-    
+
     for r in recorder_statuses:
         # Determine strict activity (running vs idle) via file creation?
-        # For now, trust the status "Running" if we had container stats, 
-        # but here we have the file-based status. 
+        # For now, trust the status "Running" if we had container stats,
+        # but here we have the file-based status.
         # Actually RecorderService.get_status() returns data from json files written by containers.
         # Let's use that.
         # r = {"status": "Running", "meta": {...}, "profile": {...} }
-        
+
         # We also want to support "Active" check via file rate per recorder?
-        # That would require scanning folders per recorder. 
+        # That would require scanning folders per recorder.
         # RecorderService.get_creation_rate() is global.
         # Let's stick to the status reported by the container for now.
-        
+
         is_active = r.get("status") == "Running"
-        
+
         # Nicer display name
         display_name = r.get("device", "Unknown Recorder")
         if r.get("profile") and "name" in r.get("profile"):
-             display_name = r["profile"]["name"]
-             
-        recorders_throughput.append({
-            "name": display_name,
-            "is_active": is_active,
-            "status": r.get("status", "Unknown"),
-            "device": r.get("device", "Unknown"),
-        })
+            display_name = r["profile"]["name"]
+
+        recorders_throughput.append(
+            {
+                "name": display_name,
+                "is_active": is_active,
+                "status": r.get("status", "Unknown"),
+                "device": r.get("device", "Unknown"),
+            }
+        )
 
     throughput = {
         "recorder_active": RecorderService.get_creation_rate(10) > 0,  # Global activity
-        "recorders": recorders_throughput, # List of individual recorders
+        "recorders": recorders_throughput,  # List of individual recorders
         "analyzer_lag": analyzer_lag,
         "uploader_lag": uploader_lag,
         "analyzer_status": get_status(analyzer_lag),
@@ -288,21 +290,24 @@ async def dashboard(request: Request, auth: typing.Any = Depends(require_auth)) 
         if config["key"] == "recorder":
             # Find all keys starting with "recorder" in raw_containers
             recorders_found = [
-                (k, v) for k, v in raw_containers.items() 
-                if k.startswith("recorder")
+                (k, v) for k, v in raw_containers.items() if k.startswith("recorder")
             ]
-            
+
             if not recorders_found:
-                 # Add placeholder if none
-                containers.append({
-                    "id": "recorder", "display_name": "Recorder",
-                    "status": "Down", "message": "Not Reported"
-                })
+                # Add placeholder if none
+                containers.append(
+                    {
+                        "id": "recorder",
+                        "display_name": "Recorder",
+                        "status": "Down",
+                        "message": "Not Reported",
+                    }
+                )
             else:
                 # Add all found recorders
-                for k, v in recorders_found:
+                for _, v in recorders_found:
                     c_copy = v.copy()
-                    # If name is generic "Recorder", append ID? 
+                    # If name is generic "Recorder", append ID?
                     # HealthChecker already names them "Recorder (Front)" etc if profile matches
                     # If not, we rely on v["name"]
                     c_copy["display_name"] = v.get("name", "Recorder")
@@ -355,7 +360,7 @@ async def dashboard(request: Request, auth: typing.Any = Depends(require_auth)) 
     )
 
 
-@app.get("/api/events/system")  # type: ignore
+@app.get("/api/events/system")  # type: ignore[untyped-decorator]
 async def sse_system_status(
     request: Request, auth: typing.Any = Depends(require_auth)
 ) -> typing.Any:
@@ -415,17 +420,22 @@ async def sse_system_status(
                         if config["key"] == "recorder":
                             # Find all keys starting with "recorder" in raw_containers
                             recorders_found = [
-                                (k, v) for k, v in raw_containers.items() 
+                                (k, v)
+                                for k, v in raw_containers.items()
                                 if k.startswith("recorder")
                             ]
-                            
+
                             if not recorders_found:
-                                containers.append({
-                                    "id": "recorder", "display_name": "Recorder",
-                                    "status": "Down", "message": "Not Reported"
-                                })
+                                containers.append(
+                                    {
+                                        "id": "recorder",
+                                        "display_name": "Recorder",
+                                        "status": "Down",
+                                        "message": "Not Reported",
+                                    }
+                                )
                             else:
-                                for k, v in recorders_found:
+                                for _, v in recorders_found:
                                     c_copy = v.copy()
                                     c_copy["display_name"] = v.get("name", "Recorder")
                                     containers.append(c_copy)
@@ -484,7 +494,7 @@ async def sse_system_status(
     return StreamingResponse(event_generator(), media_type="text/event-stream")
 
 
-@app.get("/settings", response_class=HTMLResponse)  # type: ignore
+@app.get("/settings", response_class=HTMLResponse)  # type: ignore[untyped-decorator]
 async def settings_page(request: Request, auth: typing.Any = Depends(require_auth)) -> typing.Any:
     if isinstance(auth, RedirectResponse):
         return auth
@@ -505,7 +515,7 @@ async def settings_page(request: Request, auth: typing.Any = Depends(require_aut
     )
 
 
-@app.get("/about", response_class=HTMLResponse)  # type: ignore
+@app.get("/about", response_class=HTMLResponse)  # type: ignore[untyped-decorator]
 async def about_page(request: Request, auth: typing.Any = Depends(require_auth)) -> typing.Any:
     if isinstance(auth, RedirectResponse):
         return auth
@@ -523,7 +533,7 @@ async def about_page(request: Request, auth: typing.Any = Depends(require_auth))
     )
 
 
-@app.post("/settings", response_class=HTMLResponse)  # type: ignore
+@app.post("/settings", response_class=HTMLResponse)  # type: ignore[untyped-decorator]
 async def settings_save(request: Request, auth: typing.Any = Depends(require_auth)) -> typing.Any:
     if isinstance(auth, RedirectResponse):
         return auth
@@ -532,13 +542,13 @@ async def settings_save(request: Request, auth: typing.Any = Depends(require_aut
 
     # Process Form
     use_german = form.get("use_german_names") == "on"
-    notifier_email = form.get("notifier_email", "").strip()
-    apprise_urls_raw = form.get("apprise_urls", "").strip()
+    notifier_email = str(form.get("notifier_email", "")).strip()
+    apprise_urls_raw = str(form.get("apprise_urls", "")).strip()
 
     # Location
     try:
-        latitude = float(form.get("latitude", 52.52))
-        longitude = float(form.get("longitude", 13.40))
+        latitude = float(str(form.get("latitude", 52.52)))
+        longitude = float(str(form.get("longitude", 13.40)))
     except (ValueError, TypeError):
         latitude = 0.0  # Will likely fail validation if range logic works, or be valid but wrong.
         # Actually, let's keep the raw values or try parse?
@@ -573,9 +583,9 @@ async def settings_save(request: Request, auth: typing.Any = Depends(require_aut
     # BirdNET Form Parsing
     try:
         settings.setdefault("birdnet", {})
-        settings["birdnet"]["min_confidence"] = float(form.get("birdnet_min_confidence", 0.7))
-        settings["birdnet"]["sensitivity"] = float(form.get("birdnet_sensitivity", 1.0))
-        settings["birdnet"]["overlap"] = float(form.get("birdnet_overlap", 0.0))
+        settings["birdnet"]["min_confidence"] = float(str(form.get("birdnet_min_confidence", 0.7)))
+        settings["birdnet"]["sensitivity"] = float(str(form.get("birdnet_sensitivity", 1.0)))
+        settings["birdnet"]["overlap"] = float(str(form.get("birdnet_overlap", 0.0)))
     except (ValueError, TypeError):
         # Fallback to existing or defaults if bad input
         pass
@@ -589,7 +599,7 @@ async def settings_save(request: Request, auth: typing.Any = Depends(require_aut
         val = form.get(key)
         if val:
             try:
-                settings["healthchecker"]["service_timeouts"][svc] = int(val)
+                settings["healthchecker"]["service_timeouts"][svc] = int(str(val))
             except ValueError:
                 pass  # Keep previous or default
 
@@ -647,7 +657,7 @@ async def settings_save(request: Request, auth: typing.Any = Depends(require_aut
     )
 
 
-@app.get("/logs", response_class=HTMLResponse)  # type: ignore
+@app.get("/logs", response_class=HTMLResponse)  # type: ignore[untyped-decorator]
 async def logs_page(request: Request, auth: typing.Any = Depends(require_auth)) -> typing.Any:
     if isinstance(auth, RedirectResponse):
         return auth
@@ -664,7 +674,7 @@ async def logs_page(request: Request, auth: typing.Any = Depends(require_auth)) 
     )
 
 
-@app.get("/birdnet", response_class=HTMLResponse)  # type: ignore
+@app.get("/birdnet", response_class=HTMLResponse)  # type: ignore[untyped-decorator]
 async def birdnet_page(request: Request, auth: typing.Any = Depends(require_auth)) -> typing.Any:
     if isinstance(auth, RedirectResponse):
         return auth
@@ -688,7 +698,7 @@ async def birdnet_page(request: Request, auth: typing.Any = Depends(require_auth
     )
 
 
-@app.get("/birdnet/discover", response_class=HTMLResponse)  # type: ignore
+@app.get("/birdnet/discover", response_class=HTMLResponse)  # type: ignore[untyped-decorator]
 async def birdnet_discover_page(
     request: Request, auth: typing.Any = Depends(require_auth)
 ) -> typing.Any:
@@ -718,7 +728,7 @@ async def birdnet_discover_page(
     )
 
 
-@app.get("/birdnet/discover/{species_name}", response_class=HTMLResponse)  # type: ignore
+@app.get("/birdnet/discover/{species_name}", response_class=HTMLResponse)  # type: ignore[untyped-decorator]
 async def birdnet_species_page(
     request: Request, species_name: str, auth: typing.Any = Depends(require_auth)
 ) -> typing.Any:
@@ -748,7 +758,7 @@ async def birdnet_species_page(
     )
 
 
-@app.get("/stats", response_class=HTMLResponse)  # type: ignore
+@app.get("/stats", response_class=HTMLResponse)  # type: ignore[untyped-decorator]
 async def stats_page(
     request: Request,
     start: str | None = None,
@@ -788,7 +798,7 @@ async def stats_page(
     )
 
 
-@app.get("/recorder", response_class=HTMLResponse)  # type: ignore
+@app.get("/recorder", response_class=HTMLResponse)  # type: ignore[untyped-decorator]
 async def recorder_page(request: Request, auth: typing.Any = Depends(require_auth)) -> typing.Any:
     if isinstance(auth, RedirectResponse):
         return auth
@@ -804,10 +814,7 @@ async def recorder_page(request: Request, auth: typing.Any = Depends(require_aut
         {
             "request": request,
             "page": "recorder",
-            "stats": stats,
-            "sys_stats": sys_stats,
-            "recordings": recordings,
-            "stats": stats, # Now a list
+            "stats": stats,  # Now a list
             "sys_stats": sys_stats,
             "recordings": recordings,
             "status_label": "Recorders:",
@@ -818,7 +825,7 @@ async def recorder_page(request: Request, auth: typing.Any = Depends(require_aut
     )
 
 
-@app.get("/uploader", response_class=HTMLResponse)  # type: ignore
+@app.get("/uploader", response_class=HTMLResponse)  # type: ignore[untyped-decorator]
 async def uploader_page(request: Request, auth: typing.Any = Depends(require_auth)) -> typing.Any:
     if isinstance(auth, RedirectResponse):
         return auth
@@ -829,7 +836,9 @@ async def uploader_page(request: Request, auth: typing.Any = Depends(require_aut
     failed_uploads = await CarrierService.get_failed_uploads(limit=50)
 
     # Check for HTMX request
-    template = "partials/uploader_content.html" if request.headers.get("HX-Request") else "uploader.html"
+    template = (
+        "partials/uploader_content.html" if request.headers.get("HX-Request") else "uploader.html"
+    )
 
     return render(
         request,
@@ -849,7 +858,7 @@ async def uploader_page(request: Request, auth: typing.Any = Depends(require_aut
     )
 
 
-@app.get("/livesound", response_class=HTMLResponse)  # type: ignore
+@app.get("/livesound", response_class=HTMLResponse)  # type: ignore[untyped-decorator]
 async def livesound_page(request: Request, auth: typing.Any = Depends(require_auth)) -> typing.Any:
     if isinstance(auth, RedirectResponse):
         return auth
@@ -863,7 +872,7 @@ async def livesound_page(request: Request, auth: typing.Any = Depends(require_au
         {
             "request": request,
             "page": "livesound",
-            "recorder_stats": recorder_stats, 
+            "recorder_stats": recorder_stats,
             "status_label": "Livesound:",
             "status_value": "Streaming",
             "status_color": "text-purple-600 dark:text-purple-400",
@@ -873,7 +882,7 @@ async def livesound_page(request: Request, auth: typing.Any = Depends(require_au
     )
 
 
-@app.get("/weather", response_class=HTMLResponse)  # type: ignore
+@app.get("/weather", response_class=HTMLResponse)  # type: ignore[untyped-decorator]
 async def weather_page(request: Request, auth: typing.Any = Depends(require_auth)) -> typing.Any:
     if isinstance(auth, RedirectResponse):
         return auth
@@ -906,13 +915,13 @@ async def weather_page(request: Request, auth: typing.Any = Depends(require_auth
 # --- Inspector API Partials ---
 
 
-class WatchlistToggleRequest(BaseModel):
+class WatchlistToggleRequest(BaseModel):  # type: ignore[misc]
     scientific_name: str
     common_name: str
     enabled: bool
 
 
-@app.post("/api/watchlist/toggle")  # type: ignore
+@app.post("/api/watchlist/toggle")  # type: ignore[untyped-decorator]
 async def api_toggle_watchlist(
     req: WatchlistToggleRequest, auth: typing.Any = Depends(require_auth)
 ) -> typing.Any:
@@ -928,7 +937,7 @@ async def api_toggle_watchlist(
         raise HTTPException(500, "Failed to toggle watchlist")
 
 
-@app.get("/api/details/birdnet/{filename:path}", response_class=HTMLResponse)  # type: ignore
+@app.get("/api/details/birdnet/{filename:path}", response_class=HTMLResponse)  # type: ignore[untyped-decorator]
 async def get_birdnet_details(
     request: Request, filename: str, auth: typing.Any = Depends(require_auth)
 ) -> typing.Any:
@@ -951,7 +960,7 @@ async def get_birdnet_details(
     return render(request, "partials/inspector_birdnet.html", {"request": request, "d": data})
 
 
-@app.get("/api/export/birdnet/csv")  # type: ignore
+@app.get("/api/export/birdnet/csv")  # type: ignore[untyped-decorator]
 async def export_birdnet_csv(auth: typing.Any = Depends(require_auth)) -> typing.Any:
     if isinstance(auth, RedirectResponse):
         raise HTTPException(401)
@@ -990,7 +999,7 @@ async def export_birdnet_csv(auth: typing.Any = Depends(require_auth)) -> typing
 # --- API / HTMX Partials ---
 
 
-@app.get("/api/logs/{service}")  # type: ignore
+@app.get("/api/logs/{service}")  # type: ignore[untyped-decorator]
 async def get_logs(
     service: str, lines: int = 200, auth: typing.Any = Depends(require_auth)
 ) -> typing.Any:
@@ -1036,7 +1045,7 @@ async def get_logs(
         return {"content": f"Error accessing logs: {str(e)}"}
 
 
-@app.get("/api/audio/{filename:path}")  # type: ignore
+@app.get("/api/audio/{filename:path}")  # type: ignore[untyped-decorator]
 async def stream_audio(filename: str, auth: typing.Any = Depends(require_auth)) -> typing.Any:
     """Stream audio file from recording dir"""
     if isinstance(auth, RedirectResponse):
@@ -1062,7 +1071,7 @@ async def stream_audio(filename: str, auth: typing.Any = Depends(require_auth)) 
     return FileResponse(safe_path, media_type="audio/flac")
 
 
-@app.get("/api/clips/{filename:path}")  # type: ignore
+@app.get("/api/clips/{filename:path}")  # type: ignore[untyped-decorator]
 async def stream_clip(filename: str, auth: typing.Any = Depends(require_auth)) -> typing.Any:
     """Stream clip from clips dir"""
     if isinstance(auth, RedirectResponse):
@@ -1083,7 +1092,7 @@ async def stream_clip(filename: str, auth: typing.Any = Depends(require_auth)) -
     return FileResponse(safe_path, media_type="audio/wav")
 
 
-@app.get("/api/spectrogram/{filename:path}")  # type: ignore
+@app.get("/api/spectrogram/{filename:path}")  # type: ignore[untyped-decorator]
 async def stream_spectrogram(filename: str, auth: typing.Any = Depends(require_auth)) -> typing.Any:
     """Stream spectrogram from artifacts dir, generating it if needed (Lazy Loading)"""
     if isinstance(auth, RedirectResponse):

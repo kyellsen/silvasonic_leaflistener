@@ -1,26 +1,27 @@
-
-import pytest
-from unittest.mock import MagicMock
-import sys
 import os
-import pandas as pd
+import sys
 from datetime import datetime
-import builtins
+from unittest.mock import MagicMock
+
+import pandas as pd
+import pytest
 
 # Add src to pythonpath
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../src")))
+
 
 @pytest.fixture
 def mock_wetterdienst(monkeypatch):
     """Mock the wetterdienst DwdObservationRequest."""
     mock_request = MagicMock()
-    
+
     # Mock class to return our mock instance
     mock_cls = MagicMock(return_value=mock_request)
-    
+
     monkeypatch.setattr("silvasonic_weather.main.DwdObservationRequest", mock_cls)
-    
+
     return mock_cls, mock_request
+
 
 @pytest.fixture
 def mock_db_engine(monkeypatch):
@@ -28,11 +29,12 @@ def mock_db_engine(monkeypatch):
     mock_engine = MagicMock()
     mock_conn = MagicMock()
     mock_engine.connect.return_value.__enter__.return_value = mock_conn
-    
+
     monkeypatch.setattr("silvasonic_weather.main.engine", mock_engine)
     monkeypatch.setattr("silvasonic_weather.analysis.engine", mock_engine)
-    
+
     return mock_engine, mock_conn
+
 
 @pytest.fixture
 def sample_weather_df():
@@ -47,18 +49,18 @@ def sample_weather_df():
             "wind_speed",
             "wind_gust_max",
             "sunshine_duration",
-            "cloud_cover_total"
+            "cloud_cover_total",
         ],
         "date": [datetime(2023, 10, 27, 12, 0, 0)] * 7,
         "value": [
-            293.15, # Temp in Kelvin (20C)
-            65.0,   # Humidity
-            0.5,    # Precip
-            3.5,    # Wind
-            8.2,    # Gust
+            293.15,  # Temp in Kelvin (20C)
+            65.0,  # Humidity
+            0.5,  # Precip
+            3.5,  # Wind
+            8.2,  # Gust
             600.0,  # Sunshine (seconds)
-            45.0    # Cloud cover
+            45.0,  # Cloud cover
         ],
-        "quality": [1] * 7
+        "quality": [1] * 7,
     }
     return pd.DataFrame(data)

@@ -52,13 +52,18 @@ class TestMain:
             queue_size = calculate_queue_size(temp_fs, mock_db)
             assert queue_size == 0
 
-    @patch("main.STATUS_FILE", new_callable=lambda: "status.json")
+    @patch("silvasonic_uploader.main.STATUS_FILE", new_callable=lambda: "status.json")
     def test_write_status(self, mock_status_file: MagicMock, temp_fs: str) -> None:
         """Test writing status to the status file."""
         # Redirect STATUS_FILE to temp dir
         status_path = os.path.join(temp_fs, "status.json")
 
-        with patch("main.STATUS_FILE", status_path):
+        with (
+            patch("silvasonic_uploader.main.STATUS_FILE", status_path),
+            patch("silvasonic_uploader.main.psutil") as mock_psutil,
+        ):
+            mock_psutil.cpu_percent.return_value = 10.0
+            mock_psutil.Process.return_value.memory_info.return_value.rss = 1024 * 1024 * 50
             from silvasonic_uploader.main import write_status
 
             write_status("Testing", last_upload=123.0, queue_size=5, disk_usage=45.0)
@@ -73,12 +78,12 @@ class TestMain:
             assert data["meta"]["disk_usage_percent"] == 45.0
             assert "timestamp" in data
 
-    @patch("main.ERROR_DIR", new_callable=lambda: "errors")
+    @patch("silvasonic_uploader.main.ERROR_DIR", new_callable=lambda: "errors")
     def test_report_error(self, mock_error_dir: MagicMock, temp_fs: str) -> None:
         """Test reporting errors to the error directory."""
         error_dir = os.path.join(temp_fs, "errors")
 
-        with patch("main.ERROR_DIR", error_dir):
+        with patch("silvasonic_uploader.main.ERROR_DIR", error_dir):
             os.makedirs(error_dir, exist_ok=True)
             try:
                 raise ValueError("Test Error")
@@ -95,10 +100,10 @@ class TestMain:
             assert data["context"] == "test_context"
             assert "Test Error" in data["error"]
 
-    @patch("main.setup_environment")
+    @patch("silvasonic_uploader.main.setup_environment")
     @patch("silvasonic_uploader.database.DatabaseHandler")
-    @patch("main.RcloneWrapper")
-    @patch("main.StorageJanitor")
+    @patch("silvasonic_uploader.main.RcloneWrapper")
+    @patch("silvasonic_uploader.main.StorageJanitor")
     @patch("time.sleep")
     def test_main_loop_flow(
         self,
@@ -125,13 +130,13 @@ class TestMain:
 
         # Run main
         # We need to patch SOURCE_DIR and constants locally
-        import main
+        import silvasonic_uploader.main as main
 
         with (
-            patch("main.SOURCE_DIR", temp_fs),
-            patch("main.NEXTCLOUD_URL", "http://url"),
-            patch("main.NEXTCLOUD_USER", "user"),
-            patch("main.NEXTCLOUD_PASSWORD", "pass"),
+            patch("silvasonic_uploader.main.SOURCE_DIR", temp_fs),
+            patch("silvasonic_uploader.main.NEXTCLOUD_URL", "http://url"),
+            patch("silvasonic_uploader.main.NEXTCLOUD_USER", "user"),
+            patch("silvasonic_uploader.main.NEXTCLOUD_PASSWORD", "pass"),
         ):
             try:
                 main.main()
@@ -148,10 +153,10 @@ class TestMain:
         # Check cleanup called (since upload success)
         mock_janitor_inst.check_and_clean.assert_called()
 
-    @patch("main.setup_environment")
+    @patch("silvasonic_uploader.main.setup_environment")
     @patch("silvasonic_uploader.database.DatabaseHandler")
-    @patch("main.RcloneWrapper")
-    @patch("main.StorageJanitor")
+    @patch("silvasonic_uploader.main.RcloneWrapper")
+    @patch("silvasonic_uploader.main.StorageJanitor")
     @patch("time.sleep")
     def test_main_loop_failure(
         self,
@@ -169,13 +174,13 @@ class TestMain:
         mock_wrapper.copy.return_value = False  # Failure
 
         with (
-            patch("main.SOURCE_DIR", temp_fs),
-            patch("main.NEXTCLOUD_URL", "http://url"),
-            patch("main.NEXTCLOUD_USER", "user"),
-            patch("main.NEXTCLOUD_PASSWORD", "pass"),
+            patch("silvasonic_uploader.main.SOURCE_DIR", temp_fs),
+            patch("silvasonic_uploader.main.NEXTCLOUD_URL", "http://url"),
+            patch("silvasonic_uploader.main.NEXTCLOUD_USER", "user"),
+            patch("silvasonic_uploader.main.NEXTCLOUD_PASSWORD", "pass"),
         ):
             try:
-                import main
+                import silvasonic_uploader.main as main
 
                 main.main()
             except SystemExit:
@@ -188,14 +193,14 @@ class TestMain:
         """Test the upload callback function logging to the database."""
         with (
             patch("silvasonic_uploader.database.DatabaseHandler") as mock_db_cls,
-            patch("main.RcloneWrapper") as mock_rclone,
-            patch("main.StorageJanitor"),
+            patch("silvasonic_uploader.main.RcloneWrapper") as mock_rclone,
+            patch("silvasonic_uploader.main.StorageJanitor"),
             patch("time.sleep", side_effect=SystemExit),
-            patch("main.SOURCE_DIR", "/tmp"),
-            patch("main.setup_environment"),
+            patch("silvasonic_uploader.main.SOURCE_DIR", "/tmp"),
+            patch("silvasonic_uploader.main.setup_environment"),
         ):
             try:
-                import main
+                import silvasonic_uploader.main as main
 
                 main.main()
             except SystemExit:
@@ -231,8 +236,8 @@ class TestMain:
                 error_message="Network Error",
             )
 
-    @patch("main.logging")
-    @patch("main.os.makedirs")
+    @patch("silvasonic_uploader.main.logging")
+    @patch("silvasonic_uploader.main.os.makedirs")
     def test_setup_environment(self, mock_makedirs: MagicMock, mock_logging: MagicMock) -> None:
         """Test that environment setup creates necessary directories and configures logging."""
         from silvasonic_uploader.main import setup_environment
@@ -243,10 +248,10 @@ class TestMain:
         assert mock_makedirs.call_count >= 2
         mock_logging.basicConfig.assert_called_once()
 
-    @patch("main.setup_environment")
+    @patch("silvasonic_uploader.main.setup_environment")
     @patch("silvasonic_uploader.database.DatabaseHandler")
-    @patch("main.RcloneWrapper")
-    @patch("main.StorageJanitor")
+    @patch("silvasonic_uploader.main.RcloneWrapper")
+    @patch("silvasonic_uploader.main.StorageJanitor")
     @patch("time.sleep")
     def test_main_loop_crash(
         self,
@@ -269,9 +274,12 @@ class TestMain:
         # sleep triggers SystemExit to break loop eventually, but verify we hit report_error
         mock_sleep.side_effect = [SystemExit("Stop")]
 
-        with patch("main.SOURCE_DIR", temp_fs), patch("main.report_error") as mock_report:
+        with (
+            patch("silvasonic_uploader.main.SOURCE_DIR", temp_fs),
+            patch("silvasonic_uploader.main.report_error") as mock_report,
+        ):
             try:
-                import main
+                import silvasonic_uploader.main as main
 
                 main.main()
             except SystemExit:

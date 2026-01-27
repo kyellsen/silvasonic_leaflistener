@@ -1,9 +1,9 @@
 import asyncio
 import logging
+import os
 import socket
 import threading
 import typing
-import os
 from dataclasses import dataclass, field
 
 import librosa
@@ -35,10 +35,11 @@ class StreamConfig:
                         self.ports[name.strip()] = int(port.strip())
                 except ValueError:
                     logger.error(f"Invalid LISTEN_PORTS format: {env_ports}. Fallback to default.")
-            
+
             if not self.ports:
                 # Default fallback
                 self.ports = {"default": 1234}
+
     # 4096 samples @ 48k = ~85ms latency chunks
     chunk_size: int = 4096
     fft_window: int = 2048
@@ -53,17 +54,17 @@ class AudioIngestor:
         if config is None:
             config = StreamConfig()
         self.config = config
-        
+
         # Sockets: {source_name: socket}
         self.sockets: dict[str, socket.socket] = {}
-        
+
         # Threads: {source_name: thread}
         self.threads: dict[str, threading.Thread] = {}
         self._lock = threading.Lock()
 
         self.running = False
         self.status_dir = "/mnt/data/services/silvasonic/status"
-        
+
         # Thread-safe integration with AsyncIO
         self.loop: asyncio.AbstractEventLoop | None = None
 
@@ -74,7 +75,7 @@ class AudioIngestor:
         # Initialize sockets from static config (env vars)
         self.update_sources(self.config.ports)
 
-        logger.info(f"AudioIngestor initialized.")
+        logger.info("AudioIngestor initialized.")
 
     def update_sources(self, new_ports: dict[str, int]) -> None:
         """Update active sockets based on new mapping."""
@@ -85,7 +86,11 @@ class AudioIngestor:
                     self._setup_socket(source, port)
                     # Start thread if running
                     if self.running and source in self.sockets:
-                        t = threading.Thread(target=self._ingest_loop, args=(source, self.sockets[source]), daemon=True)
+                        t = threading.Thread(
+                            target=self._ingest_loop,
+                            args=(source, self.sockets[source]),
+                            daemon=True,
+                        )
                         self.threads[source] = t
                         t.start()
                 except Exception as e:
@@ -112,8 +117,9 @@ class AudioIngestor:
         """Poll for dynamic source configuration."""
         import json
         import time
+
         config_file = os.path.join(self.status_dir, "livesound_sources.json")
-        last_mtime = 0
+        last_mtime: float = 0.0
 
         while self.running:
             try:
@@ -127,25 +133,25 @@ class AudioIngestor:
                                 self.update_sources(sources)
             except Exception as e:
                 logger.error(f"Config Watch Error: {e}")
-            
+
             time.sleep(2)
 
     def start(self, loop: asyncio.AbstractEventLoop) -> None:
         """Start the ingestion threads."""
         self.loop = loop
         self.running = True
-        
+
         # Start existing threads
         for source, sock in self.sockets.items():
             if source not in self.threads or not self.threads[source].is_alive():
                 t = threading.Thread(target=self._ingest_loop, args=(source, sock), daemon=True)
                 self.threads[source] = t
                 t.start()
-        
+
         # Start Config Watcher
         self.watcher_thread = threading.Thread(target=self._watch_config_loop, daemon=True)
         self.watcher_thread.start()
-            
+
         logger.info("Audio ingestion threads started.")
 
     def stop(self) -> None:
@@ -163,15 +169,15 @@ class AudioIngestor:
         """Subscribe to spectrogram updates for a specific source."""
         # Use first available source if default requested but not present (fallback)
         if source == "default":
-             if "default" not in self.sockets and self.sockets:
-                 source = next(iter(self.sockets))
+            if "default" not in self.sockets and self.sockets:
+                source = next(iter(self.sockets))
 
         # Validate against ACTUAL hardware sockets, not queue dict
         if source not in self.sockets:
-             logger.warning(f"Subscribe request for known source: {source}")
-             # We can still register it, but it won't get data.
-             # Alternatively, we could auto-create a socket if we were truly dynamic,
-             # but here we just safely register the queue.
+            logger.warning(f"Subscribe request for known source: {source}")
+            # We can still register it, but it won't get data.
+            # Alternatively, we could auto-create a socket if we were truly dynamic,
+            # but here we just safely register the queue.
 
         with self._lock:
             if source not in self._spectrogram_queues:
@@ -179,7 +185,7 @@ class AudioIngestor:
 
             q: asyncio.Queue[list[int]] = asyncio.Queue()
             self._spectrogram_queues[source].add(q)
-        
+
         return q
 
     def unsubscribe_spectrogram(self, q: asyncio.Queue[list[int]], source: str = "default") -> None:
@@ -198,8 +204,8 @@ class AudioIngestor:
     async def subscribe_audio(self, source: str = "default") -> asyncio.Queue[bytes]:
         """Subscribe to raw audio updates."""
         if source == "default":
-             if "default" not in self.sockets and self.sockets:
-                 source = next(iter(self.sockets))
+            if "default" not in self.sockets and self.sockets:
+                source = next(iter(self.sockets))
 
         with self._lock:
             if source not in self._audio_queues:
@@ -224,13 +230,13 @@ class AudioIngestor:
     def _broadcast_safe(self, queues: set[asyncio.Queue[typing.Any]], data: typing.Any) -> None:
         """Helper to put data into queues from a thread safely."""
         if not self.loop or not self.running:
-             return
+            return
 
         # Snapshot the queues under lock to avoid "Set changed size during iteration"
         with self._lock:
-             if not queues:
-                 return
-             target_queues = list(queues)
+            if not queues:
+                return
+            target_queues = list(queues)
 
         for q in target_queues:
             try:
@@ -248,7 +254,7 @@ class AudioIngestor:
         fft_buffer = np.zeros(0, dtype=np.float32)
 
         # Pre-calculate mel basis for performance
-        mel_basis = librosa.filters.mel(
+        mel_basis = librosa.filters.mel(  # type: ignore[attr-defined]
             sr=self.config.sample_rate,
             n_fft=self.config.fft_window,
             n_mels=128,
@@ -266,7 +272,7 @@ class AudioIngestor:
 
                 # 1. Distribute Raw Audio (Bytes)
                 if source in self._audio_queues:
-                     self._broadcast_safe(self._audio_queues[source], data)
+                    self._broadcast_safe(self._audio_queues[source], data)
 
                 # OPTIMIZATION: Skip processing if no one is watching the spectrogram
                 if source not in self._spectrogram_queues or not self._spectrogram_queues[source]:

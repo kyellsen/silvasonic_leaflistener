@@ -11,11 +11,12 @@ from unittest.mock import MagicMock, patch
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__))))
 
 # Mock config and database before importing analyzer
-sys.modules["src.database"] = MagicMock()
-sys.modules["src.config"] = MagicMock()
+# sys.modules["silvasonic_birdnet"] = MagicMock()
+sys.modules["silvasonic_birdnet.database"] = MagicMock()
+sys.modules["silvasonic_birdnet.config"] = MagicMock()
 
-from src.config import config  # noqa: E402
-from src.database import db  # noqa: E402
+from silvasonic_birdnet.config import config  # noqa: E402
+from silvasonic_birdnet.database import db  # noqa: E402
 
 # Setup Mock Config
 config.RESULTS_DIR = Path("/tmp/birdnet_test_results")
@@ -33,7 +34,7 @@ config.LATITUDE = 10
 config.LONGITUDE = 10
 
 # Now import analyzer
-from src.analyzer import BirdNETAnalyzer  # noqa: E402
+from silvasonic_birdnet.analyzer import BirdNETAnalyzer  # noqa: E402
 
 
 class TestClipSaving(unittest.TestCase):
@@ -77,9 +78,9 @@ class TestClipSaving(unittest.TestCase):
             writer.writerow(["3.0", "4.0", "Erithacus rubecula", "European Robin", "0.90"])
         return csv_path
 
-    @patch("src.analyzer.BirdNETAnalyzer._trigger_alert")
-    @patch("src.analyzer.bn_analyze")
-    @patch("src.analyzer.BirdNETAnalyzer._run_ffmpeg_resampling")
+    @patch("silvasonic_birdnet.analyzer.BirdNETAnalyzer._trigger_alert")
+    @patch("silvasonic_birdnet.analyzer.bn_analyze")
+    @patch("silvasonic_birdnet.analyzer.BirdNETAnalyzer._run_ffmpeg_resampling")
     def test_clip_saving(
         self, mock_ffmpeg: MagicMock, mock_bn: MagicMock, mock_alert: MagicMock
     ) -> None:

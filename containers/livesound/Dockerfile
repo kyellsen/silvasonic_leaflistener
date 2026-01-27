@@ -44,4 +44,4 @@ ENV PYTHONUNBUFFERED=1
 ENV PYTHONPATH=/app/src
 
 # Run the application
-CMD ["python", "-m", "src.main"]
+CMD ["python", "-m", "silvasonic_livesound.main"]

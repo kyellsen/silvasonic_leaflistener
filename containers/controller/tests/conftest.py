@@ -1,4 +1,3 @@
-
 import sys
 from unittest.mock import MagicMock
 
@@ -8,5 +7,3 @@ sys.modules["pyudev"] = module_mock
 sys.modules["psutil"] = module_mock
 
 # Ensure we can import them
-import pyudev
-import psutil

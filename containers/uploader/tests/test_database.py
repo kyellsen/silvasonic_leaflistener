@@ -14,8 +14,10 @@ class TestDatabaseHandler:
         import os
         import sys
 
-        # Load uploader/src/database.py directly
-        db_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "../src/database.py"))
+        # Load uploader/src/silvasonic_uploader/database.py directly
+        db_path = os.path.abspath(
+            os.path.join(os.path.dirname(__file__), "../src/silvasonic_uploader/database.py")
+        )
         spec = importlib.util.spec_from_file_location("uploader_database", db_path)
         assert spec is not None
         uploader_database = importlib.util.module_from_spec(spec)

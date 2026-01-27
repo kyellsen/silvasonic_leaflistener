@@ -4,7 +4,7 @@
   hx-get="/weather"
   hx-trigger="every {{ auto_refresh_interval }}s"
   hx-swap="outerHTML"
-  x-data="weatherDashboard({
+  x-data="createWeatherDashboard({
       history: {{ history | tojson }},
       correlations: {{ correlations | tojson }},
       isDark: document.documentElement.classList.contains('dark')
@@ -177,238 +177,236 @@
   </div>
 
   <script>
-    document.addEventListener("alpine:init", () => {
-      Alpine.data("weatherDashboard", (data) => ({
-        history: data.history,
-        correlations: data.correlations,
-        isDark: data.isDark,
-        charts: {},
+    window.createWeatherDashboard = (data) => ({
+      history: data.history,
+      correlations: data.correlations,
+      isDark: data.isDark,
+      charts: {},
 
-        init() {
-          this.$nextTick(() => {
-            this.renderHistoryChart();
-            this.renderCorrelationCharts();
-          });
+      init() {
+        this.$nextTick(() => {
+          this.renderHistoryChart();
+          this.renderCorrelationCharts();
+        });
 
-          // Listen for theme changes if you implement a global event
-          // For now, we rely on the check at init.
-          // A better approach for dynamic theme switch is a window listener:
-          const observer = new MutationObserver((mutations) => {
-            const newDark = document.documentElement.classList.contains("dark");
-            if (this.isDark !== newDark) {
-              this.isDark = newDark;
-              this.updateTheme();
-            }
-          });
-          observer.observe(document.documentElement, {
-            attributes: true,
-            attributeFilter: ["class"],
-          });
-        },
+        // Listen for theme changes if you implement a global event
+        // For now, we rely on the check at init.
+        // A better approach for dynamic theme switch is a window listener:
+        const observer = new MutationObserver((mutations) => {
+          const newDark = document.documentElement.classList.contains("dark");
+          if (this.isDark !== newDark) {
+            this.isDark = newDark;
+            this.updateTheme();
+          }
+        });
+        observer.observe(document.documentElement, {
+          attributes: true,
+          attributeFilter: ["class"],
+        });
+      },
 
-        getChartConfig(type) {
-          const textColor = this.isDark ? "#9ca3af" : "#4b5563"; // gray-400 : gray-600
-          const gridColor = this.isDark ? "#374151" : "#e5e7eb"; // gray-700 : gray-200
+      getChartConfig(type) {
+        const textColor = this.isDark ? "#9ca3af" : "#4b5563"; // gray-400 : gray-600
+        const gridColor = this.isDark ? "#374151" : "#e5e7eb"; // gray-700 : gray-200
 
-          return {
-            chart: {
-              type: type,
-              background: "transparent",
-              toolbar: { show: false },
-              animations: { enabled: true },
+        return {
+          chart: {
+            type: type,
+            background: "transparent",
+            toolbar: { show: false },
+            animations: { enabled: true },
+          },
+          theme: { mode: this.isDark ? "dark" : "light" },
+          dataLabels: { enabled: false },
+          grid: {
+            borderColor: gridColor,
+            strokeDashArray: 4,
+          },
+          xaxis: {
+            labels: {
+              style: { colors: textColor, fontFamily: "Inter, sans-serif" },
             },
-            theme: { mode: this.isDark ? "dark" : "light" },
-            dataLabels: { enabled: false },
-            grid: {
-              borderColor: gridColor,
-              strokeDashArray: 4,
+            axisBorder: { show: false },
+            axisTicks: { show: false },
+          },
+          yaxis: {
+            labels: {
+              style: { colors: textColor, fontFamily: "Inter, sans-serif" },
             },
-            xaxis: {
+          },
+          legend: {
+            labels: { colors: textColor },
+          },
+        };
+      },
+
+      renderHistoryChart() {
+        if (!document.getElementById("weatherChart")) return;
+
+        const options = {
+          ...this.getChartConfig("area"),
+          series: [
+            { name: "Temperature", data: this.history.temp },
+            { name: "Humidity", data: this.history.humidity },
+          ],
+          chart: {
+            type: "area",
+            height: 300,
+            parentHeightOffset: 0,
+            background: "transparent",
+            toolbar: { show: false },
+          },
+          colors: ["#ef4444", "#3b82f6"],
+          fill: {
+            type: "gradient",
+            gradient: {
+              shadeIntensity: 1,
+              opacityFrom: 0.4,
+              opacityTo: 0.05,
+              stops: [0, 100],
+            },
+          },
+          stroke: { curve: "smooth", width: 2 },
+          xaxis: {
+            categories: this.history.labels,
+            tooltip: { enabled: false },
+          },
+          yaxis: [
+            {
+              seriesName: "Temperature",
               labels: {
-                style: { colors: textColor, fontFamily: "Inter, sans-serif" },
+                style: { colors: "#ef4444" },
+                formatter: (val) => val.toFixed(1) + "°C",
               },
-              axisBorder: { show: false },
-              axisTicks: { show: false },
             },
-            yaxis: {
+            {
+              opposite: true,
+              seriesName: "Humidity",
               labels: {
-                style: { colors: textColor, fontFamily: "Inter, sans-serif" },
+                style: { colors: "#3b82f6" },
+                formatter: (val) => val.toFixed(0) + "%",
               },
             },
-            legend: {
-              labels: { colors: textColor },
-            },
-          };
-        },
+          ],
+        };
 
-        renderHistoryChart() {
-          if (!document.getElementById("weatherChart")) return;
+        this.charts.history = new ApexCharts(
+          document.querySelector("#weatherChart"),
+          options,
+        );
+        this.charts.history.render();
+      },
+
+      renderCorrelationCharts() {
+        // 1. Scatter Temp
+        if (
+          document.getElementById("scatterTempChart") &&
+          this.correlations.scatter_temp
+        ) {
+          const scatterData = this.correlations.scatter_temp.map((p) => [
+            p.x,
+            p.y,
+          ]);
 
           const options = {
-            ...this.getChartConfig("area"),
+            ...this.getChartConfig("scatter"),
             series: [
-              { name: "Temperature", data: this.history.temp },
-              { name: "Humidity", data: this.history.humidity },
+              {
+                name: "Detections",
+                data: scatterData,
+              },
             ],
             chart: {
-              type: "area",
-              height: 300,
-              parentHeightOffset: 0,
-              background: "transparent",
+              type: "scatter",
+              height: 250,
               toolbar: { show: false },
             },
-            colors: ["#ef4444", "#3b82f6"],
-            fill: {
-              type: "gradient",
-              gradient: {
-                shadeIntensity: 1,
-                opacityFrom: 0.4,
-                opacityTo: 0.05,
-                stops: [0, 100],
-              },
-            },
-            stroke: { curve: "smooth", width: 2 },
+            colors: ["#ef4444"],
             xaxis: {
-              categories: this.history.labels,
-              tooltip: { enabled: false },
+              title: { text: "Temperature (°C)" },
+              tickAmount: 5,
+              labels: { formatter: (val) => parseFloat(val).toFixed(1) },
             },
+            yaxis: {
+              title: { text: "Detections" },
+            },
+            markers: { size: 6, strokeWidth: 0, hover: { size: 9 } },
+          };
+
+          this.charts.scatter = new ApexCharts(
+            document.querySelector("#scatterTempChart"),
+            options,
+          );
+          this.charts.scatter.render();
+        }
+
+        // 2. Rain Overlay
+        if (document.getElementById("rainOverlayChart")) {
+          const options = {
+            ...this.getChartConfig("line"),
+            series: [
+              {
+                name: "Detections",
+                type: "area",
+                data: this.correlations.series_count,
+              },
+              {
+                name: "Rain (mm)",
+                type: "bar",
+                data: this.correlations.series_rain,
+              },
+            ],
+            chart: {
+              height: 250,
+              type: "line",
+              toolbar: { show: false },
+            },
+            stroke: { width: [3, 0], curve: "smooth" },
+            colors: ["#10b981", "#3b82f6"],
+            fill: {
+              type: ["gradient", "solid"],
+              gradient: { opacityFrom: 0.4, opacityTo: 0.05 },
+            },
+            xaxis: { categories: this.correlations.labels, tickAmount: 6 },
             yaxis: [
               {
-                seriesName: "Temperature",
-                labels: {
-                  style: { colors: "#ef4444" },
-                  formatter: (val) => val.toFixed(1) + "°C",
-                },
+                title: { text: "Detections" },
+                labels: { style: { colors: "#10b981" } },
               },
               {
                 opposite: true,
-                seriesName: "Humidity",
-                labels: {
-                  style: { colors: "#3b82f6" },
-                  formatter: (val) => val.toFixed(0) + "%",
-                },
+                title: { text: "Rain (mm)" },
+                labels: { style: { colors: "#3b82f6" } },
               },
             ],
           };
 
-          this.charts.history = new ApexCharts(
-            document.querySelector("#weatherChart"),
+          this.charts.rain = new ApexCharts(
+            document.querySelector("#rainOverlayChart"),
             options,
           );
-          this.charts.history.render();
-        },
+          this.charts.rain.render();
+        }
+      },
 
-        renderCorrelationCharts() {
-          // 1. Scatter Temp
-          if (
-            document.getElementById("scatterTempChart") &&
-            this.correlations.scatter_temp
-          ) {
-            const scatterData = this.correlations.scatter_temp.map((p) => [
-              p.x,
-              p.y,
-            ]);
+      updateTheme() {
+        // ApexCharts updateOptions for theme
+        const newMode = this.isDark ? "dark" : "light";
+        const textColor = this.isDark ? "#9ca3af" : "#4b5563";
+        const gridColor = this.isDark ? "#374151" : "#e5e7eb";
 
-            const options = {
-              ...this.getChartConfig("scatter"),
-              series: [
-                {
-                  name: "Detections",
-                  data: scatterData,
-                },
-              ],
-              chart: {
-                type: "scatter",
-                height: 250,
-                toolbar: { show: false },
-              },
-              colors: ["#ef4444"],
-              xaxis: {
-                title: { text: "Temperature (°C)" },
-                tickAmount: 5,
-                labels: { formatter: (val) => parseFloat(val).toFixed(1) },
-              },
-              yaxis: {
-                title: { text: "Detections" },
-              },
-              markers: { size: 6, strokeWidth: 0, hover: { size: 9 } },
-            };
+        const commonUpdate = {
+          theme: { mode: newMode },
+          grid: { borderColor: gridColor },
+          xaxis: { labels: { style: { colors: textColor } } },
+          yaxis: { labels: { style: { colors: textColor } } },
+          legend: { labels: { colors: textColor } },
+        };
 
-            this.charts.scatter = new ApexCharts(
-              document.querySelector("#scatterTempChart"),
-              options,
-            );
-            this.charts.scatter.render();
-          }
-
-          // 2. Rain Overlay
-          if (document.getElementById("rainOverlayChart")) {
-            const options = {
-              ...this.getChartConfig("line"),
-              series: [
-                {
-                  name: "Detections",
-                  type: "area",
-                  data: this.correlations.series_count,
-                },
-                {
-                  name: "Rain (mm)",
-                  type: "bar",
-                  data: this.correlations.series_rain,
-                },
-              ],
-              chart: {
-                height: 250,
-                type: "line",
-                toolbar: { show: false },
-              },
-              stroke: { width: [3, 0], curve: "smooth" },
-              colors: ["#10b981", "#3b82f6"],
-              fill: {
-                type: ["gradient", "solid"],
-                gradient: { opacityFrom: 0.4, opacityTo: 0.05 },
-              },
-              xaxis: { categories: this.correlations.labels, tickAmount: 6 },
-              yaxis: [
-                {
-                  title: { text: "Detections" },
-                  labels: { style: { colors: "#10b981" } },
-                },
-                {
-                  opposite: true,
-                  title: { text: "Rain (mm)" },
-                  labels: { style: { colors: "#3b82f6" } },
-                },
-              ],
-            };
-
-            this.charts.rain = new ApexCharts(
-              document.querySelector("#rainOverlayChart"),
-              options,
-            );
-            this.charts.rain.render();
-          }
-        },
-
-        updateTheme() {
-          // ApexCharts updateOptions for theme
-          const newMode = this.isDark ? "dark" : "light";
-          const textColor = this.isDark ? "#9ca3af" : "#4b5563";
-          const gridColor = this.isDark ? "#374151" : "#e5e7eb";
-
-          const commonUpdate = {
-            theme: { mode: newMode },
-            grid: { borderColor: gridColor },
-            xaxis: { labels: { style: { colors: textColor } } },
-            yaxis: { labels: { style: { colors: textColor } } },
-            legend: { labels: { colors: textColor } },
-          };
-
-          Object.values(this.charts).forEach((chart) => {
-            chart.updateOptions(commonUpdate);
-          });
-        },
-      }));
+        Object.values(this.charts).forEach((chart) => {
+          chart.updateOptions(commonUpdate);
+        });
+      },
     });
   </script>
   {% endblock %} {% block inspector %}

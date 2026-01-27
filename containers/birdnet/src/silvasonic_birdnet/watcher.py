@@ -2,15 +2,16 @@ import logging
 import os
 import time
 
-from silvasonic_birdnet.analyzer import BirdNETAnalyzer
-from silvasonic_birdnet.config import config
 from watchdog.events import FileClosedEvent, FileSystemEventHandler
 from watchdog.observers import Observer
+
+from silvasonic_birdnet.analyzer import BirdNETAnalyzer
+from silvasonic_birdnet.config import config
 
 logger = logging.getLogger("Watcher")
 
 
-class AudioFileHandler(FileSystemEventHandler):
+class AudioFileHandler(FileSystemEventHandler):  # type: ignore[misc]
     def __init__(self, analyzer: BirdNETAnalyzer):
         self.analyzer = analyzer
 

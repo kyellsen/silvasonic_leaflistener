@@ -31,23 +31,26 @@ class RecorderService:
         statuses = []
         try:
             import glob
+
             # Find all recorder status files
             files = glob.glob(os.path.join(STATUS_DIR, "recorder_*.json"))
-            # Also check legacy/default "recorder.json" if exists and not covered? 
+            # Also check legacy/default "recorder.json" if exists and not covered?
             # If we migrated, we shouldn't have it, but for safety check explicit file too if not in glob
             if os.path.exists(os.path.join(STATUS_DIR, "recorder.json")):
-                 files.append(os.path.join(STATUS_DIR, "recorder.json"))
+                files.append(os.path.join(STATUS_DIR, "recorder.json"))
 
             # Dedup files
             files = list(set(files))
 
             if not files:
-                 return [{
-                    "status": "Unknown",
-                    "profile": "No Recorders Found",
-                    "device": "Unknown",
-                    "storage_forecast": {"daily_str": "?", "remaining_str": "?"},
-                }]
+                return [
+                    {
+                        "status": "Unknown",
+                        "profile": "No Recorders Found",
+                        "device": "Unknown",
+                        "storage_forecast": {"daily_str": "?", "remaining_str": "?"},
+                    }
+                ]
 
             for status_file in files:
                 try:
@@ -94,6 +97,7 @@ class RecorderService:
 
                                 # Calculate Remaining using shutil on the recording path
                                 import shutil
+
                                 check_path = REC_DIR if os.path.exists(REC_DIR) else "/"
                                 usage = shutil.disk_usage(check_path)
                                 free_bytes = usage.free
@@ -113,7 +117,7 @@ class RecorderService:
                         statuses.append(data)
                 except Exception as e:
                     logger.error(f"Error reading {status_file}: {e}")
-            
+
             # Sort by profile name or slug for stability
             statuses.sort(key=lambda x: x.get("profile", {}).get("name", ""))
             return statuses
@@ -121,37 +125,39 @@ class RecorderService:
         except Exception as e:
             logger.error(f"Recorder status error: {e}")
 
-        return [{
-            "status": "Unknown",
-            "profile": "Error",
-            "device": "Unknown",
-            "storage_forecast": {"daily_str": "?", "remaining_str": "?"},
-        }]
+        return [
+            {
+                "status": "Unknown",
+                "profile": "Error",
+                "device": "Unknown",
+                "storage_forecast": {"daily_str": "?", "remaining_str": "?"},
+            }
+        ]
 
     @staticmethod
     async def get_recent_recordings(limit_per_source: int = 20) -> dict[str, list[dict[str, Any]]]:
         """Returns recordings grouped by source (folder name)."""
         grouped_recordings: dict[str, list[dict[str, Any]]] = {}
-        
+
         try:
             # Get current BPS setting from first status for duration fallback
             statuses = RecorderService.get_status()
-            current_bps = 48000 * 2 
+            current_bps: float = 48000.0 * 2
             if statuses and "profile" in statuses[0]:
-                 current_bps = RecorderService.get_audio_settings(statuses[0]["profile"])
+                current_bps = RecorderService.get_audio_settings(statuses[0]["profile"])
 
             if not os.path.exists(REC_DIR):
                 return {}
 
             # Structure: REC_DIR / {source_id} / {file}.flac
             # Or REC_DIR / {file}.flac (legacy/default)
-            
+
             # 1. Identify Sources (Directories)
             sources = [d for d in os.listdir(REC_DIR) if os.path.isdir(os.path.join(REC_DIR, d))]
             if not sources:
                 # Check for files in root (Default source)
                 sources = ["Default"]
-            
+
             # Helper to process a directory
             def scan_source(source_name: str, path: str) -> list[dict[str, Any]]:
                 items = []
@@ -165,31 +171,37 @@ class RecorderService:
                                     dt = datetime.datetime.fromtimestamp(stats.st_mtime)
                                     size_bytes = stats.st_size
                                     size_mb = round(size_bytes / (1024 * 1024), 2)
-                                    
+
                                     # Duration Estimate
                                     duration = 0.0
                                     if size_bytes > 0:
                                         duration = size_bytes / (current_bps * 0.6)
 
-                                    items.append({
-                                        "filename": entry.name,
-                                        "file_size_bytes": size_bytes,
-                                        "size_mb": size_mb,
-                                        "formatted_time": dt.strftime("%Y-%m-%d %H:%M:%S"),
-                                        "created_at_iso": dt.isoformat(),
-                                        "duration_str": f"{duration:.2f}s",
-                                        "duration_sec": duration,
-                                        "source": source_name,
-                                        "audio_relative_path": os.path.join(source_name, entry.name) if source_name != "Default" else entry.name,
-                                        "mtime": stats.st_mtime
-                                    })
+                                    items.append(
+                                        {
+                                            "filename": entry.name,
+                                            "file_size_bytes": size_bytes,
+                                            "size_mb": size_mb,
+                                            "formatted_time": dt.strftime("%Y-%m-%d %H:%M:%S"),
+                                            "created_at_iso": dt.isoformat(),
+                                            "duration_str": f"{duration:.2f}s",
+                                            "duration_sec": duration,
+                                            "source": source_name,
+                                            "audio_relative_path": os.path.join(
+                                                source_name, entry.name
+                                            )
+                                            if source_name != "Default"
+                                            else entry.name,
+                                            "mtime": stats.st_mtime,
+                                        }
+                                    )
                                 except Exception:
                                     pass
                 except Exception as e:
                     logger.error(f"Error scanning source {source_name}: {e}")
-                
+
                 # Sort by mtime DESC
-                items.sort(key=lambda x: x["mtime"], reverse=True)
+                items.sort(key=lambda x: float(str(x.get("mtime", 0))), reverse=True)
                 return items[:limit_per_source]
 
             # 2. Process Sources
@@ -197,24 +209,25 @@ class RecorderService:
             root_files = scan_source("Default", REC_DIR)
             if root_files:
                 grouped_recordings["Default"] = root_files
-                
+
             # Check Subdirectories
             # Actually, scan_source above scans the path we give it.
             # If we identified real directories, scan them.
-            real_sources = [d for d in os.listdir(REC_DIR) if os.path.isdir(os.path.join(REC_DIR, d))]
-            
+            real_sources = [
+                d for d in os.listdir(REC_DIR) if os.path.isdir(os.path.join(REC_DIR, d))
+            ]
+
             for src in real_sources:
-                 path = os.path.join(REC_DIR, src)
-                 files = scan_source(src, path)
-                 if files:
-                     grouped_recordings[src] = files
-                     
+                path = os.path.join(REC_DIR, src)
+                files = scan_source(src, path)
+                if files:
+                    grouped_recordings[src] = files
+
             return grouped_recordings
 
         except Exception as e:
             logger.error(f"Recorder History Error: {e}")
             return {}
-
 
     @staticmethod
     def get_creation_rate(minutes: int = 60) -> float:

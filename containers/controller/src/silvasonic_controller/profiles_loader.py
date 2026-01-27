@@ -5,7 +5,6 @@ Profiles define device detection patterns and optimal audio settings.
 """
 
 import logging
-import os
 import re
 import subprocess
 import typing

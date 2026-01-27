@@ -25,8 +25,8 @@ def get_ip() -> str:
     return str(ip_addr)
 
 
-@app.route("/", defaults={"path": ""})  # type: ignore
-@app.route("/<path:path>")  # type: ignore
+@app.route("/", defaults={"path": ""})
+@app.route("/<path:path>")
 def catch_all(path: str) -> typing.Any:
     """Handle all requests and redirect to the captive portal."""
     # Determine Hostname or IP to redirect to

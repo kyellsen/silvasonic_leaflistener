@@ -8,8 +8,8 @@ import time
 import typing
 
 import psutil
-from janitor import StorageJanitor
-from rclone_wrapper import RcloneWrapper
+from silvasonic_uploader.janitor import StorageJanitor
+from silvasonic_uploader.rclone_wrapper import RcloneWrapper
 
 # Configure Logging
 logger = logging.getLogger("Carrier")
@@ -154,7 +154,7 @@ def main() -> None:
     )
 
     # Database Setup
-    from src.database import DatabaseHandler
+    from silvasonic_uploader.database import DatabaseHandler
 
     db = DatabaseHandler()
     while not db.connect():

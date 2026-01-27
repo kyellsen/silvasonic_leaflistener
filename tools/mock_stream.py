@@ -25,7 +25,7 @@ def load_playlist(audio_dir: Path) -> list[Path]:
     return sorted(files)
 
 
-def process_track(file_path: Path) -> np.ndarray | None:
+def process_track(file_path: Path) -> np.ndarray[typing.Any, typing.Any] | None:
     """Load and process an audio track for streaming."""
     print(f"Loading {file_path.name}...")
     try:
@@ -47,7 +47,7 @@ def process_track(file_path: Path) -> np.ndarray | None:
         data = np.clip(data, -1.0, 1.0)
         audio_int16 = (data * 32767).astype(np.int16)
 
-        return typing.cast(np.ndarray, audio_int16)
+        return typing.cast(np.ndarray[typing.Any, typing.Any], audio_int16)
     except Exception as e:
         print(f"Error loading {file_path}: {e}")
         return None

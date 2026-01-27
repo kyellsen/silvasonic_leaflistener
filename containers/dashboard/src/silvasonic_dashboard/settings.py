@@ -14,11 +14,11 @@ CONFIG_PATH = "/config/settings.json"
 # ... imports ...
 
 
-class LocaleSettings(BaseModel):
+class LocaleSettings(BaseModel):  # type: ignore[misc]
     use_german_names: bool = False
 
 
-class BirdNETSettings(BaseModel):
+class BirdNETSettings(BaseModel):  # type: ignore[misc]
     min_confidence: float = Field(
         default=0.7, ge=0.01, le=0.99, description="Minimum confidence score (0.01-0.99)"
     )
@@ -28,7 +28,7 @@ class BirdNETSettings(BaseModel):
     overlap: float = Field(default=0.0, ge=0.0, le=2.5, description="Overlap in seconds (0.0-2.5)")
 
 
-class HealthCheckerSettings(BaseModel):
+class HealthCheckerSettings(BaseModel):  # type: ignore[misc]
     recipient_email: str | None = Field(default="")  # Empty allowed, falls back to env
     apprise_urls: list[str] = Field(default_factory=list)
     service_timeouts: dict[str, int] = Field(
@@ -41,7 +41,7 @@ class HealthCheckerSettings(BaseModel):
         }
     )
 
-    @validator("recipient_email")
+    @validator("recipient_email")  # type: ignore[untyped-decorator]
     def validate_email(cls, v: str | None) -> str:  # noqa: N805
         if not v:
             return ""
@@ -51,12 +51,12 @@ class HealthCheckerSettings(BaseModel):
         return v
 
 
-class LocationSettings(BaseModel):
+class LocationSettings(BaseModel):  # type: ignore[misc]
     latitude: float = Field(default=54.17301, ge=-90, le=90)
     longitude: float = Field(default=10.49468, ge=-180, le=180)
 
 
-class Settings(BaseModel):
+class Settings(BaseModel):  # type: ignore[misc]
     locale: LocaleSettings = Field(default_factory=LocaleSettings)
     healthchecker: HealthCheckerSettings = Field(default_factory=HealthCheckerSettings)
     location: LocationSettings = Field(default_factory=LocationSettings)
@@ -70,7 +70,7 @@ class SettingsService:
     @staticmethod
     def get_settings() -> dict[str, typing.Any]:
         """Load settings from JSON, returning dict for compatibility."""
-        return SettingsService.load_model().dict()
+        return SettingsService.load_model().dict()  # type: ignore[no-any-return]
 
     @staticmethod
     def load_model() -> Settings:

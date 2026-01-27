@@ -1,8 +1,8 @@
 import datetime
 import typing
 
-from sqlalchemy import text
 from silvasonic_dashboard.settings import SettingsService
+from sqlalchemy import text
 
 from .common import REC_DIR, logger
 from .database import db
@@ -87,7 +87,7 @@ class BirdNetStatsService:
                 end_date = datetime.date.today()
 
             # Ensure they are datetime objects for comparison if needed, but SQL parameters handle dates fine.
-            
+
             async with db.get_connection() as conn:
                 # 1. Activity Trend (Daily counts within range)
                 query_daily = text("""
@@ -101,15 +101,12 @@ class BirdNetStatsService:
                 res_daily = await conn.execute(
                     query_daily, {"start_date": start_date, "end_date": end_date}
                 )
-                
+
                 # ApexCharts desires: { x: '2023-01-01', y: 10 }
                 daily_series = []
                 for row in res_daily:
                     if row.date:
-                        daily_series.append({
-                            "x": row.date.strftime("%Y-%m-%d"),
-                            "y": row.count
-                        })
+                        daily_series.append({"x": row.date.strftime("%Y-%m-%d"), "y": row.count})
 
                 # 2. Hourly Distribution (within range)
                 query_hourly = text("""
@@ -123,7 +120,7 @@ class BirdNetStatsService:
                 res_hourly = await conn.execute(
                     query_hourly, {"start_date": start_date, "end_date": end_date}
                 )
-                
+
                 hourly_map = {r.hour: r.count for r in res_hourly if r.hour is not None}
                 # ApexCharts category series: data array matching categories [0, 1, ... 23]
                 hourly_data = [hourly_map.get(h, 0) for h in range(24)]
@@ -142,7 +139,7 @@ class BirdNetStatsService:
                 res_top = await conn.execute(
                     query_top, {"start_date": start_date, "end_date": end_date}
                 )
-                
+
                 top_labels = []
                 top_values = []
                 for row in res_top:
@@ -150,7 +147,7 @@ class BirdNetStatsService:
                     top_values.append(row.count)
 
                 # 4. Rarest Specifications (Just a list, maybe easiest within range too)
-                # To find "rarest" within this period might be just low counts. 
+                # To find "rarest" within this period might be just low counts.
                 # Or "globally rare" seen in this period? Let's do "Least frequent in this period".
                 query_rarest = text("""
                     SELECT common_name, COUNT(*) as count
@@ -168,17 +165,11 @@ class BirdNetStatsService:
                 rarest_list = [dict(row._mapping) for row in res_rarest]
 
                 return {
-                    "period": {
-                        "start": start_date.isoformat(),
-                        "end": end_date.isoformat()
-                    },
+                    "period": {"start": start_date.isoformat(), "end": end_date.isoformat()},
                     "daily": daily_series,
                     "hourly": hourly_data,
-                    "top_species": {
-                        "labels": top_labels,
-                        "values": top_values
-                    },
-                    "rarest": rarest_list
+                    "top_species": {"labels": top_labels, "values": top_values},
+                    "rarest": rarest_list,
                 }
 
         except Exception as e:
@@ -188,7 +179,7 @@ class BirdNetStatsService:
                 "daily": [],
                 "hourly": [],
                 "top_species": {"labels": [], "values": []},
-                "rarest": []
+                "rarest": [],
             }
 
     @staticmethod

@@ -98,15 +98,15 @@ def write_status(
         # Determine filename
         rec_id = os.getenv("RECORDER_ID")
         if rec_id:
-             filename = f"recorder_{rec_id}.json"
+            filename = f"recorder_{rec_id}.json"
         else:
             slug = "default"
             if profile and hasattr(profile, "slug"):
                 slug = profile.slug
             elif data["meta"].get("profile", {}).get("slug"):
-                 slug = data["meta"]["profile"]["slug"]
+                slug = data["meta"]["profile"]["slug"]
             filename = f"recorder_{slug}.json"
-            
+
         filepath = os.path.join(STATUS_DIR, filename)
 
         # Atomic write
@@ -214,17 +214,17 @@ def main() -> None:
 
     # Create Strategy
     # Using type: ignore because mypy might not like dynamic imports inside function above, but here it's fine
-    strategy = create_strategy_for_profile(profile, device)
+    strategy = create_strategy_for_profile(profile, device)  # type: ignore[arg-type]
 
     # Determine Output Directory
-    # We prefer RECORDER_ID (e.g. "generic_usb_card1") to avoid collisions 
+    # We prefer RECORDER_ID (e.g. "generic_usb_card1") to avoid collisions
     # when multiple devices use the same profile.
     rec_id = os.getenv("RECORDER_ID")
     if rec_id:
         dir_name = rec_id
     else:
         dir_name = profile.slug
-        
+
     output_dir = os.path.join(BASE_OUTPUT_DIR, dir_name)
 
     # Signal Handlers

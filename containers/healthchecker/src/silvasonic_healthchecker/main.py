@@ -119,7 +119,7 @@ def check_services_status(mailer: Mailer) -> None:
                 msg = "Postgres DB is unreachable."
                 logger.error(msg)
                 # mailer.send_alert("Postgres Down", msg) # Uncomment if desired, maybe noisy on startup
-    
+
             system_status[service_id] = service_data
             continue
 
@@ -170,30 +170,30 @@ def check_services_status(mailer: Mailer) -> None:
             filename = os.path.basename(rec_file)
             # recorder_front.json -> recorder_front
             rec_id = os.path.splitext(filename)[0]
-            
+
             with open(rec_file) as f:
                 status = json.load(f)
 
             # Get name from profile if available
             profile_name = status.get("meta", {}).get("profile", {}).get("name", rec_id)
-            
-            timeout_val = 120 # Default for recorders
+
+            timeout_val = 120  # Default for recorders
             last_ts = status.get("timestamp", 0)
-            
+
             rec_data = {
                 "id": rec_id,
                 "name": f"Recorder ({profile_name})",
                 "status": "Running",
                 "last_seen": last_ts,
                 "message": "Active",
-                 "timeout_threshold": timeout_val,
+                "timeout_threshold": timeout_val,
             }
 
             if current_time - last_ts > timeout_val:
-                 rec_data["status"] = "Down"
-                 rec_data["message"] = f"Timeout ({int(current_time - last_ts)}s)"
-                 # Alert logic matching above?
-                 
+                rec_data["status"] = "Down"
+                rec_data["message"] = f"Timeout ({int(current_time - last_ts)}s)"
+                # Alert logic matching above?
+
             system_status[rec_id] = rec_data
 
         except Exception as e:

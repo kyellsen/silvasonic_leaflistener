@@ -33,7 +33,7 @@ def generate_spectrogram(audio_path: str, output_path: str) -> bool:
         # clear any existing plots to avoid memory leaks
         plt.clf()
         plt.figure(figsize=(10, 4))
-        librosa.display.specshow(s_db, sr=sr, x_axis="time", y_axis="hz")
+        librosa.display.specshow(s_db, sr=sr, x_axis="time", y_axis="hz")  # type: ignore[attr-defined]
         plt.colorbar(format="%+2.0f dB")
         plt.title("Spectrogram")
         plt.tight_layout()

@@ -108,57 +108,58 @@ class DetectedDevice:
 def get_alsa_devices() -> list[DetectedDevice]:
     """Get list of ALSA capture devices with USB IDs."""
     devices = []
-    
+
     # 1. Parse /proc/asound/cards to map Card ID -> USB ID
     # Format:
     #  1 [Mic            ]: USB-Audio - RODE NT-USB Mini Mic
     #                       RODE Microphones RODE NT-USB Mini Mic at usb-0000:01:00.0-1.3, full speed
-    card_usb_ids = {}
+    card_usb_ids: dict[str, str] = {}
     try:
         if os.path.exists("/proc/asound/cards"):
-             with open("/proc/asound/cards", "r") as f:
-                 content = f.read()
-                 # Match logic to find "at usb-..." and previous card index
-                 # This is tricky with regex across lines.
-                 # Let's iterate lines.
-                 current_card = None
-                 for line in content.splitlines():
-                     # Line 1:  1 [Mic            ]: USB-Audio - RODE NT-USB Mini Mic
-                     m_card = re.match(r"\s*(\d+)\s+\[", line)
-                     if m_card:
-                         current_card = m_card.group(1)
-                         continue
-                     
-                     # Line 2: ... at usb-0000:01:00.0-1.3, full speed
-                     # We can't easily get the USB Vendor:Product from this text alone without looking up lsusb
-                     # BUT, we can read /sys/class/sound/cardX/id or similar.
-                     pass
-        
+            with open("/proc/asound/cards") as f:
+                content = f.read()
+                # Match logic to find "at usb-..." and previous card index
+                # This is tricky with regex across lines.
+                # Let's iterate lines.
+                # current_card = None
+                for line in content.splitlines():
+                    # Line 1:  1 [Mic            ]: USB-Audio - RODE NT-USB Mini Mic
+                    m_card = re.match(r"\s*(\d+)\s+\[", line)
+                    if m_card:
+                        _current_card = m_card.group(1)
+                        continue
+
+                    # Line 2: ... at usb-0000:01:00.0-1.3, full speed
+                    # We can't easily get the USB Vendor:Product from this text alone without looking up lsusb
+                    # BUT, we can read /sys/class/sound/cardX/id or similar.
+                    pass
+
         # Better approach: Iterate /sys/class/sound/card*
         # /sys/class/sound/card1/device/idVendor
         # /sys/class/sound/card1/device/idProduct
         sys_sound = Path("/sys/class/sound")
         if sys_sound.exists():
             for card_path in sys_sound.glob("card*"):
-                 card_name = card_path.name # card1
-                 if not card_name.startswith("card"): continue
-                 
-                 card_idx = card_name.replace("card", "")
-                 
-                 # Check if it's a USB device
-                 device_link = card_path / "device"
-                 vendor_path = device_link / "idVendor"
-                 product_path = device_link / "idProduct"
-                 
-                 if vendor_path.exists() and product_path.exists():
-                     try:
-                         vid = vendor_path.read_text().strip()
-                         pid = product_path.read_text().strip()
-                         usb_id = f"{vid}:{pid}"
-                         card_usb_ids[card_idx] = usb_id
-                         logger.debug(f"Resolved Card {card_idx} -> USB {usb_id}")
-                     except Exception as e:
-                         pass
+                card_name = card_path.name  # card1
+                if not card_name.startswith("card"):
+                    continue
+
+                card_idx = card_name.replace("card", "")
+
+                # Check if it's a USB device
+                device_link = card_path / "device"
+                vendor_path = device_link / "idVendor"
+                product_path = device_link / "idProduct"
+
+                if vendor_path.exists() and product_path.exists():
+                    try:
+                        vid = vendor_path.read_text().strip()
+                        pid = product_path.read_text().strip()
+                        resolved_usb_id = f"{vid}:{pid}"
+                        card_usb_ids[card_idx] = resolved_usb_id
+                        logger.debug(f"Resolved Card {card_idx} -> USB {resolved_usb_id}")
+                    except Exception:
+                        pass
 
     except Exception as e:
         logger.warning(f"Failed to resolve USB IDs: {e}")
@@ -175,20 +176,20 @@ def get_alsa_devices() -> list[DetectedDevice]:
                 if match:
                     card_id = match.group(1)
                     device_id = match.group(2)
-                    
+
                     # Only interest in capture devices (arecord -l lists them)
                     # Construct hw address
                     hw_addr = f"plughw:{card_id},{device_id}"
-                    
+
                     # Get USB ID if available
-                    usb_id = card_usb_ids.get(card_id)
+                    usb_id: str | None = card_usb_ids.get(card_id)
 
                     devices.append(
                         DetectedDevice(
                             card_id=card_id,
                             hw_address=hw_addr,
                             description=line.strip(),
-                            usb_id=usb_id
+                            usb_id=usb_id,
                         )
                     )
     except Exception as e:
@@ -260,7 +261,7 @@ def find_matching_profile(
 
     # Get available devices
     devices = get_alsa_devices()
-    
+
     if not devices:
         logger.error("No audio devices found via ALSA!")
         return None, None
@@ -275,72 +276,80 @@ def find_matching_profile(
         logger.info(f"Configuration forces profile: '{force_profile}'")
         target_profile = None
         for profile in profiles:
-             if (
+            if (
                 force_profile.lower() in profile.name.lower()
                 or force_profile.lower() == profile.slug
             ):
-                 target_profile = profile
-                 break
-        
+                target_profile = profile
+                break
+
         if target_profile:
             logger.info(f"Targeting profile: {target_profile.name}")
-            
+
             # ATTEMPT 1: Strict Match against Target Profile
             # We want to find the SPECIFIC device that matches this profile
             for device in devices:
                 # Check USB ID
                 if device.usb_id and target_profile.usb_ids:
                     if device.usb_id in target_profile.usb_ids:
-                        logger.info(f"Device {device.hw_address} matches forced profile via USB ID '{device.usb_id}'")
+                        logger.info(
+                            f"Device {device.hw_address} matches forced profile via USB ID '{device.usb_id}'"
+                        )
                         return target_profile, device
-                
+
                 # Check Description
                 for pattern in target_profile.device_patterns:
                     if pattern.lower() in device.description.lower():
-                        logger.info(f"Device {device.hw_address} matches forced profile via pattern '{pattern}'")
+                        logger.info(
+                            f"Device {device.hw_address} matches forced profile via pattern '{pattern}'"
+                        )
                         return target_profile, device
-            
+
             # ATTEMPT 2: Fallback (Legacy Behavior but safer)
             # If no specific device matches the forced profile, we historically just returned devices[0].
             # However, this causes conflict if multiple containers do this.
             # We should probably still fallback but maybe warn?
-            # Or should we fail? failing is safer for fixing the config. 
-            # But let's check input arguments. 
+            # Or should we fail? failing is safer for fixing the config.
+            # But let's check input arguments.
             # If the user sets AUDIO_PROFILE="Rode", they expect it to work with the Rode mic.
             # If the Rode mic isn't plugged in, we shouldn't grab the Ultramic.
-            
-            logger.warning(f"Forced profile '{target_profile.name}' defined, but no matching device found connected!")
-            # Retaining legacy fallback for robustness (if USB IDs aren't detected properly), 
+
+            logger.warning(
+                f"Forced profile '{target_profile.name}' defined, but no matching device found connected!"
+            )
+            # Retaining legacy fallback for robustness (if USB IDs aren't detected properly),
             # but logging clearly.
             # Ideally we return None, but let's see.
             # If we return devices[0], we risk 'Device Busy' if another container grabs it.
             # If we return None, this container dies/loops.
             # Let's try to match by exclusion? No.
-            
+
             # Let's trust the logic: If we forced a profile, we WANT that specific hardware.
             # If we can't find it, we shouldn't just grab "hw:0,0" which might be the built-in speaker or other mic.
             # HOWEVER, for temporary backward compatibility if USB detection fails:
             # We'll fallback to devices[0] ONLY if it hasn't been claimed? We can't know that.
-            
+
             # Decision: Return None if no match found for forced profile.
             # This forces the logs to show "No matching profile/device" rather than confusing "Device Busy"
             # Wait, if USB ID detection fails (e.g. inside container permissions), we might break working setups.
             # But `arecord -l` usually has the name.
-            
+
             # Let's try one weak match:
             # If the profile has NO patterns and NO USB IDs, maybe it's a "Generic"?
             if not target_profile.device_patterns and not target_profile.usb_ids:
-                 logger.info("Forced profile has no patterns, using first specific device.")
-                 return target_profile, devices[0]
+                logger.info("Forced profile has no patterns, using first specific device.")
+                return target_profile, devices[0]
 
             logger.error(f"Required device for profile '{target_profile.name}' not found.")
             return None, None
-            
+
         else:
-             logger.warning(f"Forced profile slug/name '{force_profile}' not found in loaded profiles.")
-             # Fall through to auto-detection? Or fail?
-             # Probably fail as config is wrong.
-             return None, None
+            logger.warning(
+                f"Forced profile slug/name '{force_profile}' not found in loaded profiles."
+            )
+            # Fall through to auto-detection? Or fail?
+            # Probably fail as config is wrong.
+            return None, None
 
     # Normal Auto-detection (No force)
     # Match profiles to devices
@@ -352,9 +361,9 @@ def find_matching_profile(
             for device in devices:
                 # 1. Check Strict USB ID (Highest Priority)
                 if device.usb_id and profile.usb_ids:
-                     if device.usb_id in profile.usb_ids:
-                         logger.info(f"Matched USB ID: '{device.usb_id}' -> {profile.name}")
-                         return profile, device
+                    if device.usb_id in profile.usb_ids:
+                        logger.info(f"Matched USB ID: '{device.usb_id}' -> {profile.name}")
+                        return profile, device
 
                 # 2. Check Name Pattern
                 if pattern.lower() in device.description.lower():

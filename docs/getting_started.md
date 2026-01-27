@@ -59,6 +59,8 @@ nano setup/config/bootstrap.env
 Use **Raspberry Pi Imager** to flash **Raspberry Pi OS Lite (64-bit)** to your SD card.
 
 - _Note: No OS customization settings are needed in the Imager since we inject them next._
+Use `flatpak install flathub org.raspberrypi.rpi-imager` to install the Imager.
+Use `flatpak run org.raspberrypi.rpi-imager` to run the Imager.
 
 ### 1.3 Inject Bootstrap Scripts
 

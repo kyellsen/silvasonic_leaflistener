@@ -1,7 +1,7 @@
 import os
 import secrets
 
-from fastapi import HTTPException, Request, status
+from fastapi import HTTPException, Request, Response, status
 from starlette.responses import RedirectResponse
 
 # Simple Env-based Auth
@@ -18,7 +18,7 @@ def check_auth(request: Request) -> bool | None:
     return True
 
 
-def require_auth(request: Request) -> bool | RedirectResponse:
+def require_auth(request: Request) -> bool | RedirectResponse | Response:
     if not check_auth(request):
         # If API request, return 401
         if request.url.path.startswith("/api"):

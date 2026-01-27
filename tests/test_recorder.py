@@ -7,7 +7,9 @@ from unittest.mock import MagicMock, patch
 
 # Load recorder/src/main.py directly by path logic
 recorder_src = os.path.abspath(
-    os.path.join(os.path.dirname(__file__), "../containers/recorder/src/main.py")
+    os.path.join(
+        os.path.dirname(__file__), "../containers/recorder/src/silvasonic_recorder/main.py"
+    )
 )
 spec = importlib.util.spec_from_file_location("recorder_main", recorder_src)
 assert spec is not None

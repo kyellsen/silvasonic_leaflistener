@@ -3,8 +3,8 @@ import datetime
 import os
 import typing
 
-from sqlalchemy import text
 from silvasonic_dashboard.settings import SettingsService
+from sqlalchemy import text
 
 from .common import REC_DIR, logger
 from .database import db
@@ -236,7 +236,7 @@ class BirdNetService:
                 # However, lag is defined by file order.
                 # So MAX(filename) is best cursor.
                 query = text("SELECT MAX(filename) FROM birdnet.processed_files")
-                return (await conn.execute(query)).scalar()
+                return (await conn.execute(query)).scalar()  # type: ignore[no-any-return]
         except Exception:
             return None
 

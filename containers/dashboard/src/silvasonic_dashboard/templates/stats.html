@@ -19,7 +19,7 @@
       hx-target="#main-content"
       hx-swap="innerHTML"
       hx-push-url="true"
-      x-data="birdStats({
+      x-data="createBirdStats({
           daily: {{ stats.daily | tojson }},
           hourly: {{ stats.hourly | tojson }},
           topSpecies: {{ stats.top_species | tojson }},
@@ -206,178 +206,176 @@
 </div>
 {% endblock %} {% block scripts %}
 <script>
-  document.addEventListener("alpine:init", () => {
-    Alpine.data("birdStats", (data) => ({
-      daily: data.daily || [],
-      hourly: data.hourly || [],
-      topSpecies: data.topSpecies || { labels: [], values: [] },
-      isDark: data.isDark,
-      charts: {},
+  window.createBirdStats = (data) => ({
+    daily: data.daily || [],
+    hourly: data.hourly || [],
+    topSpecies: data.topSpecies || { labels: [], values: [] },
+    isDark: data.isDark,
+    charts: {},
 
-      init() {
-        this.$nextTick(() => {
-          this.renderDailyChart();
-          this.renderHourlyChart();
-          this.renderTopSpeciesChart();
-        });
+    init() {
+      this.$nextTick(() => {
+        this.renderDailyChart();
+        this.renderHourlyChart();
+        this.renderTopSpeciesChart();
+      });
 
-        // Theme Observer
-        const observer = new MutationObserver((mutations) => {
-          const newDark = document.documentElement.classList.contains("dark");
-          if (this.isDark !== newDark) {
-            this.isDark = newDark;
-            this.updateTheme();
-          }
-        });
-        observer.observe(document.documentElement, {
-          attributes: true,
-          attributeFilter: ["class"],
-        });
-      },
-
-      getChartConfig(type) {
-        const textColor = this.isDark ? "#9ca3af" : "#4b5563";
-        const gridColor = this.isDark ? "#374151" : "#e5e7eb";
-        const fontFamily = "Inter, sans-serif";
-
-        return {
-          chart: {
-            type: type,
-            background: "transparent",
-            toolbar: { show: false },
-            animations: { enabled: true },
-            height: "100%",
-            parentHeightOffset: 0,
-          },
-          theme: { mode: this.isDark ? "dark" : "light" },
-          dataLabels: { enabled: false },
-          grid: { borderColor: gridColor, strokeDashArray: 4 },
-          xaxis: {
-            labels: { style: { colors: textColor, fontFamily: fontFamily } },
-            axisBorder: { show: false },
-            axisTicks: { show: false },
-          },
-          yaxis: {
-            labels: { style: { colors: textColor, fontFamily: fontFamily } },
-          },
-          tooltip: { theme: this.isDark ? "dark" : "light" },
-        };
-      },
-
-      renderDailyChart() {
-        if (!document.getElementById("dailyChart")) return;
-        if (this.daily.length === 0) {
-          document.getElementById("dailyChart").innerHTML =
-            "<div class='flex h-full items-center justify-center text-gray-500'>No data</div>";
-          return;
+      // Theme Observer
+      const observer = new MutationObserver((mutations) => {
+        const newDark = document.documentElement.classList.contains("dark");
+        if (this.isDark !== newDark) {
+          this.isDark = newDark;
+          this.updateTheme();
         }
+      });
+      observer.observe(document.documentElement, {
+        attributes: true,
+        attributeFilter: ["class"],
+      });
+    },
 
-        const options = {
-          ...this.getChartConfig("area"),
-          series: [{ name: "Detections", data: this.daily }],
-          stroke: { curve: "smooth", width: 2 },
-          fill: {
-            type: "gradient",
-            gradient: {
-              shadeIntensity: 1,
-              opacityFrom: 0.7,
-              opacityTo: 0.2,
-              stops: [0, 90, 100],
+    getChartConfig(type) {
+      const textColor = this.isDark ? "#9ca3af" : "#4b5563";
+      const gridColor = this.isDark ? "#374151" : "#e5e7eb";
+      const fontFamily = "Inter, sans-serif";
+
+      return {
+        chart: {
+          type: type,
+          background: "transparent",
+          toolbar: { show: false },
+          animations: { enabled: true },
+          height: "100%",
+          parentHeightOffset: 0,
+        },
+        theme: { mode: this.isDark ? "dark" : "light" },
+        dataLabels: { enabled: false },
+        grid: { borderColor: gridColor, strokeDashArray: 4 },
+        xaxis: {
+          labels: { style: { colors: textColor, fontFamily: fontFamily } },
+          axisBorder: { show: false },
+          axisTicks: { show: false },
+        },
+        yaxis: {
+          labels: { style: { colors: textColor, fontFamily: fontFamily } },
+        },
+        tooltip: { theme: this.isDark ? "dark" : "light" },
+      };
+    },
+
+    renderDailyChart() {
+      if (!document.getElementById("dailyChart")) return;
+      if (this.daily.length === 0) {
+        document.getElementById("dailyChart").innerHTML =
+          "<div class='flex h-full items-center justify-center text-gray-500'>No data</div>";
+        return;
+      }
+
+      const options = {
+        ...this.getChartConfig("area"),
+        series: [{ name: "Detections", data: this.daily }],
+        stroke: { curve: "smooth", width: 2 },
+        fill: {
+          type: "gradient",
+          gradient: {
+            shadeIntensity: 1,
+            opacityFrom: 0.7,
+            opacityTo: 0.2,
+            stops: [0, 90, 100],
+          },
+        },
+        colors: ["#6366f1"],
+        xaxis: {
+          ...this.getChartConfig("area").xaxis,
+          type: "datetime",
+        },
+      };
+
+      this.charts.daily = new ApexCharts(
+        document.getElementById("dailyChart"),
+        options,
+      );
+      this.charts.daily.render();
+    },
+
+    renderHourlyChart() {
+      if (!document.getElementById("hourlyChart")) return;
+      const categories = Array.from({ length: 24 }, (_, i) => i + ":00");
+
+      const options = {
+        ...this.getChartConfig("bar"),
+        series: [{ name: "Count", data: this.hourly }],
+        colors: ["#f59e0b"],
+        xaxis: {
+          ...this.getChartConfig("bar").xaxis,
+          categories: categories,
+        },
+        plotOptions: { bar: { borderRadius: 4, columnWidth: "60%" } },
+      };
+
+      this.charts.hourly = new ApexCharts(
+        document.getElementById("hourlyChart"),
+        options,
+      );
+      this.charts.hourly.render();
+    },
+
+    renderTopSpeciesChart() {
+      if (!document.getElementById("topSpeciesChart")) return;
+      if (this.topSpecies.labels.length === 0) {
+        document.getElementById("topSpeciesChart").innerHTML =
+          "<div class='flex h-full items-center justify-center text-gray-500'>No data</div>";
+        return;
+      }
+
+      const options = {
+        ...this.getChartConfig("bar"),
+        chart: {
+          ...this.getChartConfig("bar").chart,
+          events: {
+            dataPointSelection: (event, chartContext, config) => {
+              const label =
+                config.w.config.xaxis.categories[config.dataPointIndex];
+              if (label)
+                window.location.href = `/birdnet/discover/${encodeURIComponent(label)}`;
             },
           },
-          colors: ["#6366f1"],
-          xaxis: {
-            ...this.getChartConfig("area").xaxis,
-            type: "datetime",
-          },
-        };
+        },
+        series: [{ name: "Detections", data: this.topSpecies.values }],
+        colors: ["#a855f7"],
+        xaxis: {
+          ...this.getChartConfig("bar").xaxis,
+          categories: this.topSpecies.labels,
+        },
+        plotOptions: {
+          bar: { borderRadius: 4, horizontal: true, barHeight: "50%" },
+        },
+      };
 
-        this.charts.daily = new ApexCharts(
-          document.getElementById("dailyChart"),
-          options,
-        );
-        this.charts.daily.render();
-      },
+      this.charts.top = new ApexCharts(
+        document.getElementById("topSpeciesChart"),
+        options,
+      );
+      this.charts.top.render();
+    },
 
-      renderHourlyChart() {
-        if (!document.getElementById("hourlyChart")) return;
-        const categories = Array.from({ length: 24 }, (_, i) => i + ":00");
+    updateTheme() {
+      const newMode = this.isDark ? "dark" : "light";
+      const textColor = this.isDark ? "#9ca3af" : "#4b5563";
+      const gridColor = this.isDark ? "#374151" : "#e5e7eb";
 
-        const options = {
-          ...this.getChartConfig("bar"),
-          series: [{ name: "Count", data: this.hourly }],
-          colors: ["#f59e0b"],
-          xaxis: {
-            ...this.getChartConfig("bar").xaxis,
-            categories: categories,
-          },
-          plotOptions: { bar: { borderRadius: 4, columnWidth: "60%" } },
-        };
+      const commonUpdate = {
+        theme: { mode: newMode },
+        grid: { borderColor: gridColor },
+        xaxis: { labels: { style: { colors: textColor } } },
+        yaxis: { labels: { style: { colors: textColor } } },
+        tooltip: { theme: newMode },
+      };
 
-        this.charts.hourly = new ApexCharts(
-          document.getElementById("hourlyChart"),
-          options,
-        );
-        this.charts.hourly.render();
-      },
-
-      renderTopSpeciesChart() {
-        if (!document.getElementById("topSpeciesChart")) return;
-        if (this.topSpecies.labels.length === 0) {
-          document.getElementById("topSpeciesChart").innerHTML =
-            "<div class='flex h-full items-center justify-center text-gray-500'>No data</div>";
-          return;
-        }
-
-        const options = {
-          ...this.getChartConfig("bar"),
-          chart: {
-            ...this.getChartConfig("bar").chart,
-            events: {
-              dataPointSelection: (event, chartContext, config) => {
-                const label =
-                  config.w.config.xaxis.categories[config.dataPointIndex];
-                if (label)
-                  window.location.href = `/birdnet/discover/${encodeURIComponent(label)}`;
-              },
-            },
-          },
-          series: [{ name: "Detections", data: this.topSpecies.values }],
-          colors: ["#a855f7"],
-          xaxis: {
-            ...this.getChartConfig("bar").xaxis,
-            categories: this.topSpecies.labels,
-          },
-          plotOptions: {
-            bar: { borderRadius: 4, horizontal: true, barHeight: "50%" },
-          },
-        };
-
-        this.charts.top = new ApexCharts(
-          document.getElementById("topSpeciesChart"),
-          options,
-        );
-        this.charts.top.render();
-      },
-
-      updateTheme() {
-        const newMode = this.isDark ? "dark" : "light";
-        const textColor = this.isDark ? "#9ca3af" : "#4b5563";
-        const gridColor = this.isDark ? "#374151" : "#e5e7eb";
-
-        const commonUpdate = {
-          theme: { mode: newMode },
-          grid: { borderColor: gridColor },
-          xaxis: { labels: { style: { colors: textColor } } },
-          yaxis: { labels: { style: { colors: textColor } } },
-          tooltip: { theme: newMode },
-        };
-
-        Object.values(this.charts).forEach((chart) => {
-          chart.updateOptions(commonUpdate);
-        });
-      },
-    }));
+      Object.values(this.charts).forEach((chart) => {
+        chart.updateOptions(commonUpdate);
+      });
+    },
   });
 </script>
 {% endblock %} {% block inspector %}

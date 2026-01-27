@@ -22,6 +22,9 @@ members = [
     "containers/livesound",
     "containers/weather",
     "containers/dashboard",
+    "containers/controller",
+    "containers/healthchecker",
+    "containers/uploader",
 ]
 
 [dependency-groups]
@@ -41,6 +44,20 @@ dev = [
     "psycopg2-binary",
     "types-PyYAML",
     "types-aiofiles",
+    "pytest-asyncio",
+    "fastapi",
+    "pandas",
+    "httpx",
+    "schedule",
+    "silvasonic-controller",
+    "silvasonic-livesound",
+    "silvasonic-ear",
+    "silvasonic-weather",
+    "silvasonic-dashboard",
+    "birdnet-container",
+    "silvasonic-healthchecker",
+    "silvasonic-uploader",
+    "pre-commit>=4.5.1",
 ]
 
 [tool.uv]
@@ -79,9 +96,17 @@ convention = "google"
 python_version = "3.11"
 strict = true
 ignore_missing_imports = true
+follow_imports = "skip"
+exclude = [
+    "tests/.*",
+    "containers/.*/tests/.*",
+    "^\\.venv/",
+    ".*/site-packages/.*",
+    "site-packages/.*",
+]
 
 [tool.pytest.ini_options]
-addopts = "--ignore=containers/birdnet_test"
+addopts = "--ignore=containers/birdnet_test --ignore=tests/e2e"
 
 [[tool.mypy.overrides]]
 module = [
@@ -90,4 +115,24 @@ module = [
     "containers.*.tests",
 ]
 ignore_errors = true
+
+[[tool.mypy.overrides]]
+module = "watchdog.*"
+follow_imports = "skip"
+ignore_errors = true
+
+[[tool.mypy.overrides]]
+module = "sqlalchemy.*"
+follow_imports = "skip"
+ignore_errors = true
+
+[tool.uv.sources]
+silvasonic-controller = { workspace = true }
+silvasonic-livesound = { workspace = true }
+silvasonic-ear = { workspace = true }
+silvasonic-weather = { workspace = true }
+silvasonic-dashboard = { workspace = true }
+birdnet-container = { workspace = true }
+silvasonic-healthchecker = { workspace = true }
+silvasonic-uploader = { workspace = true }
 

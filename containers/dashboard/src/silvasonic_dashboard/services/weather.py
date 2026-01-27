@@ -57,10 +57,14 @@ class WeatherService:
                         ts = ts.replace(tzinfo=datetime.UTC)
 
                     data["labels"].append(ts.strftime("%H:%M"))
-                    data["temp"].append(d.get("temperature_c"))
-                    data["humidity"].append(d.get("humidity_percent"))
-                    data["rain"].append(d.get("precipitation_mm"))
-                    data["wind"].append(d.get("wind_speed_ms"))
+                    data["temp"].append(
+                        d.get("temperature_c") if d.get("temperature_c") is not None else None
+                    )
+                    data["humidity"].append(
+                        d.get("humidity_percent") if d.get("humidity_percent") is not None else None
+                    )
+                    data["rain"].append(d.get("precipitation_mm") or 0.0)
+                    data["wind"].append(d.get("wind_speed_ms") or 0.0)
 
                 return data
         except Exception as e:

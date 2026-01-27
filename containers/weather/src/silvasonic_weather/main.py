@@ -7,17 +7,18 @@ from datetime import datetime
 
 import schedule
 from sqlalchemy import create_engine, text
-from wetterdienst.metadata.parameter import Parameter
 from wetterdienst.provider.dwd.observation import DwdObservationRequest
 
+
 # Setup Logging
-def setup_logging():
+def setup_logging() -> None:
     os.makedirs("/var/log/silvasonic", exist_ok=True)
     logging.basicConfig(
         level=logging.INFO,
         format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
         handlers=[logging.StreamHandler(), logging.FileHandler("/var/log/silvasonic/weather.log")],
     )
+
 
 logger = logging.getLogger("Weather")
 
@@ -87,8 +88,8 @@ def find_station(lat: float, lon: float) -> str | None:
     """Find the nearest DWD station."""
     try:
         request = DwdObservationRequest(
-            parameters=[Parameter.TEMPERATURE_AIR_MEAN_2M],
-            resolution="reaction",  # or "hourly"
+            parameter=["temperature_air_mean_2m"],
+            resolution="10_minutes",
             start_date=datetime.now(),
             end_date=datetime.now(),
         )
@@ -120,19 +121,21 @@ def fetch_weather() -> None:
     # We ideally want a 'current' reading.
     # DWD 'observation' '10_minutes' resolution is best for 'current'.
     try:
-        # We need to find the station first or let Wetterdienst handle it via rank?
-        # Ideally we cache the station ID, but for simplicity let's resolve it.
-        # Actually, query_by_rank is nicer.
+        # We ideally want a 'current' reading.
+        # DWD 'observation' '10_minutes' resolution is best for 'current'.
 
+        # Using string literals to avoid Enum mismatch issues
+        # Common DWD parameters:
+        # temperature_air_mean_2m, humidity, precipitation_height, wind_speed, wind_gust_max, sunshine_duration, cloud_cover_total
         request = DwdObservationRequest(
-            parameters=[
-                Parameter.TEMPERATURE_AIR_MEAN_2M,
-                Parameter.HUMIDITY,
-                Parameter.PRECIPITATION_HEIGHT,
-                Parameter.WIND_SPEED,
-                Parameter.WIND_GUST_MAX,
-                Parameter.SUNSHINE_DURATION,
-                Parameter.CLOUD_COVER_TOTAL,
+            parameter=[
+                "temperature_air_mean_2m",
+                "humidity",
+                "precipitation_height",
+                "wind_speed",
+                "wind_gust_max",
+                "sunshine_duration",
+                "cloud_cover_total",
             ],
             resolution="10_minutes",
         ).filter_by_rank(latlon=(lat, lon), rank=1)
@@ -228,8 +231,7 @@ def fetch_weather() -> None:
         logger.info(f"Stored weather data for {latest_ts} (Station {station_id})")
 
     except Exception as e:
-        logger.error(f"Fetch failed: {e}")
-
+        logger.exception(f"Fetch failed: {e}")
 
 
 def write_status(status_msg: str, station: str | None = None) -> None:
@@ -262,7 +264,7 @@ if __name__ == "__main__":
         init_db()
     except Exception as e:
         logger.exception(f"Startup failed: {e}")
-        time.sleep(10) # Wait a bit to ensure log is written and avoid rapid restart loop
+        time.sleep(10)  # Wait a bit to ensure log is written and avoid rapid restart loop
         exit(1)
 
     # Run once on startup
