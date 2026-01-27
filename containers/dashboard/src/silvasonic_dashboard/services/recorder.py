@@ -3,7 +3,7 @@ import json
 import os
 import time
 from datetime import UTC
-from typing import Any
+from typing import Any, cast
 
 from async_lru import alru_cache
 
@@ -61,7 +61,7 @@ class RecorderService:
 
                     def read_json(path: str) -> dict[str, Any]:
                         with open(path) as f:
-                            return json.load(f)
+                            return cast(dict[str, Any], json.load(f))
 
                     data = await run_in_executor(read_json, status_file)
 

@@ -11,6 +11,7 @@ import signal
 import socket
 import sys
 import time
+from types import FrameType
 
 from mailer import Mailer
 
@@ -56,7 +57,7 @@ CHECK_INTERVAL = 5  # Check every 5 seconds
 running = True
 
 
-def signal_handler(signum, frame):
+def signal_handler(signum: int, frame: FrameType | None) -> None:
     """Handle shutdown signals."""
     global running
     logger.info(f"Received signal {signum}, shutting down gracefully...")
