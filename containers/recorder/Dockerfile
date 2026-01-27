@@ -48,8 +48,8 @@ RUN mkdir -p /data/recording
 # Environment defaults
 ENV PYTHONUNBUFFERED=1
 ENV AUDIO_OUTPUT_DIR=/data/recording
-ENV PYTHONPATH=/app
+ENV PYTHONPATH=/app/src
 
 # Run as module
-CMD ["python", "-m", "src.main"]
+CMD ["python", "-m", "silvasonic_recorder.main"]
 
