@@ -90,14 +90,39 @@
         border: 1px solid rgba(255, 255, 255, 0.05);
       }
 
-      .glass-panel {
-        background: rgba(255, 255, 255, 0.8);
-        backdrop-filter: blur(12px);
-        border: 1px solid rgba(0, 0, 0, 0.05);
+      /* Standard Card Styles */
+      .silva-card {
+        background-color: white;
+        border: 1px solid #e5e7eb; /* gray-200 */
+        border-radius: 0.75rem; /* rounded-xl */
+        box-shadow:
+          0 10px 15px -3px rgba(0, 0, 0, 0.1),
+          0 4px 6px -2px rgba(0, 0, 0, 0.05); /* shadow-lg */
+        position: relative;
+        overflow: hidden;
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
       }
-      .dark .glass-panel {
-        background: rgba(30, 41, 59, 0.7); /* Slate 800 with alpha */
-        border: 1px solid rgba(255, 255, 255, 0.05);
+      .dark .silva-card {
+        background-color: #1f2937; /* gray-800 */
+        border-color: #374151; /* gray-700 */
+      }
+
+      .silva-card-hover {
+        cursor: pointer;
+      }
+      .silva-card-hover:hover {
+        --tw-ring-offset-width: 0px;
+        --tw-ring-width: 2px;
+        --tw-ring-opacity: 1;
+        box-shadow:
+          0 20px 25px -5px rgba(0, 0, 0, 0.1),
+          0 10px 10px -5px rgba(0, 0, 0, 0.04); /* shadow-xl */
+        transform: scale(1.01);
+      }
+
+      /* Legacy Glass Support (for non-card elements if needed) */
+      .glass-panel {
+        @apply silva-card; /* Alias to new style for ease of migration if missed */
       }
 
       /* Sidebar Label Visibility */
