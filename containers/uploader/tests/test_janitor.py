@@ -97,14 +97,20 @@ class TestStorageJanitor:
         self, janitor: StorageJanitor, temp_fs: str
     ) -> None:
         """Test that file listing handles files disappearing (FileNotFoundError) gracefully."""
-        # This is hard to trigger with real FS as it happens between os.walk and os.stat
-        # So we mock os.walk and os.stat
+        # Use patch to mock os.scandir
+        with patch("os.scandir") as mock_scandir:
+            # Mock entry that raises FileNotFoundError on stat
+            mock_entry = MagicMock()
+            mock_entry.is_dir.return_value = False
+            mock_entry.is_file.return_value = True
+            mock_entry.path = "/root/ghost.file"
+            mock_entry.stat.side_effect = FileNotFoundError
 
-        with patch("os.walk") as mock_walk, patch("os.stat") as mock_stat:
-            mock_walk.return_value = [("/root", [], ["ghost.file"])]
-            mock_stat.side_effect = FileNotFoundError
+            # Setup iterator
+            mock_scandir.return_value.__enter__.return_value = [mock_entry]
 
-            files = janitor._list_local_files()
+            # Current implementation uses _yield_local_files
+            files = list(janitor._yield_local_files())
             assert len(files) == 0
 
     def test_exception_during_deletion(

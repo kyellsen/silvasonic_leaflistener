@@ -1,6 +1,6 @@
 ### KONFIGURATION
 ZIEL_CONTAINER="recorder"  
-# Mögliche Werte: "recorder", "birdnet", "uploader", "dashboard", "livesound", "healthchecker"
+# Mögliche Werte: "controller","recorder", "birdnet", "uploader", "dashboard", "livesound", "healthchecker", "weather", "db"
 
 ### AUFGABE
 Du bist ein erfahrener Software-Architekt, der das "Silvasonic"-Projekt analysiert. Deine Aufgabe ist es, den oben definierten ZIEL_CONTAINER basierend auf der vorliegenden Codebasis und Dokumentation (insbesondere `docs/`, `README.md` und dem Ordner `containers/[ZIEL_CONTAINER]`) tiefgehend zu untersuchen.

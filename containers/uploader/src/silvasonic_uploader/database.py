@@ -1,6 +1,7 @@
 import logging
 import os
 import typing
+from contextlib import contextmanager
 
 from sqlalchemy import create_engine, text
 from sqlalchemy.orm import sessionmaker
@@ -70,6 +71,24 @@ class DatabaseHandler:
             self.Session = None
             return False
 
+    @contextmanager
+    def get_session(self) -> typing.Iterator[typing.Any]:
+        """Provide a transactional scope around a series of operations."""
+        if not self.Session:
+            if not self.connect():
+                raise ConnectionError("Database not connected")
+
+        assert self.Session is not None
+        session = self.Session()
+        try:
+            yield session
+            session.commit()
+        except Exception:
+            session.rollback()
+            raise
+        finally:
+            session.close()
+
     def log_upload(
         self,
         filename: str,
@@ -77,40 +96,71 @@ class DatabaseHandler:
         status: str,
         size_bytes: int = 0,
         error_message: str | None = None,
+        session: typing.Any | None = None,
     ) -> None:
-        """Log an upload event."""
-        if not self.Session:
-            if not self.connect():
+        """Log an upload event.
+
+        Args:
+            filename: Name of the file.
+            remote_path: Path on remote.
+            status: Upload status.
+            size_bytes: Size in bytes.
+            error_message: Optional error message.
+            session: Optional existing session to reuse. If None, a new one is created.
+        """
+        if session:
+            # reuse existing session, do not commit/close here
+            self._execute_log_upload(
+                session, filename, remote_path, status, size_bytes, error_message
+            )
+        else:
+            # ephemeral session
+            if not self.Session:
+                if not self.connect():
+                    return
+
+            if not self.Session:
                 return
 
-        if not self.Session:
-            return
+            local_sess = self.Session()
+            try:
+                self._execute_log_upload(
+                    local_sess, filename, remote_path, status, size_bytes, error_message
+                )
+                local_sess.commit()
+            except Exception as e:
+                logger.error(f"Failed to log upload: {e}")
+                local_sess.rollback()
+            finally:
+                local_sess.close()
 
-        session = self.Session()
-        try:
-            query = text(
-                """
-                INSERT INTO uploader.uploads
-                (filename, remote_path, status, size_bytes, error_message)
-                VALUES (:filename, :remote_path, :status, :size_bytes, :error_message)
+    def _execute_log_upload(
+        self,
+        session: typing.Any,
+        filename: str,
+        remote_path: str,
+        status: str,
+        size_bytes: int,
+        error_message: str | None,
+    ) -> None:
+        """Internal helper to execute the insert statement."""
+        query = text(
             """
-            )
-            session.execute(
-                query,
-                {
-                    "filename": filename,
-                    "remote_path": remote_path,
-                    "status": status,
-                    "size_bytes": size_bytes,
-                    "error_message": error_message,
-                },
-            )
-            session.commit()
-        except Exception as e:
-            logger.error(f"Failed to log upload: {e}")
-            session.rollback()
-        finally:
-            session.close()
+            INSERT INTO uploader.uploads
+            (filename, remote_path, status, size_bytes, error_message)
+            VALUES (:filename, :remote_path, :status, :size_bytes, :error_message)
+            """
+        )
+        session.execute(
+            query,
+            {
+                "filename": filename,
+                "remote_path": remote_path,
+                "status": status,
+                "size_bytes": size_bytes,
+                "error_message": error_message,
+            },
+        )
 
     def get_uploaded_filenames(self, filenames: list[str]) -> set[str]:
         """Check which of the provided filenames have been successfully uploaded.

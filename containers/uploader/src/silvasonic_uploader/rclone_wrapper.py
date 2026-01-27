@@ -1,26 +1,26 @@
+import asyncio
 import json
 import logging
 import os
-import subprocess
-import time
+import re
+import typing
 from collections.abc import Callable
 
 logger = logging.getLogger(__name__)
 
 
 class RcloneWrapper:
-    """A robust wrapper around the rclone CLI."""
+    """A robust wrapper around the rclone CLI using AsyncIO."""
 
     def __init__(self, config_path: str = "/config/rclone/rclone.conf"):
         self.config_path = config_path
         # Ensure config directory exists
         os.makedirs(os.path.dirname(config_path), exist_ok=True)
 
-    def configure_webdav(self, remote_name: str, url: str, user: str, password: str) -> None:
+    async def configure_webdav(self, remote_name: str, url: str, user: str, password: str) -> None:
         """Configures a remote using 'rclone config create'."""
         logger.info(f"Configuring remote '{remote_name}' for WebDAV...")
 
-        # Mask password in logs
         cmd = [
             "rclone",
             "config",
@@ -38,25 +38,33 @@ class RcloneWrapper:
         ]
 
         try:
-            # We don't log the command here to avoid leaking secrets if debug is on
-            subprocess.run(cmd, check=True, capture_output=True, text=True)
-            logger.info(f"Remote '{remote_name}' configured successfully.")
-        except subprocess.CalledProcessError as e:
-            logger.error(f"Failed to configure remote: {e.stderr}")
+            # Run in subprocess
+            proc = await asyncio.create_subprocess_exec(
+                *cmd,
+                stdout=asyncio.subprocess.PIPE,
+                stderr=asyncio.subprocess.PIPE,
+            )
+            stdout, stderr = await proc.communicate()
+
+            if proc.returncode == 0:
+                logger.info(f"Remote '{remote_name}' configured successfully.")
+            else:
+                logger.error(f"Failed to configure remote: {stderr.decode()}")
+                raise Exception(f"Rclone config failed: {stderr.decode()}")
+
+        except Exception as e:
+            logger.error(f"Failed to configure remote: {e}")
             raise
 
-    def sync(
+    async def sync(
         self,
         source: str,
         dest: str,
         transfers: int = 4,
         checkers: int = 8,
-        callback: Callable[[str, str, str], None] | None = None,
+        callback: Callable[[str, str, str], typing.Awaitable[None]] | None = None,
     ) -> bool:
-        """Runs the sync command and streams output.
-
-        Returns True if successful, False otherwise.
-        """
+        """Runs the sync command asynchronously."""
         cmd = [
             "rclone",
             "sync",
@@ -73,22 +81,18 @@ class RcloneWrapper:
             "--retries",
             "5",
         ]
+        return await self._run_transfer(cmd, source, dest, callback=callback)
 
-        return self._run_transfer(cmd, source, dest, callback=callback)
-
-    def copy(
+    async def copy(
         self,
         source: str,
         dest: str,
         transfers: int = 4,
         checkers: int = 8,
         min_age: str | None = None,
-        callback: Callable[[str, str, str], None] | None = None,
+        callback: Callable[[str, str, str], typing.Awaitable[None]] | None = None,
     ) -> bool:
-        """Runs the copy command (additive only) and streams output.
-
-        Returns True if successful, False otherwise.
-        """
+        """Runs the copy command asynchronously."""
         cmd = [
             "rclone",
             "copy",
@@ -109,57 +113,47 @@ class RcloneWrapper:
         if min_age:
             cmd.extend(["--min-age", min_age])
 
-        return self._run_transfer(cmd, source, dest, callback=callback)
+        return await self._run_transfer(cmd, source, dest, callback=callback)
 
-    def _run_transfer(
+    async def _run_transfer(
         self,
         cmd: list[str],
         source: str,
         dest: str,
-        callback: Callable[[str, str, str], None] | None = None,
+        callback: Callable[[str, str, str], typing.Awaitable[None]] | None = None,
     ) -> bool:
-        """Helper to run transfer commands and stream logs. Returns True on success."""
+        """Helper to run transfer commands and stream logs asynchronously."""
         logger.info(f"Starting transfer: {source} -> {dest}")
-        start_time = time.time()
+        start_time = asyncio.get_running_loop().time()
 
         # Regex for parsing rclone logs
-        import re
-
-        # INFO : file.txt: Copied (new)
         re_success = re.compile(r"INFO\s+:\s+(.+?):\s+Copied")
-        # ERROR : file.txt: Failed to copy: error message
         re_error = re.compile(r"ERROR\s+:\s+(.+?):\s+Failed to copy:\s+(.*)")
 
         try:
-            process = subprocess.Popen(
-                cmd,
-                stdout=subprocess.PIPE,
-                stderr=subprocess.STDOUT,  # Merge stdout and stderr
-                text=True,
-                bufsize=1,
+            process = await asyncio.create_subprocess_exec(
+                *cmd,
+                stdout=asyncio.subprocess.PIPE,
+                stderr=asyncio.subprocess.STDOUT,  # Merge stdout and stderr
             )
 
-            output_buffer = []
-
             if process.stdout:
-                # Stream logs line by line
-                for line in process.stdout:
-                    line = line.strip()
+                while True:
+                    line_bytes = await process.stdout.readline()
+                    if not line_bytes:
+                        break
+
+                    line = line_bytes.decode("utf-8", errors="replace").strip()
                     if line:
                         logger.debug(f"[Rclone] {line}")
-                        output_buffer.append(line)
-                        # Keep buffer size manageable (e.g., last 100 lines)
-                        if len(output_buffer) > 100:
-                            output_buffer.pop(0)
 
-                        # Callback parsing
                         if callback:
                             try:
                                 # Check Success
                                 m_ok = re_success.search(line)
                                 if m_ok:
                                     filename = m_ok.group(1).strip()
-                                    callback(filename, "success", "")
+                                    await callback(filename, "success", "")
                                     continue
 
                                 # Check Error
@@ -167,56 +161,63 @@ class RcloneWrapper:
                                 if m_err:
                                     filename = m_err.group(1).strip()
                                     err_msg = m_err.group(2).strip()
-                                    callback(filename, "failed", err_msg)
+                                    await callback(filename, "failed", err_msg)
                             except Exception as e:
                                 logger.error(f"Callback error analyzing line '{line}': {e}")
 
-            process.wait()
+            await process.wait()
 
-            duration = time.time() - start_time
+            duration = asyncio.get_running_loop().time() - start_time
             if process.returncode == 0:
                 logger.info(f"Transfer completed successfully in {duration:.2f}s")
                 return True
             else:
                 logger.error(f"Transfer failed with return code {process.returncode}")
-                # logger.error("--- Rclone Output Dump (Last 100 lines) ---")
-                # for line in output_buffer:
-                #    logger.error(f"[Rclone] {line}")
-                # logger.error("-------------------------------------------")
                 return False
 
+        except asyncio.CancelledError:
+            logger.warning("Transfer cancelled. Terminating rclone process...")
+            try:
+                process.terminate()
+                await process.wait()
+            except Exception:
+                pass
+            raise
         except Exception as e:
             logger.error(f"Transfer execution error: {e}")
             return False
 
-    def list_files(self, remote: str) -> dict[str, int] | None:
-        """Lists files on the remote and returns a dict {filename: size}.
-
-        Returns None if listing fails.
-        Uses 'rclone lsjson' for parsing.
-        """
+    async def list_files(self, remote: str) -> dict[str, int] | None:
+        """Lists files on the remote asynchronously."""
         cmd = ["rclone", "lsjson", remote, "--recursive", "--config", self.config_path]
 
         try:
-            result = subprocess.run(cmd, check=True, capture_output=True, text=True)
-            items = json.loads(result.stdout)
+            proc = await asyncio.create_subprocess_exec(
+                *cmd,
+                stdout=asyncio.subprocess.PIPE,
+                stderr=asyncio.subprocess.PIPE,
+            )
+            stdout, stderr = await proc.communicate()
 
+            if proc.returncode != 0:
+                err_text = stderr.decode()
+                if proc.returncode == 3:
+                    # Exit code 3 means directory not found.
+                    return {}
+                logger.error(f"Failed to list remote files: {err_text}")
+                return None
+
+            items = json.loads(stdout.decode())
             # Create a simple dict: relative_path -> size
-            # rclone lsjson returns 'Path' relative to the root of the remote
             return {item["Path"]: item["Size"] for item in items if not item["IsDir"]}
 
-        except subprocess.CalledProcessError as e:
-            if e.returncode == 3:
-                # Exit code 3 means directory not found. This is fine, just means no files.
-                return {}
-            logger.error(f"Failed to list remote files: {e.stderr}")
-            return None
         except Exception as e:
-            logger.error(f"Failed to list remote files (unexpected): {e}")
+            logger.error(f"Failed to list remote files: {e}")
             return None
 
     def get_disk_usage_percent(self, path: str) -> float:
-        """Checks disk usage percentage for the given path."""
+        """Checks disk usage percentage for the given path (blocking)."""
+        # Keep blocking as os.statvfs is fast syscall
         try:
             stat = os.statvfs(path)
             total = stat.f_blocks * stat.f_frsize

@@ -1,6 +1,7 @@
 import logging
 import os
 import typing
+from operator import itemgetter
 
 logger = logging.getLogger("Janitor")
 
@@ -49,22 +50,24 @@ class StorageJanitor:
             "Starting cleanup..."
         )
 
-        # 1. List all local files
-        local_files = self._list_local_files()
+        # 1. Collect all local files efficiently
+        # Store as tuples: (mtime, size, absolute_path) to save memory compared to dicts
+        local_files = list(self._yield_local_files())
 
         # 2. Sort by age (oldest first)
-        local_files.sort(key=lambda x: x["mtime"])
+        # itemgetter(0) is slightly faster than lambda x: x[0]
+        local_files.sort(key=itemgetter(0))
 
         deleted_count = 0
         deleted_size = 0
 
-        for file in local_files:
+        for _, size, path in local_files:
             # Check if we've reached the target
             if get_usage_callback(self.source_dir) <= self.target_percent:
                 logger.info(f"Target usage {self.target_percent}% reached. Stopping cleanup.")
                 break
 
-            rel_path = os.path.relpath(file["path"], self.source_dir)
+            rel_path = os.path.relpath(path, self.source_dir)
 
             # 3. VERIFY: Exists on remote?
             if rel_path not in remote_files:
@@ -72,17 +75,10 @@ class StorageJanitor:
                 continue
 
             # 4. VERIFY: Size matches?
-            # 4. VERIFY: Size matches?
             # Note: Remote might report different size if compressed/encrypted,
             # but for basic copy it should match.
-            # We allow small variance if needed, but for now strict check or skip check
-            # if size is drastically different
-            # (e.g. if we suspect partial upload).
-            # Ideally we trust rclone's verification during copy, so if it's in the list
-            # it's likely good.
-            # But let's check size to be extra safe against 0-byte uploads.
             remote_size = remote_files[rel_path]
-            local_size = file["size"]
+            local_size = size
 
             if remote_size == 0 and local_size > 0:
                 logger.warning(f"Skipping {rel_path}: Remote size is 0.")
@@ -90,27 +86,43 @@ class StorageJanitor:
 
             # 5. Delete
             try:
-                os.remove(file["path"])
+                os.remove(path)
                 logger.info(f"Deleted {rel_path} (Local: {local_size}b, Remote: {remote_size}b)")
                 deleted_count += 1
                 deleted_size += local_size
             except Exception as e:
-                logger.error(f"Failed to delete {file['path']}: {e}")
+                logger.error(f"Failed to delete {path}: {e}")
 
         logger.info(
             f"Cleanup finished. Deleted {deleted_count} files "
             f"({deleted_size / 1024 / 1024:.2f} MB)."
         )
 
-    def _list_local_files(self) -> list[dict[str, typing.Any]]:
-        """Returns a list of local files with metadata."""
-        files = []
-        for root, _, filenames in os.walk(self.source_dir):
-            for filename in filenames:
-                path = os.path.join(root, filename)
+    def _yield_local_files(self) -> typing.Iterator[tuple[float, int, str]]:
+        """Yields local files as (mtime, size, absolute_path) tuples using os.scandir."""
+        try:
+            # Scan recursively? os.scandir is not recursive itself.
+            # We need a recursive walker that uses scandir.
+            # Implementing a simple stack-based scandir walker.
+            stack = [self.source_dir]
+            while stack:
+                current_dir = stack.pop()
+                if not os.path.exists(current_dir):
+                    continue
+
                 try:
-                    stat = os.stat(path)
-                    files.append({"path": path, "size": stat.st_size, "mtime": stat.st_mtime})
-                except FileNotFoundError:
-                    pass
-        return files
+                    with os.scandir(current_dir) as it:
+                        for entry in it:
+                            if entry.is_dir(follow_symlinks=False):
+                                stack.append(entry.path)
+                            elif entry.is_file(follow_symlinks=False):
+                                try:
+                                    stat = entry.stat()
+                                    yield (stat.st_mtime, stat.st_size, entry.path)
+                                except FileNotFoundError:
+                                    # File disappeared between scan and stat
+                                    pass
+                except OSError as e:
+                    logger.warning(f"Failed to scan directory {current_dir}: {e}")
+        except Exception as e:
+            logger.error(f"Unexpected error traversing directories: {e}")

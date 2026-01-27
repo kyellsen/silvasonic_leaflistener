@@ -9,10 +9,10 @@ import os
 import re
 import subprocess
 import typing
-from dataclasses import dataclass, field
 from pathlib import Path
 
 import yaml
+from pydantic import BaseModel, Field, model_validator
 
 logger = logging.getLogger("mic_profiles")
 
@@ -20,83 +20,47 @@ if typing.TYPE_CHECKING:
     from .strategies import AudioStrategy
 
 
-@dataclass
-class AudioConfig:
+class AudioConfig(BaseModel):
     """Audio recording configuration."""
 
-    sample_rate: int = 48000
-    channels: int = 1
-    bit_depth: int = 16
-    format: str = "S16_LE"
+    sample_rate: int = Field(default=48000, ge=8000, le=192000)
+    channels: int = Field(default=1, ge=1, le=2)
+    bit_depth: int = Field(default=16, ge=8, le=32)
+    format: str = Field(default="S16_LE")
 
 
-@dataclass
-class RecordingConfig:
+class RecordingConfig(BaseModel):
     """Recording output configuration."""
 
-    chunk_duration_seconds: int = 10
-    output_format: str = "flac"
-    compression_level: int = 5
+    chunk_duration_seconds: int = Field(default=10, ge=1)
+    output_format: str = Field(default="flac")
+    compression_level: int = Field(default=5, ge=0, le=12)
 
 
-@dataclass
-class MicrophoneProfile:
+class MicrophoneProfile(BaseModel):
     """Complete microphone profile."""
 
     name: str
-    slug: str = ""  # URL-safe identifier for folder names
-    manufacturer: str = "Unknown"
-    model: str = "Unknown"
-    device_patterns: list[str] = field(default_factory=list)
-    usb_ids: list[str] = field(default_factory=list)  # e.g. ["1b3f:2008"]
-    audio: AudioConfig = field(default_factory=AudioConfig)
-    recording: RecordingConfig = field(default_factory=RecordingConfig)
-    priority: int = 50
-    is_mock: bool = False
+    slug: str = Field(default="")
+    manufacturer: str = Field(default="Unknown")
+    model: str = Field(default="Unknown")
+    device_patterns: list[str] = Field(default_factory=list)
+    usb_ids: list[str] = Field(default_factory=list)  # e.g. ["1b3f:2008"]
+    audio: AudioConfig = Field(default_factory=AudioConfig)
+    recording: RecordingConfig = Field(default_factory=RecordingConfig)
+    priority: int = Field(default=50)
+    is_mock: bool = Field(default=False)
 
-    def __post_init__(self) -> None:
-        """Clean up data after initialization."""
-        if not self.slug:
-            # Generate slug from name
-            self.slug = re.sub(r"[^a-z0-9]+", "_", self.name.lower()).strip("_")
-
-    @classmethod
-    def from_dict(cls, data: dict[str, typing.Any], filename: str = "") -> "MicrophoneProfile":
-        """Create profile from dictionary (parsed YAML)."""
-        audio_data = data.get("audio", {})
-        recording_data = data.get("recording", {})
-        mock_data = data.get("mock", {})
-
-        # Use filename without extension as slug if not specified
-        slug = data.get("slug", "")
-        if not slug and filename:
-            slug = Path(filename).stem
-
-        return cls(
-            name=data.get("name", "Unknown"),
-            slug=slug,
-            manufacturer=data.get("manufacturer", "Unknown"),
-            model=data.get("model", "Unknown"),
-            device_patterns=data.get("device_patterns", []),
-            usb_ids=data.get("usb_ids", []),
-            audio=AudioConfig(
-                sample_rate=audio_data.get("sample_rate", 48000),
-                channels=audio_data.get("channels", 1),
-                bit_depth=audio_data.get("bit_depth", 16),
-                format=audio_data.get("format", "S16_LE"),
-            ),
-            recording=RecordingConfig(
-                chunk_duration_seconds=recording_data.get("chunk_duration_seconds", 10),
-                output_format=recording_data.get("output_format", "flac"),
-                compression_level=recording_data.get("compression_level", 5),
-            ),
-            priority=data.get("priority", 50),
-            is_mock=mock_data.get("enabled", False),
-        )
+    @model_validator(mode="after")
+    def generate_slug(self) -> "MicrophoneProfile":
+        if not self.slug and self.name:
+            # Generate slug from name if not provided
+            cleaned = re.sub(r"[^a-z0-9]+", "_", self.name.lower()).strip("_")
+            self.slug = cleaned
+        return self
 
 
-@dataclass
-class DetectedDevice:
+class DetectedDevice(BaseModel):
     """Represents a detected audio device."""
 
     card_id: str
@@ -214,7 +178,16 @@ def load_profiles(profiles_dir: Path | None = None) -> list[MicrophoneProfile]:
             with open(yml_file) as f:
                 data = yaml.safe_load(f)
                 if data:
-                    profile = MicrophoneProfile.from_dict(data, str(yml_file))
+                    # Inject slug from filename if not present
+                    if "slug" not in data:
+                        data["slug"] = yml_file.stem
+
+                    # Flatten 'mock' key if present to 'is_mock' to match model
+                    if "mock" in data and isinstance(data["mock"], dict):
+                        data["is_mock"] = data["mock"].get("enabled", False)
+                        data.pop("mock", None)
+
+                    profile = MicrophoneProfile(**data)
                     profiles.append(profile)
                     logger.debug(f"Loaded profile: {profile.name} ({profile.slug})")
         except Exception as e:

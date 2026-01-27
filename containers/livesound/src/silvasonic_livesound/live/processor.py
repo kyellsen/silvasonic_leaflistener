@@ -8,6 +8,7 @@ from dataclasses import dataclass, field
 
 import librosa
 import numpy as np
+import orjson
 
 logger = logging.getLogger("LiveProcessor")
 
@@ -69,7 +70,7 @@ class AudioIngestor:
         self.loop: asyncio.AbstractEventLoop | None = None
 
         # Listeners: {source_name: set(queues)}
-        self._spectrogram_queues: dict[str, set[asyncio.Queue[list[int]]]] = {}
+        self._spectrogram_queues: dict[str, set[asyncio.Queue[bytes]]] = {}
         self._audio_queues: dict[str, set[asyncio.Queue[bytes]]] = {}
 
         # Initialize sockets from static config (env vars)
@@ -165,7 +166,7 @@ class AudioIngestor:
         self.sockets.clear()
         # Threads will exit when sock.recv returns empty or error
 
-    async def subscribe_spectrogram(self, source: str = "default") -> asyncio.Queue[list[int]]:
+    async def subscribe_spectrogram(self, source: str = "default") -> asyncio.Queue[bytes]:
         """Subscribe to spectrogram updates for a specific source."""
         # Use first available source if default requested but not present (fallback)
         if source == "default":
@@ -183,12 +184,12 @@ class AudioIngestor:
             if source not in self._spectrogram_queues:
                 self._spectrogram_queues.setdefault(source, set())
 
-            q: asyncio.Queue[list[int]] = asyncio.Queue()
+            q: asyncio.Queue[bytes] = asyncio.Queue()
             self._spectrogram_queues[source].add(q)
 
         return q
 
-    def unsubscribe_spectrogram(self, q: asyncio.Queue[list[int]], source: str = "default") -> None:
+    def unsubscribe_spectrogram(self, q: asyncio.Queue[bytes], source: str = "default") -> None:
         """Unsubscribe from spectrogram updates."""
         with self._lock:
             # If we don't know the source, check all (expensive but safe) or require source
@@ -250,9 +251,6 @@ class AudioIngestor:
     def _ingest_loop(self, source: str, sock: socket.socket) -> None:
         buffer_size = self.config.chunk_size * 2 * 2  # Safety buffer
 
-        # Buffer for FFT
-        fft_buffer = np.zeros(0, dtype=np.float32)
-
         # Pre-calculate mel basis for performance
         mel_basis = librosa.filters.mel(
             sr=self.config.sample_rate,
@@ -261,6 +259,31 @@ class AudioIngestor:
             fmin=100,
             fmax=14000,  # Birds range
         )
+
+        # --- Ring Buffer Optimization ---
+        # We need a buffer large enough to hold [Historical Data + New Chunk]
+        # We need at least fft_window samples to compute one frame.
+        # But we really want to process a stream.
+        # To avoid np.concatenate, we allocate a fixed size buffer.
+        # Size = fft_window + chunk_size (max new data)
+        # Actually, we just need a rolling window of size fft_window.
+        # But since we receive chunk_size data, we need room to shift.
+
+        # ring_buffer holds the latest audio samples used for FFT
+        # Initial capacity: Enough to hold the FFT window.
+        # But wait, audio_chunk can be up to chunk_size (4096).
+        # We want to perform FFT on the *last* fft_window (2048) samples
+        # AFTER appending the new chunk.
+
+        # Strategy:
+        # 1. Keep a persistent buffer of size (fft_window + chunk_size).
+        # 2. On new data (len=N):
+        #    - Shift existing data left by N: buffer[:-N] = buffer[N:]
+        #    - Insert new data at end: buffer[-N:] = new_data
+        #    - Slice the last fft_window samples for processing: buffer[-fft_window:]
+
+        rb_size = self.config.fft_window + self.config.chunk_size
+        ring_buffer = np.zeros(rb_size, dtype=np.float32)
 
         logger.info(f"Ingestion loop started for {source}")
 
@@ -276,63 +299,53 @@ class AudioIngestor:
 
                 # OPTIMIZATION: Skip processing if no one is watching the spectrogram
                 if source not in self._spectrogram_queues or not self._spectrogram_queues[source]:
-                    if len(fft_buffer) > 0:
-                        fft_buffer = np.zeros(0, dtype=np.float32)
                     continue
 
                 # 2. Process Spectrogram
                 # int16 -> float32
-                audio_chunk = np.frombuffer(data, dtype=np.int16).astype(np.float32) / 32768.0
+                # We assume 16-bit PCM input
+                audio_chunk_int16 = np.frombuffer(data, dtype=np.int16)
 
-                fft_buffer = np.concatenate((fft_buffer, audio_chunk))
+                # Normalize to -1.0 .. 1.0
+                new_samples = audio_chunk_int16.astype(np.float32) / 32768.0
 
-                # Process if we have enough data
-                if len(fft_buffer) >= self.config.fft_window:
-                    # Compute STFT
-                    # We only take the slice needed
-                    y = fft_buffer[: self.config.fft_window]
+                n_new = len(new_samples)
 
-                    # Short-Time Fourier Transform
-                    # Calculate power spectrogram (amplitude squared)
-                    stft_matrix = librosa.stft(
-                        y, n_fft=self.config.fft_window, hop_length=self.config.hop_length
-                    )
-                    power_spectrogram = np.abs(stft_matrix) ** 2
+                # --- Ring Buffer Logic ---
+                # Shift left
+                ring_buffer[:-n_new] = ring_buffer[n_new:]
+                # Append new
+                ring_buffer[-n_new:] = new_samples
 
-                    # Mel Spectrogram
-                    mel_spec = mel_basis.dot(power_spectrogram)
+                # Extract the analysis window (latest fft_window samples)
+                y = ring_buffer[-self.config.fft_window :]
 
-                    # Power to dB
-                    log_mel_spec = librosa.power_to_db(mel_spec, ref=np.max)
+                # Compute STFT
+                # Calculate power spectrogram (amplitude squared)
+                stft_matrix = librosa.stft(
+                    y, n_fft=self.config.fft_window, hop_length=self.config.hop_length
+                )
+                power_spectrogram = np.abs(stft_matrix) ** 2
 
-                    # Normalize -80dB to 0dB -> 0 to 255
-                    normalized_spec = np.clip((log_mel_spec + 80) * (255 / 80), 0, 255).astype(
-                        np.uint8
-                    )
+                # Mel Spectrogram
+                mel_spec = mel_basis.dot(power_spectrogram)
 
-                    # We take the mean across time columns if chunk produced multiple columns
-                    # Or just send the last column.
-                    # D shape: (1025, T)
-                    # S shape: (128, T)
+                # Power to dB
+                log_mel_spec = librosa.power_to_db(mel_spec, ref=np.max)
 
-                    # Provide a flat list of the latest spectral frame
-                    # Taking the mean of the frames in this chunk to represent "now"
-                    if normalized_spec.shape[1] > 0:
-                        frame = np.mean(normalized_spec, axis=1).astype(np.uint8)
+                # Normalize -80dB to 0dB -> 0 to 255
+                normalized_spec = np.clip((log_mel_spec + 80) * (255 / 80), 0, 255).astype(np.uint8)
 
-                        # Pack simple JSON-friendly struct
-                        payload = frame.tolist()
-                        self._broadcast_safe(self._spectrogram_queues[source], payload)
+                # Provide a flat list of the latest spectral frame
+                # Taking the mean of the frames in this chunk to represent "now"
+                if normalized_spec.shape[1] > 0:
+                    frame = np.mean(normalized_spec, axis=1).astype(np.uint8)
 
-                    # Slide buffer
-                    # step = self.config.chunk_size  # Advance by what we consumed?
-                    # Actually, for continuous stream integration, we should keep the overlap.
-                    # But for simple live viz, just sliding window is okay.
-
-                    # Keep tail
-                    overlap = self.config.fft_window - self.config.hop_length
-                    if len(fft_buffer) > overlap:
-                        fft_buffer = fft_buffer[-overlap:]
+                    # --- Performance Boost: orjson ---
+                    # Pack simple JSON-friendly struct directly to bytes
+                    # orjson can serialize numpy arrays natively via OPT_SERIALIZE_NUMPY
+                    payload = orjson.dumps(frame, option=orjson.OPT_SERIALIZE_NUMPY)
+                    self._broadcast_safe(self._spectrogram_queues[source], payload)
 
             except Exception as e:
                 if self.running:

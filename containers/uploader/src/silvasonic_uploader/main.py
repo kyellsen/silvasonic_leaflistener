@@ -1,3 +1,4 @@
+import asyncio
 import json
 import logging
 import logging.handlers
@@ -8,6 +9,7 @@ import time
 import typing
 
 import psutil
+from silvasonic_uploader.database import DatabaseHandler
 from silvasonic_uploader.janitor import StorageJanitor
 from silvasonic_uploader.rclone_wrapper import RcloneWrapper
 
@@ -62,9 +64,10 @@ def setup_environment() -> None:
 
 
 def calculate_queue_size(directory: str, db: typing.Any) -> int:
-    """Calculate pending files (local files - uploaded files)."""
+    """Calculate pending files (local files - uploaded files).Blocking IO."""
     files = []
     try:
+        # Use simple walk here, optimization in Janitor is separate
         for root, _, filenames in os.walk(directory):
             for f in filenames:
                 # Get relative path to match DB entries
@@ -86,7 +89,7 @@ def calculate_queue_size(directory: str, db: typing.Any) -> int:
 def write_status(
     status: str, last_upload: float = 0, queue_size: int = -1, disk_usage: float = 0
 ) -> None:
-    """Write current status to JSON file for dashboard."""
+    """Write current status to JSON file for dashboard. Blocking IO."""
     try:
         data = {
             "service": "uploader",
@@ -114,7 +117,7 @@ def write_status(
 
 
 def report_error(context: str, error: Exception) -> None:
-    """Write critical error to shared error directory for the Watchdog."""
+    """Write critical error to shared error directory."""
     try:
         timestamp = int(time.time())
         filename = f"{ERROR_DIR}/error_uploader_{timestamp}.json"
@@ -135,58 +138,35 @@ def report_error(context: str, error: Exception) -> None:
         logger.error(f"Failed to report error: {ie}")
 
 
-def signal_handler(sig: int, frame: typing.Any) -> None:
-    """Handle termination signals."""
-    logger.info("Graceful shutdown received. Exiting...")
-    sys.exit(0)
+async def main_loop() -> None:
+    """Main async loop."""
+    logger.info("--- Silvasonic Uploader (AsyncIO Edition) ---")
 
-
-def main() -> None:
-    setup_environment()
-    signal.signal(signal.SIGTERM, signal_handler)
-    signal.signal(signal.SIGINT, signal_handler)
-
-    logger.info("--- Silvasonic Uploader (Python Edition) ---")
+    loop = asyncio.get_running_loop()
 
     wrapper = RcloneWrapper()
     janitor = StorageJanitor(
         SOURCE_DIR, threshold_percent=CLEANUP_THRESHOLD, target_percent=CLEANUP_TARGET
     )
-
-    # Database Setup
-    from silvasonic_uploader.database import DatabaseHandler
-
     db = DatabaseHandler()
-    while not db.connect():
-        logger.warning(f"Database not accessible at {db.host}:{db.port}. Retrying in 5s...")
-        time.sleep(5)
 
-    def upload_callback(filename: str, status: str, error: str | None = None) -> None:
-        """Callback for rclone wrapper."""
+    # Database Connection (Blocking, run in executor if slow, but usually fast enough for init)
+    # We loop here to ensure DB is up
+    while True:
         try:
-            # Try to get file size if success
-            size = 0
-            if status == "success":
-                try:
-                    full_path = os.path.join(SOURCE_DIR, filename)
-                    if os.path.exists(full_path):
-                        size = os.path.getsize(full_path)
-                except Exception:
-                    pass
-
-            db.log_upload(
-                filename=filename,
-                remote_path=f"{TARGET_DIR}/{filename}",
-                status=status,
-                size_bytes=size,
-                error_message=error,
-            )
+            # Run connect in executor to be safe against timeouts blocking the loop
+            connected = await loop.run_in_executor(None, db.connect)
+            if connected:
+                break
         except Exception as e:
-            logger.error(f"Callback error: {e}")
+            logger.error(f"DB Connect Error: {e}")
+
+        logger.warning(f"Database not accessible at {db.host}:{db.port}. Retrying in 5s...")
+        await asyncio.sleep(5)
 
     # 1. Configuration Check
     if NEXTCLOUD_URL and NEXTCLOUD_USER and NEXTCLOUD_PASSWORD:
-        wrapper.configure_webdav(
+        await wrapper.configure_webdav(
             remote_name="remote",
             url=NEXTCLOUD_URL,
             user=NEXTCLOUD_USER,
@@ -195,84 +175,190 @@ def main() -> None:
     else:
         logger.warning("Environment variables missing. Assuming config file already exists.")
 
-    # 2. Main Loop
     last_upload_success: float = 0.0
 
     while True:
         try:
             if os.path.exists(SOURCE_DIR):
-                # Gather Metrics
-                queue_size = calculate_queue_size(SOURCE_DIR, db)
-                disk_usage = wrapper.get_disk_usage_percent(SOURCE_DIR)
-
-                # --- PHASE 1: UPLOAD ---
-                write_status("Syncing", last_upload_success, queue_size, disk_usage)
-
-                # Use COPY instead of SYNC to prevent deleting files on remote
-                # if they are missing locally. Use MIN_AGE to avoid uploading files
-                # currently being written by the recorder.
-                success = wrapper.copy(
-                    SOURCE_DIR,
-                    f"remote:{TARGET_DIR}",
-                    min_age=MIN_AGE,
-                    callback=upload_callback,
+                # Gather Metrics (Blocking IO -> thread)
+                # Note: creating short lived session for queue size calculation if needed?
+                # calculate_queue_size manages its own session/connection usage via db methods
+                queue_size = await loop.run_in_executor(None, calculate_queue_size, SOURCE_DIR, db)
+                disk_usage = await loop.run_in_executor(
+                    None, wrapper.get_disk_usage_percent, SOURCE_DIR
                 )
 
-                # Update metrics after upload attempt
-                queue_size = calculate_queue_size(SOURCE_DIR, db)
-                disk_usage = wrapper.get_disk_usage_percent(SOURCE_DIR)
+                # --- PHASE 1: UPLOAD ---
+                await loop.run_in_executor(
+                    None, write_status, "Syncing", last_upload_success, queue_size, disk_usage
+                )
+
+                # Context Manager for DB Session Reuse
+                # get_session is sync context manager. We open it here.
+                # Note: This holds a DB connection open during the entire upload phase.
+                # This is efficient (1 connection vs N connections) but holds resource.
+                # Given uploader's dedicated role, this is correct pattern.
+                try:
+                    with db.get_session() as session:
+
+                        async def upload_callback_async(
+                            filename: str, status: str, error: str
+                        ) -> None:
+                            """Async callback that schedules sync DB write."""
+                            try:
+                                # Get file size if success (Blocking stat)
+                                size = 0
+                                if status == "success":
+                                    full_path = os.path.join(SOURCE_DIR, filename)
+                                    if os.path.exists(full_path):
+                                        # os.path.getsize is fast, but technically blocking.
+                                        # For standard SSD/SD, acceptable.
+                                        size = os.path.getsize(full_path)
+
+                                def db_update() -> None:
+                                    db.log_upload(
+                                        filename=filename,
+                                        remote_path=f"{TARGET_DIR}/{filename}",
+                                        status=status,
+                                        size_bytes=size,
+                                        error_message=error,
+                                        session=session,
+                                    )
+                                    # Commit immediately for dashboard visibility
+                                    session.commit()
+
+                                # Execute in thread pool
+                                await loop.run_in_executor(None, db_update)
+
+                            except Exception as e:
+                                logger.error(f"Callback error: {e}")
+
+                        # Use COPY instead of SYNC to prevent deleting files on remote
+                        success = await wrapper.copy(
+                            SOURCE_DIR,
+                            f"remote:{TARGET_DIR}",
+                            min_age=MIN_AGE,
+                            callback=upload_callback_async,
+                        )
+
+                except Exception as e:
+                    logger.error(f"Session/Upload error: {e}")
+                    success = False
+
+                # Update metrics
+                queue_size = await loop.run_in_executor(None, calculate_queue_size, SOURCE_DIR, db)
+                disk_usage = await loop.run_in_executor(
+                    None, wrapper.get_disk_usage_percent, SOURCE_DIR
+                )
 
                 if success:
                     last_upload_success = time.time()
-                    write_status("Idle", last_upload_success, queue_size, disk_usage)
+                    await loop.run_in_executor(
+                        None, write_status, "Idle", last_upload_success, queue_size, disk_usage
+                    )
 
                     # --- PHASE 2: CLEANUP ---
-                    write_status("Cleaning", last_upload_success, queue_size, disk_usage)
+                    await loop.run_in_executor(
+                        None, write_status, "Cleaning", last_upload_success, queue_size, disk_usage
+                    )
 
-                    # Fetch remote file list for safe deletion verification
-                    # We do this AFTER upload to ensure the list is fresh
-                    remote_files = wrapper.list_files(f"remote:{TARGET_DIR}")
+                    # List Remote Files (Async rclone)
+                    remote_files = await wrapper.list_files(f"remote:{TARGET_DIR}")
 
-                    # Run cleanup
-                    janitor.check_and_clean(remote_files, wrapper.get_disk_usage_percent)
+                    # Run cleanup (Blocking IO -> thread)
+                    # We pass wrapper.get_disk_usage_percent as callback
+                    await loop.run_in_executor(
+                        None, janitor.check_and_clean, remote_files, wrapper.get_disk_usage_percent
+                    )
 
-                    # Final update after cleanup
-                    queue_size = calculate_queue_size(SOURCE_DIR, db)
-                    disk_usage = wrapper.get_disk_usage_percent(SOURCE_DIR)
-                    write_status("Idle", last_upload_success, queue_size, disk_usage)
+                    # Final update
+                    queue_size = await loop.run_in_executor(
+                        None, calculate_queue_size, SOURCE_DIR, db
+                    )
+                    disk_usage = await loop.run_in_executor(
+                        None, wrapper.get_disk_usage_percent, SOURCE_DIR
+                    )
+                    await loop.run_in_executor(
+                        None, write_status, "Idle", last_upload_success, queue_size, disk_usage
+                    )
                 else:
                     logger.error("Upload failed. Validation and cleanup skipped.")
-                    write_status(
+                    await loop.run_in_executor(
+                        None,
+                        write_status,
                         "Error: Upload Failed",
                         last_upload_success,
                         queue_size,
                         disk_usage,
                     )
-                    # We don't write an explicit error file for transient network errors,
-                    # we rely on the watchdog spotting the stale 'last_upload' timestamp.
 
             else:
                 logger.error(f"Source directory {SOURCE_DIR} does not exist!")
-                write_status("Error: No Source", last_upload_success)
+                await loop.run_in_executor(
+                    None, write_status, "Error: No Source", last_upload_success
+                )
 
             logger.info(f"Sleeping for {SYNC_INTERVAL} seconds...")
-            write_status(
-                "Sleeping",
-                last_upload_success,
-                calculate_queue_size(SOURCE_DIR, db),
-                wrapper.get_disk_usage_percent(SOURCE_DIR) if os.path.exists(SOURCE_DIR) else 0,
-            )
+            # We can just await sleep, it is cancellable
+            await asyncio.sleep(SYNC_INTERVAL)
 
-            # Smart Sleep (interruptible)
-            for _ in range(SYNC_INTERVAL):
-                time.sleep(1)
-
+        except asyncio.CancelledError:
+            logger.info("Main loop cancelled. Shutting down...")
+            raise
         except Exception as e:
             logger.exception("Unexpected error in main loop:")
             report_error("main_loop_crash", e)
-            write_status("Error: Crashed", last_upload_success)
-            time.sleep(60)  # Prevent tight loop on error
+            try:
+                await loop.run_in_executor(
+                    None, write_status, "Error: Crashed", last_upload_success
+                )
+            except Exception:
+                pass
+            await asyncio.sleep(60)
+
+
+def main() -> None:
+    setup_environment()
+
+    # Run async main
+    try:
+        asyncio.run(main_loop())
+    except KeyboardInterrupt:
+        # Should be handled by CancelledError inside run usually,
+        # but if we catch it here it's cleaner output
+        pass
+    except Exception as e:
+        logger.critical(f"Fatal error: {e}")
+        sys.exit(1)
 
 
 if __name__ == "__main__":
-    main()
+    # Signal handling in asyncio.run handles SIGINT/SIGTERM by cancelling tasks?
+    # Actually asyncio.run doesn't handle SIGTERM by default on all platforms the same way.
+    # But on Linux/Docker, we want to catch SIGTERM and cancel the loop.
+    # However, asyncio.run() creates a loop. We can add signal handlers inside main_loop.
+    # But let's keep it simple: Standard asyncio.run handles KeyboardInterrupt (SIGINT).
+    # For SIGTERM (Docker stop), we need to register a handler.
+
+    # We'll use a slightly more manual approach to ensure SIGTERM works.
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
+
+    main_task = loop.create_task(main_loop())
+
+    def shutdown_handler() -> None:
+        logger.info("Received signal to stop.")
+        main_task.cancel()
+
+    loop.add_signal_handler(signal.SIGTERM, shutdown_handler)
+    loop.add_signal_handler(signal.SIGINT, shutdown_handler)
+
+    try:
+        loop.run_until_complete(main_task)
+    except asyncio.CancelledError:
+        pass  # Clean exit
+    except Exception as e:
+        logger.critical(f"Fatal startup error: {e}")
+    finally:
+        loop.close()
+        logger.info("Uploader service stopped.")

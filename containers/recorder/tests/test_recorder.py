@@ -1,78 +1,90 @@
-import typing
 import unittest
 from unittest.mock import MagicMock, patch
 
-from silvasonic_recorder import main
+from silvasonic_recorder.main import RecorderService
+from silvasonic_recorder.mic_profiles import (
+    AudioConfig,
+    DetectedDevice,
+    MicrophoneProfile,
+    RecordingConfig,
+)
 
 
-class TestRecorder(unittest.TestCase):
-    """Test the Recorder module."""
+class TestRecorderService(unittest.TestCase):
+    """Test the RecorderService class."""
 
     def setUp(self) -> None:
         """Set up test fixtures."""
+        self.service = RecorderService()
 
-        # Mock profile
-        self.profile = MagicMock()
-        self.profile.audio.channels = 1
-        self.profile.audio.sample_rate = 48000
-        self.profile.recording.chunk_duration_seconds = 30
-        self.profile.recording.compression_level = 5
-        self.profile.is_mock = False
-        self.profile.slug = "test_profile"
+        # Mock Profile
+        self.profile = MicrophoneProfile(
+            name="Test Profile",
+            slug="test_profile",
+            audio=AudioConfig(channels=1, sample_rate=48000, bit_depth=16, format="S16_LE"),
+            recording=RecordingConfig(
+                chunk_duration_seconds=30, output_format="flac", compression_level=5
+            ),
+        )
 
-        self.device = MagicMock()
-        self.device.hw_address = "hw:0,0"
-
-        self.output_dir = "/tmp/test_rec"
+        # Mock Device
+        self.device = DetectedDevice(
+            card_id="0", hw_address="hw:0,0", description="Test Device", usb_id="1234:5678"
+        )
 
         # Mock Strategy
         self.strategy = MagicMock()
         self.strategy.get_ffmpeg_input_args.return_value = ["-f", "alsa", "-test_arg"]
         self.strategy.get_input_source.return_value = "hw:0,0"
 
-    @patch("silvasonic_recorder.main.subprocess.Popen")
+    @patch("silvasonic_recorder.main.get_active_profile")
+    @patch("silvasonic_recorder.main.create_strategy_for_profile")
     @patch("silvasonic_recorder.main.os.makedirs")
-    def test_start_recording(self, mock_makedirs: typing.Any, mock_popen: typing.Any) -> None:
-        """Test that start_recording calls FFmpeg with correct arguments from strategy."""
+    def test_initialize(
+        self, mock_makedirs: MagicMock, mock_create_strat: MagicMock, mock_get_profile: MagicMock
+    ) -> None:
+        """Test initialization logic."""
+        mock_get_profile.return_value = (self.profile, self.device)
+        mock_create_strat.return_value = self.strategy
+
+        success = self.service.initialize()
+
+        self.assertTrue(success)
+        self.assertEqual(self.service.profile, self.profile)
+        self.assertEqual(self.service.device, self.device)
+        self.assertEqual(self.service.strategy, self.strategy)
+        self.assertIn("test_profile", self.service.output_dir)
+
+    @patch("silvasonic_recorder.main.subprocess.Popen")
+    @patch("silvasonic_recorder.main.get_active_profile")
+    @patch("silvasonic_recorder.main.create_strategy_for_profile")
+    def test_start_ffmpeg(
+        self, mock_create_strat: MagicMock, mock_get_profile: MagicMock, mock_popen: MagicMock
+    ) -> None:
+        """Test that _start_ffmpeg calls FFmpeg correctly."""
+        # Setup Service state manually or via init
+        mock_get_profile.return_value = (self.profile, self.device)
+        mock_create_strat.return_value = self.strategy
+
+        self.service.initialize()
+
         process_mock = MagicMock()
         mock_popen.return_value = process_mock
+        process_mock.stderr = MagicMock()
 
-        # Call the function
-        main.start_recording(self.profile, self.device, self.output_dir, self.strategy)
+        # Call private method for testing
+        self.service._start_ffmpeg()
 
-        # Verify directory creation
-        mock_makedirs.assert_called_with(self.output_dir, exist_ok=True)
-
-        # Verify FFmpeg call
         args, kwargs = mock_popen.call_args
         cmd = args[0]
 
-        # Check essential flags
+        # validations
         self.assertIn("ffmpeg", cmd)
-        self.assertIn("-test_arg", cmd)  # From strategy
-        self.assertIn(self.device.hw_address, cmd)
+        self.assertIn("-test_arg", cmd)
+        self.assertIn("hw:0,0", cmd)
         self.assertIn("flac", cmd)
 
-        # Check background tasks call
         self.strategy.start_background_tasks.assert_called_once_with(process_mock)
-
-    @patch("silvasonic_recorder.main.subprocess.Popen")
-    @patch("silvasonic_recorder.main.os.makedirs")
-    def test_start_recording_mock_strategy(
-        self, mock_makedirs: typing.Any, mock_popen: typing.Any
-    ) -> None:
-        """Test with different strategy args."""
-
-        self.strategy.get_ffmpeg_input_args.return_value = ["-f", "s16le", "-input_mock"]
-        self.strategy.get_input_source.return_value = "pipe:0"
-
-        main.start_recording(self.profile, self.device, self.output_dir, self.strategy)
-
-        args, kwargs = mock_popen.call_args
-        cmd = args[0]
-
-        self.assertIn("-input_mock", cmd)
-        self.assertIn("pipe:0", cmd)
 
 
 if __name__ == "__main__":

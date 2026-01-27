@@ -13,7 +13,8 @@ dependencies = [
     "fastapi>=0.109.0",
     "uvicorn[standard]>=0.27.0",
     "websockets>=12.0",
-    "python-multipart>=0.0.9"
+    "python-multipart>=0.0.9",
+    "orjson>=3.9.10",
 ]
 
 [build-system]

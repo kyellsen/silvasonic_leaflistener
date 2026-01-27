@@ -53,8 +53,9 @@ async def websocket_endpoint(websocket: WebSocket, source: str = "default") -> N
             # Wait for new frame
             data = await queue.get()
 
-            # Send binary or json
-            await websocket.send_json({"type": "spectrogram", "data": data, "source": source})
+            # Send binary (orjson already returned bytes)
+            # We send the raw bytes directly to ensure maximum performance.
+            await websocket.send_bytes(data)
 
     except WebSocketDisconnect:
         logger.debug("WS Disconnected")
