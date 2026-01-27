@@ -53,10 +53,13 @@ class PodmanOrchestrator:
         # Usually they are in a bridged network created by compose.
         # Check hostname logic.
         
+        rec_id = f"{profile_slug}_{card_id}"
+        
         # ENVIRONMENT mapping
         env_vars = [
             "-e", "PYTHONUNBUFFERED=1",
             "-e", f"AUDIO_PROFILE={profile_slug}",
+            "-e", f"RECORDER_ID={rec_id}",
             "-e", f"LIVE_STREAM_PORT={stream_port}",
             "-e", "LIVE_STREAM_TARGET=silvasonic_livesound", # DNS name in compose network
             "-e", "SILVASONIC_DATA_DIR=/mnt/data/services/silvasonic" # Internal path logic?
@@ -104,7 +107,7 @@ class PodmanOrchestrator:
             "--replace", # Replace if exists (stale)
             "--label", "managed_by=silvasonic-controller",
             "--label", f"card_id={card_id}",
-            "--privileged", # Often easiest for Audio, though we try to be specific above
+            "--privileged", # Required for full hardware access (Root-based architecture)
             # Networking
             "--network", "silvasonic_default", # Assuming compose project name 'silvasonic'
             *env_vars,

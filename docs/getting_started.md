@@ -116,7 +116,8 @@ From your workstation:
 
 ```bash
 cd /mnt/data/dev/packages/silvasonic
-./setup/install.sh
+# Note: Use sudo if you are accessing system-level podman sockets or config
+sudo ./setup/install.sh
 ```
 
 **What happens:**
@@ -159,7 +160,7 @@ Silvasonic supports recording from multiple microphones simultaneously (e.g., a 
 3.  **Update LiveSound**:
     - Add `LISTEN_PORTS=front:1234,back:1235` to the `livesound` service environment.
     - Expose the new UDP ports in the `ports` section.
-4.  **Deploy**: Run `./setup/install.sh` again to apply changes.
+4.  **Deploy**: Run `sudo ./setup/install.sh` again to apply changes.
 
 ---
 

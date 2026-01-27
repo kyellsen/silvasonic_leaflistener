@@ -61,6 +61,7 @@ class AudioIngestor:
         self.threads: dict[str, threading.Thread] = {}
 
         self.running = False
+        self.status_dir = "/mnt/data/services/silvasonic/status"
         
         # Thread-safe integration with AsyncIO
         self.loop: asyncio.AbstractEventLoop | None = None
@@ -69,32 +70,80 @@ class AudioIngestor:
         self._spectrogram_queues: dict[str, set[asyncio.Queue[list[int]]]] = {}
         self._audio_queues: dict[str, set[asyncio.Queue[bytes]]] = {}
 
-        # Initialize sockets
-        for source, port in self.config.ports.items():
-            self._setup_socket(source, port)
-            self._spectrogram_queues[source] = set()
-            self._audio_queues[source] = set()
+        # Initialize sockets from static config (env vars)
+        self.update_sources(self.config.ports)
 
-        logger.info(f"AudioIngestor initialized for sources: {list(self.config.ports.keys())}")
+        logger.info(f"AudioIngestor initialized.")
+
+    def update_sources(self, new_ports: dict[str, int]) -> None:
+        """Update active sockets based on new mapping."""
+        # 1. Add New
+        for source, port in new_ports.items():
+            if source not in self.sockets:
+                try:
+                    self._setup_socket(source, port)
+                    # Start thread if running
+                    if self.running and source in self.sockets:
+                        t = threading.Thread(target=self._ingest_loop, args=(source, self.sockets[source]), daemon=True)
+                        self.threads[source] = t
+                        t.start()
+                except Exception as e:
+                    logger.error(f"Failed to add source {source}: {e}")
+
+        # 2. Remove Old (Optional - closing sockets might be safer than leaving them)
+        # For now, we accumulate. Closing running threads is tricky without signaling.
+        # But we can try.
+        # If a port moves? (Unlikely)
+        pass
 
     def _setup_socket(self, source: str, port: int) -> None:
         try:
             sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+            # Allow reuse address to recover quickly
+            sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
             sock.bind((self.config.host, port))
             self.sockets[source] = sock
             logger.info(f"Bound source '{source}' to UDP {self.config.host}:{port}")
         except Exception as e:
             logger.error(f"Failed to bind source '{source}' on port {port}: {e}")
 
+    def _watch_config_loop(self) -> None:
+        """Poll for dynamic source configuration."""
+        import json
+        import time
+        config_file = os.path.join(self.status_dir, "livesound_sources.json")
+        last_mtime = 0
+
+        while self.running:
+            try:
+                if os.path.exists(config_file):
+                    mtime = os.path.getmtime(config_file)
+                    if mtime > last_mtime:
+                        last_mtime = mtime
+                        with open(config_file) as f:
+                            sources = json.load(f)
+                            if isinstance(sources, dict):
+                                self.update_sources(sources)
+            except Exception as e:
+                logger.error(f"Config Watch Error: {e}")
+            
+            time.sleep(2)
+
     def start(self, loop: asyncio.AbstractEventLoop) -> None:
         """Start the ingestion threads."""
         self.loop = loop
         self.running = True
         
+        # Start existing threads
         for source, sock in self.sockets.items():
-            t = threading.Thread(target=self._ingest_loop, args=(source, sock), daemon=True)
-            self.threads[source] = t
-            t.start()
+            if source not in self.threads or not self.threads[source].is_alive():
+                t = threading.Thread(target=self._ingest_loop, args=(source, sock), daemon=True)
+                self.threads[source] = t
+                t.start()
+        
+        # Start Config Watcher
+        self.watcher_thread = threading.Thread(target=self._watch_config_loop, daemon=True)
+        self.watcher_thread.start()
             
         logger.info("Audio ingestion threads started.")
 
@@ -107,6 +156,7 @@ class AudioIngestor:
             except Exception:
                 pass
         self.sockets.clear()
+        # Threads will exit when sock.recv returns empty or error
 
     async def subscribe_spectrogram(self, source: str = "default") -> asyncio.Queue[list[int]]:
         """Subscribe to spectrogram updates for a specific source."""

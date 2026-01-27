@@ -231,6 +231,7 @@ async def dashboard(request: Request, auth: typing.Any = Depends(require_auth)) 
     # Order: Liveaudio, Recorder, Uploader, BirdNet, Dashboard, PostgressDB, HealthChecker
     container_config = [
         {"key": "livesound", "name": "Liveaudio"},
+        {"key": "controller", "name": "Controller"},
         {"key": "recorder", "name": "Recorder"},
         {"key": "carrier", "name": "Uploader"},
         {"key": "birdnet", "name": "BirdNet"},
@@ -367,6 +368,7 @@ async def sse_system_status(
                     # Construct Containers List (Same logic as dashboard view)
                     container_config = [
                         {"key": "livesound", "name": "Liveaudio"},
+                        {"key": "controller", "name": "Controller"},
                         {"key": "recorder", "name": "Recorder"},
                         {"key": "carrier", "name": "Uploader"},
                         {"key": "birdnet", "name": "BirdNet"},

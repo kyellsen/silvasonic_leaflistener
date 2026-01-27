@@ -38,17 +38,8 @@ TARGET="${SSH_TARGET:-silvasonic.local}"
 echo "Target: $TARGET"
 
 # WARN/BLOCK if running as root on workstation
-if [[ $EUID -eq 0 ]]; then
-    echo "WARNING: You are running as root (sudo)."
-    echo "This means your personal SSH config (~/.ssh/config) will likely be IGNORED."
-    echo "If you use SSH aliases like '$TARGET', please run this script WITHOUT sudo."
-    echo "(Ansible will ask for become/sudo passwords on the target if needed)."
-    read -p "Continue anyway? [y/N] " -n 1 -r
-    echo
-    if [[ ! $REPLY =~ ^[Yy]$ ]]; then
-        exit 1
-    fi
-fi
+# Root check removed - we explicitly support running as root now.
+# Note: If running as root, ensure your SSH keys are available to the root user.
 
 # Check if we can reach the target using SSH (resolves aliases)
 echo "Checking connectivity to '$TARGET'..."
