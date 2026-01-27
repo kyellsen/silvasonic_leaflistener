@@ -22,6 +22,8 @@ services:
       - ./containers/recorder/src/microphones:/app/mic_profiles:ro
       # 4. Logs
       - ${SILVASONIC_DATA_DIR}/logs:/var/log/silvasonic:z
+      # 5. Shared Status (Live Config)
+      - ${SILVASONIC_DATA_DIR}/status:/mnt/data/services/silvasonic/status:z
     restart: always
 
   uploader:

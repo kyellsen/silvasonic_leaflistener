@@ -11,8 +11,13 @@ model: "Ultramic 384K EVO"
 device_patterns:
   - "UltraMic"
   - "Ultramic384K"
-  - "Dodotronic"
   - "384K_EVO"
+  - "Ultramic"
+
+# Known USB IDs (Vendor:Product)
+usb_ids:
+  - "04d8:f384" # Dodotronic Ultramic 384K (Microchip Generic ID often used)
+  - "0000:0000" # Placeholder if unknown, rely on name pattern for now
 
 # Audio configuration
 audio:

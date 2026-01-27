@@ -82,7 +82,7 @@ def find_station(lat: float, lon: float) -> str | None:
     """Find the nearest DWD station."""
     try:
         request = DwdObservationRequest(
-            parameter=[Parameter.TEMPERATURE_AIR_MEAN_200],
+            parameter=[Parameter.TEMPERATURE_AIR_MEAN_2M],
             resolution="reaction",  # or "hourly"
             start_date=datetime.now(),
             end_date=datetime.now(),
@@ -121,7 +121,7 @@ def fetch_weather() -> None:
 
         request = DwdObservationRequest(
             parameter=[
-                Parameter.TEMPERATURE_AIR_MEAN_200,
+                Parameter.TEMPERATURE_AIR_MEAN_2M,
                 Parameter.HUMIDITY,
                 Parameter.PRECIPITATION_HEIGHT,
                 Parameter.WIND_SPEED,
@@ -159,7 +159,7 @@ def fetch_weather() -> None:
             val = row["value"]
             station_id = row["station_id"]
 
-            if param == "temperature_air_mean_200":
+            if param == "temperature_air_mean_2m":
                 data_map["temperature_c"] = val - 273.15  # It's Kelvin usually?
                 # DWD 10 min usually Celsius?
                 # Checking docs: DWD observation is usually K for creating consistent units?

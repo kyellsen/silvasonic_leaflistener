@@ -48,6 +48,7 @@ class MicrophoneProfile:
     manufacturer: str = "Unknown"
     model: str = "Unknown"
     device_patterns: list[str] = field(default_factory=list)
+    usb_ids: list[str] = field(default_factory=list)  # e.g. ["1b3f:2008"]
     audio: AudioConfig = field(default_factory=AudioConfig)
     recording: RecordingConfig = field(default_factory=RecordingConfig)
     priority: int = 50
@@ -77,6 +78,7 @@ class MicrophoneProfile:
             manufacturer=data.get("manufacturer", "Unknown"),
             model=data.get("model", "Unknown"),
             device_patterns=data.get("device_patterns", []),
+            usb_ids=data.get("usb_ids", []),
             audio=AudioConfig(
                 sample_rate=audio_data.get("sample_rate", 48000),
                 channels=audio_data.get("channels", 1),
@@ -222,8 +224,15 @@ def find_matching_profile(
 
         for pattern in profile.device_patterns:
             for device in devices:
+                # 1. Check Strict USB ID (Highest Priority)
+                if device.usb_id and profile.usb_ids:
+                     if device.usb_id in profile.usb_ids:
+                         logger.info(f"Matched USB ID: '{device.usb_id}' -> {profile.name}")
+                         return profile, device
+
+                # 2. Check Name Pattern
                 if pattern.lower() in device.description.lower():
-                    logger.info(f"Matched: '{pattern}' -> {profile.name}")
+                    logger.info(f"Matched Pattern: '{pattern}' -> {profile.name}")
                     return profile, device
 
     # Fallback: use generic profile with first device

@@ -219,8 +219,40 @@ async def dashboard(request: Request, auth: typing.Any = Depends(require_auth)) 
             return "pending"
         return "lagging"
 
+    # Fetch Recorder Statuses for Throughput
+    recorder_statuses = RecorderService.get_status()
+    recorders_throughput = []
+    
+    for r in recorder_statuses:
+        # Determine strict activity (running vs idle) via file creation?
+        # For now, trust the status "Running" if we had container stats, 
+        # but here we have the file-based status. 
+        # Actually RecorderService.get_status() returns data from json files written by containers.
+        # Let's use that.
+        # r = {"status": "Running", "meta": {...}, "profile": {...} }
+        
+        # We also want to support "Active" check via file rate per recorder?
+        # That would require scanning folders per recorder. 
+        # RecorderService.get_creation_rate() is global.
+        # Let's stick to the status reported by the container for now.
+        
+        is_active = r.get("status") == "Running"
+        
+        # Nicer display name
+        display_name = r.get("device", "Unknown Recorder")
+        if r.get("profile") and "name" in r.get("profile"):
+             display_name = r["profile"]["name"]
+             
+        recorders_throughput.append({
+            "name": display_name,
+            "is_active": is_active,
+            "status": r.get("status", "Unknown"),
+            "device": r.get("device", "Unknown"),
+        })
+
     throughput = {
-        "recorder_active": RecorderService.get_creation_rate(10) > 0,  # Simple boolean if recording
+        "recorder_active": RecorderService.get_creation_rate(10) > 0,  # Global activity
+        "recorders": recorders_throughput, # List of individual recorders
         "analyzer_lag": analyzer_lag,
         "uploader_lag": uploader_lag,
         "analyzer_status": get_status(analyzer_lag),

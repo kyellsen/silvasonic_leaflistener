@@ -47,11 +47,14 @@ class DeviceManager:
                     card_desc = match.group(3) # "USB Audio Device" - More useful
                     device_id = match.group(4)
                     
+                    usb_id = self._get_usb_id(card_id)
+                    logger.debug(f"Card {card_id} ({card_desc}) USB ID: {usb_id}")
+
                     devices.append(AudioDevice(
                         name=card_desc,
                         card_id=card_id,
                         dev_path=f"/dev/snd/pcmC{card_id}D{device_id}c",
-                        usb_id=self._get_usb_id(card_id)
+                        usb_id=usb_id
                     ))
         except Exception as e:
             logger.error(f"Scan failed: {e}")

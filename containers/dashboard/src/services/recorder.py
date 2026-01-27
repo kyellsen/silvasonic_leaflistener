@@ -129,81 +129,92 @@ class RecorderService:
         }]
 
     @staticmethod
-    async def get_recent_recordings(limit: int = 20) -> list[dict[str, Any]]:
+    async def get_recent_recordings(limit_per_source: int = 20) -> dict[str, list[dict[str, Any]]]:
+        """Returns recordings grouped by source (folder name)."""
+        grouped_recordings: dict[str, list[dict[str, Any]]] = {}
+        
         try:
-            # Get current BPS setting for Duration Fallback
-            # Get first active profile for defaults?
-            # Or assume standard?
-            # We can try to get from get_status()[0] if exists
+            # Get current BPS setting from first status for duration fallback
             statuses = RecorderService.get_status()
-            current_bps = 48000 * 2 # Default
+            current_bps = 48000 * 2 
             if statuses and "profile" in statuses[0]:
                  current_bps = RecorderService.get_audio_settings(statuses[0]["profile"])
 
             if not os.path.exists(REC_DIR):
-                return []
+                return {}
 
-            files_found: list[dict[str, Any]] = []
-            # Recursive scan to find all audio files (support subdirs like YYYY-MM-DD or profile)
-            for root, _dirs, files in os.walk(REC_DIR):
-                for f in files:
-                    if f.endswith((".flac", ".wav", ".mp3")):
-                        full_path = os.path.join(root, f)
-                        try:
-                            stats = os.stat(full_path)
-                            files_found.append(
-                                {
-                                    "path": full_path,
-                                    "name": f,
-                                    "size": stats.st_size,
-                                    "mtime": stats.st_mtime,
-                                }
-                            )
-                        except Exception:
-                            pass
-
-            # Sort by mtime DESC (newest first)
-            files_found.sort(key=lambda x: x["mtime"], reverse=True)
-            files_found = files_found[:limit]
-
-            items = []
-            for item in files_found:
-                dt = datetime.datetime.fromtimestamp(item["mtime"])
-                size_bytes = item["size"]
-                size_mb = round(size_bytes / (1024 * 1024), 2)
-
-                # Sanitize Duration Estimate
-                # Duration = CompressedSize / (BPS * 0.6)
-                duration = 0.0
-                if size_bytes > 0:
-                    duration = size_bytes / (current_bps * 0.6)
-
-                d = {
-                    "filename": item["name"],
-                    "file_size_bytes": size_bytes,
-                    "size_mb": size_mb,
-                    "formatted_time": dt.strftime("%Y-%m-%d %H:%M:%S"),
-                    "created_at_iso": dt.isoformat(),
-                    "duration_str": f"{duration:.2f}s",
-                    "duration_sec": duration,
-                    # Relative path for potential playback API usage
-                    "audio_relative_path": os.path.relpath(item["path"], REC_DIR),
-                }
+            # Structure: REC_DIR / {source_id} / {file}.flac
+            # Or REC_DIR / {file}.flac (legacy/default)
             
-                # Derive source
-                rel = d["audio_relative_path"]
-                if "/" in rel:
-                   d["source"] = rel.split("/")[0]
-                else:
-                   d["source"] = "Default"
-                   
-                items.append(d)
+            # 1. Identify Sources (Directories)
+            sources = [d for d in os.listdir(REC_DIR) if os.path.isdir(os.path.join(REC_DIR, d))]
+            if not sources:
+                # Check for files in root (Default source)
+                sources = ["Default"]
+            
+            # Helper to process a directory
+            def scan_source(source_name: str, path: str) -> list[dict[str, Any]]:
+                items = []
+                try:
+                    # Scan files
+                    with os.scandir(path) as it:
+                        for entry in it:
+                            if entry.is_file() and entry.name.endswith((".flac", ".wav", ".mp3")):
+                                try:
+                                    stats = entry.stat()
+                                    dt = datetime.datetime.fromtimestamp(stats.st_mtime)
+                                    size_bytes = stats.st_size
+                                    size_mb = round(size_bytes / (1024 * 1024), 2)
+                                    
+                                    # Duration Estimate
+                                    duration = 0.0
+                                    if size_bytes > 0:
+                                        duration = size_bytes / (current_bps * 0.6)
 
-            return items
+                                    items.append({
+                                        "filename": entry.name,
+                                        "file_size_bytes": size_bytes,
+                                        "size_mb": size_mb,
+                                        "formatted_time": dt.strftime("%Y-%m-%d %H:%M:%S"),
+                                        "created_at_iso": dt.isoformat(),
+                                        "duration_str": f"{duration:.2f}s",
+                                        "duration_sec": duration,
+                                        "source": source_name,
+                                        "audio_relative_path": os.path.join(source_name, entry.name) if source_name != "Default" else entry.name,
+                                        "mtime": stats.st_mtime
+                                    })
+                                except Exception:
+                                    pass
+                except Exception as e:
+                    logger.error(f"Error scanning source {source_name}: {e}")
+                
+                # Sort by mtime DESC
+                items.sort(key=lambda x: x["mtime"], reverse=True)
+                return items[:limit_per_source]
+
+            # 2. Process Sources
+            # Check Root first (Legacy/Default)
+            root_files = scan_source("Default", REC_DIR)
+            if root_files:
+                grouped_recordings["Default"] = root_files
+                
+            # Check Subdirectories
+            # Actually, scan_source above scans the path we give it.
+            # If we identified real directories, scan them.
+            real_sources = [d for d in os.listdir(REC_DIR) if os.path.isdir(os.path.join(REC_DIR, d))]
+            
+            for src in real_sources:
+                 path = os.path.join(REC_DIR, src)
+                 files = scan_source(src, path)
+                 if files:
+                     grouped_recordings[src] = files
+                     
+            return grouped_recordings
 
         except Exception as e:
             logger.error(f"Recorder History Error: {e}")
-            return []
+            return {}
+
 
     @staticmethod
     def get_creation_rate(minutes: int = 60) -> float:

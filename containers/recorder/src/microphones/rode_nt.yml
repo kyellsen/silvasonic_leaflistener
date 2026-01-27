@@ -6,6 +6,8 @@ device_patterns:
   - "Røde"
   - "NT-USB"
   - "Rode"
+usb_ids:
+  - "19f7:0003" # RODE NT-USB
 audio:
   sample_rate: 48000
   channels: 1

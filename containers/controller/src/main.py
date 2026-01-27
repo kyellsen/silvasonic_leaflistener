@@ -15,7 +15,7 @@ sys.path.append("/app")
 
 from src.device_manager import DeviceManager, AudioDevice
 from src.podman_client import PodmanOrchestrator
-from src.mic_profiles import load_profiles, find_matching_profile, MicrophoneProfile
+from src.profiles_loader import load_profiles, find_matching_profile, MicrophoneProfile
 
 # Logging
 os.makedirs("/var/log/silvasonic", exist_ok=True)
@@ -86,7 +86,12 @@ class Controller:
             
             # Map: rec_id -> port
             # e.g. {"front_mic_1": 12001, "back_mic_2": 12002}
-            sources = {s.rec_id: s.port for s in self.active_sessions.values()}
+            sources = {}
+            for s in self.active_sessions.values():
+                sources[s.rec_id] = s.port
+                # Add Alias for simple slug (e.g. 'rode_nt' -> 12001) for frontend convenience
+                if s.profile_slug not in sources:
+                     sources[s.profile_slug] = s.port
             
             config_file = f"{STATUS_DIR}/livesound_sources.json"
             tmp_file = f"{config_file}.tmp"
