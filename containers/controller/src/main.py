@@ -14,7 +14,7 @@ sys.path.append("/app")
 
 from src.device_manager import DeviceManager, AudioDevice
 from src.podman_client import PodmanOrchestrator
-from mic_profiles import load_profiles, find_matching_profile, MicrophoneProfile
+from src.mic_profiles import load_profiles, find_matching_profile, MicrophoneProfile
 
 # Logging
 os.makedirs("/var/log/silvasonic", exist_ok=True)

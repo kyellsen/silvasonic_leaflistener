@@ -205,8 +205,14 @@ class RcloneWrapper:
             # rclone lsjson returns 'Path' relative to the root of the remote
             return {item["Path"]: item["Size"] for item in items if not item["IsDir"]}
 
+        except subprocess.CalledProcessError as e:
+            if e.returncode == 3:
+                # Exit code 3 means directory not found. This is fine, just means no files.
+                return {}
+            logger.error(f"Failed to list remote files: {e.stderr}")
+            return None
         except Exception as e:
-            logger.error(f"Failed to list remote files: {e}")
+            logger.error(f"Failed to list remote files (unexpected): {e}")
             return None
 
     def get_disk_usage_percent(self, path: str) -> float:
