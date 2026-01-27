@@ -51,18 +51,15 @@ class BirdNetService:
                             ts = ts.replace(tzinfo=datetime.UTC)
                         d["iso_timestamp"] = ts.isoformat()
                         # Legacy support or direct use? We'll use ISO in frontend.
-                        d[
-                            "time"
-                        ] = ts.isoformat()  # Temporary overload for template compatibility check
+                        d["time"] = ts.isoformat()
                     else:
                         d["iso_timestamp"] = ""
                         d["time"] = "-"
 
                     # Display Name Logic
+                    german_name = d.get("german_name")
                     d["display_name"] = (
-                        d.get("german_name")
-                        if use_german and d.get("german_name")
-                        else d.get("com_name")
+                        german_name if use_german and german_name else d.get("com_name")
                     )
 
                     # Audio Path Logic
