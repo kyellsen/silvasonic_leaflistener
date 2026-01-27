@@ -3,7 +3,7 @@ import subprocess
 from unittest.mock import MagicMock, call, patch
 
 import pytest
-from rclone_wrapper import RcloneWrapper
+from silvasonic_uploader.rclone_wrapper import RcloneWrapper
 
 
 class TestRcloneWrapper:

@@ -5,7 +5,7 @@ import logging.handlers
 import os
 import sys
 
-from src.watcher import WatcherService
+from silvasonic_birdnet.watcher import WatcherService
 
 logger = logging.getLogger("Main")
 

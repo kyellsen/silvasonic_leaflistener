@@ -3,7 +3,7 @@ import time
 from unittest.mock import MagicMock, patch
 
 import pytest
-from janitor import StorageJanitor
+from silvasonic_uploader.janitor import StorageJanitor
 
 
 class TestStorageJanitor:

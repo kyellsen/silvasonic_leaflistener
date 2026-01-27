@@ -12,7 +12,7 @@ class TestMain:
 
     def test_calculate_queue_size(self, temp_fs: str, mock_db: MagicMock) -> None:
         """Test queue size calculation with some uploaded and some pending files."""
-        from main import calculate_queue_size
+        from silvasonic_uploader.main import calculate_queue_size
 
         # Create some files
         os.makedirs(os.path.join(temp_fs, "subdir"))
@@ -35,7 +35,7 @@ class TestMain:
 
     def test_calculate_queue_size_empty(self, temp_fs: str, mock_db: MagicMock) -> None:
         """Test queue size is 0 when directory is empty."""
-        from main import calculate_queue_size
+        from silvasonic_uploader.main import calculate_queue_size
 
         queue_size = calculate_queue_size(temp_fs, mock_db)
         assert queue_size == 0
@@ -47,7 +47,7 @@ class TestMain:
         # Or mock os.walk
         with patch("os.walk") as mock_walk:
             mock_walk.side_effect = Exception("Walk Error")
-            from main import calculate_queue_size
+            from silvasonic_uploader.main import calculate_queue_size
 
             queue_size = calculate_queue_size(temp_fs, mock_db)
             assert queue_size == 0
@@ -59,7 +59,7 @@ class TestMain:
         status_path = os.path.join(temp_fs, "status.json")
 
         with patch("main.STATUS_FILE", status_path):
-            from main import write_status
+            from silvasonic_uploader.main import write_status
 
             write_status("Testing", last_upload=123.0, queue_size=5, disk_usage=45.0)
 
@@ -83,7 +83,7 @@ class TestMain:
             try:
                 raise ValueError("Test Error")
             except ValueError as e:
-                from main import report_error
+                from silvasonic_uploader.main import report_error
 
                 report_error("test_context", e)
 
@@ -96,7 +96,7 @@ class TestMain:
             assert "Test Error" in data["error"]
 
     @patch("main.setup_environment")
-    @patch("src.database.DatabaseHandler")
+    @patch("silvasonic_uploader.database.DatabaseHandler")
     @patch("main.RcloneWrapper")
     @patch("main.StorageJanitor")
     @patch("time.sleep")
@@ -149,7 +149,7 @@ class TestMain:
         mock_janitor_inst.check_and_clean.assert_called()
 
     @patch("main.setup_environment")
-    @patch("src.database.DatabaseHandler")
+    @patch("silvasonic_uploader.database.DatabaseHandler")
     @patch("main.RcloneWrapper")
     @patch("main.StorageJanitor")
     @patch("time.sleep")
@@ -187,7 +187,7 @@ class TestMain:
     def test_upload_callback(self, mock_db: MagicMock) -> None:
         """Test the upload callback function logging to the database."""
         with (
-            patch("src.database.DatabaseHandler") as mock_db_cls,
+            patch("silvasonic_uploader.database.DatabaseHandler") as mock_db_cls,
             patch("main.RcloneWrapper") as mock_rclone,
             patch("main.StorageJanitor"),
             patch("time.sleep", side_effect=SystemExit),
@@ -235,7 +235,7 @@ class TestMain:
     @patch("main.os.makedirs")
     def test_setup_environment(self, mock_makedirs: MagicMock, mock_logging: MagicMock) -> None:
         """Test that environment setup creates necessary directories and configures logging."""
-        from main import setup_environment
+        from silvasonic_uploader.main import setup_environment
 
         setup_environment()
 
@@ -244,7 +244,7 @@ class TestMain:
         mock_logging.basicConfig.assert_called_once()
 
     @patch("main.setup_environment")
-    @patch("src.database.DatabaseHandler")
+    @patch("silvasonic_uploader.database.DatabaseHandler")
     @patch("main.RcloneWrapper")
     @patch("main.StorageJanitor")
     @patch("time.sleep")
@@ -283,7 +283,7 @@ class TestMain:
         """Test the signal handler raises SystemExit."""
         import signal
 
-        from main import signal_handler
+        from silvasonic_uploader.main import signal_handler
 
         with pytest.raises(SystemExit) as e:
             signal_handler(signal.SIGTERM, None)

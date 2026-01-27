@@ -11,8 +11,8 @@ try:
 except ImportError:
     bn_analyze = None
 
-from src.config import config
-from src.database import db
+from silvasonic_birdnet.config import config
+from silvasonic_birdnet.database import db
 
 logger = logging.getLogger("Analyzer")
 

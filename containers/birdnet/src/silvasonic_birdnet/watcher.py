@@ -2,8 +2,8 @@ import logging
 import os
 import time
 
-from src.analyzer import BirdNETAnalyzer
-from src.config import config
+from silvasonic_birdnet.analyzer import BirdNETAnalyzer
+from silvasonic_birdnet.config import config
 from watchdog.events import FileClosedEvent, FileSystemEventHandler
 from watchdog.observers import Observer
 

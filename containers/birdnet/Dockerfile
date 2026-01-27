@@ -54,8 +54,8 @@ COPY config.yml /etc/birdnet/config.yml
 
 # Set environment variables
 ENV PYTHONUNBUFFERED=1
-ENV PYTHONPATH=/app
+ENV PYTHONPATH=/app/src
 
 # Command to run
-CMD ["python", "src/main.py"]
+CMD ["python", "-m", "silvasonic_birdnet.main"]
 

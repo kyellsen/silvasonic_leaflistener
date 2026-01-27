@@ -21,7 +21,8 @@ RUN pip install --no-cache-dir .
 COPY src /app/src
 
 # Set PYTHONPATH
-ENV PYTHONPATH=/app
+ENV PYTHONPATH=/app/src
+ENV PYTHONUNBUFFERED=1
 
 # Default command
-CMD ["python3", "-u", "src/main.py"]
+CMD ["python3", "-m", "silvasonic_uploader.main"]

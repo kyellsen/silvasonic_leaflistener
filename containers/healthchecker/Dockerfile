@@ -19,4 +19,4 @@ COPY src/ /app/src/
 ENV PYTHONUNBUFFERED=1
 ENV PYTHONPATH=/app/src
 
-CMD ["python", "src/main.py"]
+CMD ["python", "-m", "silvasonic_healthchecker.main"]
