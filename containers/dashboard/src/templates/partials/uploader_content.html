@@ -1,0 +1,231 @@
+<div id="uploader-content" hx-get="/uploader" hx-trigger="every {{ auto_refresh_interval }}s" hx-swap="outerHTML">
+<h2
+  class="text-xl font-bold mb-4 text-cyan-600 dark:text-cyan-400 flex items-center gap-2"
+>
+  <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <path
+      stroke-linecap="round"
+      stroke-linejoin="round"
+      stroke-width="2"
+      d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"
+    ></path>
+  </svg>
+  Uploader
+</h2>
+
+<div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+  <!-- Status Card -->
+  <div
+    class="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700 relative overflow-hidden"
+  >
+    <div class="text-xs font-bold text-gray-500 uppercase z-10 relative">
+      Sync Status
+    </div>
+    <div
+      class="text-2xl font-bold text-cyan-600 dark:text-cyan-400 mt-2 z-10 relative"
+    >
+      {{ stats.status }}
+    </div>
+    <div class="text-xs text-gray-400 mt-2 z-10 relative">
+      {% if stats.status == 'Syncing' %}
+      <span class="animate-pulse text-cyan-500">● Uploading...</span>
+      {% else %} Last: {{ stats.last_upload_str }}
+      <span class="text-gray-500">({{ stats.last_upload_ago }})</span>
+      {% endif %}
+    </div>
+    <!-- Decor element -->
+    <div
+      class="absolute -right-4 -bottom-4 text-gray-100 dark:text-gray-700 opacity-50"
+    >
+      <svg class="w-24 h-24" fill="currentColor" viewBox="0 0 20 20">
+        <path d="M4 3a2 2 0 100 4h12a2 2 0 100-4H4z"></path>
+        <path
+          fill-rule="evenodd"
+          d="M3 8h14v7a2 2 0 01-2 2H5a2 2 0 01-2-2V8zm5 3a1 1 0 011-1h2a1 1 0 110 2H9a1 1 0 01-1-1z"
+          clip-rule="evenodd"
+        ></path>
+      </svg>
+    </div>
+  </div>
+
+  <!-- Queue Card -->
+  <div
+    class="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700 relative overflow-hidden"
+  >
+    <div class="text-xs font-bold text-gray-500 uppercase z-10 relative">
+      Queue
+    </div>
+    <div
+      class="text-2xl font-bold text-gray-900 dark:text-white mt-2 z-10 relative"
+    >
+      {{ stats.queue_size if stats.queue_size >= 0 else 'Unknown' }}
+      <span class="text-sm font-normal text-gray-400">files</span>
+    </div>
+    <div class="text-xs text-gray-400 mt-2 z-10 relative">
+      Pending upload to cloud
+    </div>
+    <!-- Decor element -->
+    <div
+      class="absolute -right-4 -bottom-4 text-gray-100 dark:text-gray-700 opacity-50"
+    >
+      <svg class="w-24 h-24" fill="currentColor" viewBox="0 0 20 20">
+        <path
+          d="M7 3a1 1 0 000 2h6a1 1 0 100-2H7zM4 7a1 1 0 011-1h10a1 1 0 110 2H5a1 1 0 01-1-1zM2 11a2 2 0 012-2h12a2 2 0 012 2v4a2 2 0 01-2 2H4a2 2 0 01-2-2v-4z"
+        ></path>
+      </svg>
+    </div>
+  </div>
+
+  <!-- Storage Card -->
+  <div
+    class="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700 relative overflow-hidden"
+  >
+    <div class="text-xs font-bold text-gray-500 uppercase z-10 relative">
+      Local Storage
+    </div>
+    <div
+      class="text-2xl font-bold text-gray-900 dark:text-white mt-2 z-10 relative"
+    >
+      {{ stats.disk_usage }}%
+    </div>
+    <div class="text-xs text-gray-400 mt-2 z-10 relative">
+      <div class="w-full bg-gray-200 rounded-full h-1.5 dark:bg-gray-700 mt-1">
+        <div
+          class="bg-cyan-600 h-1.5 rounded-full"
+          style="width: {{ stats.disk_usage }}%"
+        ></div>
+      </div>
+      Recording Buffer
+    </div>
+    <!-- Decor element -->
+    <div
+      class="absolute -right-4 -bottom-4 text-gray-100 dark:text-gray-700 opacity-50"
+    >
+      <svg class="w-24 h-24" fill="currentColor" viewBox="0 0 20 20">
+        <path
+          fill-rule="evenodd"
+          d="M3 4a1 1 0 011-1h3a1 1 0 011 1v3a1 1 0 01-1 1H4a1 1 0 01-1-1V4zm2 2V5h1v1H5zM3 13a1 1 0 011-1h3a1 1 0 011 1v3a1 1 0 01-1 1H4a1 1 0 01-1-1v-3zm2 2v-1h1v1H5zM13 4a1 1 0 011-1h3a1 1 0 011 1v3a1 1 0 01-1 1h-3a1 1 0 01-1-1V4zm2 2V5h1v1h-1zM13 13a1 1 0 011-1h3a1 1 0 011 1v3a1 1 0 01-1 1h-3a1 1 0 01-1-1v-3zm2 2v-1h1v1h-1z"
+          clip-rule="evenodd"
+        ></path>
+      </svg>
+    </div>
+  </div>
+</div>
+
+</div>
+
+<!-- Statistics Grid -->
+<div class="grid grid-cols-2 md:grid-cols-4 gap-6 mb-8">
+    <div class="bg-white dark:bg-gray-800 p-4 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700">
+        <div class="text-xs font-bold text-gray-500 uppercase">Last Hour</div>
+        <div class="text-2xl font-bold text-gray-900 dark:text-white mt-1">{{ upload_stats.last_1h }}</div>
+    </div>
+    <div class="bg-white dark:bg-gray-800 p-4 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700">
+        <div class="text-xs font-bold text-gray-500 uppercase">Last 24 Hours</div>
+        <div class="text-2xl font-bold text-gray-900 dark:text-white mt-1">{{ upload_stats.last_24h }}</div>
+    </div>
+    <div class="bg-white dark:bg-gray-800 p-4 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700">
+        <div class="text-xs font-bold text-gray-500 uppercase">Last 7 Days</div>
+        <div class="text-2xl font-bold text-gray-900 dark:text-white mt-1">{{ upload_stats.last_7d }}</div>
+    </div>
+    <div class="bg-white dark:bg-gray-800 p-4 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700">
+        <div class="text-xs font-bold text-gray-500 uppercase">Last 30 Days</div>
+        <div class="text-2xl font-bold text-gray-900 dark:text-white mt-1">{{ upload_stats.last_30d }}</div>
+    </div>
+</div>
+
+<!-- Failed Uploads (Conditional) -->
+{% if failed_uploads %}
+<div class="mb-8">
+    <h3 class="text-lg font-bold text-red-600 dark:text-red-400 mb-4 flex items-center gap-2">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+        Failed Uploads
+    </h3>
+    <div class="bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-red-200 dark:border-red-900 overflow-hidden">
+        <table class="w-full text-sm text-left text-gray-500 dark:text-gray-400">
+            <thead class="text-xs text-gray-700 uppercase bg-gray-50 dark:bg-gray-700 dark:text-gray-400">
+                <tr>
+                    <th scope="col" class="px-6 py-3">Filename</th>
+                    <th scope="col" class="px-6 py-3">Error</th>
+                    <th scope="col" class="px-6 py-3">Time</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for item in failed_uploads %}
+                <tr class="bg-white border-b dark:bg-gray-800 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600">
+                    <td class="px-6 py-4 font-medium text-gray-900 dark:text-white">{{ item.filename }}</td>
+                    <td class="px-6 py-4 text-red-500">{{ item.error_message }}</td>
+                    <td class="px-6 py-4">{{ item.upload_time_str }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endif %}
+
+<!-- Recent Uploads Table -->
+<div class="mb-8">
+    <h3 class="text-lg font-bold text-gray-700 dark:text-gray-300 mb-4">Recent Uploads</h3>
+    <div class="bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
+        <div class="overflow-x-auto">
+            <table class="w-full text-sm text-left text-gray-500 dark:text-gray-400">
+                <thead class="text-xs text-gray-700 uppercase bg-gray-50 dark:bg-gray-700 dark:text-gray-400">
+                    <tr>
+                        <th scope="col" class="px-6 py-3">Source</th>
+                        <th scope="col" class="px-6 py-3">Filename</th>
+                        <th scope="col" class="px-6 py-3">Size</th>
+                        <th scope="col" class="px-6 py-3">Uploaded At</th>
+                        <th scope="col" class="px-6 py-3">Remote Path</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in recent_uploads %}
+                    <tr class="bg-white border-b dark:bg-gray-800 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600">
+                        <td class="px-6 py-4">
+                            <span class="bg-blue-100 text-blue-800 text-xs font-medium mr-2 px-2.5 py-0.5 rounded dark:bg-blue-900 dark:text-blue-300">
+                                {{ item.source }}
+                            </span>
+                        </td>
+                        <td class="px-6 py-4 font-medium text-gray-900 dark:text-white" title="{{ item.filename }}">
+                            {{ item.filename_only }}
+                        </td>
+                        <td class="px-6 py-4">
+                            {{ item.size_mb }} MB
+                        </td>
+                        <td class="px-6 py-4">
+                            {{ item.upload_time_str }}
+                        </td>
+                        <td class="px-6 py-4 font-mono text-xs text-gray-400">
+                            {{ item.remote_path }}
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="4" class="px-6 py-8 text-center text-gray-500">
+                            No uploads recorded yet.
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+
+<div class="space-y-6">
+  <div
+    class="bg-white dark:bg-gray-700/50 p-4 rounded-lg border border-gray-200 dark:border-transparent"
+  >
+    <h3
+      class="font-bold text-gray-700 dark:text-gray-300 mb-2 border-b border-gray-200 dark:border-gray-600 pb-2"
+    >
+      Cloud Stats
+    </h3>
+    <p class="text-xs text-gray-500 dark:text-gray-400">
+      Uploader ensures your recordings are safely stored in the cloud.
+    </p>
+  </div>
+</div>
+</div>

@@ -1,118 +1,77 @@
 {% extends base %} {% block content %}
 <div class="space-y-8">
   <!-- Header -->
-  <div>
-    <div class="flex items-center justify-between">
-      <div>
-        <h1
-          class="text-3xl font-bold bg-gradient-to-r from-indigo-400 to-violet-500 bg-clip-text text-transparent"
-        >
-          BirdStats
-        </h1>
-        <p class="text-gray-400 mt-1">Ecological Analytics & Insights</p>
-      </div>
-      </div>
+  <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
+    <div>
+      <h1
+        class="text-3xl font-bold bg-gradient-to-r from-indigo-400 to-violet-500 bg-clip-text text-transparent"
+      >
+        BirdStats
+      </h1>
+      <p class="text-gray-400 mt-1">Ecological Analytics & Insights</p>
     </div>
 
-  <!-- Distribution Pies Row -->
-  <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
-    <!-- Today -->
-    <div
-      class="bg-white dark:bg-gray-800 rounded-xl p-4 border border-gray-200 dark:border-gray-700 shadow-xl"
+    <!-- Date Filter Controls -->
+    <form
+      action="/stats"
+      method="get"
+      class="flex flex-col sm:flex-row gap-2 bg-white dark:bg-gray-800 p-2 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700"
     >
-      <h3
-        class="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-3 text-center"
+      <input
+        type="date"
+        name="start"
+        value="{{ stats.period.start }}"
+        class="bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg px-3 py-2 text-sm text-gray-700 dark:text-gray-300 focus:ring-2 focus:ring-indigo-500 outline-none"
+        aria-label="Start Date"
+      />
+      <span class="hidden sm:flex items-center text-gray-400">-</span>
+      <input
+        type="date"
+        name="end"
+        value="{{ stats.period.end }}"
+        class="bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg px-3 py-2 text-sm text-gray-700 dark:text-gray-300 focus:ring-2 focus:ring-indigo-500 outline-none"
+        aria-label="End Date"
+      />
+      <button
+        type="submit"
+        class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition"
       >
-        Today
-      </h3>
-      <div class="h-32 w-full relative">
-        <div id="distToday" class="w-full h-full"></div>
-      </div>
-    </div>
-    <!-- Week -->
-    <div
-      class="bg-white dark:bg-gray-800 rounded-xl p-4 border border-gray-200 dark:border-gray-700 shadow-xl"
-    >
-      <h3
-        class="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-3 text-center"
-      >
-        7 Days
-      </h3>
-      <div class="h-32 w-full relative">
-        <div id="distWeek" class="w-full h-full"></div>
-      </div>
-    </div>
-    <!-- Month -->
-    <div
-      class="bg-white dark:bg-gray-800 rounded-xl p-4 border border-gray-200 dark:border-gray-700 shadow-xl"
-    >
-      <h3
-        class="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-3 text-center"
-      >
-        30 Days
-      </h3>
-      <div class="h-32 w-full relative">
-        <div id="distMonth" class="w-full h-full"></div>
-      </div>
-    </div>
-    <!-- Year -->
-    <div
-      class="bg-white dark:bg-gray-800 rounded-xl p-4 border border-gray-200 dark:border-gray-700 shadow-xl"
-    >
-      <h3
-        class="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-3 text-center"
-      >
-        Year
-      </h3>
-      <div class="h-32 w-full relative">
-        <div id="distYear" class="w-full h-full"></div>
-      </div>
-    </div>
-    <!-- All Time -->
-    <div
-      class="bg-white dark:bg-gray-800 rounded-xl p-4 border border-gray-200 dark:border-gray-700 shadow-xl"
-    >
-      <h3
-        class="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-3 text-center"
-      >
-        All Time
-      </h3>
-      <div class="h-32 w-full relative">
-        <div id="distAll" class="w-full h-full"></div>
-      </div>
-    </div>
+        Update
+      </button>
+    </form>
   </div>
 
   <!-- Time Series Section -->
-  <div
-    class="bg-white dark:bg-gray-800 rounded-xl p-6 border border-gray-200 dark:border-gray-700 shadow-xl"
-  >
-    <div class="flex items-center justify-between mb-6">
-      <h3
-        class="text-lg font-bold text-gray-900 dark:text-white flex items-center gap-2"
-      >
-        <svg
-          class="w-5 h-5 text-indigo-400"
-          fill="none"
-          stroke="currentColor"
-          viewBox="0 0 24 24"
+  <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+    <!-- Main Activity Chart -->
+    <div
+      class="col-span-1 lg:col-span-2 bg-white dark:bg-gray-800 rounded-xl p-6 border border-gray-200 dark:border-gray-700 shadow-xl"
+    >
+      <div class="flex items-center justify-between mb-6">
+        <h3
+          class="text-lg font-bold text-gray-900 dark:text-white flex items-center gap-2"
         >
-          <path
-            stroke-linecap="round"
-            stroke-linejoin="round"
-            stroke-width="2"
-            d="M7 12l3-3 3 3 4-4M8 21l4-4 4 4M3 4h18M4 4h16v12a1 1 0 01-1 1H5a1 1 0 01-1-1V4z"
-          ></path>
-        </svg>
-        Detection Activity (30 Days)
-      </h3>
+          <svg
+            class="w-5 h-5 text-indigo-400"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              d="M7 12l3-3 3 3 4-4M8 21l4-4 4 4M3 4h18M4 4h16v12a1 1 0 01-1 1H5a1 1 0 01-1-1V4z"
+            ></path>
+          </svg>
+          Activity Trend
+        </h3>
+      </div>
+      <div class="h-80 w-full relative">
+        <div id="dailyChart" class="w-full h-full"></div>
+      </div>
     </div>
-    <div class="h-64 w-full relative">
-      <div id="dailyChart" class="w-full h-full"></div>
-    </div>
-  </div>
 
-  <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
     <!-- Hourly Distribution -->
     <div
       class="bg-white dark:bg-gray-800 rounded-xl p-6 border border-gray-200 dark:border-gray-700 shadow-xl"
@@ -133,14 +92,16 @@
             d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
           ></path>
         </svg>
-        Peak Activity Hours
+        Peak Hours
       </h3>
-      <div class="h-64 w-full relative">
+      <div class="h-80 w-full relative">
         <div id="hourlyChart" class="w-full h-full"></div>
       </div>
     </div>
+  </div>
 
-    <!-- All Species Histogram -->
+  <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+    <!-- Top Species (Bar) -->
     <div
       class="bg-white dark:bg-gray-800 rounded-xl p-6 border border-gray-200 dark:border-gray-700 shadow-xl"
     >
@@ -161,327 +122,190 @@
               d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"
             ></path>
           </svg>
-          Species Distribution
+          Top Species in Period
         </h3>
-        <!-- Log Toggle -->
-        <div
-          class="flex items-center gap-2 cursor-pointer"
-          onclick="toggleLogScale()"
-        >
-          <span class="text-xs text-gray-400 font-mono uppercase"
-            >Log Scale</span
-          >
-          <div
-            id="logToggleBtn"
-            class="w-9 h-5 bg-gray-200 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-full relative transition-all"
-          >
-            <div
-              id="logToggleCircle"
-              class="w-3 h-3 bg-gray-400 rounded-full absolute top-1 left-1 transition-all duration-200"
-            ></div>
-          </div>
-        </div>
       </div>
-
-      <div class="h-64 w-full relative">
-        <div id="histChart" class="w-full h-full"></div>
+      <div class="h-80 w-full relative">
+        <div id="topSpeciesChart" class="w-full h-full"></div>
       </div>
     </div>
-  </div>
 
-  <!-- Rarest Species List -->
-  <div
-    class="bg-white dark:bg-gray-800 rounded-xl p-6 border border-gray-200 dark:border-gray-700 shadow-xl"
-  >
-    <h3
-      class="text-lg font-bold text-gray-900 dark:text-white mb-4 flex items-center gap-2"
+    <!-- Rarest Species List -->
+    <div
+      class="bg-white dark:bg-gray-800 rounded-xl p-6 border border-gray-200 dark:border-gray-700 shadow-xl flex flex-col"
     >
-      <svg
-        class="w-5 h-5 text-emerald-400"
-        fill="none"
-        stroke="currentColor"
-        viewBox="0 0 24 24"
+      <h3
+        class="text-lg font-bold text-gray-900 dark:text-white mb-4 flex items-center gap-2"
       >
-        <path
-          stroke-linecap="round"
-          stroke-linejoin="round"
-          stroke-width="2"
-          d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z"
-        ></path>
-      </svg>
-      Rare Sightings (Least Frequent)
-    </h3>
-    <div class="overflow-x-auto">
-      <table class="w-full text-left text-sm text-gray-600 dark:text-gray-400">
-        <thead
-          class="bg-gray-100 dark:bg-gray-700/50 text-xs uppercase font-medium text-gray-500 dark:text-gray-300"
+        <svg
+          class="w-5 h-5 text-emerald-400"
+          fill="none"
+          stroke="currentColor"
+          viewBox="0 0 24 24"
         >
-          <tr>
-            <th class="px-4 py-3 rounded-l-lg">Species</th>
-            <th class="px-4 py-3">Total Detections</th>
-            <th class="px-4 py-3 rounded-r-lg text-right">Action</th>
-          </tr>
-        </thead>
-        <tbody class="divide-y divide-gray-200 dark:divide-gray-700/50">
-          {% for bird in rarest %}
-          <tr class="hover:bg-gray-50 dark:hover:bg-gray-700/30 transition">
-            <td class="px-4 py-3 font-medium text-gray-900 dark:text-white">
-              {{ bird.common_name }}
-            </td>
-            <td class="px-4 py-3">
-              <span
-                class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 border border-gray-200 dark:border-gray-600"
-              >
-                {{ bird.count }}
-              </span>
-            </td>
-            <td class="px-4 py-3 text-right">
-              <a
-                href="/birdnet/discover/{{ bird.common_name }}"
-                hx-target="#main-content"
-                hx-swap="innerHTML"
-                hx-push-url="true"
-                class="text-blue-400 hover:text-blue-300 text-xs font-medium"
-                >Analyze &rarr;</a
-              >
-            </td>
-          </tr>
-          {% else %}
-          <tr>
-            <td colspan="3" class="px-4 py-8 text-center text-gray-500">
-              No rare species data available.
-            </td>
-          </tr>
-          {% endfor %}
-        </tbody>
-      </table>
+          <path
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            stroke-width="2"
+            d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z"
+          ></path>
+        </svg>
+        Rare Sightings (Least Frequent)
+      </h3>
+      <div class="overflow-x-auto flex-1">
+        <table
+          class="w-full text-left text-sm text-gray-600 dark:text-gray-400"
+        >
+          <thead
+            class="bg-gray-100 dark:bg-gray-700/50 text-xs uppercase font-medium text-gray-500 dark:text-gray-300"
+          >
+            <tr>
+              <th class="px-4 py-3 rounded-l-lg">Species</th>
+              <th class="px-4 py-3">Count</th>
+              <th class="px-4 py-3 rounded-r-lg text-right">Action</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-gray-200 dark:divide-gray-700/50">
+            {% for bird in stats.rarest %}
+            <tr class="hover:bg-gray-50 dark:hover:bg-gray-700/30 transition">
+              <td class="px-4 py-3 font-medium text-gray-900 dark:text-white">
+                {{ bird.common_name }}
+              </td>
+              <td class="px-4 py-3">
+                <span
+                  class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 border border-gray-200 dark:border-gray-600"
+                >
+                  {{ bird.count }}
+                </span>
+              </td>
+              <td class="px-4 py-3 text-right">
+                <a
+                  href="/birdnet/discover/{{ bird.common_name }}"
+                  hx-target="#main-content"
+                  hx-swap="innerHTML"
+                  hx-push-url="true"
+                  class="text-blue-400 hover:text-blue-300 text-xs font-medium"
+                  >Analyze &rarr;</a
+                >
+              </td>
+            </tr>
+            {% else %}
+            <tr>
+              <td colspan="3" class="px-4 py-8 text-center text-gray-500">
+                No rare species data available for this period.
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
     </div>
   </div>
 </div>
 {% endblock %} {% block scripts %}
-
+<script src="/static/js/apexcharts.min.js"></script>
 <script>
-  // Robust Loading Check
-  if (typeof Plotly === 'undefined') {
-      document.querySelectorAll('[id^="dist"], [id$="Chart"]').forEach(el => {
-          el.innerHTML = ""; // Clear
-          const err = document.createElement('div');
-          err.className = "flex items-center justify-center h-full text-red-500 text-xs text-center p-2 border border-red-500/20 rounded bg-red-500/10";
-          err.innerText = "Plotly failed to load. Check internet.";
-          el.appendChild(err);
-      });
-  }
-
   document.addEventListener('DOMContentLoaded', function() {
-      if (typeof Plotly === 'undefined') return;
+      // --- Common Options ---
+      const isDark = document.documentElement.classList.contains('dark');
+      const textColor = isDark ? '#9ca3af' : '#4b5563';
+      const gridColor = isDark ? '#374151' : '#e5e7eb';
+      const fontFamily = 'Inter, sans-serif';
 
-      // --- Common Config ---
-      const commonConfig = {
-          displayModeBar: false,
-          responsive: true
-      };
-
-      const commonLayout = {
-          paper_bgcolor: 'rgba(0,0,0,0)',
-          plot_bgcolor: 'rgba(0,0,0,0)',
-          font: { color: document.documentElement.classList.contains('dark') ? '#9ca3af' : '#4b5563', family: 'Inter, sans-serif' },
-          margin: { t: 10, b: 30, l: 40, r: 10 },
+      const commonOptions = {
+          chart: {
+              background: 'transparent',
+              toolbar: { show: false },
+              animations: { enabled: true }
+          },
+          theme: { mode: isDark ? 'dark' : 'light' },
+          dataLabels: { enabled: false },
+          grid: { borderColor: gridColor, strokeDashArray: 4 },
           xaxis: {
-              gridcolor: document.documentElement.classList.contains('dark') ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)',
-              zerolinecolor: document.documentElement.classList.contains('dark') ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)'
+              labels: { style: { colors: textColor, fontFamily: fontFamily } },
+              axisBorder: { show: false },
+              axisTicks: { show: false }
           },
           yaxis: {
-              gridcolor: document.documentElement.classList.contains('dark') ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)',
-              zerolinecolor: document.documentElement.classList.contains('dark') ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)'
-          }
+              labels: { style: { colors: textColor, fontFamily: fontFamily } }
+          },
+          tooltip: { theme: isDark ? 'dark' : 'light' }
       };
 
-      const palette = [
-         '#3b82f6', '#8b5cf6', '#f43f5e', '#f97316', '#eab308',
-         '#10b981', '#06b6d4', '#ec4899', '#6366f1', '#14b8a6'
-      ];
-
-      // --- Pie Charts Helper ---
-      function createPie(id, labels, values) {
-           if (!document.getElementById(id) || values.length === 0) return;
-
-           const data = [{
-               values: values,
-               labels: labels,
-               type: 'pie',
-               hole: 0.7,
-               marker: { colors: palette },
-               textinfo: 'none',
-               hoverinfo: 'label+value',
-               showlegend: false
-           }];
-
-           const layout = {
-               ...commonLayout,
-               margin: { t: 0, b: 0, l: 0, r: 0 },
-               showlegend: false,
-               annotations: [
-                   {
-                       font: { size: 14, color: document.documentElement.classList.contains('dark') ? '#9ca3af' : '#4b5563' },
-                       showarrow: false,
-                       text: values.reduce((a, b) => a + b, 0).toString(),
-                       x: 0.5,
-                       y: 0.5
-                   }
-               ]
-           };
-
-           Plotly.newPlot(id, data, layout, commonConfig);
-
-           document.getElementById(id).on('plotly_click', function(data){
-                if(data.points.length > 0) {
-                    const label = data.points[0].label;
-                    window.location.href = `/birdnet/discover/${encodeURIComponent(label)}`;
-                }
-           });
-      }
-
-      createPie('distToday', {{ distributions.today.labels|tojson }}, {{ distributions.today.values|tojson }});
-      createPie('distWeek', {{ distributions.week.labels|tojson }}, {{ distributions.week.values|tojson }});
-      createPie('distMonth', {{ distributions.month.labels|tojson }}, {{ distributions.month.values|tojson }});
-      createPie('distYear', {{ distributions.year.labels|tojson }}, {{ distributions.year.values|tojson }});
-      createPie('distAll', {{ distributions.all_time.labels|tojson }}, {{ distributions.all_time.values|tojson }});
-
-      // --- Daily Activity (Area Chart) ---
-      const dailyLabels = {{ daily.labels|tojson }};
-      const dailyValues = {{ daily.values|tojson }};
-
-      if(document.getElementById('dailyChart')) {
-          const trace1 = {
-              x: dailyLabels,
-              y: dailyValues,
-              fill: 'tozeroy',
-              type: 'scatter',
-              mode: 'lines',
-              line: { color: '#60a5fa', width: 2 }, // blue-400
-              fillcolor: 'rgba(96, 165, 250, 0.1)'
-          };
-
-          const layout = {
-              ...commonLayout,
-              margin: { t: 10, b: 30, l: 30, r: 10 },
-              xaxis: { ...commonLayout.xaxis, showgrid: false },
-              yaxis: { ...commonLayout.yaxis }
-          };
-
-          Plotly.newPlot('dailyChart', [trace1], layout, commonConfig);
+      // --- Daily Activity (Area) ---
+      const dailyData = {{ stats.daily | tojson }};
+      if (dailyData.length > 0) {
+          new ApexCharts(document.querySelector("#dailyChart"), {
+              ...commonOptions,
+              chart: { type: 'area', height: '100%', parentHeightOffset: 0, toolbar: {show: false} },
+              series: [{ name: 'Detections', data: dailyData }],
+              stroke: { curve: 'smooth', width: 2 },
+              fill: {
+                  type: 'gradient',
+                  gradient: {
+                      shadeIntensity: 1,
+                      opacityFrom: 0.7,
+                      opacityTo: 0.2,
+                      stops: [0, 90, 100]
+                  }
+              },
+              colors: ['#6366f1'], // Indigo
+              xaxis: { ...commonOptions.xaxis, type: 'datetime' }
+          }).render();
+      } else {
+        document.querySelector("#dailyChart").innerHTML = "<div class='flex h-full items-center justify-center text-gray-500'>No data for this period</div>";
       }
 
       // --- Hourly Activity (Bar) ---
-      const hourlyValues = {{ hourly.values|tojson }};
-      const hourlyLabels = Array.from({length: 24}, (_, i) => i + ":00");
+      const hourlyData = {{ stats.hourly | tojson }};
+      const hourlyCategories = Array.from({length: 24}, (_, i) => i + ":00");
 
-      if(document.getElementById('hourlyChart')) {
-           const trace1 = {
-               x: hourlyLabels,
-               y: hourlyValues,
-               type: 'bar',
-               marker: {
-                   color: '#fbbf24', // amber-400
-                   line: { color: 'transparent' }
-               }
-           };
+      new ApexCharts(document.querySelector("#hourlyChart"), {
+          ...commonOptions,
+          chart: { type: 'bar', height: '100%', parentHeightOffset: 0, toolbar: {show: false} },
+          series: [{ name: 'Count', data: hourlyData }],
+          colors: ['#f59e0b'], // Amber
+          xaxis: { ...commonOptions.xaxis, categories: hourlyCategories },
+          plotOptions: { bar: { borderRadius: 4, columnWidth: '60%' } }
+      }).render();
 
-           const layout = {
-               ...commonLayout,
-               margin: { t: 10, b: 30, l: 30, r: 10 },
-               xaxis: { ...commonLayout.xaxis, showgrid: false },
-           };
+      // --- Top Species (Bar) ---
+      const topSpeciesLabels = {{ stats.top_species.labels | tojson }};
+      const topSpeciesValues = {{ stats.top_species.values | tojson }};
 
-           Plotly.newPlot('hourlyChart', [trace1], layout, commonConfig);
-      }
-
-
-      // --- Histogram (All Species) ---
-      let histLabels = {{ histogram.labels|tojson }};
-      let histValues = {{ histogram.values|tojson }};
-
-      function renderHist(logScale) {
-          if(!document.getElementById('histChart')) return;
-
-          const trace1 = {
-               x: histLabels,
-               y: histValues,
-               type: 'bar',
-               marker: { color: '#a78bfa' } // purple-400
-          };
-
-          const layout = {
-              ...commonLayout,
-              margin: { t: 10, b: 100, l: 40, r: 10 },
-              yaxis: {
-                  ...commonLayout.yaxis,
-                  type: logScale ? 'log' : 'linear'
-              },
-              xaxis: {
-                  ...commonLayout.xaxis,
-                  showgrid: false,
-                  tickangle: -90
-              }
-          };
-
-          Plotly.newPlot('histChart', [trace1], layout, commonConfig);
-
-          document.getElementById('histChart').on('plotly_click', function(data){
-                if(data.points.length > 0) {
-                    const label = data.points[0].x;
-                    window.location.href = `/birdnet/discover/${encodeURIComponent(label)}`;
+      if (topSpeciesLabels.length > 0) {
+        new ApexCharts(document.querySelector("#topSpeciesChart"), {
+            ...commonOptions,
+            chart: {
+                type: 'bar',
+                height: '100%',
+                parentHeightOffset: 0,
+                toolbar: {show: false},
+                events: {
+                    dataPointSelection: function(event, chartContext, config) {
+                        const label = config.w.config.xaxis.categories[config.dataPointIndex];
+                        window.location.href = `/birdnet/discover/${encodeURIComponent(label)}`;
+                    }
                 }
-           });
+            },
+            series: [{ name: 'Detections', data: topSpeciesValues }],
+            colors: ['#a855f7'], // Purple
+            xaxis: { ...commonOptions.xaxis, categories: topSpeciesLabels },
+            plotOptions: { bar: { borderRadius: 4, horizontal: true, barHeight: '50%' } }
+        }).render();
+      } else {
+         document.querySelector("#topSpeciesChart").innerHTML = "<div class='flex h-full items-center justify-center text-gray-500'>No species data</div>";
       }
 
-      renderHist(false);
-
-      // Expose toggle logic
-      window.toggleLogScale = function() {
-          const btn = document.getElementById('logToggleBtn');
-          const circle = document.getElementById('logToggleCircle');
-
-          // Toggle State
-          const isLog = circle.classList.contains('left-5'); // Check current UI state
-
-          if(!isLog) {
-               // Turn ON
-              btn.classList.replace('bg-gray-200', 'bg-silva-600');
-              btn.classList.replace('dark:bg-gray-700', 'dark:bg-silva-600');
-              // Note: The original code logic might be simpler just replacing a 'bg-gray-700' directly?
-              // But we introduced dual classes. This toggle logic relies on specific class present.
-              // Let's protect it.
-              // ACTUALLY: The original JS relies on exact class replacement.
-              // Simpler fix: Just re-render the button entire classList or handle better logic?
-              // Let's assume the user doesn't switch themes MID-toggle-interaction often.
-              // But 'bg-gray-700' won't be there in light mode if we changed it to 'bg-gray-200 dark:bg-gray-700'.
-              // We need to robustify this JS.
-
-              // New Logic:
-              btn.classList.remove('bg-gray-200', 'dark:bg-gray-700', 'border-gray-300', 'dark:border-gray-600');
-              btn.classList.add('bg-silva-600', 'border-silva-500');
-
-              circle.classList.replace('left-1', 'left-5');
-              circle.classList.replace('bg-gray-400', 'bg-white');
-              renderHist(true);
-          } else {
-               // Turn OFF
-              btn.classList.remove('bg-silva-600', 'border-silva-500');
-              btn.classList.add('bg-gray-200', 'dark:bg-gray-700', 'border-gray-300', 'dark:border-gray-600');
-
-              circle.classList.replace('left-5', 'left-1');
-              circle.classList.replace('bg-white', 'bg-gray-400');
-              renderHist(false);
-          }
-      };
   });
 </script>
 {% endblock %} {% block inspector %}
 <div class="space-y-6">
   <!-- Data Export -->
   <div class="glass-panel p-6 rounded-2xl">
-    <h3 class="font-bold text-gray-900 dark:text-white mb-4 border-b border-gray-200 dark:border-white/10 pb-2 text-sm uppercase tracking-wide">
+    <h3
+      class="font-bold text-gray-900 dark:text-white mb-4 border-b border-gray-200 dark:border-white/10 pb-2 text-sm uppercase tracking-wide"
+    >
       Data Export
     </h3>
     <a
@@ -490,64 +314,24 @@
       hx-boost="false"
       class="flex items-center justify-center gap-2 w-full py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl transition shadow-lg font-medium text-sm"
     >
-      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+      <svg
+        class="w-4 h-4"
+        fill="none"
+        stroke="currentColor"
+        viewBox="0 0 24 24"
+      >
+        <path
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          stroke-width="2"
+          d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+        ></path>
       </svg>
       Download Full CSV
     </a>
     <p class="text-xs text-center text-gray-500 mt-2">
-        Includes all historical detections.
+      Includes all historical detections.
     </p>
-  </div>
-  <!-- Top Species (Today) -->
-  <div class="glass-panel p-6 rounded-2xl">
-    <h3
-      class="font-bold text-gray-900 dark:text-white mb-4 border-b border-gray-200 dark:border-white/10 pb-2 text-sm uppercase tracking-wide"
-    >
-      Today's Leaders
-    </h3>
-    <div class="space-y-3">
-      {% for label in distributions.today.labels[:5] %}
-      <div
-        class="flex items-center justify-between group cursor-pointer"
-        onclick="window.location.href='/birdnet/discover/{{ label|urlencode }}'"
-      >
-        <span
-          class="text-sm font-medium text-gray-600 dark:text-gray-300 group-hover:text-silva-500 transition"
-          >{{ label }}</span
-        >
-        <span class="text-xs font-mono text-gray-400"
-          >{{ distributions.today.values[loop.index0] }}</span
-        >
-      </div>
-      {% endfor %} {% if not distributions.today.labels %}
-      <div class="text-xs text-gray-400 italic">No detections today.</div>
-      {% endif %}
-    </div>
-  </div>
-
-  <!-- Rare Sightings Summary -->
-  <div class="glass-panel p-6 rounded-2xl">
-    <h3
-      class="font-bold text-gray-900 dark:text-white mb-4 border-b border-gray-200 dark:border-white/10 pb-2 text-sm uppercase tracking-wide"
-    >
-      Rarity Watch
-    </h3>
-      <div
-        class="w-12 h-12 rounded-full bg-purple-500/10 flex items-center justify-center text-2xl"
-      >
-        ✨
-      </div>
-      <div>
-        <div class="text-2xl font-bold text-gray-900 dark:text-white">
-          {{ rarest|length }}
-        </div>
-        <div class="text-xs text-gray-500 uppercase">
-          Rare Species <br />
-          (All Time)
-        </div>
-      </div>
-    </div>
   </div>
 
   <!-- Metric Definitions -->
@@ -558,14 +342,20 @@
       Metric Guide
     </h3>
     <div class="space-y-4 text-xs text-gray-600 dark:text-gray-300">
-        <div>
-            <strong class="text-gray-900 dark:text-white block mb-1">Biodiversity Index</strong>
-            <p>Calculated using Menhinick's Index (D = S / √N). Higher values indicate a richer variety of species relative to total detection count.</p>
-        </div>
-        <div>
-            <strong class="text-gray-900 dark:text-white block mb-1">Confidence</strong>
-            <p>The probability score from the AI model (BirdNET). We filter out low confidence results to ensure data quality.</p>
-        </div>
+      <div>
+        <strong class="text-gray-900 dark:text-white block mb-1"
+          >Activity Trend</strong
+        >
+        <p>Number of detections per day over the selected period.</p>
+      </div>
+      <div>
+        <strong class="text-gray-900 dark:text-white block mb-1"
+          >Peak Hours</strong
+        >
+        <p>
+          Accumulated detections by hour of day (0-23h) for the selected period.
+        </p>
+      </div>
     </div>
   </div>
 </div>

@@ -828,9 +828,12 @@ async def uploader_page(request: Request, auth: typing.Any = Depends(require_aut
     recent_uploads = await CarrierService.get_recent_uploads(limit=100)
     failed_uploads = await CarrierService.get_failed_uploads(limit=50)
 
+    # Check for HTMX request
+    template = "partials/uploader_content.html" if request.headers.get("HX-Request") else "uploader.html"
+
     return render(
         request,
-        "uploader.html",
+        template,
         {
             "request": request,
             "page": "uploader",
