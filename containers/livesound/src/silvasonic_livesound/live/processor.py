@@ -254,7 +254,7 @@ class AudioIngestor:
         fft_buffer = np.zeros(0, dtype=np.float32)
 
         # Pre-calculate mel basis for performance
-        mel_basis = librosa.filters.mel(  # type: ignore[attr-defined]
+        mel_basis = librosa.filters.mel(
             sr=self.config.sample_rate,
             n_fft=self.config.fft_window,
             n_mels=128,

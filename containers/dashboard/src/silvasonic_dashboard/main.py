@@ -112,7 +112,7 @@ def write_status() -> None:
         time.sleep(5)  # Check every 5s
 
 
-@app.on_event("startup")  # type: ignore[untyped-decorator]
+@app.on_event("startup")
 async def startup_event() -> None:
     # Start status writer in thread
     t = threading.Thread(target=write_status, daemon=True)
@@ -123,7 +123,7 @@ async def startup_event() -> None:
 app.mount("/static", StaticFiles(directory=os.path.join(BASE_DIR, "static")), name="static")
 
 
-@app.middleware("http")  # type: ignore[untyped-decorator]
+@app.middleware("http")
 async def add_security_headers(
     request: Request, call_next: typing.Callable[[Request], typing.Awaitable[typing.Any]]
 ) -> typing.Any:
@@ -133,7 +133,7 @@ async def add_security_headers(
     return response
 
 
-@app.get("/", response_class=HTMLResponse)  # type: ignore[untyped-decorator]
+@app.get("/", response_class=HTMLResponse)
 async def root(request: Request) -> typing.Any:
     # Redirect to dashboard if authed, else login
     from silvasonic_dashboard.auth import check_auth
@@ -144,12 +144,12 @@ async def root(request: Request) -> typing.Any:
 
 
 # --- Auth Routes ---
-@app.get("/auth/login", response_class=HTMLResponse)  # type: ignore[untyped-decorator]
+@app.get("/auth/login", response_class=HTMLResponse)
 async def login_page(request: Request) -> typing.Any:
     return templates.TemplateResponse("login.html", {"request": request})
 
 
-@app.post("/auth/login")  # type: ignore[untyped-decorator]
+@app.post("/auth/login")
 async def login_submit(
     request: Request, username: str = Form(...), password: str = Form(...)
 ) -> typing.Any:
@@ -173,7 +173,7 @@ async def login_submit(
     )
 
 
-@app.get("/auth/logout")  # type: ignore[untyped-decorator]
+@app.get("/auth/logout")
 async def logout() -> typing.Any:
     response = RedirectResponse(url="/auth/login", status_code=HTTP_302_FOUND)
     response.delete_cookie(COOKIE_NAME)
@@ -183,7 +183,7 @@ async def logout() -> typing.Any:
 # --- Protected Routes ---
 
 
-@app.get("/dashboard", response_class=HTMLResponse)  # type: ignore[untyped-decorator]
+@app.get("/dashboard", response_class=HTMLResponse)
 async def dashboard(request: Request, auth: typing.Any = Depends(require_auth)) -> typing.Any:
     if isinstance(auth, RedirectResponse):
         return auth
@@ -360,7 +360,7 @@ async def dashboard(request: Request, auth: typing.Any = Depends(require_auth)) 
     )
 
 
-@app.get("/api/events/system")  # type: ignore[untyped-decorator]
+@app.get("/api/events/system")
 async def sse_system_status(
     request: Request, auth: typing.Any = Depends(require_auth)
 ) -> typing.Any:
@@ -494,7 +494,7 @@ async def sse_system_status(
     return StreamingResponse(event_generator(), media_type="text/event-stream")
 
 
-@app.get("/settings", response_class=HTMLResponse)  # type: ignore[untyped-decorator]
+@app.get("/settings", response_class=HTMLResponse)
 async def settings_page(request: Request, auth: typing.Any = Depends(require_auth)) -> typing.Any:
     if isinstance(auth, RedirectResponse):
         return auth
@@ -515,7 +515,7 @@ async def settings_page(request: Request, auth: typing.Any = Depends(require_aut
     )
 
 
-@app.get("/about", response_class=HTMLResponse)  # type: ignore[untyped-decorator]
+@app.get("/about", response_class=HTMLResponse)
 async def about_page(request: Request, auth: typing.Any = Depends(require_auth)) -> typing.Any:
     if isinstance(auth, RedirectResponse):
         return auth
@@ -533,7 +533,7 @@ async def about_page(request: Request, auth: typing.Any = Depends(require_auth))
     )
 
 
-@app.post("/settings", response_class=HTMLResponse)  # type: ignore[untyped-decorator]
+@app.post("/settings", response_class=HTMLResponse)
 async def settings_save(request: Request, auth: typing.Any = Depends(require_auth)) -> typing.Any:
     if isinstance(auth, RedirectResponse):
         return auth
@@ -657,7 +657,7 @@ async def settings_save(request: Request, auth: typing.Any = Depends(require_aut
     )
 
 
-@app.get("/logs", response_class=HTMLResponse)  # type: ignore[untyped-decorator]
+@app.get("/logs", response_class=HTMLResponse)
 async def logs_page(request: Request, auth: typing.Any = Depends(require_auth)) -> typing.Any:
     if isinstance(auth, RedirectResponse):
         return auth
@@ -674,7 +674,7 @@ async def logs_page(request: Request, auth: typing.Any = Depends(require_auth)) 
     )
 
 
-@app.get("/birdnet", response_class=HTMLResponse)  # type: ignore[untyped-decorator]
+@app.get("/birdnet", response_class=HTMLResponse)
 async def birdnet_page(request: Request, auth: typing.Any = Depends(require_auth)) -> typing.Any:
     if isinstance(auth, RedirectResponse):
         return auth
@@ -704,7 +704,7 @@ async def birdnet_page(request: Request, auth: typing.Any = Depends(require_auth
     )
 
 
-@app.get("/birdnet/discover", response_class=HTMLResponse)  # type: ignore[untyped-decorator]
+@app.get("/birdnet/discover", response_class=HTMLResponse)
 async def birdnet_discover_page(
     request: Request, auth: typing.Any = Depends(require_auth)
 ) -> typing.Any:
@@ -734,7 +734,7 @@ async def birdnet_discover_page(
     )
 
 
-@app.get("/birdnet/discover/{species_name}", response_class=HTMLResponse)  # type: ignore[untyped-decorator]
+@app.get("/birdnet/discover/{species_name}", response_class=HTMLResponse)
 async def birdnet_species_page(
     request: Request, species_name: str, auth: typing.Any = Depends(require_auth)
 ) -> typing.Any:
@@ -764,7 +764,7 @@ async def birdnet_species_page(
     )
 
 
-@app.get("/stats", response_class=HTMLResponse)  # type: ignore[untyped-decorator]
+@app.get("/stats", response_class=HTMLResponse)
 async def stats_page(
     request: Request,
     start: str | None = None,
@@ -804,7 +804,7 @@ async def stats_page(
     )
 
 
-@app.get("/recorder", response_class=HTMLResponse)  # type: ignore[untyped-decorator]
+@app.get("/recorder", response_class=HTMLResponse)
 async def recorder_page(request: Request, auth: typing.Any = Depends(require_auth)) -> typing.Any:
     if isinstance(auth, RedirectResponse):
         return auth
@@ -831,7 +831,7 @@ async def recorder_page(request: Request, auth: typing.Any = Depends(require_aut
     )
 
 
-@app.get("/uploader", response_class=HTMLResponse)  # type: ignore[untyped-decorator]
+@app.get("/uploader", response_class=HTMLResponse)
 async def uploader_page(request: Request, auth: typing.Any = Depends(require_auth)) -> typing.Any:
     if isinstance(auth, RedirectResponse):
         return auth
@@ -864,7 +864,7 @@ async def uploader_page(request: Request, auth: typing.Any = Depends(require_aut
     )
 
 
-@app.get("/livesound", response_class=HTMLResponse)  # type: ignore[untyped-decorator]
+@app.get("/livesound", response_class=HTMLResponse)
 async def livesound_page(request: Request, auth: typing.Any = Depends(require_auth)) -> typing.Any:
     if isinstance(auth, RedirectResponse):
         return auth
@@ -888,7 +888,7 @@ async def livesound_page(request: Request, auth: typing.Any = Depends(require_au
     )
 
 
-@app.get("/weather", response_class=HTMLResponse)  # type: ignore[untyped-decorator]
+@app.get("/weather", response_class=HTMLResponse)
 async def weather_page(request: Request, auth: typing.Any = Depends(require_auth)) -> typing.Any:
     if isinstance(auth, RedirectResponse):
         return auth
@@ -921,13 +921,13 @@ async def weather_page(request: Request, auth: typing.Any = Depends(require_auth
 # --- Inspector API Partials ---
 
 
-class WatchlistToggleRequest(BaseModel):  # type: ignore[misc]
+class WatchlistToggleRequest(BaseModel):
     scientific_name: str
     common_name: str
     enabled: bool
 
 
-@app.post("/api/watchlist/toggle")  # type: ignore[untyped-decorator]
+@app.post("/api/watchlist/toggle")
 async def api_toggle_watchlist(
     req: WatchlistToggleRequest, auth: typing.Any = Depends(require_auth)
 ) -> typing.Any:
@@ -943,7 +943,7 @@ async def api_toggle_watchlist(
         raise HTTPException(500, "Failed to toggle watchlist")
 
 
-@app.get("/api/details/birdnet/{filename:path}", response_class=HTMLResponse)  # type: ignore[untyped-decorator]
+@app.get("/api/details/birdnet/{filename:path}", response_class=HTMLResponse)
 async def get_birdnet_details(
     request: Request, filename: str, auth: typing.Any = Depends(require_auth)
 ) -> typing.Any:
@@ -966,7 +966,7 @@ async def get_birdnet_details(
     return render(request, "partials/inspector_birdnet.html", {"request": request, "d": data})
 
 
-@app.get("/api/export/birdnet/csv")  # type: ignore[untyped-decorator]
+@app.get("/api/export/birdnet/csv")
 async def export_birdnet_csv(auth: typing.Any = Depends(require_auth)) -> typing.Any:
     if isinstance(auth, RedirectResponse):
         raise HTTPException(401)
@@ -1005,7 +1005,7 @@ async def export_birdnet_csv(auth: typing.Any = Depends(require_auth)) -> typing
 # --- API / HTMX Partials ---
 
 
-@app.get("/api/logs/{service}")  # type: ignore[untyped-decorator]
+@app.get("/api/logs/{service}")
 async def get_logs(
     service: str, lines: int = 200, auth: typing.Any = Depends(require_auth)
 ) -> typing.Any:
@@ -1051,7 +1051,7 @@ async def get_logs(
         return {"content": f"Error accessing logs: {str(e)}"}
 
 
-@app.get("/api/audio/{filename:path}")  # type: ignore[untyped-decorator]
+@app.get("/api/audio/{filename:path}")
 async def stream_audio(filename: str, auth: typing.Any = Depends(require_auth)) -> typing.Any:
     """Stream audio file from recording dir"""
     if isinstance(auth, RedirectResponse):
@@ -1077,7 +1077,7 @@ async def stream_audio(filename: str, auth: typing.Any = Depends(require_auth)) 
     return FileResponse(safe_path, media_type="audio/flac")
 
 
-@app.get("/api/clips/{filename:path}")  # type: ignore[untyped-decorator]
+@app.get("/api/clips/{filename:path}")
 async def stream_clip(filename: str, auth: typing.Any = Depends(require_auth)) -> typing.Any:
     """Stream clip from clips dir"""
     if isinstance(auth, RedirectResponse):
@@ -1098,7 +1098,7 @@ async def stream_clip(filename: str, auth: typing.Any = Depends(require_auth)) -
     return FileResponse(safe_path, media_type="audio/wav")
 
 
-@app.get("/api/spectrogram/{filename:path}")  # type: ignore[untyped-decorator]
+@app.get("/api/spectrogram/{filename:path}")
 async def stream_spectrogram(filename: str, auth: typing.Any = Depends(require_auth)) -> typing.Any:
     """Stream spectrogram from artifacts dir, generating it if needed (Lazy Loading)"""
     if isinstance(auth, RedirectResponse):

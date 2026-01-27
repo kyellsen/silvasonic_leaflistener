@@ -20,7 +20,7 @@ class WikimediaService:
                 headers={"User-Agent": WikimediaService.USER_AGENT}
             ) as client:
                 # 1. Search for the page by scientific name to get the title
-                params = {
+                params: dict[str, str | int | bool] = {
                     "action": "query",
                     "format": "json",
                     "prop": "pageimages|extracts|langlinks|pageprops",

@@ -33,12 +33,12 @@ app.add_middleware(
 )
 
 
-@app.get("/")  # type: ignore[untyped-decorator]
+@app.get("/")
 async def get() -> HTMLResponse:
     return HTMLResponse("<h1>Silvasonic LiveSound</h1><p>Active.</p>")
 
 
-@app.websocket("/ws/spectrogram")  # type: ignore[untyped-decorator]
+@app.websocket("/ws/spectrogram")
 async def websocket_endpoint(websocket: WebSocket, source: str = "default") -> None:
     """WebSocket endpoint for spectrogram data.
     Usage: ws://host/ws/spectrogram?source=front
@@ -62,7 +62,7 @@ async def websocket_endpoint(websocket: WebSocket, source: str = "default") -> N
         processor.unsubscribe_spectrogram(queue, source)
 
 
-@app.get("/stream")  # type: ignore[untyped-decorator]
+@app.get("/stream")
 async def stream_audio(source: str = "default") -> StreamingResponse:
     """Streams audio to the browser by piping the creation of MP3.
     Usage: GET /stream?source=front
