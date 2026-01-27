@@ -33,7 +33,7 @@ class HealthCheckerSettings(BaseModel):  # type: ignore[misc]
     apprise_urls: list[str] = Field(default_factory=list)
     service_timeouts: dict[str, int] = Field(
         default_factory=lambda: {
-            "carrier": 3600,
+            "uploader": 3600,
             "recorder": 120,
             "birdnet": 300,
             "sound_analyser": 300,

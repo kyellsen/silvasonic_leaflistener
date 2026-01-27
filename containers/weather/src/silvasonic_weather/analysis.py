@@ -28,7 +28,8 @@ def init_analysis_db() -> None:
     try:
         with get_connection() as conn:
             conn.execute(
-                text("""
+                text(
+                    """
                 CREATE TABLE IF NOT EXISTS weather.bird_stats (
                     timestamp TIMESTAMPTZ PRIMARY KEY,
                     temperature_c FLOAT,
@@ -37,7 +38,8 @@ def init_analysis_db() -> None:
                     detection_count INTEGER,
                     species_count INTEGER
                 );
-            """)
+            """
+                )
             )
             conn.commit()
     except Exception as e:
@@ -98,7 +100,8 @@ def run_analysis() -> None:
 
             # Correct approach: CTEs or separate subqueries.
 
-            complex_query = text("""
+            complex_query = text(
+                """
                 WITH w_stats AS (
                     SELECT
                         date_trunc('hour', timestamp) as ts,
@@ -132,7 +135,8 @@ def run_analysis() -> None:
                 FROM w_stats
                 LEFT JOIN b_stats ON w_stats.ts = b_stats.ts
                 ON CONFLICT (timestamp) DO NOTHING;
-            """)
+            """
+            )
 
             conn.execute(complex_query, {"start": start_time, "end": end_time})
             conn.commit()

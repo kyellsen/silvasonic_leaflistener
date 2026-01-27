@@ -5,8 +5,8 @@ import sys
 # Add src to path just in case
 sys.path.append(os.path.join(os.path.dirname(__file__), ".."))
 
-from services.database import db
-from sqlalchemy import text
+from services.database import db  # noqa: E402
+from sqlalchemy import text  # noqa: E402
 
 
 async def check() -> None:

@@ -6,7 +6,7 @@
 
 - **Model**: Raspberry Pi 5
 - **RAM**:
-  - **Minimum**: 2GB (Sufficient for pure recording "Ear" & "Carrier" roles).
+  - **Minimum**: 2GB (Sufficient for pure recording "Recorder" & "Uploader" roles).
   - **Recommended**: 8GB (Required if On-device ML/Analysis is planned).
 
 ### Storage (NVMe)

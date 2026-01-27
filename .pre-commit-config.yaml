@@ -13,4 +13,4 @@ repos:
         language: script
         pass_filenames: false
         # Das hier nur beim Push oder explizit laufen lassen, da Tests lange dauern können:
-        stages: [push]
+        stages: [pre-push]

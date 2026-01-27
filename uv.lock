@@ -13,9 +13,9 @@ members = [
     "silvasonic",
     "silvasonic-controller",
     "silvasonic-dashboard",
-    "silvasonic-ear",
     "silvasonic-healthchecker",
     "silvasonic-livesound",
+    "silvasonic-recorder",
     "silvasonic-uploader",
     "silvasonic-weather",
 ]
@@ -1932,9 +1932,9 @@ dev = [
     { name = "schedule" },
     { name = "silvasonic-controller" },
     { name = "silvasonic-dashboard" },
-    { name = "silvasonic-ear" },
     { name = "silvasonic-healthchecker" },
     { name = "silvasonic-livesound" },
+    { name = "silvasonic-recorder" },
     { name = "silvasonic-uploader" },
     { name = "silvasonic-weather" },
     { name = "soundfile" },
@@ -1968,9 +1968,9 @@ dev = [
     { name = "schedule" },
     { name = "silvasonic-controller", editable = "containers/controller" },
     { name = "silvasonic-dashboard", editable = "containers/dashboard" },
-    { name = "silvasonic-ear", editable = "containers/recorder" },
     { name = "silvasonic-healthchecker", editable = "containers/healthchecker" },
     { name = "silvasonic-livesound", editable = "containers/livesound" },
+    { name = "silvasonic-recorder", editable = "containers/recorder" },
     { name = "silvasonic-uploader", editable = "containers/uploader" },
     { name = "silvasonic-weather", editable = "containers/weather" },
     { name = "soundfile" },
@@ -2043,25 +2043,6 @@ requires-dist = [
 ]
 
 [[package]]
-name = "silvasonic-ear"
-version = "0.1.0"
-source = { editable = "containers/recorder" }
-dependencies = [
-    { name = "numpy" },
-    { name = "psutil" },
-    { name = "pyyaml" },
-    { name = "soundfile" },
-]
-
-[package.metadata]
-requires-dist = [
-    { name = "numpy" },
-    { name = "psutil" },
-    { name = "pyyaml" },
-    { name = "soundfile" },
-]
-
-[[package]]
 name = "silvasonic-healthchecker"
 version = "0.1.0"
 source = { editable = "containers/healthchecker" }
@@ -2103,6 +2084,25 @@ requires-dist = [
     { name = "soundfile", specifier = ">=0.12.1" },
     { name = "uvicorn", extras = ["standard"], specifier = ">=0.27.0" },
     { name = "websockets", specifier = ">=12.0" },
+]
+
+[[package]]
+name = "silvasonic-recorder"
+version = "0.1.0"
+source = { editable = "containers/recorder" }
+dependencies = [
+    { name = "numpy" },
+    { name = "psutil" },
+    { name = "pyyaml" },
+    { name = "soundfile" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "numpy" },
+    { name = "psutil" },
+    { name = "pyyaml" },
+    { name = "soundfile" },
 ]
 
 [[package]]

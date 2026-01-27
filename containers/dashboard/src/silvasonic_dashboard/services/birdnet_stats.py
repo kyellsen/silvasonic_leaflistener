@@ -28,7 +28,8 @@ class BirdNetStatsService:
                 total_count = (await conn.execute(query_total)).scalar() or 0
 
                 # Top Species
-                query_top = text("""
+                query_top = text(
+                    """
                     SELECT 
                         d.common_name as com_name, 
                         MAX(s.german_name) as german_name, 
@@ -38,7 +39,8 @@ class BirdNetStatsService:
                     GROUP BY d.common_name 
                     ORDER BY count DESC 
                     LIMIT 10
-                """)
+                """
+                )
                 result_top = await conn.execute(query_top)
 
                 use_german = SettingsService.is_german_names_enabled()
@@ -90,14 +92,16 @@ class BirdNetStatsService:
 
             async with db.get_connection() as conn:
                 # 1. Activity Trend (Daily counts within range)
-                query_daily = text("""
+                query_daily = text(
+                    """
                     SELECT DATE(timestamp) as date, COUNT(*) as count
                     FROM birdnet.detections
                     WHERE DATE(timestamp) >= :start_date 
                       AND DATE(timestamp) <= :end_date
                     GROUP BY date
                     ORDER BY date ASC
-                """)
+                """
+                )
                 res_daily = await conn.execute(
                     query_daily, {"start_date": start_date, "end_date": end_date}
                 )
@@ -109,14 +113,16 @@ class BirdNetStatsService:
                         daily_series.append({"x": row.date.strftime("%Y-%m-%d"), "y": row.count})
 
                 # 2. Hourly Distribution (within range)
-                query_hourly = text("""
+                query_hourly = text(
+                    """
                     SELECT EXTRACT(HOUR FROM timestamp) as hour, COUNT(*) as count
                     FROM birdnet.detections
                     WHERE DATE(timestamp) >= :start_date 
                       AND DATE(timestamp) <= :end_date
                     GROUP BY hour
                     ORDER BY hour ASC
-                """)
+                """
+                )
                 res_hourly = await conn.execute(
                     query_hourly, {"start_date": start_date, "end_date": end_date}
                 )
@@ -126,7 +132,8 @@ class BirdNetStatsService:
                 hourly_data = [hourly_map.get(h, 0) for h in range(24)]
 
                 # 3. Top Species Distribution (within range)
-                query_top = text("""
+                query_top = text(
+                    """
                     SELECT common_name, COUNT(*) as count 
                     FROM birdnet.detections 
                     WHERE DATE(timestamp) >= :start_date 
@@ -135,7 +142,8 @@ class BirdNetStatsService:
                     GROUP BY common_name 
                     ORDER BY count DESC 
                     LIMIT 10
-                """)
+                """
+                )
                 res_top = await conn.execute(
                     query_top, {"start_date": start_date, "end_date": end_date}
                 )
@@ -149,7 +157,8 @@ class BirdNetStatsService:
                 # 4. Rarest Specifications (Just a list, maybe easiest within range too)
                 # To find "rarest" within this period might be just low counts.
                 # Or "globally rare" seen in this period? Let's do "Least frequent in this period".
-                query_rarest = text("""
+                query_rarest = text(
+                    """
                     SELECT common_name, COUNT(*) as count
                     FROM birdnet.detections
                     WHERE DATE(timestamp) >= :start_date 
@@ -158,7 +167,8 @@ class BirdNetStatsService:
                     GROUP BY common_name
                     ORDER BY count ASC
                     LIMIT 10
-                """)
+                """
+                )
                 res_rarest = await conn.execute(
                     query_rarest, {"start_date": start_date, "end_date": end_date}
                 )
@@ -188,7 +198,8 @@ class BirdNetStatsService:
         try:
             async with db.get_connection() as conn:
                 # Basic Info
-                query_info = text("""
+                query_info = text(
+                    """
                     SELECT 
                         common_name as com_name, 
                         scientific_name as sci_name,
@@ -200,7 +211,8 @@ class BirdNetStatsService:
                     FROM birdnet.detections
                     WHERE common_name = :name
                     GROUP BY common_name, scientific_name
-                """)
+                """
+                )
                 res_info = (await conn.execute(query_info, {"name": species_name})).fetchone()
                 if not res_info:
                     return None
@@ -216,12 +228,14 @@ class BirdNetStatsService:
                     info["last_seen_iso"] = info["last_seen"].isoformat()
 
                 # Recent Detections
-                query_recent = text("""
+                query_recent = text(
+                    """
                     SELECT * FROM birdnet.detections 
                     WHERE common_name = :name 
                     ORDER BY timestamp DESC 
                     LIMIT 20
-                """)
+                """
+                )
                 res_recent = await conn.execute(query_recent, {"name": species_name})
                 recent = []
                 import os  # Local import
@@ -249,13 +263,15 @@ class BirdNetStatsService:
                     recent.append(d)
 
                 # Hourly Distribution
-                query_hourly = text("""
+                query_hourly = text(
+                    """
                     SELECT EXTRACT(HOUR FROM timestamp) as hour, COUNT(*) as count
                     FROM birdnet.detections
                     WHERE common_name = :name
                     GROUP BY hour
                     ORDER BY hour
-                """)
+                """
+                )
                 res_hourly = await conn.execute(query_hourly, {"name": species_name})
                 hourly_dist = {int(r.hour): r.count for r in res_hourly if r.hour is not None}
                 hourly_data = [hourly_dist.get(h, 0) for h in range(24)]
@@ -269,7 +285,8 @@ class BirdNetStatsService:
     async def get_all_detections_cursor() -> typing.AsyncGenerator[dict[str, typing.Any], None]:
         """Yields all detections efficiently for export."""
         async with db.get_connection() as conn:
-            query = text("""
+            query = text(
+                """
                 SELECT 
                     timestamp,
                     scientific_name,
@@ -280,7 +297,8 @@ class BirdNetStatsService:
                     filename
                 FROM birdnet.detections
                 ORDER BY timestamp DESC
-            """)
+            """
+            )
 
             result = await conn.stream(query)
 

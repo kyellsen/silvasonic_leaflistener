@@ -5,18 +5,18 @@ import os
 import signal
 import sys
 import time
+import typing
 from dataclasses import dataclass
 from pathlib import Path
 
 import psutil
 
 # Setup Path to find modules
-sys.path.append("/app")
-import typing
+sys.path.append("/app")  # noqa: E402
 
-from silvasonic_controller.device_manager import DeviceManager
-from silvasonic_controller.podman_client import PodmanOrchestrator
-from silvasonic_controller.profiles_loader import (
+from silvasonic_controller.device_manager import DeviceManager  # noqa: E402
+from silvasonic_controller.podman_client import PodmanOrchestrator  # noqa: E402
+from silvasonic_controller.profiles_loader import (  # noqa: E402
     load_profiles,
 )
 

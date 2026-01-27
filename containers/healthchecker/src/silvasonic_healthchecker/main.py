@@ -35,7 +35,7 @@ logger = logging.getLogger("HealthChecker")
 # Config
 BASE_DIR = "/mnt/data/services/silvasonic"
 SERVICES_CONFIG = {
-    "carrier": {"name": "Carrier (Uploader)", "timeout": 3600},  # 60 mins
+    "uploader": {"name": "Uploader", "timeout": 3600},  # 60 mins
     "recorder": {"name": "Recorder", "timeout": 120},  # 2 mins
     "birdnet": {"name": "BirdNET", "timeout": 300},  # 5 mins
     "livesound": {"name": "Liveaudio", "timeout": 120},  # 2 mins
@@ -138,20 +138,20 @@ def check_services_status(mailer: Mailer) -> None:
                     mailer.send_alert(f"{config['name']} Down", msg)
 
                     service_data["status"] = "Down"
-                    service_data["message"] = (
-                        f"Timeout ({int(current_time - last_ts)}s > {timeout_val}s)"
-                    )
+                    service_data[
+                        "message"
+                    ] = f"Timeout ({int(current_time - last_ts)}s > {timeout_val}s)"
                 else:
                     service_data["status"] = "Running"
                     service_data["message"] = "Active"
 
-                # Carrier Special Logic for Alerting (keep existing)
-                if service_id == "carrier":
+                # Uploader Special Logic for Alerting
+                if service_id == "uploader":
                     last_upload = status.get("last_upload", 0)
                     if current_time - last_upload > 3600:
-                        msg = "Carrier running but no upload success for > 60 mins."
+                        msg = "Uploader running but no upload success for > 60 mins."
                         logger.error(msg)
-                        mailer.send_alert("Carrier Stalled", msg)
+                        mailer.send_alert("Uploader Stalled", msg)
                         # We updates status too? Maybe 'Warning'?
                         service_data["status"] = "Warning"
                         service_data["message"] = "Stalled (No Upload)"

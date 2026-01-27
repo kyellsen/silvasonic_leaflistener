@@ -12,7 +12,7 @@ from silvasonic_uploader.janitor import StorageJanitor
 from silvasonic_uploader.rclone_wrapper import RcloneWrapper
 
 # Configure Logging
-logger = logging.getLogger("Carrier")
+logger = logging.getLogger("Uploader")
 
 # Configuration from Env
 NEXTCLOUD_URL = os.getenv("UPLOADER_NEXTCLOUD_URL")
@@ -29,7 +29,7 @@ TARGET_DIR = f"{BASE_TARGET_DIR}/{SENSOR_ID}"
 
 SOURCE_DIR = "/data/recording"
 SYNC_INTERVAL = int(os.getenv("UPLOADER_SYNC_INTERVAL", 10))
-STATUS_FILE = "/mnt/data/services/silvasonic/status/carrier.json"
+STATUS_FILE = "/mnt/data/services/silvasonic/status/uploader.json"
 ERROR_DIR = "/mnt/data/services/silvasonic/errors"
 CLEANUP_THRESHOLD = int(os.getenv("UPLOADER_CLEANUP_THRESHOLD", 70))
 CLEANUP_TARGET = int(os.getenv("UPLOADER_CLEANUP_TARGET", 60))
@@ -89,7 +89,7 @@ def write_status(
     """Write current status to JSON file for dashboard."""
     try:
         data = {
-            "service": "carrier",
+            "service": "uploader",
             "timestamp": time.time(),
             "status": status,
             "cpu_percent": psutil.cpu_percent(),
@@ -117,10 +117,10 @@ def report_error(context: str, error: Exception) -> None:
     """Write critical error to shared error directory for the Watchdog."""
     try:
         timestamp = int(time.time())
-        filename = f"{ERROR_DIR}/error_carrier_{timestamp}.json"
+        filename = f"{ERROR_DIR}/error_uploader_{timestamp}.json"
 
         data = {
-            "service": "carrier",
+            "service": "uploader",
             "timestamp": timestamp,
             "context": context,
             "error": str(error),
@@ -146,7 +146,7 @@ def main() -> None:
     signal.signal(signal.SIGTERM, signal_handler)
     signal.signal(signal.SIGINT, signal_handler)
 
-    logger.info("--- Silvasonic Carrier (Python Edition) ---")
+    logger.info("--- Silvasonic Uploader (Python Edition) ---")
 
     wrapper = RcloneWrapper()
     janitor = StorageJanitor(

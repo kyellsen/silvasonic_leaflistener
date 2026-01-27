@@ -13,7 +13,8 @@ class AnalyzerService:
     async def get_recent_analysis(limit: int = 20) -> list[dict[str, typing.Any]]:
         try:
             async with db.get_connection() as conn:
-                query = text("""
+                query = text(
+                    """
                     SELECT 
                         af.filename,
                         af.duration_sec,
@@ -27,7 +28,8 @@ class AnalyzerService:
                     LEFT JOIN brain.artifacts art ON af.id = art.audio_file_id AND art.artifact_type = 'spectrogram'
                     ORDER BY af.created_at DESC
                     LIMIT :limit
-                """)
+                """
+                )
                 result = await conn.execute(query, {"limit": limit})
                 items = []
                 for row in result:
@@ -113,14 +115,16 @@ class AnalyzerService:
     async def get_stats() -> dict[str, typing.Any]:
         try:
             async with db.get_connection() as conn:
-                query = text("""
+                query = text(
+                    """
                     SELECT 
                         COUNT(*) as total_files,
                         COALESCE(SUM(duration_sec), 0) as total_duration,
                         AVG(duration_sec) as avg_duration,
                         AVG(file_size_bytes) as avg_size
                     FROM brain.audio_files
-                """)
+                """
+                )
                 res = (await conn.execute(query)).fetchone()
                 if res:
                     d = dict(res._mapping)

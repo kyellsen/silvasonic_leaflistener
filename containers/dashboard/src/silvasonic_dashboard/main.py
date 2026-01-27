@@ -22,10 +22,10 @@ from silvasonic_dashboard.services import (
     # AnalyzerService, # Deprecated
     BirdNetService,
     BirdNetStatsService,
-    CarrierService,
     HealthCheckerService,
     RecorderService,
     SystemService,
+    UploaderService,
     WeatherService,
 )
 from silvasonic_dashboard.settings import SettingsService
@@ -191,7 +191,7 @@ async def dashboard(request: Request, auth: typing.Any = Depends(require_auth)) 
     stats = SystemService.get_stats()
     detections = await BirdNetService.get_recent_detections(limit=5)
     birdnet_stats = await BirdNetStatsService.get_stats()
-    carrier_stats = CarrierService.get_status()
+    uploader_stats = UploaderService.get_status()
     recorder_stats = RecorderService.get_status()
     raw_containers = HealthCheckerService.get_system_metrics()
 
@@ -202,7 +202,7 @@ async def dashboard(request: Request, auth: typing.Any = Depends(require_auth)) 
 
     # 1. Get Cursors
     latest_processed = await BirdNetService.get_latest_processed_filename()
-    latest_uploaded = await CarrierService.get_latest_uploaded_filename()
+    latest_uploaded = await UploaderService.get_latest_uploaded_filename()
 
     # 2. Calculate Lag (Files waiting)
     analyzer_lag = RecorderService.count_files_after(latest_processed)
@@ -267,7 +267,7 @@ async def dashboard(request: Request, auth: typing.Any = Depends(require_auth)) 
         {"key": "livesound", "name": "Liveaudio"},
         {"key": "controller", "name": "Controller"},
         {"key": "recorder", "name": "Recorder"},
-        {"key": "carrier", "name": "Uploader"},
+        {"key": "uploader", "name": "Uploader"},
         {"key": "birdnet", "name": "BirdNet"},
         {"key": "dashboard", "name": "Dashboard"},
         {"key": "postgres", "name": "PostgressDB"},
@@ -348,7 +348,7 @@ async def dashboard(request: Request, auth: typing.Any = Depends(require_auth)) 
             "stats": stats,
             "detections": detections,
             "birdnet_stats": birdnet_stats,
-            "carrier_stats": carrier_stats,
+            "uploader_stats": uploader_stats,
             "recorder_stats": recorder_stats,
             "containers": containers_sorted,
             "throughput": throughput,
@@ -407,7 +407,7 @@ async def sse_system_status(
                         {"key": "livesound", "name": "Liveaudio"},
                         {"key": "controller", "name": "Controller"},
                         {"key": "recorder", "name": "Recorder"},
-                        {"key": "carrier", "name": "Uploader"},
+                        {"key": "uploader", "name": "Uploader"},
                         {"key": "birdnet", "name": "BirdNet"},
                         {"key": "dashboard", "name": "Dashboard"},
                         {"key": "postgres", "name": "PostgressDB"},
@@ -593,7 +593,7 @@ async def settings_save(request: Request, auth: typing.Any = Depends(require_aut
     # Service Timeouts Parsing
     settings.setdefault("healthchecker", {}).setdefault("service_timeouts", {})
     # Default list of services to check for
-    services = ["recorder", "birdnet", "sound_analyser", "weather", "carrier"]
+    services = ["recorder", "birdnet", "sound_analyser", "weather", "uploader"]
     for svc in services:
         key = f"timeout_{svc}"
         val = form.get(key)
@@ -830,10 +830,10 @@ async def uploader_page(request: Request, auth: typing.Any = Depends(require_aut
     if isinstance(auth, RedirectResponse):
         return auth
 
-    stats = CarrierService.get_status()
-    upload_stats = await CarrierService.get_upload_stats()
-    recent_uploads = await CarrierService.get_recent_uploads(limit=100)
-    failed_uploads = await CarrierService.get_failed_uploads(limit=50)
+    stats = UploaderService.get_status()
+    upload_stats = await UploaderService.get_upload_stats()
+    recent_uploads = await UploaderService.get_recent_uploads(limit=100)
+    failed_uploads = await UploaderService.get_failed_uploads(limit=50)
 
     # Check for HTMX request
     template = (

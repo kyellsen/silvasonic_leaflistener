@@ -17,7 +17,8 @@ class BirdNetService:
             async with db.get_connection() as conn:
                 # Query matches BirdNET schema: birdnet.detections table
                 # We need to manually split timestamp into date/time map for value compatibility with template
-                query = text("""
+                query = text(
+                    """
                     SELECT 
                         d.filepath, 
                         d.start_time, 
@@ -35,7 +36,8 @@ class BirdNetService:
                     LEFT JOIN birdnet.species_info s ON d.scientific_name = s.scientific_name
                     ORDER BY d.timestamp DESC 
                     LIMIT :limit
-                """)
+                """
+                )
                 result = await conn.execute(query, {"limit": limit})
 
                 detections = []
@@ -49,9 +51,9 @@ class BirdNetService:
                             ts = ts.replace(tzinfo=datetime.UTC)
                         d["iso_timestamp"] = ts.isoformat()
                         # Legacy support or direct use? We'll use ISO in frontend.
-                        d["time"] = (
-                            ts.isoformat()
-                        )  # Temporary overload for template compatibility check
+                        d[
+                            "time"
+                        ] = ts.isoformat()  # Temporary overload for template compatibility check
                     else:
                         d["iso_timestamp"] = ""
                         d["time"] = "-"
@@ -134,7 +136,8 @@ class BirdNetService:
                 # The input 'filename' might be "date_folder/file.wav"
                 target_filepath = os.path.join(REC_DIR, filename)
 
-                query = text("""
+                query = text(
+                    """
                     SELECT 
                         d.filepath, 
                         d.start_time, 
@@ -152,7 +155,8 @@ class BirdNetService:
                     FROM birdnet.detections d
                     LEFT JOIN birdnet.species_info s ON d.scientific_name = s.scientific_name
                     WHERE d.filepath = :filepath OR d.filename = :filename
-                """)
+                """
+                )
                 row = (
                     await conn.execute(query, {"filepath": target_filepath, "filename": filename})
                 ).fetchone()
@@ -204,11 +208,13 @@ class BirdNetService:
         try:
             async with db.get_connection() as conn:
                 # Count from processed_files table
-                query = text("""
+                query = text(
+                    """
                     SELECT COUNT(*) 
                     FROM birdnet.processed_files 
                     WHERE processed_at >= NOW() - INTERVAL ':min MINUTES'
-                """)
+                """
+                )
                 # Parameter binding for interval string is tricky in some drivers,
                 # safer to construct interval in python or use parameter.
 
@@ -246,7 +252,8 @@ class BirdNetService:
         """Returns all species with their counts and last seen date. Enriches with images if missing."""
         try:
             async with db.get_connection() as conn:
-                query = text("""
+                query = text(
+                    """
                     SELECT 
                         d.common_name as com_name, 
                         d.scientific_name as sci_name,
@@ -260,7 +267,8 @@ class BirdNetService:
                     LEFT JOIN birdnet.species_info si ON d.scientific_name = si.scientific_name
                     GROUP BY d.common_name, d.scientific_name, si.image_url, si.german_name
                     ORDER BY count DESC
-                """)
+                """
+                )
                 result = await conn.execute(query)
                 species = []
 
@@ -348,7 +356,8 @@ class BirdNetService:
                     if wiki_data:
                         # 3. Cache Result
                         # We use UPSERT (INSERT ... ON CONFLICT)
-                        query_upsert = text("""
+                        query_upsert = text(
+                            """
                             INSERT INTO birdnet.species_info (
                                 scientific_name, common_name, german_name, family, 
                                 image_url, description, wikipedia_url, last_updated
@@ -362,7 +371,8 @@ class BirdNetService:
                                 description = EXCLUDED.description,
                                 wikipedia_url = EXCLUDED.wikipedia_url,
                                 last_updated = NOW()
-                        """)
+                        """
+                        )
                         # Fill gaps
                         wiki_data["common_name"] = info.get("com_name")
                         wiki_data["family"] = ""  # ToDo

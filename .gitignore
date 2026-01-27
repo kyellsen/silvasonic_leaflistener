@@ -57,5 +57,7 @@ setup/config/config.env
 setup/config/bootstrap.env
 config.env
 
-*.flac
 *.jpg
+
+# Agent temporary directory
+.agent_tmp/

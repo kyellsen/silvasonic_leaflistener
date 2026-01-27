@@ -10,11 +10,11 @@ from .common import STATUS_DIR
 from .database import db
 
 
-class CarrierService:
+class UploaderService:
     @staticmethod
     def get_status() -> dict[str, typing.Any]:
         try:
-            status_file = os.path.join(STATUS_DIR, "carrier.json")
+            status_file = os.path.join(STATUS_DIR, "uploader.json")
             if os.path.exists(status_file):
                 with open(status_file) as f:
                     data = json.load(f)
@@ -46,7 +46,7 @@ class CarrierService:
                     return typing.cast(dict[str, typing.Any], data)
 
         except Exception as e:
-            print(f"Carrier status error: {e}")
+            print(f"Uploader status error: {e}")
 
         return {
             "status": "Unknown",
@@ -61,13 +61,15 @@ class CarrierService:
         """Fetch recent successful uploads."""
         try:
             async with db.get_connection() as conn:
-                query = text("""
+                query = text(
+                    """
                     SELECT filename, remote_path, size_bytes, upload_time 
-                    FROM carrier.uploads 
+                    FROM uploader.uploads 
                     WHERE status = 'success' 
                     ORDER BY upload_time DESC 
                     LIMIT :limit
-                """)
+                """
+                )
                 result = await conn.execute(query, {"limit": limit})
                 items = []
                 for row in result:
@@ -93,7 +95,7 @@ class CarrierService:
                     items.append(d)
                 return items
         except Exception as e:
-            print(f"Carrier recent uploads error: {e}")
+            print(f"Uploader recent uploads error: {e}")
             return []
 
     @staticmethod
@@ -101,13 +103,15 @@ class CarrierService:
         """Fetch recent failed uploads."""
         try:
             async with db.get_connection() as conn:
-                query = text("""
+                query = text(
+                    """
                     SELECT filename, error_message, upload_time 
-                    FROM carrier.uploads 
+                    FROM uploader.uploads 
                     WHERE status = 'failed' 
                     ORDER BY upload_time DESC 
                     LIMIT :limit
-                """)
+                """
+                )
                 result = await conn.execute(query, {"limit": limit})
                 items = []
                 for row in result:
@@ -121,7 +125,7 @@ class CarrierService:
                     items.append(d)
                 return items
         except Exception as e:
-            print(f"Carrier failed uploads error: {e}")
+            print(f"Uploader failed uploads error: {e}")
             return []
 
     @staticmethod
@@ -131,20 +135,22 @@ class CarrierService:
             async with db.get_connection() as conn:
                 # We can do this in one query with FILTER or multiple.
                 # Postgres FILTER is elegant.
-                query = text("""
+                query = text(
+                    """
                     SELECT 
                         COUNT(*) FILTER (WHERE upload_time >= NOW() - INTERVAL '1 HOUR') as last_1h,
                         COUNT(*) FILTER (WHERE upload_time >= NOW() - INTERVAL '24 HOURS') as last_24h,
                         COUNT(*) FILTER (WHERE upload_time >= NOW() - INTERVAL '7 DAYS') as last_7d,
                         COUNT(*) FILTER (WHERE upload_time >= NOW() - INTERVAL '30 DAYS') as last_30d
-                    FROM carrier.uploads
+                    FROM uploader.uploads
                     WHERE status = 'success'
-                """)
+                """
+                )
                 row = (await conn.execute(query)).fetchone()
                 if row:
                     return dict(row._mapping)
         except Exception as e:
-            print(f"Carrier stats error: {e}")
+            print(f"Uploader stats error: {e}")
 
         return {"last_1h": 0, "last_24h": 0, "last_7d": 0, "last_30d": 0}
 
@@ -154,12 +160,12 @@ class CarrierService:
         try:
             async with db.get_connection() as conn:
                 query = text(
-                    "SELECT COUNT(*) FROM carrier.uploads WHERE status='success' AND upload_time >= NOW() - make_interval(mins => :mins)"
+                    "SELECT COUNT(*) FROM uploader.uploads WHERE status='success' AND upload_time >= NOW() - make_interval(mins => :mins)"
                 )
                 count = (await conn.execute(query, {"mins": minutes})).scalar() or 0
                 return round(count / minutes, 2)
         except Exception as e:
-            print(f"Carrier Rate Error: {e}")
+            print(f"Uploader Rate Error: {e}")
             return 0.0
 
     @staticmethod
@@ -167,7 +173,7 @@ class CarrierService:
         """Get the filename of the most recently uploaded file."""
         try:
             async with db.get_connection() as conn:
-                query = text("SELECT MAX(filename) FROM carrier.uploads WHERE status='success'")
+                query = text("SELECT MAX(filename) FROM uploader.uploads WHERE status='success'")
                 return (await conn.execute(query)).scalar()  # type: ignore[no-any-return]
         except Exception:
             return None

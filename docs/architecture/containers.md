@@ -24,7 +24,7 @@ This ensures that critical recording is never blocked by analysis or network spe
   - Writes compressed **.flac** files to the NVMe SSD (`/mnt/data/services/silvasonic/recorder/recordings`).
 - **Why separate?**: This container is "sacred". It must never crash or be stopped, even if the dashboard fails or the network hangs.
 
-## 2. Uploader (formerly Carrier)
+## 2. Uploader
 
 **Role:** Data Sync & Transport
 **Status:** Low priority background process

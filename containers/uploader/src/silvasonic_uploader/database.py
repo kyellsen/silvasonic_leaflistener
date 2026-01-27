@@ -32,10 +32,11 @@ class DatabaseHandler:
 
             # Create schema and table
             with self.engine.begin() as conn:
-                conn.execute(text("CREATE SCHEMA IF NOT EXISTS carrier;"))
+                conn.execute(text("CREATE SCHEMA IF NOT EXISTS uploader;"))
                 conn.execute(
-                    text("""
-                    CREATE TABLE IF NOT EXISTS carrier.uploads (
+                    text(
+                        """
+                    CREATE TABLE IF NOT EXISTS uploader.uploads (
                         id SERIAL PRIMARY KEY,
                         filename TEXT NOT NULL,
                         remote_path TEXT NOT NULL,
@@ -45,17 +46,18 @@ class DatabaseHandler:
                         upload_time TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
                         error_message TEXT
                     );
-                """)
-                )
-                conn.execute(
-                    text(
-                        "CREATE INDEX IF NOT EXISTS idx_uploads_time ON "
-                        "carrier.uploads(upload_time DESC);"
+                """
                     )
                 )
                 conn.execute(
                     text(
-                        "CREATE INDEX IF NOT EXISTS idx_uploads_status ON carrier.uploads(status);"
+                        "CREATE INDEX IF NOT EXISTS idx_uploads_time ON "
+                        "uploader.uploads(upload_time DESC);"
+                    )
+                )
+                conn.execute(
+                    text(
+                        "CREATE INDEX IF NOT EXISTS idx_uploads_status ON uploader.uploads(status);"
                     )
                 )
 
@@ -86,11 +88,13 @@ class DatabaseHandler:
 
         session = self.Session()
         try:
-            query = text("""
-                INSERT INTO carrier.uploads
+            query = text(
+                """
+                INSERT INTO uploader.uploads
                 (filename, remote_path, status, size_bytes, error_message)
                 VALUES (:filename, :remote_path, :status, :size_bytes, :error_message)
-            """)
+            """
+            )
             session.execute(
                 query,
                 {
@@ -132,11 +136,13 @@ class DatabaseHandler:
                 if not chunk:
                     continue
 
-                query = text("""
-                    SELECT filename FROM carrier.uploads
+                query = text(
+                    """
+                    SELECT filename FROM uploader.uploads
                     WHERE status = 'success'
                     AND filename IN :filenames
-                """)
+                """
+                )
 
                 result = session.execute(query, {"filenames": tuple(chunk)})
                 for row in result:

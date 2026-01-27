@@ -16,11 +16,13 @@ class WeatherService:
         """Get the latest weather measurement."""
         try:
             async with db.get_connection() as conn:
-                query = text("""
+                query = text(
+                    """
                     SELECT * FROM weather.measurements 
                     ORDER BY timestamp DESC 
                     LIMIT 1
-                """)
+                """
+                )
                 row = (await conn.execute(query)).fetchone()
                 if row:
                     d = dict(row._mapping)
@@ -78,12 +80,14 @@ class WeatherService:
             async with db.get_connection() as conn:
                 # Fetch aggregated stats from weather.bird_stats
                 # We order by timestamp ASC for the time series
-                query = text(f"""
+                query = text(
+                    f"""
                     SELECT * 
                     FROM weather.bird_stats 
                     WHERE timestamp >= NOW() - INTERVAL '{int(days)} DAYS'
                     ORDER BY timestamp ASC
-                """)
+                """
+                )
 
                 result = await conn.execute(query)
 

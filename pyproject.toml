@@ -51,7 +51,7 @@ dev = [
     "schedule",
     "silvasonic-controller",
     "silvasonic-livesound",
-    "silvasonic-ear",
+    "silvasonic-recorder",
     "silvasonic-weather",
     "silvasonic-dashboard",
     "birdnet-container",
@@ -129,7 +129,7 @@ ignore_errors = true
 [tool.uv.sources]
 silvasonic-controller = { workspace = true }
 silvasonic-livesound = { workspace = true }
-silvasonic-ear = { workspace = true }
+silvasonic-recorder = { workspace = true }
 silvasonic-weather = { workspace = true }
 silvasonic-dashboard = { workspace = true }
 birdnet-container = { workspace = true }

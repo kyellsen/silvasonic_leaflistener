@@ -1,22 +1,8 @@
-import importlib.util
-import os
-import sys
 import typing
 import unittest
 from unittest.mock import MagicMock, patch
 
-# Load recorder/src/main.py directly by path logic
-recorder_src = os.path.abspath(
-    os.path.join(
-        os.path.dirname(__file__), "../containers/recorder/src/silvasonic_recorder/main.py"
-    )
-)
-spec = importlib.util.spec_from_file_location("recorder_main", recorder_src)
-assert spec is not None
-main = importlib.util.module_from_spec(spec)
-sys.modules["recorder_main"] = main
-assert spec.loader is not None
-spec.loader.exec_module(main)
+from silvasonic_recorder import main
 
 
 class TestRecorder(unittest.TestCase):
@@ -44,8 +30,8 @@ class TestRecorder(unittest.TestCase):
         self.strategy.get_ffmpeg_input_args.return_value = ["-f", "alsa", "-test_arg"]
         self.strategy.get_input_source.return_value = "hw:0,0"
 
-    @patch("recorder_main.subprocess.Popen")
-    @patch("recorder_main.os.makedirs")
+    @patch("silvasonic_recorder.main.subprocess.Popen")
+    @patch("silvasonic_recorder.main.os.makedirs")
     def test_start_recording(self, mock_makedirs: typing.Any, mock_popen: typing.Any) -> None:
         """Test that start_recording calls FFmpeg with correct arguments from strategy."""
         process_mock = MagicMock()
@@ -70,8 +56,8 @@ class TestRecorder(unittest.TestCase):
         # Check background tasks call
         self.strategy.start_background_tasks.assert_called_once_with(process_mock)
 
-    @patch("recorder_main.subprocess.Popen")
-    @patch("recorder_main.os.makedirs")
+    @patch("silvasonic_recorder.main.subprocess.Popen")
+    @patch("silvasonic_recorder.main.os.makedirs")
     def test_start_recording_mock_strategy(
         self, mock_makedirs: typing.Any, mock_popen: typing.Any
     ) -> None:

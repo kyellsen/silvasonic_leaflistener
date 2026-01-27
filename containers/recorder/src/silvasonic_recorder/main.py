@@ -1,4 +1,4 @@
-"""The Ear - Audio Recorder for Silvasonic.
+"""The Recorder - Audio Recorder for Silvasonic.
 
 Records audio from USB microphones using a single continuous FFmpeg process.
 Outputs:

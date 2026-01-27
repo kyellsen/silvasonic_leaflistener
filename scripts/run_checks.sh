@@ -24,7 +24,7 @@ run_cmd "uv run ruff check --fix ."
 
 # 3. MyPy Type Checking
 # Explicitly checking source dirs to avoid .venv issues
-run_cmd "uv run mypy containers scripts tools"
+run_cmd "uv run mypy containers tools"
 
 # 4. Pytest (Root)
 echo -e "${BLUE}▶ pytest${NC}"

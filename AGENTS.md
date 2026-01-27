@@ -45,8 +45,12 @@ The system uses a strict directory structure on the NVMe drive (`/mnt/data`).
 
 **Rule**: Use only the canonical paths defined in [docs/data_flow.md](docs/architecture/data_flow.md#file-system-layout).
 
-**Transient Scripts**:
-Any temporary, investigative, or verification scripts (e.g. `verify_audio.py`) must be placed in `scripts/temp/`. They must **never** be placed in the project root.
+**Transient Scripts & Artifacts**:
+Any temporary scripts, investigative logs, test artifacts, or debugging outputs must be placed in:
+
+- `.agent_tmp/` (Required for logs/artifacts/temp files/scripts)
+
+**Rule**: Agents must **never** place temporary files in the project root or `scripts/temp/`. The `.agent_tmp/` directory is git-ignored and automatically cleaned by `./setup.sh --clean`.
 
 ### 3. Language Policy
 
@@ -83,7 +87,7 @@ Code is not "done" until it passes:
 ## How to Change the System (Iterative Mode)
 
 1.  **Check Priorities**
-    - Does this change threaten "The Ear"? If yes, redesign.
+    - Does this change threaten "The Recorder"? If yes, redesign.
 2.  **files first, code second**
     - Verify paths against `setup/provision/playbooks/setup.yml`.
 3.  **Implement & Verify**
@@ -103,7 +107,7 @@ Code is not "done" until it passes:
 
 ## If You Are Unsure
 
-If something is unclear or missing, you are authorized to infer a reasonable technical solution consistent with **"The Ear comes first"**.
+If something is unclear or missing, you are authorized to infer a reasonable technical solution consistent with **"The Recorder comes first"**.
 
 You **must** update the corresponding specification/documentation in the same step/PR so that code and specs evolve synchronously.
 

@@ -30,7 +30,7 @@ function show_help() {
     echo "This script manages your LOCAL development environment."
     echo ""
     echo "Options:"
-    echo "  --clean      Clean cleanup (remove .venv, cache, temporary files, stopped containers)"
+    echo "  --clean      Clean cleanup (remove .venv, cache, temporary files, stopped containers). Exits script."
     echo "  --rebuild    Rebuild containers (podman-compose build)"
     echo "  --help       Show this help message"
     echo ""
@@ -67,7 +67,7 @@ done
 if [ "$CLEAN" = true ]; then
     echo_task "Cleaning up environment"
     
-    rm -rf .venv .ruff_cache .mypy_cache .pytest_cache
+    rm -rf .venv .ruff_cache .mypy_cache .pytest_cache .agent_tmp
     find . -type d -name "__pycache__" -exec rm -rf {} +
     
     echo_success "Cache and venv removed."
@@ -77,6 +77,9 @@ if [ "$CLEAN" = true ]; then
          echo_task "Pruning stopped containers"
          podman container prune -f
     fi
+
+    echo_success "Cleanup complete. Run ./setup.sh without --clean to setup environment."
+    exit 0
 fi
 
 # --- 2. DEPENDENCIES (uv) ---

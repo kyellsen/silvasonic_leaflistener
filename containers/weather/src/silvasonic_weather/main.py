@@ -49,7 +49,8 @@ def init_db() -> None:
     with get_db_connection() as conn:
         conn.execute(text("CREATE SCHEMA IF NOT EXISTS weather;"))
         conn.execute(
-            text("""
+            text(
+                """
             CREATE TABLE IF NOT EXISTS weather.measurements (
                 timestamp TIMESTAMPTZ PRIMARY KEY,
                 station_id TEXT,
@@ -62,7 +63,8 @@ def init_db() -> None:
                 cloud_cover_percent FLOAT,
                 condition_code TEXT
             );
-        """)
+        """
+            )
         )
         conn.commit()
     logger.info("Database initialized.")
@@ -204,14 +206,16 @@ def fetch_weather() -> None:
 
         # Insert into DB
         with get_db_connection() as conn:
-            stmt = text("""
+            stmt = text(
+                """
                 INSERT INTO weather.measurements (
                     timestamp, station_id, temperature_c, humidity_percent,
                     precipitation_mm, wind_speed_ms, wind_gust_ms, sunshine_seconds, cloud_cover_percent
                 ) VALUES (
                     :ts, :sid, :temp, :hum, :precip, :wind, :gust, :sun, :cloud
                 ) ON CONFLICT (timestamp) DO NOTHING
-            """)
+            """
+            )
             conn.execute(
                 stmt,
                 {

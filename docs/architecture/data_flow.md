@@ -14,7 +14,7 @@
 
 - **Format**: FLAC (Free Lossless Audio Codec).
 - **Benefit**: Reduces file size by ~40-50% compared to raw WAV.
-- **Cpu Usage**: Encoding is done on "The Ear" container.
+- **Cpu Usage**: Encoding is done on "The Recorder" container.
 
 ## Synchronization (The Mirror)
 
@@ -41,4 +41,4 @@ The system uses a strict directory structure on the NVMe drive (`/mnt/data`).
 
 ### Transient Scripts
 
-Any temporary, investigative, or verification scripts (e.g. `verify_audio.py`) must be placed in `scripts/temp/`. They must **never** be placed in the project root.
+Any temporary, investigative, or verification scripts (e.g. `verify_audio.py`) must be placed in `.agent_tmp/`. They must **never** be placed in the project root or `scripts/temp/`.
