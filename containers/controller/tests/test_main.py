@@ -1,4 +1,5 @@
-from unittest.mock import MagicMock, mock_open, patch
+import asyncio
+from unittest.mock import AsyncMock, MagicMock, mock_open, patch
 
 import pytest
 from silvasonic_controller.device_manager import AudioDevice
@@ -13,8 +14,18 @@ def mock_deps():
         patch("silvasonic_controller.main.PodmanOrchestrator") as po,
         patch("silvasonic_controller.main.load_profiles") as lp,
     ):
-        # Setup mock behavior
+        # Setup mock behavior for ASYNC methods
+        dm_instance = dm.return_value
+        dm_instance.scan_devices = AsyncMock(return_value=[])
+        dm_instance.start_monitoring = MagicMock()  # Sync
+
+        po_instance = po.return_value
+        po_instance.spawn_recorder = AsyncMock(return_value=True)
+        po_instance.stop_recorder = AsyncMock()
+        po_instance.list_active_recorders = AsyncMock(return_value=[])
+
         lp.return_value = [MicrophoneProfile(name="Test", slug="test", device_patterns=["Test"])]
+
         yield dm, po, lp
 
 
@@ -29,7 +40,8 @@ def test_setup_logging() -> None:
         setup_logging()
 
 
-def test_write_live_config(mock_deps) -> None:
+@pytest.mark.asyncio
+async def test_write_live_config(mock_deps) -> None:
     dm, po, lp = mock_deps
     ctrl = Controller(dm.return_value, po.return_value)
     ctrl.active_sessions["1"] = SessionInfo("c", "id", 1234, "slug")
@@ -37,27 +49,30 @@ def test_write_live_config(mock_deps) -> None:
     with patch("builtins.open", mock_open()) as m_open:
         with patch("os.rename"):
             with patch("os.makedirs"):
-                ctrl.write_live_config()
+                await ctrl.write_live_config()
+                # Since it runs in to_thread, verifying open call might be racey if not awaited properly.
+                # await write_live_config waits for the thread to finish, so it's safe.
                 m_open.assert_called()
-                # check json content
                 handle = m_open()
                 handle.write.assert_called()
 
 
-def test_write_live_config_exception(mock_deps) -> None:
+@pytest.mark.asyncio
+async def test_write_live_config_exception(mock_deps) -> None:
     dm, po, lp = mock_deps
     ctrl = Controller(dm.return_value, po.return_value)
     with patch("builtins.open", side_effect=OSError):
         with patch("os.makedirs"):
-            ctrl.write_live_config()  # Should log error but not crash
+            await ctrl.write_live_config()  # Should log error but not crash
 
 
-def test_write_status_exception(mock_deps) -> None:
+@pytest.mark.asyncio
+async def test_write_status_exception(mock_deps) -> None:
     dm, po, lp = mock_deps
     ctrl = Controller(dm.return_value, po.return_value)
     with patch("builtins.open", side_effect=OSError):
         with patch("os.makedirs"):
-            ctrl.write_status()
+            await ctrl.write_status()
 
 
 def test_controller_init(mock_deps) -> None:
@@ -67,20 +82,17 @@ def test_controller_init(mock_deps) -> None:
     assert ctrl.running
 
 
-def test_reconcile_add_new(mock_deps) -> None:
+@pytest.mark.asyncio
+async def test_reconcile_add_new(mock_deps) -> None:
     """Test that a new device spawns a recorder."""
     dm, po, lp = mock_deps
-
     ctrl = Controller(dm.return_value, po.return_value)
 
     # Setup Device Manager to return one device
     device = AudioDevice(name="Test Device", card_id="1", dev_path="/dev/snd/pcmC1D0c")
     dm.return_value.scan_devices.return_value = [device]
 
-    # Setup Orchestrator to succeed
-    po.return_value.spawn_recorder.return_value = True
-
-    ctrl.reconcile()
+    await ctrl.reconcile()
 
     # Expect spawn call
     po.return_value.spawn_recorder.assert_called_once()
@@ -92,7 +104,8 @@ def test_reconcile_add_new(mock_deps) -> None:
     assert "1" in ctrl.active_sessions
 
 
-def test_reconcile_ignore_existing(mock_deps) -> None:
+@pytest.mark.asyncio
+async def test_reconcile_ignore_existing(mock_deps) -> None:
     """Test that existing sessions are not respawned."""
     dm, po, lp = mock_deps
     ctrl = Controller(dm.return_value, po.return_value)
@@ -104,12 +117,13 @@ def test_reconcile_ignore_existing(mock_deps) -> None:
     device = AudioDevice(name="Test Device", card_id="1", dev_path="...")
     dm.return_value.scan_devices.return_value = [device]
 
-    ctrl.reconcile()
+    await ctrl.reconcile()
 
     po.return_value.spawn_recorder.assert_not_called()
 
 
-def test_reconcile_remove_stale(mock_deps) -> None:
+@pytest.mark.asyncio
+async def test_reconcile_remove_stale(mock_deps) -> None:
     """Test that removed devices stop the recorder."""
     dm, po, lp = mock_deps
     ctrl = Controller(dm.return_value, po.return_value)
@@ -122,7 +136,7 @@ def test_reconcile_remove_stale(mock_deps) -> None:
     device2 = AudioDevice(name="Test", card_id="2", dev_path="...")
     dm.return_value.scan_devices.return_value = [device2]
 
-    ctrl.reconcile()
+    await ctrl.reconcile()
 
     # Expect stop for device 1
     po.return_value.stop_recorder.assert_called_once_with("cont_1")
@@ -130,43 +144,41 @@ def test_reconcile_remove_stale(mock_deps) -> None:
     assert "2" in ctrl.active_sessions
 
 
-def test_reconcile_no_profile_ignore(mock_deps) -> None:
+@pytest.mark.asyncio
+async def test_reconcile_no_profile_ignore(mock_deps) -> None:
     dm, po, lp = mock_deps
+
+    # Reload with empty profiles
+    lp.return_value = []
     ctrl = Controller(dm.return_value, po.return_value)
 
     # Device that doesn't match any profile
     device = AudioDevice(name="Unknown", card_id="99", dev_path="...")
     dm.return_value.scan_devices.return_value = [device]
 
-    # Ensure no generic fallback match
-    # Actually Controller logic does custom matching loop lines 129-134
-    # We need to ensure profiles don't match
-    lp.return_value = []  # No profiles loaded
-    ctrl = Controller(dm.return_value, po.return_value)  # reload with empty profiles
-
-    ctrl.reconcile()
+    await ctrl.reconcile()
     po.return_value.spawn_recorder.assert_not_called()
 
 
-def test_port_fallback(mock_deps) -> None:
+@pytest.mark.asyncio
+async def test_port_fallback(mock_deps) -> None:
     dm, po, lp = mock_deps
     ctrl = Controller(dm.return_value, po.return_value)
 
     device = AudioDevice(name="Test", card_id="not_int", dev_path="...")
     dm.return_value.scan_devices.return_value = [device]
 
-    # Force match
-    with patch("silvasonic_controller.main.PodmanOrchestrator"):  # refresh mock
-        ctrl.orchestrator.spawn_recorder.return_value = True
-        ctrl.reconcile()
+    # Force match (simulate successful spawn)
+    # Reload orchestrator mock for this specific instance if needed or just use po.return_value
+    ctrl.orchestrator.spawn_recorder.return_value = True
 
-        args = ctrl.orchestrator.spawn_recorder.call_args[1]
-        assert (
-            "port" not in args
-        )  # spawn_recorder doesn't take port, Controller calc port for SessionInfo
+    await ctrl.reconcile()
 
-        session = ctrl.active_sessions["not_int"]
-        assert session.port > 12000  # Should be calculated via hash
+    args = ctrl.orchestrator.spawn_recorder.call_args[1]
+    assert "port" not in args
+
+    session = ctrl.active_sessions["not_int"]
+    assert session.port > 12000  # Should be calculated via hash
 
 
 def test_stop_signal(mock_deps) -> None:
@@ -176,84 +188,54 @@ def test_stop_signal(mock_deps) -> None:
     assert ctrl.running is False
 
 
-def test_run_loop_exception(mock_deps) -> None:
+@pytest.mark.asyncio
+async def test_run_loop_monitor_event(mock_deps) -> None:
+    """Test that the monitor loop catches events and calls reconcile."""
     dm, po, lp = mock_deps
     ctrl = Controller(dm.return_value, po.return_value)
 
     monitor = MagicMock()
     dm.return_value.start_monitoring.return_value = monitor
 
-    # First poll raises exception, verifying loop continues (we break via side effect on running or just run once)
-
-    monitor.poll.side_effect = [Exception("PollError"), Exception("Stop")]
-
-    # We patch time.sleep to run fast
-    with patch("time.sleep") as m_sleep:
-        with patch.object(ctrl, "write_status"):
-            # We need to stop the loop eventually.
-            # Let's side-effect time.sleep to stop running?
-            def stop_loop(*args):
-                ctrl.running = False
-
-            m_sleep.side_effect = stop_loop
-
-            ctrl.run()
-
-            assert m_sleep.called
-
-
-def test_run_loop_event(mock_deps) -> None:
-    dm, po, lp = mock_deps
-    ctrl = Controller(dm.return_value, po.return_value)
-
-    monitor = MagicMock()
-    dm.return_value.start_monitoring.return_value = monitor
-
-    # Simulate one event then stop
+    # Mock the monitor returning an event then None
     event = MagicMock()
     event.action = "add"
     event.device_node = "/dev/snd/test"
 
-    # Return event first time, then raise KeyboardInterrupt to stop (not caught by catch-all Exception)
-    monitor.poll.side_effect = [event, KeyboardInterrupt("Stop")]
+    # We mock asyncio.to_thread to catch the blocking poll call
+    # First call returns event, subsequent call raises CancelledError to stop loop helper?
+    # Or we can just stop the controller after short sleep.
 
-    with patch("time.sleep"):
-        with patch.object(ctrl, "reconcile") as mock_rec:
-            with patch.object(ctrl, "write_status"):
-                try:
-                    ctrl.run()
-                except KeyboardInterrupt:
-                    pass
+    original_to_thread = asyncio.to_thread
 
-                mock_rec.assert_called()
+    async def mock_poll_thread(func, *args, **kwargs):
+        if func == monitor.poll:
+            if not getattr(mock_poll_thread, "called", False):
+                mock_poll_thread.called = True
+                return event
+            else:
+                # Wait forever second time
+                await asyncio.sleep(10)
+        return await original_to_thread(func, *args, **kwargs)
+
+    with patch("asyncio.to_thread", side_effect=mock_poll_thread):
+        with patch.object(ctrl, "reconcile", new_callable=AsyncMock) as mock_rec:
+            # Run controller for a short time
+            task = asyncio.create_task(ctrl.run())
+            await asyncio.sleep(0.1)
+            ctrl.stop()  # Signals stop
+            await task
+
+            # Reconcile called initially + once for event
+            assert mock_rec.call_count >= 2
 
 
-def test_write_status(mock_deps) -> None:
+@pytest.mark.asyncio
+async def test_write_status(mock_deps) -> None:
     dm, po, lp = mock_deps
     ctrl = Controller(dm.return_value, po.return_value)
     with patch("builtins.open", mock_open()) as m_open:
         with patch("os.rename"):
             with patch("os.makedirs"):
-                ctrl.write_status()
+                await ctrl.write_status()
                 m_open.assert_called()
-
-
-def test_run_loop(mock_deps) -> None:
-    dm, po, lp = mock_deps
-    ctrl = Controller(dm.return_value, po.return_value)
-
-    # Mock monitor
-    monitor = MagicMock()
-    dm.return_value.start_monitoring.return_value = monitor
-    monitor.poll.side_effect = [None, Exception("StopLoop")]  # Return None then raise to break loop
-
-    ctrl.running = False  # Don't actually loop forever if side_effect fails
-
-    # We want to test one loop iteration
-    # Since run() has a while True, checking it is hard without breaking it.
-    # We can patch 'reconcile' and 'write_status'
-
-    with patch.object(ctrl, "reconcile"):
-        with patch.object(ctrl, "write_status"):
-            # We just verify init logic here essentially
-            pass

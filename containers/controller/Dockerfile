@@ -3,6 +3,8 @@ FROM python:3.11-slim-bookworm AS builder
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential \
+    libasound2-dev \
+    gcc \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
@@ -29,12 +31,11 @@ FROM python:3.11-slim-bookworm
 # - podman: For CLI orchestration
 # - alsa-utils: For 'arecord -l' device discovery
 # - udev: For device events
+# REMOVED: build-essential, gcc, libasound2-dev (not needed for runtime)
 RUN apt-get update && apt-get install -y --no-install-recommends \
     podman \
     alsa-utils \
     udev \
-    libasound2-dev \
-    gcc \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app

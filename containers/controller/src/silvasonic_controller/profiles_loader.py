@@ -8,21 +8,18 @@ import logging
 import re
 import subprocess
 import typing
-from dataclasses import dataclass, field
 from pathlib import Path
 
 import yaml
+from pydantic import BaseModel, ConfigDict, Field, ValidationError, model_validator
 
 logger = logging.getLogger("mic_profiles")
 
 if typing.TYPE_CHECKING:
-    # Strategies are not needed in Controller, but keeping type hint for compatibility if needed.
-    # In Controller context, this might fail if strictly checked, but at runtime it's skipped.
     pass
 
 
-@dataclass
-class AudioConfig:
+class AudioConfig(BaseModel):
     """Audio recording configuration."""
 
     sample_rate: int = 48000
@@ -31,8 +28,7 @@ class AudioConfig:
     format: str = "S16_LE"
 
 
-@dataclass
-class RecordingConfig:
+class RecordingConfig(BaseModel):
     """Recording output configuration."""
 
     chunk_duration_seconds: int = 30
@@ -40,62 +36,29 @@ class RecordingConfig:
     compression_level: int = 5
 
 
-@dataclass
-class MicrophoneProfile:
+class MicrophoneProfile(BaseModel):
     """Complete microphone profile."""
+
+    model_config = ConfigDict(extra="ignore")
 
     name: str
     slug: str = ""  # URL-safe identifier for folder names
     manufacturer: str = "Unknown"
     model: str = "Unknown"
-    device_patterns: list[str] = field(default_factory=list)
-    audio: AudioConfig = field(default_factory=AudioConfig)
-    recording: RecordingConfig = field(default_factory=RecordingConfig)
+    device_patterns: list[str] = Field(default_factory=list)
+    audio: AudioConfig = Field(default_factory=AudioConfig)
+    recording: RecordingConfig = Field(default_factory=RecordingConfig)
     priority: int = 50
     is_mock: bool = False
 
-    def __post_init__(self) -> None:
-        """Clean up data after initialization."""
-        if not self.slug:
-            # Generate slug from name
+    @model_validator(mode="after")
+    def generate_slug_if_missing(self) -> "MicrophoneProfile":
+        if not self.slug and self.name:
             self.slug = re.sub(r"[^a-z0-9]+", "_", self.name.lower()).strip("_")
-
-    @classmethod
-    def from_dict(cls, data: dict[str, typing.Any], filename: str = "") -> "MicrophoneProfile":
-        """Create profile from dictionary (parsed YAML)."""
-        audio_data = data.get("audio", {})
-        recording_data = data.get("recording", {})
-        mock_data = data.get("mock", {})
-
-        # Use filename without extension as slug if not specified
-        slug = data.get("slug", "")
-        if not slug and filename:
-            slug = Path(filename).stem
-
-        return cls(
-            name=data.get("name", "Unknown"),
-            slug=slug,
-            manufacturer=data.get("manufacturer", "Unknown"),
-            model=data.get("model", "Unknown"),
-            device_patterns=data.get("device_patterns", []),
-            audio=AudioConfig(
-                sample_rate=audio_data.get("sample_rate", 48000),
-                channels=audio_data.get("channels", 1),
-                bit_depth=audio_data.get("bit_depth", 16),
-                format=audio_data.get("format", "S16_LE"),
-            ),
-            recording=RecordingConfig(
-                chunk_duration_seconds=recording_data.get("chunk_duration_seconds", 30),
-                output_format=recording_data.get("output_format", "flac"),
-                compression_level=recording_data.get("compression_level", 5),
-            ),
-            priority=data.get("priority", 50),
-            is_mock=mock_data.get("enabled", False),
-        )
+        return self
 
 
-@dataclass
-class DetectedDevice:
+class DetectedDevice(BaseModel):
     """Represents a detected audio device."""
 
     card_id: str
@@ -107,6 +70,8 @@ def get_alsa_devices() -> list[DetectedDevice]:
     """Get list of ALSA capture devices."""
     devices = []
     try:
+        # TODO: Refactor to allow async or non-blocking in future if needed,
+        # but for now this utility is synchronous. Use asyncio.to_thread in caller.
         result = subprocess.run(["arecord", "-l"], capture_output=True, text=True)
         output = result.stdout + result.stderr
 
@@ -146,9 +111,16 @@ def load_profiles(profiles_dir: Path | None = None) -> list[MicrophoneProfile]:
             with open(yml_file) as f:
                 data = yaml.safe_load(f)
                 if data:
-                    profile = MicrophoneProfile.from_dict(data, str(yml_file))
+                    # Provide filename context for slug generation if needed, though
+                    # validator handles it from name. We can inject slug if missing.
+                    if "slug" not in data or not data["slug"]:
+                        data["slug"] = yml_file.stem
+
+                    profile = MicrophoneProfile.model_validate(data)
                     profiles.append(profile)
                     logger.debug(f"Loaded profile: {profile.name} ({profile.slug})")
+        except ValidationError as e:
+            logger.error(f"Validation error loading profile {yml_file}: {e}")
         except Exception as e:
             logger.error(f"Error loading profile {yml_file}: {e}")
 
@@ -235,6 +207,3 @@ def find_matching_profile(
 
     logger.error("No matching profile found!")
     return None, None
-
-
-# Removed create_strategy_for_profile as it depends on strategies module not present in Controller

@@ -45,13 +45,13 @@ def test_profile_loading(mock_profiles_dir) -> None:
     assert len(profiles) == 2
     # Check sorting by priority (default 50 comes before 100)
     assert profiles[0].name == "Rode NT-USB"
-    assert profiles[0].slug == "rode"  # Generated slug from filename
+    assert profiles[0].slug == "rode"  # Generated slug from filename/name
     assert profiles[1].name == "Generic USB"
 
 
 def test_slug_generation() -> None:
+    # Pydantic validates on init
     p = MicrophoneProfile(name="My  Cool Device!!!")
-    p.__post_init__()
     assert p.slug == "my_cool_device"
 
 
@@ -113,7 +113,13 @@ def test_find_matching_profile_no_devices() -> None:
 
 
 def test_real_scan_execution() -> None:
-    # Test get_alsa_devices logic with mocked subprocess
+    # Test get_alsa_devices logic with mocked subprocess (Synchronous part)
+    # The scan_devices in DeviceManager is async, but get_alsa_devices utility in loader is sync (for now)
+    # Wait, detect devices utility in profiles_loader is independent?
+    # Yes, profiles_loader.py has get_alsa_devices. device_manager.py has scan_devices.
+    # Refactor plan didn't explicitly say remove get_alsa_devices from profiles_loader, but they duplicate logic.
+    # But checking profiles_loader.py content, it HAS get_alsa_devices.
+
     with patch("subprocess.run") as mock_run:
         mock_run.return_value.stdout = "card 1: Test [Test], device 0: Sub [Sub]"
         mock_run.return_value.stderr = ""
