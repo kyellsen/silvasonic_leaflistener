@@ -1986,6 +1986,7 @@ version = "0.1.0"
 source = { editable = "containers/controller" }
 dependencies = [
     { name = "psutil" },
+    { name = "pydantic" },
     { name = "pyudev" },
     { name = "pyyaml" },
 ]
@@ -1993,6 +1994,7 @@ dependencies = [
 [package.metadata]
 requires-dist = [
     { name = "psutil" },
+    { name = "pydantic", specifier = ">=2.0" },
     { name = "pyudev", specifier = ">=0.24.0" },
     { name = "pyyaml", specifier = ">=6.0" },
 ]
