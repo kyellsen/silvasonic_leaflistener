@@ -84,7 +84,7 @@ def find_station(lat: float, lon: float) -> str | None:
     """Find the nearest DWD station."""
     try:
         request = DwdObservationRequest(
-            parameter=[Parameter.TEMPERATURE_AIR_MEAN_2M],
+            parameters=[Parameter.TEMPERATURE_AIR_MEAN_2M],
             resolution="reaction",  # or "hourly"
             start_date=datetime.now(),
             end_date=datetime.now(),
@@ -122,7 +122,7 @@ def fetch_weather() -> None:
         # Actually, query_by_rank is nicer.
 
         request = DwdObservationRequest(
-            parameter=[
+            parameters=[
                 Parameter.TEMPERATURE_AIR_MEAN_2M,
                 Parameter.HUMIDITY,
                 Parameter.PRECIPITATION_HEIGHT,
@@ -229,7 +229,12 @@ def fetch_weather() -> None:
 
 
 if __name__ == "__main__":
-    init_db()
+    try:
+        init_db()
+    except Exception as e:
+        logger.exception(f"Startup failed: {e}")
+        time.sleep(10) # Wait a bit to ensure log is written and avoid rapid restart loop
+        exit(1)
 
     # Run once on startup
     fetch_weather()

@@ -59,6 +59,7 @@ class AudioIngestor:
         
         # Threads: {source_name: thread}
         self.threads: dict[str, threading.Thread] = {}
+        self._lock = threading.Lock()
 
         self.running = False
         self.status_dir = "/mnt/data/services/silvasonic/status"
@@ -161,62 +162,77 @@ class AudioIngestor:
     async def subscribe_spectrogram(self, source: str = "default") -> asyncio.Queue[list[int]]:
         """Subscribe to spectrogram updates for a specific source."""
         # Use first available source if default requested but not present (fallback)
-        if source == "default" and "default" not in self._spectrogram_queues and self._spectrogram_queues:
-            source = next(iter(self._spectrogram_queues))
+        if source == "default":
+             if "default" not in self.sockets and self.sockets:
+                 source = next(iter(self.sockets))
 
-        if source not in self._spectrogram_queues:
-             logger.warning(f"Subscribe request for unknown source: {source}")
-             # Return empty queue that will never get data? Or raise?
-             # Better to register it conceptually or just fail softly.
-             # Let's create an empty set to avoid crashes, but no data will come.
-             self._spectrogram_queues.setdefault(source, set())
+        # Validate against ACTUAL hardware sockets, not queue dict
+        if source not in self.sockets:
+             logger.warning(f"Subscribe request for known source: {source}")
+             # We can still register it, but it won't get data.
+             # Alternatively, we could auto-create a socket if we were truly dynamic,
+             # but here we just safely register the queue.
 
-        q: asyncio.Queue[list[int]] = asyncio.Queue()
-        self._spectrogram_queues[source].add(q)
+        with self._lock:
+            if source not in self._spectrogram_queues:
+                self._spectrogram_queues.setdefault(source, set())
+
+            q: asyncio.Queue[list[int]] = asyncio.Queue()
+            self._spectrogram_queues[source].add(q)
+        
         return q
 
     def unsubscribe_spectrogram(self, q: asyncio.Queue[list[int]], source: str = "default") -> None:
         """Unsubscribe from spectrogram updates."""
-        # If we don't know the source, check all (expensive but safe) or require source
-        # Ideally caller knows source.
-        if source in self._spectrogram_queues and q in self._spectrogram_queues[source]:
-            self._spectrogram_queues[source].remove(q)
-            return
+        with self._lock:
+            # If we don't know the source, check all (expensive but safe) or require source
+            if source in self._spectrogram_queues and q in self._spectrogram_queues[source]:
+                self._spectrogram_queues[source].remove(q)
+                return
 
-        # Fallback cleanup
-        for s in self._spectrogram_queues:
-            if q in self._spectrogram_queues[s]:
-                self._spectrogram_queues[s].remove(q)
+            # Fallback cleanup
+            for s in self._spectrogram_queues:
+                if q in self._spectrogram_queues[s]:
+                    self._spectrogram_queues[s].remove(q)
 
     async def subscribe_audio(self, source: str = "default") -> asyncio.Queue[bytes]:
         """Subscribe to raw audio updates."""
-        if source == "default" and "default" not in self._audio_queues and self._audio_queues:
-            source = next(iter(self._audio_queues))
+        if source == "default":
+             if "default" not in self.sockets and self.sockets:
+                 source = next(iter(self.sockets))
 
-        if source not in self._audio_queues:
-             self._audio_queues.setdefault(source, set())
+        with self._lock:
+            if source not in self._audio_queues:
+                self._audio_queues.setdefault(source, set())
 
-        # Limit queue size to prevent memory explosion if client is slow
-        q: asyncio.Queue[bytes] = asyncio.Queue(maxsize=100)
-        self._audio_queues[source].add(q)
+            # Limit queue size to prevent memory explosion if client is slow
+            q: asyncio.Queue[bytes] = asyncio.Queue(maxsize=100)
+            self._audio_queues[source].add(q)
         return q
 
     def unsubscribe_audio(self, q: asyncio.Queue[bytes], source: str = "default") -> None:
         """Unsubscribe from raw audio updates."""
-        if source in self._audio_queues and q in self._audio_queues[source]:
-            self._audio_queues[source].remove(q)
-            return
+        with self._lock:
+            if source in self._audio_queues and q in self._audio_queues[source]:
+                self._audio_queues[source].remove(q)
+                return
 
-        for s in self._audio_queues:
-            if q in self._audio_queues[s]:
-                self._audio_queues[s].remove(q)
+            for s in self._audio_queues:
+                if q in self._audio_queues[s]:
+                    self._audio_queues[s].remove(q)
 
     def _broadcast_safe(self, queues: set[asyncio.Queue[typing.Any]], data: typing.Any) -> None:
         """Helper to put data into queues from a thread safely."""
-        if not self.loop or not self.running or not queues:
-            return
+        if not self.loop or not self.running:
+             return
 
-        for q in list(queues):
+        # Snapshot the queues under lock to avoid "Set changed size during iteration"
+        with self._lock:
+             if not queues:
+                 return
+             target_queues = list(queues)
+
+        for q in target_queues:
             try:
                 self.loop.call_soon_threadsafe(q.put_nowait, data)
             except asyncio.QueueFull:
