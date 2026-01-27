@@ -41,7 +41,7 @@
     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
       <!-- Temperature -->
       <div
-        class="glass-panel p-6 rounded-2xl border border-gray-200 dark:border-white/5 relative overflow-hidden group"
+        class="silva-card silva-card-hover hover:ring-sky-500 p-6 relative overflow-hidden group"
       >
         <div
           class="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity"
@@ -63,7 +63,7 @@
 
       <!-- Humidity -->
       <div
-        class="glass-panel p-6 rounded-2xl border border-gray-200 dark:border-white/5 relative overflow-hidden group"
+        class="silva-card silva-card-hover hover:ring-sky-500 p-6 relative overflow-hidden group"
       >
         <div
           class="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity"
@@ -85,7 +85,7 @@
 
       <!-- Precipitation -->
       <div
-        class="glass-panel p-6 rounded-2xl border border-gray-200 dark:border-white/5 relative overflow-hidden group"
+        class="silva-card silva-card-hover hover:ring-sky-500 p-6 relative overflow-hidden group"
       >
         <div
           class="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity"
@@ -107,7 +107,7 @@
 
       <!-- Wind -->
       <div
-        class="glass-panel p-6 rounded-2xl border border-gray-200 dark:border-white/5 relative overflow-hidden group"
+        class="silva-card silva-card-hover hover:ring-sky-500 p-6 relative overflow-hidden group"
       >
         <div
           class="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity"
@@ -134,9 +134,7 @@
     </div>
 
     <!-- Charts -->
-    <div
-      class="glass-panel p-6 rounded-2xl border border-gray-200 dark:border-white/5"
-    >
+    <div class="silva-card p-6">
       <h3 class="font-bold text-lg text-gray-900 dark:text-white mb-6">
         24h History
       </h3>
@@ -147,9 +145,7 @@
   </div>
 
   <!-- Correlation Charts -->
-  <div
-    class="glass-panel p-6 rounded-2xl border border-gray-200 dark:border-white/5 mt-6"
-  >
+  <div class="silva-card p-6 mt-6">
     <h3 class="font-bold text-lg text-gray-900 dark:text-white mb-6">
       Ecological Correlations (Last 30 Days)
     </h3>
@@ -418,7 +414,7 @@
   {% endblock %} {% block inspector %}
   <div class="flex flex-col h-full space-y-6">
     <!-- Station Info -->
-    <div class="glass-panel p-6 rounded-2xl">
+    <div class="silva-card p-6">
       <h3
         class="font-bold text-gray-900 dark:text-white uppercase tracking-wider text-xs mb-4 border-b border-gray-200 dark:border-white/10 pb-2"
       >
@@ -455,7 +451,7 @@
     </div>
 
     <!-- Sun Cycle Visualizer (Mocked/Static for now) -->
-    <div class="glass-panel p-6 rounded-2xl relative overflow-hidden">
+    <div class="silva-card p-6 relative overflow-hidden">
       <h3
         class="font-bold text-gray-900 dark:text-white uppercase tracking-wider text-xs mb-4"
       >
@@ -494,7 +490,7 @@
     </div>
 
     <!-- Wind Compass -->
-    <div class="glass-panel p-6 rounded-2xl">
+    <div class="silva-card p-6">
       <h3
         class="font-bold text-gray-900 dark:text-white uppercase tracking-wider text-xs mb-4"
       >

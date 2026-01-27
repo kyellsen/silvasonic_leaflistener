@@ -16,7 +16,7 @@
 <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
   <!-- Status Card -->
   <div
-    class="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700 relative overflow-hidden"
+    class="silva-card p-6 relative overflow-hidden"
   >
     <div class="text-xs font-bold text-gray-500 uppercase z-10 relative">
       Sync Status
@@ -50,7 +50,7 @@
 
   <!-- Queue Card -->
   <div
-    class="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700 relative overflow-hidden"
+    class="silva-card p-6 relative overflow-hidden"
   >
     <div class="text-xs font-bold text-gray-500 uppercase z-10 relative">
       Queue
@@ -78,7 +78,7 @@
 
   <!-- Storage Card -->
   <div
-    class="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700 relative overflow-hidden"
+    class="silva-card p-6 relative overflow-hidden"
   >
     <div class="text-xs font-bold text-gray-500 uppercase z-10 relative">
       Local Storage
@@ -116,19 +116,19 @@
 
 <!-- Statistics Grid -->
 <div class="grid grid-cols-2 md:grid-cols-4 gap-6 mb-8">
-    <div class="bg-white dark:bg-gray-800 p-4 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700">
+    <div class="silva-card p-4">
         <div class="text-xs font-bold text-gray-500 uppercase">Last Hour</div>
         <div class="text-2xl font-bold text-gray-900 dark:text-white mt-1">{{ upload_stats.last_1h }}</div>
     </div>
-    <div class="bg-white dark:bg-gray-800 p-4 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700">
+    <div class="silva-card p-4">
         <div class="text-xs font-bold text-gray-500 uppercase">Last 24 Hours</div>
         <div class="text-2xl font-bold text-gray-900 dark:text-white mt-1">{{ upload_stats.last_24h }}</div>
     </div>
-    <div class="bg-white dark:bg-gray-800 p-4 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700">
+    <div class="silva-card p-4">
         <div class="text-xs font-bold text-gray-500 uppercase">Last 7 Days</div>
         <div class="text-2xl font-bold text-gray-900 dark:text-white mt-1">{{ upload_stats.last_7d }}</div>
     </div>
-    <div class="bg-white dark:bg-gray-800 p-4 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700">
+    <div class="silva-card p-4">
         <div class="text-xs font-bold text-gray-500 uppercase">Last 30 Days</div>
         <div class="text-2xl font-bold text-gray-900 dark:text-white mt-1">{{ upload_stats.last_30d }}</div>
     </div>
@@ -141,7 +141,7 @@
         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
         Failed Uploads
     </h3>
-    <div class="bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-red-200 dark:border-red-900 overflow-hidden">
+    <div class="silva-card border-red-200 dark:border-red-900 overflow-hidden">
         <table class="w-full text-sm text-left text-gray-500 dark:text-gray-400">
             <thead class="text-xs text-gray-700 uppercase bg-gray-50 dark:bg-gray-700 dark:text-gray-400">
                 <tr>
@@ -167,7 +167,7 @@
 <!-- Recent Uploads Table -->
 <div class="mb-8">
     <h3 class="text-lg font-bold text-gray-700 dark:text-gray-300 mb-4">Recent Uploads</h3>
-    <div class="bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
+    <div class="silva-card overflow-hidden">
         <div class="overflow-x-auto">
             <table class="w-full text-sm text-left text-gray-500 dark:text-gray-400">
                 <thead class="text-xs text-gray-700 uppercase bg-gray-50 dark:bg-gray-700 dark:text-gray-400">
