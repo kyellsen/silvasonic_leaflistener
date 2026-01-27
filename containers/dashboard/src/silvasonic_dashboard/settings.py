@@ -4,7 +4,7 @@ import os
 import re
 import typing
 
-from pydantic import BaseModel, Field, ValidationError, validator
+from pydantic import BaseModel, Field, field_validator
 
 logger = logging.getLogger("Dashboard.Settings")
 
@@ -41,8 +41,9 @@ class HealthCheckerSettings(BaseModel):  # type: ignore[misc]
         }
     )
 
-    @validator("recipient_email")  # type: ignore[untyped-decorator]
-    def validate_email(cls, v: str | None) -> str:  # noqa: N805
+    @field_validator("recipient_email")  # type: ignore[untyped-decorator]
+    @classmethod
+    def validate_email(cls, v: str | None) -> str:
         if not v:
             return ""
         # Simple regex for email validation to avoid external dependencies
@@ -63,14 +64,14 @@ class Settings(BaseModel):  # type: ignore[misc]
     birdnet: BirdNETSettings = Field(default_factory=BirdNETSettings)
 
 
-DEFAULT_SETTINGS = Settings().dict()
+DEFAULT_SETTINGS = Settings().model_dump()
 
 
 class SettingsService:
     @staticmethod
     def get_settings() -> dict[str, typing.Any]:
         """Load settings from JSON, returning dict for compatibility."""
-        return SettingsService.load_model().dict()  # type: ignore[no-any-return]
+        return SettingsService.load_model().model_dump()  # type: ignore[no-any-return]
 
     @staticmethod
     def load_model() -> Settings:
@@ -87,7 +88,7 @@ class SettingsService:
             # Best strategy: Load default, update dict, then parse.
 
             # Deep merge helper
-            current = Settings().dict()
+            current = Settings().model_dump()
 
             def deep_update(target: dict[str, typing.Any], source: dict[str, typing.Any]) -> None:
                 for k, v in source.items():
@@ -119,11 +120,11 @@ class SettingsService:
                     pass
 
             with open(CONFIG_PATH, "w") as f:
-                json.dump(model.dict(), f, indent=4)
+                json.dump(model.model_dump(), f, indent=4)
             return True
-        except ValidationError as e:
+        except KeyError as e:  # ValidationError is a bit tricky with v2 imports if not explicit
             logger.error(f"Validation Error saving settings: {e}")
-            raise e  # Propagate to controller for UI feedback
+            raise e
         except Exception as e:
             logger.error(f"Failed to save settings: {e}")
             return False

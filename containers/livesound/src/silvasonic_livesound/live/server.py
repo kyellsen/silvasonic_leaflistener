@@ -1,6 +1,7 @@
 import asyncio
 import logging
 import typing
+from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
@@ -10,7 +11,18 @@ from .processor import processor
 
 logger = logging.getLogger("LiveServer")
 
-app = FastAPI()
+
+@asynccontextmanager
+async def lifespan(app: FastAPI) -> typing.AsyncGenerator[None, None]:
+    # Startup: Pass the running loop to the processor
+    loop = asyncio.get_running_loop()
+    processor.start(loop)
+    yield
+    # Shutdown
+    processor.stop()
+
+
+app = FastAPI(lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,
@@ -19,18 +31,6 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
-
-@app.on_event("startup")  # type: ignore[untyped-decorator]
-async def startup_event() -> None:
-    # Pass the running loop to the processor
-    loop = asyncio.get_running_loop()
-    processor.start(loop)
-
-
-@app.on_event("shutdown")  # type: ignore[untyped-decorator]
-async def shutdown_event() -> None:
-    processor.stop()
 
 
 @app.get("/")  # type: ignore[untyped-decorator]

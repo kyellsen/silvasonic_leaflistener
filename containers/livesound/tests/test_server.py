@@ -55,6 +55,10 @@ async def test_stream_endpoint_ffmpeg_mock(client):
     # Simulate reading stdout (MP3 output)
     mock_proc.stdout.read.side_effect = [b"mp3_frame_1", b"mp3_frame_2", b""]
     mock_proc.returncode = None
+    # terminate is NOT async in asyncio.subprocess.Process
+    from unittest.mock import Mock
+
+    mock_proc.terminate = Mock()
 
     with patch("asyncio.create_subprocess_exec", return_value=mock_proc) as mock_exec:
         with patch.object(processor, "subscribe_audio", return_value=mock_audio_queue):
