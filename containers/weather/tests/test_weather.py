@@ -16,11 +16,18 @@ def test_init_db(mock_db_engine):
     assert mock_conn.execute.called
     
     # Check for specific SQL parts
+    # Check for specific SQL parts
     calls = mock_conn.execute.call_args_list
-    assert any("CREATE SCHEMA IF NOT EXISTS weather" in str(c) for c in calls)
-    assert any("CREATE TABLE IF NOT EXISTS weather.measurements" in str(c) for c in calls)
-    assert any("sunshine_seconds FLOAT" in str(c) for c in calls)
-    assert any("wind_gust_ms FLOAT" in str(c) for c in calls)
+    
+    # helper to get sql text from call
+    def get_sql(call_obj):
+        arg = call_obj[0][0] # first arg
+        return str(arg) # str(TextClause) returns the SQL usually, or arg.text
+
+    assert any("CREATE SCHEMA IF NOT EXISTS weather" in get_sql(c) for c in calls)
+    assert any("CREATE TABLE IF NOT EXISTS weather.measurements" in get_sql(c) for c in calls)
+    assert any("sunshine_seconds FLOAT" in get_sql(c) for c in calls)
+    assert any("wind_gust_ms FLOAT" in get_sql(c) for c in calls)
 
 def test_fetch_weather_success(mock_wetterdienst, mock_db_engine, sample_weather_df):
     """Test successful weather fetch and storage."""
