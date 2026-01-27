@@ -45,7 +45,7 @@ ENV PATH="/app/.venv/bin:$PATH"
 
 # Copy source code
 COPY src /app/src
-COPY mic_profiles /app/mic_profiles
+
 
 ENV PYTHONUNBUFFERED=1
 ENV PYTHONPATH=/app

@@ -77,6 +77,20 @@ services:
       - ${SILVASONIC_DATA_DIR}/notifications:/data/notifications:z
     restart: always
 
+  recorder:
+    build:
+      context: containers/recorder
+    image: silvasonic-recorder:latest
+    container_name: silvasonic_recorder_template
+    # Template container: Stopped by default, used as image source or dev base
+    entrypoint: ["/bin/true"]
+    restart: "no"
+    volumes:
+      - ./containers/recorder/src:/app/src:z
+      - ./containers/recorder/mic_profiles:/app/mic_profiles:ro
+      - ${SILVASONIC_DATA_DIR}/recorder/recordings:/data/recording:z
+      - ${SILVASONIC_DATA_DIR}/logs:/var/log/silvasonic:z
+
   livesound:
     build:
       context: containers/livesound

@@ -1,0 +1,17 @@
+name: "Generic USB Microphone"
+slug: "generic_mic"
+manufacturer: "Generic"
+model: "USB Audio"
+priority: 100
+device_patterns:
+  - "USB Audio"
+  - "Microphone"
+audio:
+  sample_rate: 48000
+  channels: 1
+  format: "S16_LE"
+recording:
+  chunk_duration_seconds: 60
+  output_format: "flac"
+mock:
+  enabled: false
