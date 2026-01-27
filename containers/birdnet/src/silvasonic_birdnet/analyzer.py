@@ -173,10 +173,12 @@ class BirdNETAnalyzer:
             except Exception:
                 duration = 10.0  # Fallback
 
+            import os
             import time
 
             processing_time = time.time() - start_time_epoch
-            db.log_processed_file(path.name, duration, processing_time)
+            file_size = os.path.getsize(str(path))
+            db.log_processed_file(path.name, duration, processing_time, file_size)
         except Exception as e:
             logger.error(f"Failed to log processing stats: {e}")
 

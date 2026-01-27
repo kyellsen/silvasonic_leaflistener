@@ -4,7 +4,7 @@ import time
 import typing
 from datetime import UTC, datetime
 
-from sqlalchemy import Column, DateTime, Float, Integer, String, Text, create_engine
+from sqlalchemy import Column, DateTime, Float, Integer, String, Text, create_engine, text
 from sqlalchemy.engine import Engine
 from sqlalchemy.exc import OperationalError, ProgrammingError
 from sqlalchemy.orm import declarative_base, sessionmaker
@@ -84,6 +84,9 @@ class ProcessedFile(Base):  # type: ignore[misc]
     processed_at = Column(DateTime, default=lambda: datetime.now(UTC))
     processing_time_sec = Column(Float, nullable=True)  # How long analysis took
     audio_duration_sec = Column(Float, nullable=True)  # Duration of the audio file in seconds
+    file_size_bytes = Column(
+        Integer, nullable=True
+    )  # File size in bytes (BigInt in PG ideally, but Integer fits 2GB)
 
 
 class DatabaseHandler:
@@ -119,6 +122,17 @@ class DatabaseHandler:
                         # This catch is generic for DB errors
                         logger.warning(f"Schema creation warning: {e}")
                         conn.rollback()
+
+                    # Migration: Add file_size_bytes column if not exists (Hack for dev)
+                    try:
+                        conn.execute(
+                            text(
+                                "ALTER TABLE birdnet.processed_files ADD COLUMN IF NOT EXISTS file_size_bytes BIGINT"
+                            )
+                        )
+                        conn.commit()
+                    except Exception:
+                        conn.rollback()  # Ignore if fails (e.g. table doesn't exist yet)
 
                 # Create Tables
                 Base.metadata.create_all(self.engine)
@@ -234,7 +248,9 @@ class DatabaseHandler:
         finally:
             session.close()
 
-    def log_processed_file(self, filename: str, duration: float, processing_time: float) -> None:
+    def log_processed_file(
+        self, filename: str, duration: float, processing_time: float, file_size: int = 0
+    ) -> None:
         """Log that a file was processed (regardless of detections)."""
         if not self.Session:
             return
@@ -244,6 +260,7 @@ class DatabaseHandler:
                 filename=filename,
                 audio_duration_sec=duration,
                 processing_time_sec=processing_time,
+                file_size_bytes=file_size,
                 processed_at=datetime.now(UTC),
             )
             session.add(entry)

@@ -1,0 +1,13 @@
+{
+  "recommendations": [
+    "ms-python.python",
+    "astral-sh.ruff",
+    "ms-python.mypy-type-checker",
+    "tamasfe.even-better-toml",
+    "ms-azuretools.vscode-docker",
+    "redhat.vscode-podman",
+    "redhat.vscode-yaml",
+    "timonwong.shellcheck",
+    "yzhang.markdown-all-in-one"
+  ]
+}

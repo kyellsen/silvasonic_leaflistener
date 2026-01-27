@@ -41,10 +41,6 @@ SERVICES_CONFIG = {
     "livesound": {"name": "Liveaudio", "timeout": 120},  # 2 mins
     "dashboard": {"name": "Dashboard", "timeout": 120},  # 2 mins
     "postgres": {"name": "PostgressDB", "timeout": 300},  # 5 mins
-    "sound_analyser": {
-        "name": "Brain",
-        "timeout": 300,
-    },  # 5 mins (Legacy Name, keep for now or remove if unused?)
     "controller": {"name": "Controller (Supervisor)", "timeout": 120},
     # "weather": {"name": "Weather Station", "timeout": 300} # 5 mins
 }

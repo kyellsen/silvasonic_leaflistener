@@ -1,4 +1,3 @@
-import os
 import typing
 from datetime import UTC
 
@@ -10,23 +9,19 @@ from .database import db
 
 class AnalyzerService:
     @staticmethod
-    async def get_recent_analysis(limit: int = 20) -> list[dict[str, typing.Any]]:
+    async def get_recent_analysis(limit: int = 50) -> list[dict[str, typing.Any]]:
+        """Get list of recently processed files from BirdNET."""
         try:
             async with db.get_connection() as conn:
                 query = text(
                     """
                     SELECT 
-                        af.filename,
-                        af.duration_sec,
-                        af.file_size_bytes,
-                        af.created_at,
-                        am.rms_loudness,
-                        am.peak_frequency_hz,
-                        art.filepath as spec_path
-                    FROM brain.audio_files af
-                    LEFT JOIN brain.analysis_metrics am ON af.id = am.audio_file_id
-                    LEFT JOIN brain.artifacts art ON af.id = art.audio_file_id AND art.artifact_type = 'spectrogram'
-                    ORDER BY af.created_at DESC
+                        filename,
+                        audio_duration_sec as duration_sec,
+                        file_size_bytes,
+                        processed_at as created_at
+                    FROM birdnet.processed_files
+                    ORDER BY processed_at DESC
                     LIMIT :limit
                 """
                 )
@@ -41,18 +36,11 @@ class AnalyzerService:
                     else:
                         d["created_at_iso"] = ""
 
-                    # Fix spec path
-                    if d.get("spec_path"):
-                        fname = os.path.basename(d["spec_path"])
-                        d["spec_url"] = f"/api/spectrogram/{fname}"
-                    else:
-                        d["spec_url"] = None
-
                     # Format size
                     if d.get("file_size_bytes"):
                         d["size_fmt"] = AnalyzerService._format_size(d["file_size_bytes"])
                     else:
-                        d["size_fmt"] = "0 B"
+                        d["size_fmt"] = "-"
 
                     # Format duration
                     if d.get("duration_sec"):
@@ -60,11 +48,10 @@ class AnalyzerService:
                     else:
                         d["duration_fmt"] = "-"
 
-                    # Round metrics
-                    if d.get("rms_loudness"):
-                        d["rms_loudness"] = round(d["rms_loudness"], 1)
-                    if d.get("peak_frequency_hz"):
-                        d["peak_frequency_hz"] = int(d["peak_frequency_hz"])
+                    # No more spectrograms or metrics for basic file list
+                    d["spec_url"] = None
+                    d["peak_frequency_hz"] = None
+                    d["rms_loudness"] = None
 
                     items.append(d)
                 return items
@@ -78,8 +65,6 @@ class AnalyzerService:
         if not seconds:
             return "0s"
 
-        # Check for bad data (e.g. timestamps or nanoseconds)
-        # If > 50 years (approx 1.5 billion seconds), assuming it's a timestamp or garbage -> 0
         if seconds > 1577880000:
             return "Invalid"
 
@@ -97,7 +82,7 @@ class AnalyzerService:
         if s > 0 or not parts:
             parts.append(f"{s}s")
 
-        return " ".join(parts[:2])  # Return max 2 significant parts
+        return " ".join(parts[:2])
 
     @staticmethod
     def _format_size(size_bytes: int) -> str:
@@ -113,16 +98,17 @@ class AnalyzerService:
 
     @staticmethod
     async def get_stats() -> dict[str, typing.Any]:
+        """Get aggregate stats from BirdNET processed files."""
         try:
             async with db.get_connection() as conn:
                 query = text(
                     """
                     SELECT 
                         COUNT(*) as total_files,
-                        COALESCE(SUM(duration_sec), 0) as total_duration,
-                        AVG(duration_sec) as avg_duration,
+                        COALESCE(SUM(audio_duration_sec), 0) as total_duration,
+                        AVG(audio_duration_sec) as avg_duration,
                         AVG(file_size_bytes) as avg_size
-                    FROM brain.audio_files
+                    FROM birdnet.processed_files
                 """
                 )
                 res = (await conn.execute(query)).fetchone()
