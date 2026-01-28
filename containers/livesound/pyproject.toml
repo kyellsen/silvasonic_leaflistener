@@ -16,6 +16,7 @@ dependencies = [
     "python-multipart>=0.0.9",
     "orjson>=3.9.10",
     "pydantic-settings>=2.0.0",
+    "structlog>=24.0.0",
 ]
 
 [build-system]

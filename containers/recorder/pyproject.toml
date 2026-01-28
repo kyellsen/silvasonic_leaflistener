@@ -3,7 +3,7 @@ name = "silvasonic-recorder"
 version = "0.1.0"
 description = "Silvasonic Recorder - Audio Recording Service"
 requires-python = ">=3.11, <3.13"
-dependencies = ["pyyaml", "psutil", "pydantic>=2.0"]
+dependencies = ["pyyaml", "psutil", "pydantic>=2.0", "structlog>=24.0.0"]
 
 [build-system]
 requires = ["hatchling"]
