@@ -136,10 +136,10 @@ async def sse_system_status(
     return StreamingResponse(event_generator(), media_type="text/event-stream")
 
 
-@router.get("/api/logs/{service_name}")
+@router.get("/api/logs/{service_name}", response_model=dict[str, str])
 async def get_service_logs(
     service_name: str, auth: typing.Any = Depends(require_auth)
-) -> dict[str, str] | RedirectResponse:
+) -> typing.Any:
     """Get logs for a specific service."""
     if isinstance(auth, RedirectResponse):
         return auth
