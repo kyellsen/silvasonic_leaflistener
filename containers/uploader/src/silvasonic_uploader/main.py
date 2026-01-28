@@ -9,12 +9,32 @@ import time
 import typing
 
 import psutil
+import structlog
 from silvasonic_uploader.database import DatabaseHandler
 from silvasonic_uploader.janitor import StorageJanitor
 from silvasonic_uploader.rclone_wrapper import RcloneWrapper
 
 # Configure Logging
-logger = logging.getLogger("Uploader")
+# --- Structlog Configuration ---
+structlog.configure(
+    processors=[
+        structlog.stdlib.filter_by_level,
+        structlog.stdlib.add_logger_name,
+        structlog.stdlib.add_log_level,
+        structlog.stdlib.PositionalArgumentsFormatter(),
+        structlog.processors.TimeStamper(fmt="iso"),
+        structlog.processors.StackInfoRenderer(),
+        structlog.processors.format_exc_info,
+        structlog.processors.JSONRenderer(),
+    ],
+    context_class=dict,
+    logger_factory=structlog.stdlib.LoggerFactory(),
+    wrapper_class=structlog.stdlib.BoundLogger,
+    cache_logger_on_first_use=True,
+)
+
+# Configure Logging
+logger = structlog.get_logger("Uploader")
 
 # Configuration from Env
 NEXTCLOUD_URL = os.getenv("UPLOADER_NEXTCLOUD_URL")
@@ -42,21 +62,41 @@ def setup_environment() -> None:
     """Setup logging and directories."""
     os.makedirs("/var/log/silvasonic", exist_ok=True)
 
-    logging.basicConfig(
-        level=logging.INFO,
-        format="%(asctime)s [%(levelname)s] %(message)s",
-        datefmt="%Y-%m-%d %H:%M:%S",
-        handlers=[
-            logging.StreamHandler(sys.stdout),
-            logging.handlers.TimedRotatingFileHandler(
-                "/var/log/silvasonic/uploader.log",
-                when="midnight",
-                interval=1,
-                backupCount=30,
-                encoding="utf-8",
-            ),
-        ],
+    os.makedirs("/var/log/silvasonic", exist_ok=True)
+
+    # Bridge to stdlib logging for formatting
+    pre_chain = [
+        structlog.stdlib.add_log_level,
+        structlog.stdlib.add_logger_name,
+        structlog.processors.TimeStamper(fmt="iso"),
+        structlog.processors.format_exc_info,
+    ]
+
+    formatter = structlog.stdlib.ProcessorFormatter(
+        processor=structlog.processors.JSONRenderer(),
+        foreign_pre_chain=pre_chain,
     )
+
+    # Handlers
+    handlers = []
+
+    # Stdout
+    stream = logging.StreamHandler(sys.stdout)
+    stream.setFormatter(formatter)
+    handlers.append(stream)
+
+    # File
+    fhandler = logging.handlers.TimedRotatingFileHandler(
+        "/var/log/silvasonic/uploader.log",
+        when="midnight",
+        interval=1,
+        backupCount=30,
+        encoding="utf-8",
+    )
+    fhandler.setFormatter(formatter)
+    handlers.append(fhandler)
+
+    logging.basicConfig(level=logging.INFO, handlers=handlers, force=True)
 
     # Ensure directories exist
     os.makedirs(os.path.dirname(STATUS_FILE), exist_ok=True)

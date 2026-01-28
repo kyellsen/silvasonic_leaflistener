@@ -6,10 +6,12 @@ import os
 import signal
 import sys
 import time
+import typing
 from dataclasses import dataclass
 from pathlib import Path
 
 import psutil
+import structlog
 
 # Setup Path to find modules
 sys.path.append("/app")  # noqa: E402
@@ -22,21 +24,61 @@ from silvasonic_controller.profiles_loader import (  # noqa: E402
 
 
 # Logging
+# Logging
 def setup_logging() -> None:
     os.makedirs("/var/log/silvasonic", exist_ok=True)
-    logging.basicConfig(
-        level=logging.INFO,
-        format="%(asctime)s [%(levelname)s] [Controller] %(message)s",
-        handlers=[
-            logging.StreamHandler(sys.stdout),
-            logging.handlers.TimedRotatingFileHandler(
-                "/var/log/silvasonic/controller.log", when="midnight", backupCount=30
-            ),
+
+    # Structlog Setup
+    structlog.configure(
+        processors=[
+            structlog.stdlib.filter_by_level,
+            structlog.stdlib.add_logger_name,
+            structlog.stdlib.add_log_level,
+            structlog.stdlib.PositionalArgumentsFormatter(),
+            structlog.processors.TimeStamper(fmt="iso"),
+            structlog.processors.StackInfoRenderer(),
+            structlog.processors.format_exc_info,
+            structlog.processors.JSONRenderer(),
         ],
+        context_class=dict,
+        logger_factory=structlog.stdlib.LoggerFactory(),
+        wrapper_class=structlog.stdlib.BoundLogger,
+        cache_logger_on_first_use=True,
     )
 
+    # Bridge
+    pre_chain: list[typing.Any] = [
+        structlog.stdlib.add_log_level,
+        structlog.stdlib.add_logger_name,
+        structlog.processors.TimeStamper(fmt="iso"),
+        structlog.processors.format_exc_info,
+    ]
+    formatter = structlog.stdlib.ProcessorFormatter(
+        processor=structlog.processors.JSONRenderer(),
+        foreign_pre_chain=pre_chain,
+    )
 
-logger = logging.getLogger("Main")
+    handlers = []
+
+    # Stdout
+    s = logging.StreamHandler(sys.stdout)
+    s.setFormatter(formatter)
+    handlers.append(s)
+
+    # File
+    try:
+        f = logging.handlers.TimedRotatingFileHandler(
+            "/var/log/silvasonic/controller.log", when="midnight", backupCount=30
+        )
+        f.setFormatter(formatter)
+        handlers.append(f)
+    except Exception:
+        pass
+
+    logging.basicConfig(level=logging.INFO, handlers=handlers, force=True)
+
+
+logger = structlog.get_logger("Main")
 
 STATUS_DIR = "/mnt/data/services/silvasonic/status"
 

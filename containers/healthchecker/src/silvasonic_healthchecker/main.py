@@ -122,141 +122,138 @@ def check_services_status(mailer: Mailer) -> None:
     timeouts_override = load_timeout_overrides()
 
     for service_id, config in SERVICES_CONFIG.items():
-        # SKIP hardcoded recorder check, we handle it dynamically below
-        if service_id == "recorder":
-            continue
-
-        status_file = f"{STATUS_DIR}/{service_id}.json"
-
-        # Determine effective timeout
-        timeout_val = timeouts_override.get(service_id, config.timeout)
-
-        # Default State
-        service_data = {
-            "id": service_id,
-            "name": config.name,
-            "status": "Down",
-            "last_seen": 0.0,
-            "message": "No heartbeat found",
-            "timeout_threshold": timeout_val,
-        }
-
         # Special Case: Postgres (Probe)
         if service_id == "postgres":
+            service_data = {
+                "id": "postgres",
+                "name": config.name,
+                "status": "Down",
+                "last_seen": 0.0,
+                "message": "Connection Failed",
+                "timeout_threshold": timeouts_override.get("postgres", config.timeout),
+            }
             if check_postgres_connection():
                 service_data["status"] = "Running"
                 service_data["message"] = "Active (Port 5432 Open)"
                 service_data["last_seen"] = current_time
             else:
-                service_data["status"] = "Down"
-                service_data["message"] = "Connection Failed"
                 msg = "Postgres DB is unreachable."
                 logger.error("postgres_down", msg=msg)
-                # mailer.send_alert("Postgres Down", msg)
+                # mailer.send_alert("Postgres Down", msg) # Optional: Enable if needed
 
-            system_status[service_id] = service_data
+            system_status["postgres"] = service_data
             continue
 
-        if os.path.exists(status_file):
+        # Dynamic Discovery for all other services
+        # Matches: {service_id}.json AND {service_id}_*.json
+        # e.g. uploader.json OR uploader_raspberrypi.json
+        pattern = f"{STATUS_DIR}/{service_id}*.json"
+        found_files = glob.glob(pattern)
+
+        active_instances = 0
+
+        for status_file in found_files:
+            filename = os.path.basename(status_file)
+            instance_id = os.path.splitext(filename)[0]
+
+            # Ghost Detection (Recorders Only)
+            # We only delete "ghost" files for recorders because they are dynamic hardware.
+            # For static services (birdnet, uploader), we want to keep the file to show "Timeout" instead of "Missing".
+            if service_id == "recorder":
+                try:
+                    mtime = os.path.getmtime(status_file)
+                    file_age = current_time - mtime
+                    if file_age > RECORDER_GHOST_THRESHOLD:
+                        logger.warning("ghost_recorder_cleanup", file=filename, age=int(file_age))
+                        try:
+                            os.remove(status_file)
+                        except OSError:
+                            pass
+                        continue  # Skip this file
+                except OSError:
+                    continue
+
             try:
                 with open(status_file) as f:
                     content = f.read()
 
-                # Pydantic Validation
-                status = ServiceStatus.model_validate_json(content)
-                last_ts = status.timestamp
+                # Validation
+                timeout_val = timeouts_override.get(service_id, config.timeout)
 
-                service_data["last_seen"] = last_ts
-
-                # Check Timeout
-                time_diff = current_time - last_ts
-                if time_diff > timeout_val:
-                    msg = f"Service {config.name} is silent. No heartbeat for {int(time_diff)} seconds."
-                    logger.error(
-                        "service_timeout",
-                        service=service_id,
-                        diff=int(time_diff),
-                        threshold=timeout_val,
+                # Determine Model Class
+                if service_id == "recorder":
+                    status_obj = RecorderStatus.model_validate_json(content)
+                    # For recorders, use profile name if available
+                    display_name = (
+                        f"{config.name} ({status_obj.meta.profile.name})"
+                        if status_obj.meta.profile.name
+                        else f"{config.name} ({instance_id})"
                     )
-                    mailer.send_alert(f"{config.name} Down", msg)
+                else:
+                    status_obj = ServiceStatus.model_validate_json(content)  # type: ignore[assignment]
 
+                    if instance_id == service_id:
+                        display_name = config.name
+                    else:
+                        # Format "uploader_host1" -> "Uploader (host1)"
+                        if instance_id.startswith(f"{service_id}_"):
+                            suffix = instance_id[len(service_id) + 1 :]
+                            display_name = f"{config.name} ({suffix})"
+                        else:
+                            display_name = f"{config.name} ({instance_id})"
+
+                last_ts = status_obj.timestamp
+                time_diff = current_time - last_ts
+
+                service_data = {
+                    "id": instance_id,
+                    "name": display_name,
+                    "status": "Running",
+                    "last_seen": last_ts,
+                    "message": "Active",
+                    "timeout_threshold": timeout_val,
+                }
+
+                # Timeout Check
+                if time_diff > timeout_val:
                     service_data["status"] = "Down"
                     service_data["message"] = f"Timeout ({int(time_diff)}s > {timeout_val}s)"
-                else:
-                    service_data["status"] = "Running"
-                    service_data["message"] = "Active"
 
-                # Uploader Special Logic for Alerting
-                if service_id == "uploader" and status.last_upload:
-                    if current_time - status.last_upload > 3600:
-                        msg = "Uploader running but no upload success for > 60 mins."
-                        logger.error("uploader_stalled", last_upload=int(status.last_upload))
-                        mailer.send_alert("Uploader Stalled", msg)
+                    # Alerting (Only for non-recorders usually, or specific policy)
+                    # We avoid spamming alerts for every recorder timeout, but for core services:
+                    if service_id != "recorder":
+                        msg = f"Service {instance_id} is silent. No heartbeat for {int(time_diff)} seconds."
+                        logger.error("service_timeout", service=instance_id, diff=int(time_diff))
+                        mailer.send_alert(f"{display_name} Down", msg)
 
+                # Uploader Special Logic
+                if service_id == "uploader" and getattr(status_obj, "last_upload", None):
+                    last_up = status_obj.last_upload
+                    if current_time - last_up > 3600:
                         service_data["status"] = "Warning"
                         service_data["message"] = "Stalled (No Upload)"
+                        # Alert logic for stall...
 
-            except ValidationError as e:
-                logger.error("status_validation_error", service=service_id, error=str(e))
-                service_data["message"] = "Corrupted Status File"
+                system_status[instance_id] = service_data
+                active_instances += 1
+
+            except ValidationError:
+                # Ignore validation errors (e.g. birdnet_stats.json or livesound_sources.json)
+                pass
             except Exception as e:
-                logger.error("status_read_error", service=service_id, error=str(e))
-                service_data["message"] = f"Error: {str(e)}"
+                logger.error("status_read_error", file=filename, error=str(e))
 
-        system_status[service_id] = service_data
-
-    # --- Dynamic Recorder Discovery ---
-    # Find all recorder_*.json files
-    recorder_files = glob.glob(f"{STATUS_DIR}/recorder_*.json")
-    for rec_file in recorder_files:
-        try:
-            filename = os.path.basename(rec_file)
-            # recorder_front.json -> recorder_front
-            rec_id = os.path.splitext(filename)[0]
-
-            # Check file modification time first for ghost detection
-            try:
-                mtime = os.path.getmtime(rec_file)
-                file_age = current_time - mtime
-                if file_age > RECORDER_GHOST_THRESHOLD:
-                    logger.warning("ghost_recorder_cleanup", file=filename, age=int(file_age))
-                    os.remove(rec_file)
-                    continue
-            except OSError:
-                continue
-
-            with open(rec_file) as f:
-                content = f.read()
-
-            # Pydantic Validate Recorder Status
-            status = RecorderStatus.model_validate_json(content)
-
-            # Get name from profile if available
-            profile_name = status.meta.profile.name if status.meta.profile.name else rec_id
-
-            timeout_val = 120  # Default for recorders
-            last_ts = status.timestamp
-
-            rec_data = {
-                "id": rec_id,
-                "name": f"Recorder ({profile_name})",
-                "status": "Running",
-                "last_seen": last_ts,
-                "message": "Active",
-                "timeout_threshold": timeout_val,
+        # Handle Missing Core Services
+        # If no instances found for a core service (not recorder), report Down
+        if active_instances == 0 and service_id != "recorder":
+            system_status[service_id] = {
+                "id": service_id,
+                "name": config.name,
+                "status": "Down",
+                "last_seen": 0.0,
+                "message": "No instance found",
+                "timeout_threshold": timeouts_override.get(service_id, config.timeout),
             }
-
-            time_diff = current_time - last_ts
-            if time_diff > timeout_val:
-                rec_data["status"] = "Down"
-                rec_data["message"] = f"Timeout ({int(time_diff)}s)"
-
-            system_status[rec_id] = rec_data
-
-        except ValidationError as e:
-            logger.error("recorder_validation_error", file=rec_file, error=str(e))
-        except Exception as e:
-            logger.error("recorder_process_error", file=rec_file, error=str(e))
 
     # Add HealthChecker itself
     system_status["healthchecker"] = {

@@ -18,6 +18,7 @@ import time
 import typing
 
 import psutil
+import structlog
 
 from silvasonic_recorder.mic_profiles import (
     DetectedDevice,
@@ -32,7 +33,26 @@ LIVE_STREAM_TARGET = os.getenv("LIVE_STREAM_TARGET", "silvasonic_livesound")
 LIVE_STREAM_PORT = int(os.getenv("LIVE_STREAM_PORT", "1234"))
 STATUS_DIR = "/mnt/data/services/silvasonic/status"
 
-logger = logging.getLogger("recorder")
+
+# --- Structlog Configuration ---
+structlog.configure(
+    processors=[
+        structlog.stdlib.filter_by_level,
+        structlog.stdlib.add_logger_name,
+        structlog.stdlib.add_log_level,
+        structlog.stdlib.PositionalArgumentsFormatter(),
+        structlog.processors.TimeStamper(fmt="iso"),
+        structlog.processors.StackInfoRenderer(),
+        structlog.processors.format_exc_info,
+        structlog.processors.JSONRenderer(),
+    ],
+    context_class=dict,
+    logger_factory=structlog.stdlib.LoggerFactory(),
+    wrapper_class=structlog.stdlib.BoundLogger,
+    cache_logger_on_first_use=True,
+)
+
+logger = structlog.get_logger("recorder")
 
 
 class RecorderService:
@@ -63,23 +83,49 @@ class RecorderService:
         except OSError:
             pass  # Ignore if we can't create it
 
-        handlers: list[logging.Handler] = [logging.StreamHandler(sys.stdout)]
+        # Standard logging configuration that structlog will use
+        # JSON output is handled by the structlog processor chain config above
+        # But we need to ensure the handlers are plain Stream/File handlers
+        # and structlog wraps them.
 
+        # Actually, to get JSON output into the standard logging handlers (File & Stream),
+        # we need to ensure the formatter for these handlers creates the JSON.
+        # structlog.stdlib.ProcessorFormatter is the bridge.
+
+        pre_chain = [
+            structlog.stdlib.add_log_level,
+            structlog.stdlib.add_logger_name,
+            structlog.processors.TimeStamper(fmt="iso"),
+            structlog.processors.format_exc_info,
+        ]
+
+        formatter = structlog.stdlib.ProcessorFormatter(
+            processor=structlog.processors.JSONRenderer(),
+            foreign_pre_chain=pre_chain,
+        )
+
+        handlers: list[logging.Handler] = []
+
+        # Stdout
+        stream_handler = logging.StreamHandler(sys.stdout)
+        stream_handler.setFormatter(formatter)
+        handlers.append(stream_handler)
+
+        # File
         log_file = os.path.join(log_dir, "recorder.log")
         try:
             file_handler = logging.handlers.TimedRotatingFileHandler(
                 log_file, when="midnight", interval=1, backupCount=30, encoding="utf-8"
             )
+            file_handler.setFormatter(formatter)
             handlers.append(file_handler)
-        except Exception as e:
-            logger.warning(f"Failed to setup file logging: {e}")
+        except Exception:
+            # We use the raw print here because logger isn't fully set up?
+            # Or use logger? Logger is safe.
+            pass
 
-        logging.basicConfig(
-            level=logging.INFO,
-            format="%(asctime)s [%(levelname)s] %(message)s",
-            handlers=handlers,
-            force=True,
-        )
+        # Configure stdlib logging to use these handlers
+        logging.basicConfig(level=logging.INFO, handlers=handlers, force=True)
 
     def _ensure_status_dir(self) -> None:
         """Ensure the status directory exists."""

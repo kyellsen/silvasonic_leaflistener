@@ -1,10 +1,12 @@
 import json
 import logging
 import os
+import sys
 import time
 import typing
 
 import schedule
+import structlog
 from sqlalchemy import create_engine, text
 from wetterdienst.provider.dwd.observation import DwdObservationRequest
 
@@ -15,14 +17,56 @@ from silvasonic_weather.models import WeatherMeasurement
 # Setup Logging
 def setup_logging() -> None:
     os.makedirs(os.path.dirname(settings.log_file), exist_ok=True)
-    logging.basicConfig(
-        level=settings.log_level,
-        format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
-        handlers=[logging.StreamHandler(), logging.FileHandler(settings.log_file)],
+
+    # Structlog Setup
+    structlog.configure(
+        processors=[
+            structlog.stdlib.filter_by_level,
+            structlog.stdlib.add_logger_name,
+            structlog.stdlib.add_log_level,
+            structlog.stdlib.PositionalArgumentsFormatter(),
+            structlog.processors.TimeStamper(fmt="iso"),
+            structlog.processors.StackInfoRenderer(),
+            structlog.processors.format_exc_info,
+            structlog.processors.JSONRenderer(),
+        ],
+        context_class=dict,
+        logger_factory=structlog.stdlib.LoggerFactory(),
+        wrapper_class=structlog.stdlib.BoundLogger,
+        cache_logger_on_first_use=True,
     )
 
+    # Handlers & Formatters
+    pre_chain: list[typing.Any] = [
+        structlog.stdlib.add_log_level,
+        structlog.stdlib.add_logger_name,
+        structlog.processors.TimeStamper(fmt="iso"),
+        structlog.processors.format_exc_info,
+    ]
+    formatter = structlog.stdlib.ProcessorFormatter(
+        processor=structlog.processors.JSONRenderer(),
+        foreign_pre_chain=pre_chain,
+    )
 
-logger = logging.getLogger("Weather")
+    handlers: list[logging.Handler] = []
+
+    # Stdout
+    s = logging.StreamHandler(sys.stdout)
+    s.setFormatter(formatter)
+    handlers.append(s)
+
+    # File
+    try:
+        f = logging.FileHandler(settings.log_file)
+        f.setFormatter(formatter)
+        handlers.append(f)
+    except Exception:
+        pass
+
+    logging.basicConfig(level=settings.log_level, handlers=handlers, force=True)
+
+
+logger = structlog.get_logger("Weather")
 
 # Database
 engine = create_engine(settings.database_url)

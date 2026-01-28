@@ -5,22 +5,55 @@ import os
 import sys
 import threading
 import time
+import typing
 
 import psutil
+import structlog
 
 from .config import settings
 
-os.makedirs("/var/log/silvasonic", exist_ok=True)
-
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
-    handlers=[logging.StreamHandler(sys.stdout)],
+# --- Structlog Configuration ---
+structlog.configure(
+    processors=[
+        structlog.stdlib.filter_by_level,
+        structlog.stdlib.add_logger_name,
+        structlog.stdlib.add_log_level,
+        structlog.stdlib.PositionalArgumentsFormatter(),
+        structlog.processors.TimeStamper(fmt="iso"),
+        structlog.processors.StackInfoRenderer(),
+        structlog.processors.format_exc_info,
+        structlog.processors.JSONRenderer(),
+    ],
+    context_class=dict,
+    logger_factory=structlog.stdlib.LoggerFactory(),
+    wrapper_class=structlog.stdlib.BoundLogger,
+    cache_logger_on_first_use=True,
 )
 
+# Bridge Setup
+pre_chain: list[typing.Any] = [
+    structlog.stdlib.add_log_level,
+    structlog.stdlib.add_logger_name,
+    structlog.processors.TimeStamper(fmt="iso"),
+    structlog.processors.format_exc_info,
+]
+formatter = structlog.stdlib.ProcessorFormatter(
+    processor=structlog.processors.JSONRenderer(),
+    foreign_pre_chain=pre_chain,
+)
+
+handlers: list[logging.Handler] = []
+
+# Stdout
+sh = logging.StreamHandler(sys.stdout)
+sh.setFormatter(formatter)
+handlers.append(sh)
+
+os.makedirs("/var/log/silvasonic", exist_ok=True)
 
 try:
-    log_file = os.path.join(settings.LOG_DIR, "sound_analyser.log")
+    # Use config dir or fallback
+    log_file = os.path.join(settings.LOG_DIR or "/var/log/silvasonic", "sound_analyser.log")
     file_handler = logging.handlers.TimedRotatingFileHandler(
         log_file,
         when="midnight",
@@ -28,11 +61,15 @@ try:
         backupCount=30,
         encoding="utf-8",
     )
-    logging.getLogger().addHandler(file_handler)
+    file_handler.setFormatter(formatter)
+    handlers.append(file_handler)
 except Exception as e:
-    logging.getLogger().warning(f"Failed to setup file logging: {e}")
+    # Can't log yet fully
+    print(f"Failed to setup file logging: {e}", file=sys.stderr)
 
-logger = logging.getLogger("Main")
+logging.basicConfig(level=logging.INFO, handlers=handlers, force=True)
+
+logger = structlog.get_logger("Main")
 
 
 def write_status() -> None:
