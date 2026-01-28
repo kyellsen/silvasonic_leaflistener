@@ -33,78 +33,6 @@ def get_db_connection() -> typing.Any:
     return engine.connect()
 
 
-def init_db() -> None:
-    """Initialize the database schema."""
-    logger.info("Initializing Database...")
-    with get_db_connection() as conn:
-        conn.execute(text("CREATE SCHEMA IF NOT EXISTS weather;"))
-        conn.execute(
-            text(
-                """
-            CREATE TABLE IF NOT EXISTS weather.measurements (
-                timestamp TIMESTAMPTZ PRIMARY KEY,
-                station_id TEXT,
-                temperature_c FLOAT,
-                humidity_percent FLOAT,
-                precipitation_mm FLOAT,
-                wind_speed_ms FLOAT,
-                wind_gust_ms FLOAT,
-                sunshine_seconds FLOAT,
-                cloud_cover_percent FLOAT,
-                condition_code TEXT
-            );
-        """
-            )
-        )
-        conn.commit()
-
-        # Create Analysis View (Strict Isolation)
-        # We replace the old table with a dynamic view.
-        # This might fail if birdnet schema doesn't exist yet, so we handle it gracefully.
-        try:
-            conn.execute(text("DROP TABLE IF EXISTS weather.bird_stats;"))
-            conn.execute(
-                text(
-                    """
-                CREATE OR REPLACE VIEW weather.bird_stats_view AS
-                WITH w_stats AS (
-                    SELECT
-                        date_trunc('hour', timestamp) as ts,
-                        AVG(temperature_c) as temp,
-                        SUM(precipitation_mm) as rain,
-                        AVG(wind_speed_ms) as wind
-                    FROM weather.measurements
-                    GROUP BY 1
-                ),
-                b_stats AS (
-                    SELECT
-                        date_trunc('hour', timestamp) as ts,
-                        COUNT(*) as det_count,
-                        COUNT(DISTINCT common_name) as sp_count
-                    FROM birdnet.detections
-                    GROUP BY 1
-                )
-                SELECT
-                    w_stats.ts as timestamp,
-                    w_stats.temp as temperature_c,
-                    w_stats.rain as precipitation_mm,
-                    w_stats.wind as wind_speed_ms,
-                    COALESCE(b_stats.det_count, 0) as detection_count,
-                    COALESCE(b_stats.sp_count, 0) as species_count
-                FROM w_stats
-                LEFT JOIN b_stats ON w_stats.ts = b_stats.ts;
-            """
-                )
-            )
-            conn.commit()
-            logger.info("Analysis View created successfully.")
-        except Exception as e:
-            logger.warning(f"Could not create Analysis View (BirdNET schema might be missing): {e}")
-            conn.rollback()
-
-    logger.info("Database initialized.")
-
-
 def fetch_weather() -> None:
     """Fetch weather data and store it."""
     logger.info("Fetching weather data...")
@@ -223,7 +151,7 @@ def write_status(status_msg: str, station: str | None = None) -> None:
 if __name__ == "__main__":
     try:
         setup_logging()
-        init_db()
+
     except Exception as e:
         logger.exception(f"Startup failed: {e}")
         time.sleep(10)

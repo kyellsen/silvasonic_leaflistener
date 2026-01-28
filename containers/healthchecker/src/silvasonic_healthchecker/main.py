@@ -9,6 +9,7 @@ import socket
 import sys
 import time
 from types import FrameType
+from typing import cast
 
 import psutil
 import structlog
@@ -106,7 +107,7 @@ def load_timeout_overrides() -> dict[str, int]:
             content = f.read()
             # Use Pydantic model
             settings: GlobalSettings = GlobalSettings.model_validate_json(content)
-            return settings.healthchecker.service_timeouts
+            return cast(dict[str, int], settings.healthchecker.service_timeouts)
     except (ValidationError, Exception) as e:
         logger.error("config_load_error", error=str(e))
         return {}
