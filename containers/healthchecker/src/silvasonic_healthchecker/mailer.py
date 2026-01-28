@@ -1,11 +1,11 @@
-import json
-import logging
 import os
 import time
 
 import apprise
+import structlog
+from silvasonic_healthchecker.models import GlobalSettings
 
-logger = logging.getLogger("HealthChecker.Notifier")
+logger = structlog.get_logger()
 
 
 class Mailer:
@@ -31,7 +31,7 @@ class Mailer:
         try:
             mtime = os.path.getmtime(self.config_path)
             if mtime > self.last_mtime:
-                logger.info("Settings change detected. Reloading notifications...")
+                logger.info("settings_changed", msg="Reloading notifications...")
                 self.apobj = apprise.Apprise()  # Reset apprise object
                 self._configure_notifications()
         except OSError:
@@ -60,18 +60,21 @@ class Mailer:
         if os.path.exists(self.config_path):
             try:
                 with open(self.config_path) as f:
-                    settings = json.load(f)
-                    hc_settings = settings.get("healthchecker", {})
+                    # Use Pydantic model for safe traversing
+                    content = f.read()
+                    settings: GlobalSettings = GlobalSettings.model_validate_json(content)
+
+                    hc_settings = settings.healthchecker
 
                     # Allow overriding recipient from settings
-                    if hc_settings.get("recipient_email"):
-                        recipient = hc_settings.get("recipient_email")
+                    if hc_settings.recipient_email:
+                        recipient = hc_settings.recipient_email
 
                     # Allow adding generic Apprise URLs from settings
-                    if hc_settings.get("apprise_urls"):
-                        urls.extend(hc_settings.get("apprise_urls"))
+                    if hc_settings.apprise_urls:
+                        urls.extend(hc_settings.apprise_urls)
             except Exception as e:
-                logger.error(f"Failed to load settings override: {e}")
+                logger.error("settings_load_error", error=str(e))
 
         # Construct Legacy Mailto URL if credentials exist
         if smtp_user and smtp_password and recipient:
@@ -92,7 +95,7 @@ class Mailer:
                 f"{scheme}://{smtp_user}:{smtp_password}@{smtp_server}:{smtp_port}/?to={recipient}"
             )
             urls.append(url)
-            logger.info(f"Added legacy SMTP notification for {recipient}")
+            logger.info("legacy_smtp_configured", recipient=recipient)
 
         # Check for generic APPRISE_URLS env var (Comma separated)
         env_urls = os.getenv("APPRISE_URLS")
@@ -101,21 +104,21 @@ class Mailer:
 
         # Add all to Apprise
         if not urls:
-            logger.warning("No notification services configured.")
+            logger.warning("no_notifications_configured")
             return
 
         for url in urls:
             if self.apobj.add(url):
                 # Mask sensitive info for logging
                 masked_url = url.split("@")[-1] if "@" in url else "..."
-                logger.info(f"Added notification service: ...@{masked_url}")
+                logger.info("notification_service_added", service=masked_url)
             else:
-                logger.error(f"Failed to add notification URL: {url[:10]}...")
+                logger.error("notification_service_add_failed", url=f"{url[:10]}...")
 
     def send_alert(self, subject: str, body: str) -> bool:
         """Sends an alert to all configured services. Returns True if at least one succeeded."""
         if not self.apobj:
-            logger.warning("No notification backend configured.")
+            logger.warning("no_notification_backend")
             return False
 
         try:
@@ -128,11 +131,11 @@ class Mailer:
             )
 
             if status:
-                logger.info(f"Notification sent: {subject}")
+                logger.info("notification_sent", subject=subject)
             else:
-                logger.error(f"Failed to send notification: {subject}")
+                logger.error("notification_send_failed", subject=subject)
 
             return status
         except Exception as e:
-            logger.error(f"Error sending notification: {e}")
+            logger.error("notification_error", error=str(e))
             return False

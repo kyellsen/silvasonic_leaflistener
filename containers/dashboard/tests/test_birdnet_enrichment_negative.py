@@ -5,14 +5,17 @@ from silvasonic_dashboard.services.birdnet import BirdNetService
 
 
 @pytest.mark.asyncio
-async def test_enrich_species_data_negative_caching():
+async def test_enrich_species_data_negative_caching() -> None:
     """Test that a failed fetch results in a negative cache entry (DB insert with None)."""
 
     info = {"sci_name": "Ghost bird", "com_name": "Ghost"}
 
     mock_conn = AsyncMock()
     # First fetch: Cache Miss
-    mock_conn.execute.return_value.fetchone.return_value = None
+    # Return a MagicMock (synchronous) for the result so fetchone() is not async
+    mock_result = MagicMock()
+    mock_result.fetchone.return_value = None
+    mock_conn.execute.return_value = mock_result
 
     with patch("silvasonic_dashboard.services.birdnet.db.get_connection") as mock_db_ctx:
         mock_db_ctx.return_value.__aenter__.return_value = mock_conn
@@ -43,7 +46,7 @@ async def test_enrich_species_data_negative_caching():
 
 
 @pytest.mark.asyncio
-async def test_enrich_species_data_hits_negative_cache():
+async def test_enrich_species_data_hits_negative_cache() -> None:
     """Test that an existing negative cache entry PREVENTS external fetch."""
 
     info = {"sci_name": "Ghost bird", "com_name": "Ghost"}
@@ -52,13 +55,18 @@ async def test_enrich_species_data_hits_negative_cache():
     # Cache HIT, but with empty image (Negative Cache)
     mock_row = MagicMock()
     mock_row.image_url = None
+    # SQLAlchemy Row mapping
     mock_row._mapping = {
         "scientific_name": "Ghost bird",
         "image_url": None,
         "description": None,
         "last_updated": "2024-01-01",
     }
-    mock_conn.execute.return_value.fetchone.return_value = mock_row
+
+    # Return a MagicMock (sync) for the result
+    mock_result = MagicMock()
+    mock_result.fetchone.return_value = mock_row
+    mock_conn.execute.return_value = mock_result
 
     with patch("silvasonic_dashboard.services.birdnet.db.get_connection") as mock_db_ctx:
         mock_db_ctx.return_value.__aenter__.return_value = mock_conn

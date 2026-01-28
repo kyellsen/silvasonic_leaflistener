@@ -2,9 +2,6 @@ import datetime
 import glob
 import json
 import logging
-
-# Logging Config
-import logging.handlers
 import os
 import shutil
 import signal
@@ -13,38 +10,57 @@ import sys
 import time
 from types import FrameType
 
-from mailer import Mailer
-
-os.makedirs("/var/log/silvasonic", exist_ok=True)
-
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s [%(levelname)s] %(message)s",
-    datefmt="%Y-%m-%d %H:%M:%S",
-    handlers=[
-        logging.StreamHandler(sys.stdout),
-        logging.handlers.TimedRotatingFileHandler(
-            "/var/log/silvasonic/healthchecker.log",
-            when="midnight",
-            interval=1,
-            backupCount=30,
-            encoding="utf-8",
-        ),
-    ],
+import psutil
+import structlog
+from pydantic import ValidationError
+from silvasonic_healthchecker.mailer import Mailer
+from silvasonic_healthchecker.models import (
+    ErrorDrop,
+    GlobalSettings,
+    NotificationEvent,
+    RecorderStatus,
+    ServiceConfig,
+    ServiceStatus,
 )
-logger = logging.getLogger("HealthChecker")
+
+# --- Structlog Configuration ---
+structlog.configure(
+    processors=[
+        structlog.stdlib.filter_by_level,
+        structlog.stdlib.add_logger_name,
+        structlog.stdlib.add_log_level,
+        structlog.stdlib.PositionalArgumentsFormatter(),
+        structlog.processors.TimeStamper(fmt="iso"),
+        structlog.processors.StackInfoRenderer(),
+        structlog.processors.format_exc_info,
+        structlog.processors.JSONRenderer(),
+    ],
+    context_class=dict,
+    logger_factory=structlog.stdlib.LoggerFactory(),
+    wrapper_class=structlog.stdlib.BoundLogger,
+    cache_logger_on_first_use=True,
+)
+
+# Also configure standard logging for libraries that use it
+logging.basicConfig(
+    format="%(message)s",
+    stream=sys.stdout,
+    level=logging.INFO,
+)
+
+logger = structlog.get_logger()
 
 # Config
 BASE_DIR = "/mnt/data/services/silvasonic"
 SERVICES_CONFIG = {
-    "uploader": {"name": "Uploader", "timeout": 3600},  # 60 mins
-    "recorder": {"name": "Recorder", "timeout": 120},  # 2 mins
-    "birdnet": {"name": "BirdNET", "timeout": 300},  # 5 mins
-    "livesound": {"name": "Liveaudio", "timeout": 120},  # 2 mins
-    "dashboard": {"name": "Dashboard", "timeout": 120},  # 2 mins
-    "postgres": {"name": "PostgressDB", "timeout": 300},  # 5 mins
-    "controller": {"name": "Controller (Supervisor)", "timeout": 120},
-    # "weather": {"name": "Weather Station", "timeout": 300} # 5 mins
+    "uploader": ServiceConfig(name="Uploader", timeout=3600),  # 60 mins
+    "recorder": ServiceConfig(name="Recorder", timeout=120),  # 2 mins
+    "birdnet": ServiceConfig(name="BirdNET", timeout=300),  # 5 mins
+    "livesound": ServiceConfig(name="Liveaudio", timeout=120),  # 2 mins
+    "dashboard": ServiceConfig(name="Dashboard", timeout=120),  # 2 mins
+    "postgres": ServiceConfig(name="PostgressDB", timeout=300),  # 5 mins
+    "controller": ServiceConfig(name="Controller (Supervisor)", timeout=120),
+    # "weather": ServiceConfig(name="Weather Station", timeout=300) # 5 mins
 }
 
 STATUS_DIR = f"{BASE_DIR}/status"
@@ -60,7 +76,7 @@ running = True
 def signal_handler(signum: int, frame: FrameType | None) -> None:
     """Handle shutdown signals."""
     global running
-    logger.info(f"Received signal {signum}, shutting down gracefully...")
+    logger.info("signal_received", signal=signum, msg="Shutting down gracefully...")
     running = False
 
 
@@ -79,21 +95,29 @@ def check_postgres_connection(host: str = "silvasonic_db", port: int = 5432) -> 
         return False
 
 
+def load_timeout_overrides() -> dict[str, int]:
+    """Loads timeout overrides from settings.json safely."""
+    config_path = "/config/settings.json"
+    if not os.path.exists(config_path):
+        return {}
+
+    try:
+        with open(config_path) as f:
+            content = f.read()
+            # Use Pydantic model
+            settings: GlobalSettings = GlobalSettings.model_validate_json(content)
+            return settings.healthchecker.service_timeouts
+    except (ValidationError, Exception) as e:
+        logger.error("config_load_error", error=str(e))
+        return {}
+
+
 def check_services_status(mailer: Mailer) -> None:
     """Checks status files for all services and produces a consolidated system status."""
     current_time = time.time()
     system_status = {}
 
-    # Load overrides from settings.json
-    timeouts_override = {}
-    try:
-        config_path = "/config/settings.json"
-        if os.path.exists(config_path):
-            with open(config_path) as f:
-                settings = json.load(f)
-                timeouts_override = settings.get("healthchecker", {}).get("service_timeouts", {})
-    except Exception as e:
-        logger.error(f"Failed to load settings overrides: {e}")
+    timeouts_override = load_timeout_overrides()
 
     for service_id, config in SERVICES_CONFIG.items():
         # SKIP hardcoded recorder check, we handle it dynamically below
@@ -103,14 +127,14 @@ def check_services_status(mailer: Mailer) -> None:
         status_file = f"{STATUS_DIR}/{service_id}.json"
 
         # Determine effective timeout
-        timeout_val = timeouts_override.get(service_id, config["timeout"])
+        timeout_val = timeouts_override.get(service_id, config.timeout)
 
         # Default State
         service_data = {
             "id": service_id,
-            "name": config["name"],
+            "name": config.name,
             "status": "Down",
-            "last_seen": 0,
+            "last_seen": 0.0,
             "message": "No heartbeat found",
             "timeout_threshold": timeout_val,
         }
@@ -124,10 +148,9 @@ def check_services_status(mailer: Mailer) -> None:
             else:
                 service_data["status"] = "Down"
                 service_data["message"] = "Connection Failed"
-                # Only alert if it persists? For now, standard alert logic.
                 msg = "Postgres DB is unreachable."
-                logger.error(msg)
-                # mailer.send_alert("Postgres Down", msg) # Uncomment if desired, maybe noisy on startup
+                logger.error("postgres_down", msg=msg)
+                # mailer.send_alert("Postgres Down", msg)
 
             system_status[service_id] = service_data
             continue
@@ -135,38 +158,47 @@ def check_services_status(mailer: Mailer) -> None:
         if os.path.exists(status_file):
             try:
                 with open(status_file) as f:
-                    status = json.load(f)
+                    content = f.read()
 
-                last_ts = status.get("timestamp", 0)
+                # Pydantic Validation
+                status = ServiceStatus.model_validate_json(content)
+                last_ts = status.timestamp
+
                 service_data["last_seen"] = last_ts
 
                 # Check Timeout
-                if current_time - last_ts > timeout_val:
-                    msg = f"Service {config['name']} is silent. No heartbeat for {int(current_time - last_ts)} seconds."
-                    logger.error(msg)
-                    mailer.send_alert(f"{config['name']} Down", msg)
+                time_diff = current_time - last_ts
+                if time_diff > timeout_val:
+                    msg = f"Service {config.name} is silent. No heartbeat for {int(time_diff)} seconds."
+                    logger.error(
+                        "service_timeout",
+                        service=service_id,
+                        diff=int(time_diff),
+                        threshold=timeout_val,
+                    )
+                    mailer.send_alert(f"{config.name} Down", msg)
 
                     service_data["status"] = "Down"
-                    service_data["message"] = (
-                        f"Timeout ({int(current_time - last_ts)}s > {timeout_val}s)"
-                    )
+                    service_data["message"] = f"Timeout ({int(time_diff)}s > {timeout_val}s)"
                 else:
                     service_data["status"] = "Running"
                     service_data["message"] = "Active"
 
                 # Uploader Special Logic for Alerting
-                if service_id == "uploader":
-                    last_upload = status.get("last_upload", 0)
-                    if current_time - last_upload > 3600:
+                if service_id == "uploader" and status.last_upload:
+                    if current_time - status.last_upload > 3600:
                         msg = "Uploader running but no upload success for > 60 mins."
-                        logger.error(msg)
+                        logger.error("uploader_stalled", last_upload=int(status.last_upload))
                         mailer.send_alert("Uploader Stalled", msg)
-                        # We updates status too? Maybe 'Warning'?
+
                         service_data["status"] = "Warning"
                         service_data["message"] = "Stalled (No Upload)"
 
+            except ValidationError as e:
+                logger.error("status_validation_error", service=service_id, error=str(e))
+                service_data["message"] = "Corrupted Status File"
             except Exception as e:
-                logger.error(f"Failed to check status for {service_id}: {e}")
+                logger.error("status_read_error", service=service_id, error=str(e))
                 service_data["message"] = f"Error: {str(e)}"
 
         system_status[service_id] = service_data
@@ -181,13 +213,16 @@ def check_services_status(mailer: Mailer) -> None:
             rec_id = os.path.splitext(filename)[0]
 
             with open(rec_file) as f:
-                status = json.load(f)
+                content = f.read()
+
+            # Pydantic Validate Recorder Status
+            status = RecorderStatus.model_validate_json(content)
 
             # Get name from profile if available
-            profile_name = status.get("meta", {}).get("profile", {}).get("name", rec_id)
+            profile_name = status.meta.profile.name if status.meta.profile.name else rec_id
 
             timeout_val = 120  # Default for recorders
-            last_ts = status.get("timestamp", 0)
+            last_ts = status.timestamp
 
             rec_data = {
                 "id": rec_id,
@@ -198,15 +233,17 @@ def check_services_status(mailer: Mailer) -> None:
                 "timeout_threshold": timeout_val,
             }
 
-            if current_time - last_ts > timeout_val:
+            time_diff = current_time - last_ts
+            if time_diff > timeout_val:
                 rec_data["status"] = "Down"
-                rec_data["message"] = f"Timeout ({int(current_time - last_ts)}s)"
-                # Alert logic matching above?
+                rec_data["message"] = f"Timeout ({int(time_diff)}s)"
 
             system_status[rec_id] = rec_data
 
+        except ValidationError as e:
+            logger.error("recorder_validation_error", file=rec_file, error=str(e))
         except Exception as e:
-            logger.error(f"Error processing recorder file {rec_file}: {e}")
+            logger.error("recorder_process_error", file=rec_file, error=str(e))
 
     # Add HealthChecker itself
     system_status["healthchecker"] = {
@@ -222,7 +259,7 @@ def check_services_status(mailer: Mailer) -> None:
         with open(f"{STATUS_DIR}/system_status.json", "w") as f:
             json.dump(system_status, f)
     except Exception as e:
-        logger.error(f"Failed to write system status: {e}")
+        logger.error("status_write_error", error=str(e))
 
 
 def check_error_drops(mailer: Mailer) -> None:
@@ -235,27 +272,39 @@ def check_error_drops(mailer: Mailer) -> None:
     for err_file in error_files:
         try:
             with open(err_file) as f:
-                data = json.load(f)
+                content = f.read()
 
-            logger.info(f"Processing error file: {err_file}")
+            # Validate structure
+            data = ErrorDrop.model_validate_json(content)
 
-            subject = f"Critical Error in {data.get('service', 'Unknown Service')}"
-            body = f"Context: {data.get('context')}\nError: {data.get('error')}\nTimestamp: {data.get('timestamp')}\n\nFull Dump:\n{json.dumps(data, indent=2)}"
+            logger.info("processing_error_file", file=err_file, service=data.service)
+
+            subject = f"Critical Error in {data.service}"
+            # dump generic dict for the body
+            full_dump = json.dumps(json.loads(content), indent=2)
+            body = f"Context: {data.context}\nError: {data.error}\nTimestamp: {data.timestamp}\n\nFull Dump:\n{full_dump}"
 
             if mailer.send_alert(subject, body):
                 # Move to archive only on success
                 filename = os.path.basename(err_file)
                 shutil.move(err_file, os.path.join(ARCHIVE_DIR, filename))
 
+        except ValidationError as e:
+            logger.error("error_file_validation_failed", file=err_file, error=str(e))
+            # Move to archive to avoid loop? Or delete?
+            # Let's move to archive with .invalid
+            try:
+                filename = os.path.basename(err_file)
+                shutil.move(err_file, os.path.join(ARCHIVE_DIR, f"{filename}.invalid"))
+            except OSError:
+                pass
         except Exception as e:
-            logger.error(f"Failed to process error file {err_file}: {e}")
+            logger.error("error_file_process_failed", file=err_file, error=str(e))
 
 
 def write_status() -> None:
     """Writes the HealthChecker's own heartbeat."""
     try:
-        import psutil
-
         data = {
             "service": "healthchecker",
             "timestamp": time.time(),
@@ -271,7 +320,7 @@ def write_status() -> None:
             json.dump(data, f)
         os.rename(tmp_file, status_file)
     except Exception as e:
-        logger.error(f"Failed to write healthchecker status: {e}")
+        logger.error("healthchecker_status_write_failed", error=str(e))
 
 
 NOTIFICATION_DIR = "/data/notifications"
@@ -287,18 +336,21 @@ def check_notification_queue(mailer: Mailer) -> None:
     for event_file in events:
         try:
             with open(event_file) as f:
-                event = json.load(f)
+                content = f.read()
 
-            logger.info(f"Processing notification event: {os.path.basename(event_file)}")
+            # Validate
+            event = NotificationEvent.model_validate_json(content)
 
-            if event.get("type") == "bird_detection":
-                data = event.get("data", {})
-                com_name = data.get("common_name", "Unknown Bird")
-                sci_name = data.get("scientific_name", "")
-                conf = int(data.get("confidence", 0) * 100)
-                time_str = datetime.datetime.fromtimestamp(data.get("start_time", 0)).strftime(
-                    "%H:%M:%S"
-                )
+            logger.info(
+                "processing_notification", file=os.path.basename(event_file), type=event.type
+            )
+
+            if event.type == "bird_detection":
+                data = event.data
+                com_name = data.common_name
+                sci_name = data.scientific_name
+                conf = int(data.confidence * 100)
+                time_str = datetime.datetime.fromtimestamp(data.start_time).strftime("%H:%M:%S")
 
                 subject = f"Bird Alert: {com_name}"
                 body = f"Detected {com_name} ({sci_name}) with {conf}% confidence at {time_str}.\n\nListen to the clip."
@@ -307,19 +359,17 @@ def check_notification_queue(mailer: Mailer) -> None:
                 if mailer.send_alert(subject, body):
                     os.remove(event_file)  # Consume event
                 else:
-                    logger.warning(
-                        f"Failed to send alert for {event_file}, keeping for retry (or move to error?)"
-                    )
-                    # For now, maybe move to error to avoid infinite loop if backend down?
-                    # Or just keep and retry next loop.
-                    # To allow retry, do nothing. But prevent log spam?
-                    pass
+                    logger.warning("alert_send_failed", file=event_file)
             else:
                 # Unknown event? Remove.
+                logger.warning("unknown_event_type", type=event.type, file=event_file)
                 os.remove(event_file)
 
+        except ValidationError as e:
+            logger.error("notification_validation_failed", file=event_file, error=str(e))
+            os.remove(event_file)  # Consume invalid
         except Exception as e:
-            logger.error(f"Failed to process notification {event_file}: {e}")
+            logger.error("notification_process_failed", file=event_file, error=str(e))
             try:
                 os.remove(event_file)  # Remove bad files
             except OSError:
@@ -328,7 +378,7 @@ def check_notification_queue(mailer: Mailer) -> None:
 
 def main() -> None:
     """Start the HealthChecker service."""
-    logger.info("--- Silvasonic HealthChecker Started ---")
+    logger.info("startup", msg="Silvasonic HealthChecker Started")
 
     # Install signal handlers
     signal.signal(signal.SIGTERM, signal_handler)
@@ -347,7 +397,7 @@ def main() -> None:
             check_error_drops(mailer)
             check_notification_queue(mailer)
         except Exception:
-            logger.exception("HealthChecker loop crashed:")
+            logger.exception("main_loop_crash")
 
         # Sleep in short intervals to be responsive to signals
         for _ in range(CHECK_INTERVAL):
@@ -355,7 +405,7 @@ def main() -> None:
                 break
             time.sleep(1)
 
-    logger.info("--- Silvasonic HealthChecker Stopped ---")
+    logger.info("shutdown", msg="Silvasonic HealthChecker Stopped")
 
 
 if __name__ == "__main__":

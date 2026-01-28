@@ -31,13 +31,23 @@ from silvasonic_dashboard.services import (
 from silvasonic_dashboard.settings import SettingsService
 from starlette.status import HTTP_302_FOUND
 
-os.makedirs("/var/log/silvasonic", exist_ok=True)
+# Initialize Paths with Fallbacks
+LOG_DIR = os.getenv("LOG_DIR", "/var/log/silvasonic")
+try:
+    os.makedirs(LOG_DIR, exist_ok=True)
+    # Check if writable
+    if not os.access(LOG_DIR, os.W_OK):
+        raise PermissionError(f"{LOG_DIR} is not writable")
+except (PermissionError, OSError):
+    LOG_DIR = os.path.join(os.getcwd(), ".logs")
+    os.makedirs(LOG_DIR, exist_ok=True)
+
 logging.basicConfig(
     level=logging.INFO,
     handlers=[
         logging.StreamHandler(sys.stdout),
         logging.handlers.TimedRotatingFileHandler(
-            "/var/log/silvasonic/dashboard.log",
+            os.path.join(LOG_DIR, "dashboard.log"),
             when="midnight",
             interval=1,
             backupCount=30,
@@ -50,11 +60,18 @@ logger = logging.getLogger("Dashboard")
 # Paths
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 TEMPLATES_DIR = os.path.join(BASE_DIR, "templates")
-AUDIO_DIR = "/data/recording"
-LOG_DIR = "/var/log/silvasonic"
-ARTIFACTS_DIR = "/data/processed/artifacts"
+AUDIO_DIR = os.getenv("AUDIO_DIR", "/data/recording")
+
+ARTIFACTS_DIR = os.getenv("ARTIFACTS_DIR", "/data/processed/artifacts")
+try:
+    os.makedirs(ARTIFACTS_DIR, exist_ok=True)
+    if not os.access(ARTIFACTS_DIR, os.W_OK):
+        raise PermissionError(f"{ARTIFACTS_DIR} is not writable")
+except (PermissionError, OSError):
+    ARTIFACTS_DIR = os.path.join(os.getcwd(), ".artifacts")
+    os.makedirs(ARTIFACTS_DIR, exist_ok=True)
+
 CLIPS_DIR = "/data/db/results/clips"
-os.makedirs(ARTIFACTS_DIR, exist_ok=True)
 
 VERSION = "0.1.0"
 

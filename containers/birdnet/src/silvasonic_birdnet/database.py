@@ -4,11 +4,10 @@ import time
 import typing
 from datetime import UTC, datetime
 
-from sqlalchemy import Column, DateTime, Float, Integer, String, Text, create_engine, text
+from sqlalchemy import Column, DateTime, Float, Integer, String, Text, create_engine
 from sqlalchemy.engine import Engine
-from sqlalchemy.exc import OperationalError, ProgrammingError
+from sqlalchemy.exc import OperationalError
 from sqlalchemy.orm import declarative_base, sessionmaker
-from sqlalchemy.schema import CreateSchema
 
 from silvasonic_birdnet.models import BirdDetection
 
@@ -106,7 +105,7 @@ class DatabaseHandler:
         self.Session: sessionmaker[typing.Any] | None = None
 
     def connect(self) -> bool:
-        """Establish database connection and ensure schema exists."""
+        """Establish database connection."""
         retries = 10
         while retries > 0:
             try:
@@ -114,38 +113,16 @@ class DatabaseHandler:
                 self.engine = create_engine(self.db_url, pool_pre_ping=True)
 
                 # Check connection
-                with self.engine.connect() as conn:
-                    # Create Schema 'birdnet' if not exists
-                    try:
-                        conn.execute(CreateSchema("birdnet", if_not_exists=True))
-                        conn.commit()
-                    except ProgrammingError as e:
-                        # Sometimes race condition or perm issue, but CreateSchema if_not_exists handles most
-                        logger.warning(f"Schema creation warning: {e}")
-                        conn.rollback()
-
-                    # Migration: Add file_size_bytes column if not exists (Hack for dev)
-                    try:
-                        conn.execute(
-                            text(
-                                "ALTER TABLE birdnet.processed_files ADD COLUMN IF NOT EXISTS file_size_bytes BIGINT"
-                            )
-                        )
-                        conn.commit()
-                    except Exception:
-                        conn.rollback()
-
-                # Create Tables
-                Base.metadata.create_all(self.engine)
+                with self.engine.connect():
+                    pass
 
                 self.Session = sessionmaker(bind=self.engine)
-                logger.info("Database connected and initialized.")
+                logger.info("Database connected.")
                 return True
 
             except OperationalError as e:
                 logger.warning(f"Database not ready ({e}). Retrying in 5s... ({retries} left)")
                 time.sleep(5)
-                retries -= 1
             except Exception as e:
                 logger.error(f"Critical DB connection error: {e}")
                 return False

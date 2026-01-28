@@ -60,7 +60,7 @@ def test_get_logs_unauthorized():
     app.dependency_overrides = {}
 
     service_name = "any_service"
-    response = client.get(f"/api/logs/{service_name}", allow_redirects=False)
+    response = client.get(f"/api/logs/{service_name}", follow_redirects=False)
 
     # Should be 401 or Redirect to login depending on implementation
     # The endpoint raises HTTPException(401) if auth fails (check main.py)

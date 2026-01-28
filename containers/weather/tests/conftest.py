@@ -10,6 +10,25 @@ import pytest
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../src")))
 
 
+@pytest.fixture(scope="session", autouse=True)
+def configure_podman_rootless() -> None:
+    """Auto-configure DOCKER_HOST for rootless Podman if not set."""
+    # If DOCKER_HOST is already set, respect it.
+    if "DOCKER_HOST" in os.environ:
+        return
+
+    # Check for XDG_RUNTIME_DIR or construct standard path
+    uid = os.getuid()
+    # Typical path on Linux: /run/user/{uid}/podman/podman.sock
+    socket_paths = [f"/run/user/{uid}/podman/podman.sock", f"/run/user/{uid}/docker.sock"]
+
+    for path in socket_paths:
+        if os.path.exists(path):
+            os.environ["DOCKER_HOST"] = f"unix://{path}"
+            # print(f"DEBUG: Auto-configured DOCKER_HOST={os.environ['DOCKER_HOST']}")
+            break
+
+
 @pytest.fixture
 def mock_wetterdienst(monkeypatch):
     """Mock the wetterdienst DwdObservationRequest."""
@@ -31,7 +50,6 @@ def mock_db_engine(monkeypatch):
     mock_engine.connect.return_value.__enter__.return_value = mock_conn
 
     monkeypatch.setattr("silvasonic_weather.main.engine", mock_engine)
-    monkeypatch.setattr("silvasonic_weather.analysis.engine", mock_engine)
 
     return mock_engine, mock_conn
 
