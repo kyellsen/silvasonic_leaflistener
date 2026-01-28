@@ -1,3 +1,4 @@
+import json
 import queue
 import time
 from unittest.mock import MagicMock, patch
@@ -43,16 +44,19 @@ def test_file_handler_ignores_files():
     assert q.qsize() == 0
 
 
-@patch("silvasonic_birdnet.watcher.json.dump")
-@patch("silvasonic_birdnet.watcher.open")
-@patch("silvasonic_birdnet.watcher.os.rename")
+@patch("silvasonic_birdnet.watcher.redis.Redis")
 @patch("silvasonic_birdnet.watcher.psutil")
-def test_write_status(mock_psutil, mock_rename, mock_open, mock_dump, watcher):
+def test_write_status(mock_psutil, mock_redis_cls, watcher):
     """Test status file writing."""
+    mock_redis = mock_redis_cls.return_value
+
     watcher.write_status("Idle")
 
-    mock_dump.assert_called_once()
-    data = mock_dump.call_args[0][0]
+    mock_redis.setex.assert_called_once()
+    args = mock_redis.setex.call_args[0]
+    # args: (key, ttl, value)
+    data = json.loads(args[2])
+
     assert data["status"] == "Idle"
     assert data["service"] == "birdnet"
 

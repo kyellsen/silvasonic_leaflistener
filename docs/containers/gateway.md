@@ -1,24 +1,25 @@
 # Container: Gateway
 
 ## 1. Das Problem / Die Lücke
-Silvasonic besteht aus mehreren Web-Services (Dashboard, LiveSound, Controller), die auf unterschiedlichen Ports laufen (z.B. 8080, 8000, 8002). Für den Endanwender ist es umständlich, sich verschiedene Ports zu merken (`http://silvasonic.local:8080`). Zudem fehlt ohne Gateway eine zentrale Stelle für HTTPS-Terminierung oder Authentifizierung.
+Silvasonic besteht aus mehreren unabhängigen Web-Services (Dashboard, LiveSound, Controller), die auf unterschiedlichen Ports laufen. Der Benutzer möchte sich keine Portnummern merken, sondern das System über eine einheitliche URL erreichen. Zudem fehlt internen Services oft eine SSL-Terminierung oder zentrale Security-Layer.
 
 ## 2. Nutzen für den User
-*   **Single Entrypoint:** Der Nutzer erreicht alle Dienste über eine einzige Adresse (Port 80), z.B. `http://silvasonic.local/`.
-*   **URL-Routing:** Saubere Trennung der Dienste durch Pfade (z.B. `/api` zum Dashboard, `/live` zum LiveSound).
-*   **Security:** Ermöglicht zentrales Hardening (z.B. SSL/TLS, Header-Security) an einer Stelle, ohne jeden internen Service anpassen zu müssen.
+*   **Single Entrypoint:** Erreichbarkeit aller Dienste über Port 80 (HTTP) unter einer Adresse (z.B. `http://silvasonic.local/`).
+*   **Routing:** Transparente Weiterleitung an die richtigen Container (z.B. `/live` -> LiveSound, `/api` -> Dashboard).
+*   **Komfort:** Kein Hantieren mit Port 8080 oder 8000 notwendig.
 
 ## 3. Kernaufgaben (Core Responsibilities)
 *   **Inputs:**
-    *   **HTTP Requests:** Empfängt alle eingehenden HTTP-Anfragen auf Port 80 (und optional 443).
-    *   **Caddyfile:** Konfiguration der Routen und Upstreams.
+    *   **HTTP Requests:** Empfängt Anfragen auf Port 80.
+    *   **Caddyfile:** Routing-Regeln.
 *   **Processing:**
-    *   **Reverse Proxy:** Leitet Anfragen basierend auf dem Pfad an den zuständigen internen Container weiter (`dashboard`, `livesound`, `controller`).
-    *   **Static Assets:** Dient potenziell als Cache oder Server für statische Dateien (optional).
+    *   **Reverse Proxy:** Leitet Traffic basierend auf Pfad-Präfixen an interne Container weiter (`silvasonic_dashboard`, `silvasonic_livesound`).
+    *   **Load Balancing:** (Potenziell) Verteilung von Last, aktuell aber eher 1:1 Mapping.
 *   **Outputs:**
-    *   **HTTP Responses:** Liefert die Antworten der Backend-Services transparent an den Client zurück.
+    *   **HTTP Responses:** Liefert Antworten der Backend-Services transparent an den Client zurück.
+    *   **Ingress Security:** Dient als einziger "offener" Port im externen Netz (Tailnet/LAN).
 
 ## 4. Abgrenzung (Out of Scope)
 *   Enthält **KEINE** Business-Logik.
 *   Speichert **KEINE** Daten.
-*   Ist **NICHT** die Firewall (iptables/System-Firewall liegt darunter).
+*   Analysiert **KEINE** Requests inhaltlich (außer Routing).

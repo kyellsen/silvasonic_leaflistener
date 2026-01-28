@@ -1,27 +1,26 @@
 # Container: Database (DB)
 
 ## 1. Das Problem / Die Lücke
-Silvasonic generiert komplexe, strukturierte Daten (Vogel-Detektionen, Wetterdaten, System-Logs, Konfigurationen), die relational verknüpft sind. Die Speicherung in flachen Dateien skaliert nicht für komplexe Abfragen und Analysen. Ein zentraler, transaktionssicherer Datenspeicher ist für Datenkonsistenz und Performance unerlässlich.
+Silvasonic generiert komplexe, relational verknüpfte Daten (Vogel-Detektionen, Wetterdaten, Logs, Konfigurationen). Die Speicherung in flachen Dateien skaliert nicht und bietet keine Transaktionssicherheit. Ein zentraler SQL-Datenspeicher ist für Datenkonsistenz, Integrität und performante Abfragen unerlässlich.
 
 ## 2. Nutzen für den User
-*   **Performance:** Ermöglicht schnelle Abfragen und Statistiken auch über große Zeiträume und Datenmengen.
-*   **Integrität:** Verhindert Datenkorruption bei gleichzeitigem Schreibzugriff mehrerer Container.
-*   **Persistenz:** Sichert alle Metadaten, Konfigurationen und Ergebnisse dauerhaft auf dem Daten-Volume, unabhängig von Container-Neustarts.
+*   **Performance:** Ermöglicht schnelle Filterung und Statistiken über große Zeiträume.
+*   **Integrität:** Verhindert Datenkorruption bei gleichzeitigem Zugriff mehrerer Container (ACID-Compliance).
+*   **Persistenz:** Sichert alle Metadaten und Ergebnisse dauerhaft auf dem Daten-Volume, unabhängig von Container-Neustarts.
 
 ## 3. Kernaufgaben (Core Responsibilities)
 *   **Inputs:**
     *   **BirdNET:** Speichert Analyse-Ergebnisse (Detektionen).
-    *   **Weather:** Speichert gesammelte Umweltdaten.
-    *   **Dashboard:** Liest/Schreibt System-Konfigurationen und User-Interaktionen.
-    *   **Controller:** Synchronisiert Service-Status und Hardware-Events.
+    *   **Weather:** Speichert Umweltdaten.
+    *   **Dashboard:** Liest/Schreibt System-Konfigurationen.
+    *   **Controller:** Synchronisiert Service-Status.
 *   **Processing:**
     *   **PostgreSQL Engine:** Bereitstellung einer relationalen Datenbankinstanz.
-    *   **Indexierung:** Optimierung von Abfragen durch Indizes (z.B. auf Zeitstempel, Spezies).
-    *   **Wartung:** Ausführung von Initialisierungsskripten (`/docker-entrypoint-initdb.d/`) beim ersten Start.
+    *   **Wartung:** Automatische Initialisierung (`init/`) beim ersten Start.
 *   **Outputs:**
-    *   **Query Results:** Liefert strukturierte Daten auf SQL-Anfragen der anderen Container.
+    *   **Query Results:** Liefert strukturierte Daten auf SQL-Anfragen via Port 5432.
     *   **Persistenter Storage:** Hält den Datenbestand im Volume `pg_data`.
 
 ## 4. Abgrenzung (Out of Scope)
-*   Enthält **KEINE** Applikationslogik (reiner Datenspeicher).
-*   Speichert **KEINE** großen Media-Dateien (Audio/Bilder bleiben im Filesystem, DB speichert nur Dateipfade/Metadaten).
+*   Enthält **KEINE** Applikationslogik (Business Logic liegt in den Services).
+*   Speichert **KEINE** großen Audio-Dateien (Referenziert Dateipfade).

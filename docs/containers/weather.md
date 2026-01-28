@@ -1,25 +1,25 @@
 # Container: Weather
 
 ## 1. Das Problem / Die Lücke
-Bioakustische Aktivität korreliert stark mit Wetterbedingungen. Eine "stille" Aufnahme kann an der Abwesenheit von Tieren liegen – oder an starkem Wind/Regen. Ohne Wetterdaten fehlt dieser Kontext. Reine Audioaufnahmen erzählen nur die halbe Geschichte.
+Bioakustische Aktivität korreliert stark mit dem Wetter (Wind, Regen, Temperatur). Eine "stille" Aufnahme kann an der Abwesenheit von Tieren liegen – oder an starkem Sturm. Ohne Wetterdaten fehlt dieser Kontext. Reine Audioaufnahmen erzählen nur die halbe Geschichte.
 
 ## 2. Nutzen für den User
-*   **Wissenschaftlicher Kontext:** Ermöglicht Korrelationsanalysen ("Ruft Spezies X nur bei >15°C?").
-*   **Datenqualität:** Hilft, Fehl-Detektionen oder schlechte Audioqualität (Windrauschen) zu erklären.
-*   **Lückenfüllung:** Erfasst Umweltdaten auch ohne physische Sensoren am Gerät (nutzt OpenMeteo API basierend auf GPS-Koordinaten).
+*   **Kontext:** Erklärt Artefakte (z.B. Windrauschen) und korreliert Tierstimmen mit Umweltbedingungen ("Ruft Spezies X nur bei Regen?").
+*   **Lückenfüllung:** Erfasst Wetterdaten auch ohne physische Sensoren am Gerät (nutzt OpenMeteo API basierend auf GPS).
+*   **Datenqualität:** Validiert akustische Detektionen durch Umweltparameter.
 
 ## 3. Kernaufgaben (Core Responsibilities)
 *   **Inputs:**
-    *   **OpenMeteo API:** Holt aktuelle Wetterdaten (Temp, Feuchte, Niederschlag, Wind) für den Standort des Geräts.
-    *   **Schedule:** Trigger alle 20 Minuten (konfigurierbar).
+    *   **OpenMeteo API:** Holt Wetterdaten (Temp, Wind, Regen etc.) via HTTP.
+    *   **Schedule:** Läuft periodisch (alle 20 Minuten).
 *   **Processing:**
-    *   **Daten-Normalisierung:** Wandelt API-Antworten in das standardisierte `WeatherMeasurement` Datenmodell um.
-    *   **Scheduler:** Führt den Abruf periodisch aus, unabhängig von anderen System-Events.
+    *   **Scheduler:** Triggered den Abruf zeitgesteuert.
+    *   **Normalisierung:** Wandelt JSON-Antworten in das `WeatherMeasurement` Format.
 *   **Outputs:**
-    *   **Datenbank:** Schreibt Messwerte persistent in die PostgreSQL-Tabelle `weather.measurements`.
-    *   **Status:** Meldet "Idle" oder "Fetching" via Redis.
+    *   **Datenbank:** Schreibt Messwerte persistent in die Tabelle `weather.measurements` (PostgreSQL).
+    *   **Status:** Meldet "Idle" oder "Fetching" via Redis (`status:weather`).
 
 ## 4. Abgrenzung (Out of Scope)
 *   Nimmt **KEIN** Audio auf.
-*   Erstellt **KEINE** eigene Wettervorhersage (nutzt externe Provider).
-*   Beeinflusst **NICHT** die Aufnahme-Steuerung (dient rein der Datenerfassung).
+*   Erstellt **KEINE** Vorhersagen (nutzt externe Daten).
+*   Hat **KEINE** eigenen Sensoren (Soft-Sensor).

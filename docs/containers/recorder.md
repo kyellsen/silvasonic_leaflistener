@@ -1,28 +1,27 @@
 # Container: Recorder
 
 ## 1. Das Problem / Die Lücke
-Die akustische Überwachung erfordert eine absolut unterbrechungsfreie Aufnahme ("Gapless Architecture"). Wenn Audio-Analyse (CPU-Last) oder Uploads (Netzwerk-Blockaden) im selben Prozess wie die Aufnahme liefe, käme es zwangsläufig zu Datenverlusten ("Dropouts"). Der Recorder existiert als isolierter, privilegierter Container, dessen einzige Aufgabe es ist, Audiodaten sicher vom Kernel auf die SSD zu schreiben.
+Akustische Überwachung erfordert absolut unterbrechungsfreie Aufnahmen ("Gapless"). Wenn rechenintensive Prozesse (Analyse, Upload) im selben Prozess wie die Aufnahme liefen, käme es zu Datenverlusten ("Dropouts"). Der Recorder ist ein isolierter, priorisierter Container für die reine Datenerfassung.
 
 ## 2. Nutzen für den User
-*   **Datenintegrität:** Garantiert lückenlose Aufnahmen, auch wenn der Rest des Systems unter Volllast steht (BirdNET rechnet, Uploader hängt).
-*   **Hardware-Flexibilität:** Erkennt automatisch verschiedene USB-Mikrofone anhand von Profilen (`mic_profiles`) und wählt die optimalen Einstellungen (Gain, Sample Rate).
-*   **Zero-Latency Monitoring:** Stellt einen Live-Stream bereit, damit Nutzer sofort "reinhören" können, ohne auf die abgeschlossene Datei warten zu müssen.
+*   **Datenintegrität:** Garantiert lückenlose Aufnahmen, auch unter Systemlast.
+*   **Hardware-Flexibilität:** Automatische Konfiguration von USB-Mikrofonen durch Profile (`mic_profiles`).
+*   **Live-Feed:** Stellt einen latenzarmen Stream für das Live-Reinhören bereit.
 
 ## 3. Kernaufgaben (Core Responsibilities)
 *   **Inputs:**
-    *   **Audio-Hardware:** Zugriff auf ALSA-Devices (via `/dev/snd`).
-    *   **Profile:** Hardware-Definitionen zur Steuerung der FFmpeg-Parameter.
+    *   **Audio-Hardware:** Exklusiver Zugriff auf ALSA-Devices (via `/dev/snd`).
+    *   **Profile:** Hardware-Definitionen (Sample Rate, Gain) zur Steuerung von FFmpeg.
 *   **Processing:**
-    *   **FFmpeg Wrapper:** Steuert einen persistenten `ffmpeg`-Subprozess zur Aufnahme.
-    *   **Segmentierung:** Schneidet den Stream in handliche 10-Sekunden-Chunks (`.flac`).
-    *   **Self-Healing:** Überwacht den Aufnahme-Prozess und startet ihn bei Absturz sofort neu.
-    *   **Stream Copy:** Dupliziert den Audio-Stream für UDP-Streaming ohne Transcoding-Overhead.
+    *   **FFmpeg Wrapper:** Steuert einen persistenten `ffmpeg`-Prozess.
+    *   **Segmentierung:** Schneidet Audio in 10-Sekunden-Chunks (`.flac`).
+    *   **Stream Copy:** Dupliziert den Audio-Stream für UDP-Versand ohne Transcoding.
 *   **Outputs:**
-    *   **Dateien:** Schreibt `.flac` Dateien (komprimiert) auf das Daten-Volume `/data/recording`.
-    *   **UDP Stream:** Sendet rohes Audio (PCM) oder FLAC-Stream via UDP an den `livesound` Container.
-    *   **Metadaten:** Schreibt detaillierten Status (genutztes Profil, Device-Name) in den Heartbeat (Redis).
+    *   **Dateien:** Schreibt `.flac` Dateien auf das Daten-Volume.
+    *   **UDP Stream:** Sendet rohes Audio an den `livesound` Container.
+    *   **Status:** Schreibt Heartbeat und Metadaten nach Redis (`status:recorder:<id>`).
 
 ## 4. Abgrenzung (Out of Scope)
-*   Analysiert **KEINE** Audiodaten (Aufgabe von `birdnet`).
-*   Lädt **NICHTS** ins Internet hoch (Aufgabe von `uploader`).
-*   Initialisiert **NICHT** die Soundkarte auf Treiber-Ebene (macht der Linux Kernel).
+*   Analysiert **KEINE** Audiodaten (-> `birdnet`).
+*   Lädt **NICHTS** hoch (-> `uploader`).
+*   Initialisiert **NICHT** Treiber (Linux Kernel Aufgabe).

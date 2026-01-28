@@ -1,28 +1,29 @@
 # Container: Healthchecker
 
 ## 1. Das Problem / Die Lücke
-In einem verteilten System operieren viele Container unabhängig voneinander. Ein einzelner Service (z.B. der Uploader) kann "leise sterben" (z.B. Deadlock), während der Container-Status noch "Running" ist. Ohne proaktive Überwachung würde ein solcher Ausfall erst spät auffallen (Datenlücke). Es wird ein zentraler "Wächter" benötigt.
+In einem verteilten System können einzelne Services ausfallen ("Silent Fail"), ohne dass der Container stoppt. Ein zentraler Wächter ist notwendig, um solche "Zombie-Prozesse" zu erkennen, Timeouts zu überwachen und den Administrator proaktiv zu informieren.
 
 ## 2. Nutzen für den User
-*   **Zuverlässigkeit:** Erkennt Probleme frühzeitig (z.B. "Recorder hat seit 2 Minuten keinen Heartbeat gesendet").
-*   **Wartung:** Automatisiert Routineaufgaben wie Log-Rotation oder Benachrichtigungen.
-*   **Alerting:** Sendet proaktiv E-Mails bei kritischen Fehlern (Disk Full, Service Down) oder interessanten Vogel-Funden.
-*   **Status-Aggregation:** Liefert dem Dashboard eine konsolidierte Sicht auf die Systemgesundheit.
+*   **Zuverlässigkeit:** Erkennt Probleme (z.B. Recorder sendet keinen Heartbeat mehr) sofort.
+*   **Alerting:** Benachrichtigt aktiv via E-Mail bei kritischen Fehlern oder interessanten Funden (Vogel-Detektionen).
+*   **Status-Sicht:** Liefert dem Dashboard aggregierte Gesundheitsdaten aller Komponenten.
+*   **Wartung:** Archiviert Fehlerberichte und hält das System sauber.
 
 ## 3. Kernaufgaben (Core Responsibilities)
 *   **Inputs:**
-    *   **Redis Heartbeats:** Pollt regelmäßig den Key-Space `status:*` in Redis, wo alle aktiven Services ihren Puls melden.
-    *   **Notification Queue:** Überwacht das Verzeichnis `notifications/` auf neue Events (z.B. BirdNET Alerts).
-    *   **Active Probes:** Prüft TCP-Verbindung zur Datenbank.
+    *   **Redis Heartbeats:** Pollt periodisch `status:*` Keys aller Services.
+    *   **Notification Queue:** Überwacht `notifications/` auf neue Events (z.B. BirdNET Alerts).
+    *   **Service Config:** Liest Timeouts und Regeln aus `settings.json`.
 *   **Processing:**
-    *   **Watchdog-Logik:** Vergleicht Zeitstempel der Heartbeats mit definierten Timeouts (z.B. "Recorder timeout = 120s").
-    *   **State Machine:** Erkennt Status-Übergänge (z.B. Running -> Down) und triggert Alerts nur bei Änderungen, um Spam zu vermeiden.
-    *   **Mailer:** Versendet E-Mail-Benachrichtigungen via SMTP.
+    *   **Watchdog:** Vergleicht "Last Seen" Zeitstempel mit konfigurierten Timeouts.
+    *   **State Machine:** Detektiert Statuswechsel (Running -> Down) und vermeidet Alert-Spam.
+    *   **Mailer:** Versendet formatierte E-Mails via SMTP (`apprise` library).
 *   **Outputs:**
-    *   **System Status:** Schreibt den aggregierten Status zurück nach Redis (`system:status`) und als JSON-Datei (Legacy Support).
-    *   **E-Mails:** Sendet Warnungen und Berichte an konfigurierte Empfänger.
+    *   **System Status:** Schreibt aggregierten Status nach Redis (`system:status`) und File (Legacy).
+    *   **Alerts:** Versendet E-Mails.
+    *   **Archive:** Verschiebt verarbeitete Fehlerberichte nach `archive/`.
 
 ## 4. Abgrenzung (Out of Scope)
-*   Startet/Stoppt **KEINE** Container (Aufgabe von `controller`).
-*   Überwacht **NICHT** den Kernel (nur die Applikations-Ebene).
-*   Speichert **KEINE** Audio-Daten.
+*   Startet **KEINE** Container neu (Aufgabe von `controller`).
+*   Speichert **KEINE** Audiodaten.
+*   Ist **NICHT** für Hardware-Monitoring zuständig (Layer darüber).

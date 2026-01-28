@@ -1,27 +1,28 @@
 # Container: Uploader
 
 ## 1. Das Problem / Die Lücke
-Aufgenommene Daten liegen zunächst isoliert auf dem Edge-Device. Um sie sicher zu speichern und wissenschaftlich zu nutzen, müssen sie auf einen zentralen Server übertragen werden. Da Mobilfunkverbindungen unzuverlässig sind, darf dieser Prozess nie die Aufnahme blockieren. Es wird ein asynchroner, robuster Hintergrunddienst benötigt ("Fire and Forget").
+Aufgenommene Daten liegen zunächst isoliert auf dem Edge-Device. Für die wissenschaftliche Nutzung und Langzeitarchivierung müssen sie auf einen zentralen Server übertragen werden. Da Mobilfunkverbindungen unzuverlässig sind, darf dies nie die Aufnahme blockieren. Es wird ein robuster, asynchroner Hintergrunddienst ("Fire & Forget") benötigt.
 
 ## 2. Nutzen für den User
 *   **Datensicherheit:** Schützt vor Datenverlust durch Hardware-Defekt oder Diebstahl (Off-Site Backup).
-*   **Fernzugriff:** Macht Aufnahmen bequem im Labor/Büro verfügbar, ohne SD-Karten physisch tauschen zu müssen.
-*   **Speichermanagement:** Der "Janitor" (Hausmeister) löscht automatisch alte lokale Dateien, sobald sie sicher hochgeladen wurden, um Speicherplatz freizugeben.
+*   **Fernzugriff:** Macht Aufnahmen im Labor verfügbar, ohne SD-Karten physisch tauschen zu müssen.
+*   **Speichermanagement:** Der integrierte "Janitor" löscht lokal, sobald Dateien sicher in der Cloud sind, um Platz für neue Aufnahmen zu schaffen.
 
 ## 3. Kernaufgaben (Core Responsibilities)
 *   **Inputs:**
-    *   **Recordings:** Scannt das lokale Aufnahmeverzeichnis `/data/recording` rekursiv.
-    *   **Konfiguration:** Liest Upload-Strategien (z.B. "Nur im WLAN", Mindestalter der Dateien) aus `UploaderSettings`.
-    *   **Credentials:** Authentifizierung für Cloud-Storage (Nextcloud/WebDAV/S3) via Environment Secrets.
+    *   **Recordings:** Scannt `/data/recording` rekursiv auf neue Dateien.
+    *   **Konfiguration:** Upload-Strategien (z.B. "Nur WLAN", "Min. Alter") aus `config.py`.
+    *   **Credentials:** Zugriff auf S3/Nextcloud/WebDAV via Environment Secrets.
 *   **Processing:**
-    *   **Sync-Engine:** Nutzt `rclone` für effiziente, wiederaufnehmbare Datei-Transfers.
-    *   **Queue-Management:** Berechnet die Warteschlange und priorisiert Uploads.
-    *   **Janitor:** Löscht lokale Kopien *erst*, wenn der Upload verifiziert ist und Speicherplatz benötigt wird (Threshold-basiert).
-    *   **Logging:** Protokolliert jeden Transfer in der lokalen Datenbank für Audit-Zwecke.
+    *   **Sync-Engine:** Nutzt `rclone` (wrapper) für effiziente, wiederaufnehmbare Transfers.
+    *   **Queue-Management:** Priorisiert Uploads und verwaltet Retries bei Netzwerkausfall.
+    *   **Janitor:** Löscht lokale Kopien erst nach erfolgreicher Upload-Verifikation und bei Speicherbedarf.
+    *   **Logging:** Protokolliert Transaktionen in der Datenbank.
 *   **Outputs:**
-    *   **Upload:** Transferiert Dateien verschlüsselt an den Remote-Server.
-    *   **Status:** Meldet Fortschritt und Queue-Größe via Redis an das Dashboard.
+    *   **Upload:** Transferiert Dateien verschlüsselt an den Remote-Storage.
+    *   **Status:** Meldet Fortschritt und Queue-Größe an Redis.
 
 ## 4. Abgrenzung (Out of Scope)
-*   Nimmt **KEIN** Audio auf.
-*   Entscheidet **NICHT** über "Notfall-Löschungen" bei kritisch vollem Speicher (Aufgabe des `healthchecker`, der Uploader agiert präventiv/ordentlich).
+*   Nimmt **KEIN** Audio auf (-> `recorder`).
+*   Analysiert **KEINE** Daten (-> `birdnet`).
+*   Löscht **NICHTS** ohne Upload-Bestätigung (Datenverlust-Schutz hat Vorrang).
