@@ -231,6 +231,7 @@ dependencies = [
     { name = "resampy" },
     { name = "soundfile" },
     { name = "sqlalchemy" },
+    { name = "structlog" },
     { name = "watchdog" },
 ]
 
@@ -258,6 +259,7 @@ requires-dist = [
     { name = "resampy", specifier = ">=0.4.0" },
     { name = "soundfile" },
     { name = "sqlalchemy" },
+    { name = "structlog", specifier = ">=24.0.0" },
     { name = "watchdog" },
 ]
 provides-extras = ["test"]
@@ -2049,6 +2051,7 @@ dependencies = [
     { name = "pydantic" },
     { name = "pyudev" },
     { name = "pyyaml" },
+    { name = "structlog" },
 ]
 
 [package.metadata]
@@ -2057,6 +2060,7 @@ requires-dist = [
     { name = "pydantic", specifier = ">=2.0" },
     { name = "pyudev", specifier = ">=0.24.0" },
     { name = "pyyaml", specifier = ">=6.0" },
+    { name = "structlog", specifier = ">=24.0.0" },
 ]
 
 [[package]]
@@ -2155,6 +2159,7 @@ dependencies = [
     { name = "pydantic-settings" },
     { name = "python-multipart" },
     { name = "soundfile" },
+    { name = "structlog" },
     { name = "uvicorn", extra = ["standard"] },
     { name = "websockets" },
 ]
@@ -2170,6 +2175,7 @@ requires-dist = [
     { name = "pydantic-settings", specifier = ">=2.0.0" },
     { name = "python-multipart", specifier = ">=0.0.9" },
     { name = "soundfile", specifier = ">=0.12.1" },
+    { name = "structlog", specifier = ">=24.0.0" },
     { name = "uvicorn", extras = ["standard"], specifier = ">=0.27.0" },
     { name = "websockets", specifier = ">=12.0" },
 ]
@@ -2182,6 +2188,7 @@ dependencies = [
     { name = "psutil" },
     { name = "pydantic" },
     { name = "pyyaml" },
+    { name = "structlog" },
 ]
 
 [package.metadata]
@@ -2189,6 +2196,7 @@ requires-dist = [
     { name = "psutil" },
     { name = "pydantic", specifier = ">=2.0" },
     { name = "pyyaml" },
+    { name = "structlog", specifier = ">=24.0.0" },
 ]
 
 [[package]]
@@ -2199,6 +2207,7 @@ dependencies = [
     { name = "psutil" },
     { name = "psycopg2-binary" },
     { name = "sqlalchemy" },
+    { name = "structlog" },
 ]
 
 [package.metadata]
@@ -2206,6 +2215,7 @@ requires-dist = [
     { name = "psutil", specifier = ">=5.9.0" },
     { name = "psycopg2-binary", specifier = ">=2.9.9" },
     { name = "sqlalchemy", specifier = ">=2.0.0" },
+    { name = "structlog", specifier = ">=24.0.0" },
 ]
 
 [[package]]
@@ -2223,6 +2233,7 @@ dependencies = [
     { name = "pytest" },
     { name = "schedule" },
     { name = "sqlalchemy" },
+    { name = "structlog" },
     { name = "testcontainers" },
     { name = "wetterdienst" },
 ]
@@ -2239,6 +2250,7 @@ requires-dist = [
     { name = "pytest" },
     { name = "schedule" },
     { name = "sqlalchemy" },
+    { name = "structlog", specifier = ">=24.0.0" },
     { name = "testcontainers", extras = ["postgresql"] },
     { name = "wetterdienst", specifier = ">=0.74.0" },
 ]
