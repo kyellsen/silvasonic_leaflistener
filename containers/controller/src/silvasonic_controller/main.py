@@ -92,6 +92,9 @@ class SessionInfo:
     rec_id: str
     port: int
     profile_slug: str
+    created_at: float = 0.0
+    failure_count: int = 0
+    next_retry_timestamp: float = 0.0
 
 
 class Controller:
@@ -385,10 +388,138 @@ class Controller:
                 else:
                     # Timeout, check for profile updates
                     await asyncio.to_thread(self._check_profile_updates)
-                    pass
             except Exception as e:
                 logger.error(f"Monitor error: {e}")
                 await asyncio.sleep(5)
+
+    async def health_check_loop(self) -> None:
+        """Periodic reconciliation loop (Self-Healing)."""
+        logger.info("Starting Health Check Loop...")
+        while self.running:
+            try:
+                # 1. Get Snapshot of Reality (Running Containers)
+                running_containers = await self.orchestrator.list_active_recorders()
+                # Normalize Names: Podman returns list of names usually /name, or just name
+                # We strip leading slash strictly speaking, but usually loose matching is enough?
+                # Let's clean the names from Podman just in case
+                running_names = set()
+                for c in running_containers:
+                    # 'Names' is usually a list of strings
+                    names = c.get("Names", [])
+                    if isinstance(names, list):
+                        for n in names:
+                            running_names.add(n.lstrip("/"))
+                    else:
+                        running_names.add(str(names).lstrip("/"))
+
+                current_time = time.time()
+                STABILITY_THRESHOLD = 300  # 5 minutes running = stable
+
+                # 2. Iterate Expected Sessions
+                # Make a copy of items to avoid modification issues if we were to delete (we don't delete here though)
+                for card_id, session in list(self.active_sessions.items()):
+                    # Check if running
+                    is_running = session.container_name in running_names
+
+                    if is_running:
+                        # HEALTHY STATE
+                        # If it has been running long enough, reset failure counters
+                        # We use session.created_at as a proxy for "last started at"
+                        if session.failure_count > 0 and (
+                            current_time - session.created_at > STABILITY_THRESHOLD
+                        ):
+                            logger.info(
+                                f"Session {session.rec_id} stable. Resetting error counters."
+                            )
+                            session.failure_count = 0
+                        continue
+
+                    # CRASH / MISSING DETECTED
+                    # Check Backoff
+                    if current_time < session.next_retry_timestamp:
+                        # Waiting for backoff
+                        continue
+
+                    logger.warning(
+                        f"Container {session.container_name} for {session.rec_id} is missing/stopped! "
+                        f"Attempting restart (Failures: {session.failure_count})..."
+                    )
+
+                    # Calculate Backoff for NEXT failure: 5 * 2^N (max 5 mins)
+                    # 0 fails -> retry immediately (after 10s loop), next backoff 5s
+                    # 1 fail -> next backoff 10s
+                    # ...
+                    backoff = min(300, 5 * (2**session.failure_count))
+
+                    # Attempt Restart via Orchestrator
+                    # We need the device path from somewhere. Session doesn't store it.
+                    # BUT spawn_recorder takes device_path.
+                    # We intentionally didn't store device info in SessionInfo initially.
+                    # We might need to fetch it from DeviceManager or look it up.
+                    # Problem: DeviceManager.scan_devices() blocks/scans.
+                    # Better solution: The hardware MUST be present for us to care.
+                    # Let's assume hardware is still there if we haven't reconciled it away.
+                    # We can iterate device_manager or just store device_path in SessionInfo.
+
+                    # FIX: Update SessionInfo to store device_path or rely on Reconcile to handle this?
+                    # The original plan didn't specify adding device_path, but spawn_recorder needs it.
+                    # Let's look up the device by card_id.
+
+                    # Quick fix: scan devices (cached?) or store device_path in SessionInfo.
+                    # Storing in SessionInfo is cleaner. Let's add it to dataclass in next step if needed.
+                    # For now, let's try to lookup device.
+
+                    # Assuming we add device_path to SessionInfo
+                    # For this step, I will add device_path to SessionInfo creation logic as well.
+
+                    # Wait, spawn_recorder needs: name, profile_slug, device_path, card_id.
+                    # We have name (session.rec_id suffix?), profile_slug, card_id.
+                    # Missing: device_path.
+
+                    # Let's dynamically find it.
+                    devices = await self.device_manager.scan_devices()
+                    target_device = next((d for d in devices if d.card_id == card_id), None)
+
+                    if not target_device:
+                        logger.warning(f"Device for {session.rec_id} not found. Cannot restart.")
+                        # If device is gone, reconcile() should have cleaned it up or will clean it up.
+                        # We should trust reconcile() to remove it.
+                        continue
+
+                    success = await self.orchestrator.spawn_recorder(
+                        name=session.rec_id,  # Wait, spawn_recorder arg 'name' is just suffix?
+                        # Looking at spawn_recorder(self, name: str, ...):
+                        # container_name = f"silvasonic_recorder_{name}"
+                        # And we stored rec_id = f"{matched_profile.slug}_{device.card_id}"
+                        # Check reconcile: spawn_recorder(name=rec_id, ...)
+                        # Yes.
+                        profile_slug=session.profile_slug,
+                        device_path=target_device.dev_path,
+                        card_id=card_id,
+                    )
+
+                    if success:
+                        logger.info(f"Restarted {session.container_name} successfully.")
+                        session.created_at = current_time
+                        session.failure_count += 1
+                        session.next_retry_timestamp = 0  # Reset? No, keep logic
+                        # Actually if success, we count it as a "try". If it stays up, we reset later.
+                        # Wait, if successful, we shouldn't increment failure_count YET?
+                        # Usually "failure_count" tracks "how many times it crashed".
+                        # So if we just restarted it, we are recovering from failure N.
+                        # So we incremented N.
+                        # Only if it crashes AGAIN do we care about backoff.
+                        # BUT, we need to set next_retry_timestamp in case it crashes immediately.
+                        session.next_retry_timestamp = current_time + backoff
+                    else:
+                        logger.error(f"Failed to restart {session.container_name}.")
+                        session.failure_count += 1
+                        session.next_retry_timestamp = current_time + backoff
+
+            except Exception as e:
+                logger.error(f"Health check loop error: {e}")
+
+            await asyncio.sleep(10)
 
     async def heartbeat_loop(self) -> None:
         """Background task for status writing."""
@@ -420,6 +551,7 @@ class Controller:
         # Start background tasks
         monitor_task = asyncio.create_task(self.monitor_hardware())
         heartbeat_task = asyncio.create_task(self.heartbeat_loop())
+        health_task = asyncio.create_task(self.health_check_loop())
 
         # Wait until stopped
         try:
@@ -430,6 +562,7 @@ class Controller:
         finally:
             monitor_task.cancel()
             heartbeat_task.cancel()
+            health_task.cancel()
             if "api_task" in locals():
                 api_task.cancel()  # pyright: ignore
             logger.info("Shutdown complete.")

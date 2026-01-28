@@ -1,7 +1,10 @@
 import logging
 import os
 import typing
-from dataclasses import dataclass
+from pathlib import Path
+
+import yaml
+from pydantic import BaseModel, Field
 
 if typing.TYPE_CHECKING:
     from silvasonic_controller.podman_client import PodmanOrchestrator
@@ -9,89 +12,84 @@ if typing.TYPE_CHECKING:
 logger = logging.getLogger("ServiceManager")
 
 
-@dataclass
-class ServiceConfig:
-    name: str
+class ServiceMount(BaseModel):
+    source: str
+    target: str
+    mode: str = "z"
+
+
+class ServiceDefinition(BaseModel):
     image: str
-    enabled: bool
-    env: dict[str, str]
-    mounts: list[dict[str, str]]  # source, target, mode
+    enabled: bool = True
     restart_policy: str = "always"
-    ports: list[str] | None = None
     network: str = "silvasonic_default"
+    env: dict[str, str] = Field(default_factory=dict)
+    mounts: list[ServiceMount] = Field(default_factory=list)
+    ports: list[str] = Field(default_factory=list)
+    dependencies: list[str] = Field(default_factory=list)
+
+
+class ServiceConfigRoot(BaseModel):
+    services: dict[str, ServiceDefinition]
 
 
 class ServiceManager:
     def __init__(
-        self, orchestrator: "PodmanOrchestrator", db_connection_string: str | None = None
+        self, orchestrator: "PodmanOrchestrator", config_path: str | Path | None = None
     ) -> None:
         self.orchestrator = orchestrator
-        # TODO: Initialize DB connection here or injected
-        # For now, we simulate a DB/Registry with the seed values
-        self._services: dict[str, ServiceConfig] = {}
+        self._services: dict[str, ServiceDefinition] = {}
+
+        # Default config path logic
+        if config_path:
+            self.config_path = Path(config_path)
+        else:
+            # Fallback to standard location
+            data_dir = os.environ.get("SILVASONIC_DATA_DIR", "/mnt/data/services/silvasonic")
+            self.config_path = Path(data_dir) / "config" / "dynamic_services.yaml"
+
         self._load_initial_registry()
 
     def _load_initial_registry(self) -> None:
         """
-        Mock registry loader. In real impl this would query DB.
+        Load services from the YAML configuration file.
         """
-        # Resolving Host Path using same logic as Controller
-        host_data_dir = os.environ.get("HOST_SILVASONIC_DATA_DIR", "/mnt/data/services/silvasonic")
+        if not self.config_path.exists():
+            logger.warning(
+                f"Config file not found at {self.config_path}. No dynamic services loaded."
+            )
+            return
 
-        self._services["birdnet"] = ServiceConfig(
-            name="birdnet",
-            image="silvasonic-birdnet:latest",
-            enabled=True,
-            env={
-                "PYTHONUNBUFFERED": "1",
-                "INPUT_DIR": "/data/recording",
-                "RESULTS_DIR": "/data/results",
-                "MIN_CONFIDENCE": "0.7",
-                "RECURSIVE_WATCH": "true",
-            },
-            mounts=[
-                {
-                    "source": f"{host_data_dir}/recorder/recordings",
-                    "target": "/data/recording",
-                    "mode": "ro",
-                },
-                {"source": f"{host_data_dir}/config", "target": "/config", "mode": "ro"},
-                {
-                    "source": f"{host_data_dir}/birdnet/results",
-                    "target": "/data/results",
-                    "mode": "z",
-                },
-                {"source": f"{host_data_dir}/logs", "target": "/var/log/silvasonic", "mode": "z"},
-                {
-                    "source": f"{host_data_dir}/status",
-                    "target": "/mnt/data/services/silvasonic/status",
-                    "mode": "z",
-                },
-                {
-                    "source": f"{host_data_dir}/notifications",
-                    "target": "/data/notifications",
-                    "mode": "z",
-                },
-            ],
-        )
+        try:
+            with open(self.config_path) as f:
+                raw_config = yaml.safe_load(f)
 
-        self._services["weather"] = ServiceConfig(
-            name="weather",
-            image="silvasonic-weather:latest",
-            enabled=True,
-            env={},
-            mounts=[
-                {"source": f"{host_data_dir}/config", "target": "/config", "mode": "z"},
-                {"source": f"{host_data_dir}/logs", "target": "/var/log/silvasonic", "mode": "z"},
-            ],
-        )
+            if not raw_config:
+                logger.warning(f"Config file at {self.config_path} is empty.")
+                return
+
+            # Validate and parse using Pydantic
+            config_root = ServiceConfigRoot(**raw_config)
+            self._services = config_root.services
+            logger.info(f"Loaded {len(self._services)} services from {self.config_path}")
+
+        except Exception as e:
+            logger.error(f"Failed to load service registry from {self.config_path}: {e}")
+
+    def _resolve_env_vars(self, env_vars: dict[str, str]) -> dict[str, str]:
+        """
+        Optional: Resolve simple env var placeholders if needed.
+        Currently relying on Podman/Compose to handle env expansion or pre-processing.
+        But for now, just return as is.
+        """
+        return env_vars
 
     async def sync_services(self) -> None:
         """
         Reconcile expected services with running containers.
         """
-        # 1. Get running generic services (filter by managed_by=silvasonic-controller-service)
-        pass  # Implementation in main loop usually, but here we can manage it.
+        # TODO: Implement full reconciliation loop
+        pass
 
     async def start_service(self, service_name: str) -> bool:
         if service_name not in self._services:
@@ -99,14 +97,25 @@ class ServiceManager:
             return False
 
         config = self._services[service_name]
+        if not config.enabled:
+            logger.info(f"Service {service_name} is disabled. Skipping.")
+            return False
+
         logger.info(f"Starting service: {service_name}")
 
-        return await self.orchestrator.spawn_service(
-            service_name=config.name,
-            image=config.image,
-            env_vars=config.env,
-            mounts=config.mounts,
-            network=config.network,
+        # Convert Pydantic models to dicts for the orchestrator
+        mounts_list = [m.model_dump() for m in config.mounts]
+
+        return bool(
+            await self.orchestrator.spawn_service(
+                service_name=service_name,
+                image=config.image,
+                env_vars=config.env,
+                mounts=mounts_list,
+                network=config.network,
+                restart_policy=config.restart_policy,
+                ports=config.ports,
+            )
         )
 
     async def stop_service(self, service_name: str) -> bool:

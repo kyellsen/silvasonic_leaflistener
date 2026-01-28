@@ -1,4 +1,5 @@
 import os
+import typing
 
 from sqlalchemy.ext.asyncio import (
     AsyncConnection,
@@ -25,7 +26,7 @@ class DatabaseHandler:
     def get_connection(self) -> AsyncConnection:
         return self.engine.connect()
 
-    async def get_db(self):
+    async def get_db(self) -> typing.AsyncGenerator[AsyncSession, None]:
         async with self.async_session_maker() as session:
             yield session
 
