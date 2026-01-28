@@ -14,7 +14,7 @@ class Settings(BaseSettings):
     LIVE_STREAM_TARGET: str = Field(
         default="silvasonic_livesound", description="Hostname for live stream target"
     )
-    LIVE_STREAM_PORT: int = Field(default=1234, description="Port for live stream target")
+    LIVE_STREAM_PORT: int = Field(default=8003, description="Port for live stream target")
 
     # Hardware Selection
     RECORDER_ID: str | None = Field(

@@ -19,7 +19,7 @@ class TestRecorderLoop(unittest.TestCase):
         self.mock_settings.STATUS_DIR = "/tmp/status"
         self.mock_settings.RECORDER_ID = "rec1"
         self.mock_settings.LIVE_STREAM_TARGET = "localhost"
-        self.mock_settings.LIVE_STREAM_PORT = 1234
+        self.mock_settings.LIVE_STREAM_PORT = 8003
         self.mock_settings.MOCK_HARDWARE = False
         self.mock_settings.AUDIO_PROFILE = None
         self.mock_settings.STRICT_HARDWARE_MATCH = False
