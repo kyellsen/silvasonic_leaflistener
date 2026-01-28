@@ -48,6 +48,7 @@ class DatabaseHandler:
                 return True
 
             except OperationalError as e:
+                retries -= 1
                 logger.warning(f"Database not ready ({e}). Retrying in 5s... ({retries} left)")
                 time.sleep(5)
             except Exception as e:
