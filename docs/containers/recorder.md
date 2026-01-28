@@ -8,28 +8,36 @@ Der Recorder existiert daher als isolierter, privilegierter Prozess ("The Sacred
 
 ## 2. Nutzen für den Silvasonic-User
 Für den Anwender garantiert dieser Container:
-*   **Lückenlose Überwachung**: Keine Sekunde Audio geht verloren, auch wenn das Internet ausfällt oder die KI-Analyse hinterherhinkt.
-*   **Datensicherheit**: Die Primärdaten (.flac) werden sofort persistent auf der NVMe-SSD gespeichert. Selbst bei einem Stromausfall sind nur die letzten Millisekunden gefährdet.
-*   **Live-Verfügbarkeit**: Durch den UDP-Stream kann der Nutzer jederzeit "live reinhören" (via Dashboard/Livesound), ohne dass die Aufnahme unterbrochen wird.
+*   **Lückenlose Überwachung**: Garantierte Audio-Kontinuität durch Prozess-Isolation, auch wenn BirdNET oder Netzwerk stocken.
+*   **Hardware-Flexibilität**: Durch das neue **Profile-System (Pydantic)** werden verschiedene Mikrofone (Rode, Generic USB) automatisch erkannt und mit optimalen gain/sample-rate Einstellungen geladen.
+*   **Datensicherheit**: Speichert primäre Audiodaten sofort persistent als FLAC.
+*   **Transparenz**: Detaillierte Echtzeit-Statusberichte (JSON) über CPU-Last, Memory und aktives Hardware-Profil.
+*   **Live-Streaming**: Zero-Latency UDP-Stream zum `livesound` Container für direktes Reinhören.
 
 ## 3. Kernaufgaben (Core Responsibilities)
 Der Container arbeitet als **Audio-Pipeline-Manager**.
 
 *   **Inputs (Eingabe):**
-    *   Greift den Audio-Stream direkt vom ALSA-Subsystem ab (Hardware-Zugriff auf USB-Mikrofon/Soundkarte).
-    *   Alternativ: Liest Testdateien im Mock-Modus via `strategies.py`.
-*   **Verarbeitung:**
-    *   Startet und überwacht einen **FFmpeg-Prozess** als Child-Process.
-    *   Puffert den Audio-Stream im RAM (via Pipe).
-    *   Komprimiert Audio on-the-fly nach **FLAC**.
-    *   Segmentiert den Stream in exakte 10-Sekunden-Dateien.
+    *   **Hardware (ALSA)**: Liest Audio direkt vom Kernel-Subsystem (via `AlsaStrategy`). Nutzt USB-IDs zur strikten Identifikation der Hardware.
+    *   **Mock (File Injection)**: Für Development/Testing ohne Hardware – liest Audio-Loops aus Verzeichnissen (via `FileMockStrategy`).
+    *   **Konfiguration**: Validiert Hardware-Profile strikt gegen **Pydantic Models** aus `mic_profiles.yml`.
+
+*   **Processing (Verarbeitung):**
+    *   **Engine**: Steuert einen persistenten **FFmpeg-Child-Process** (`subprocess`).
+    *   **Logging**: Erzeugt strukturierte JSON-Logs via **structlog** für einfache Maschinen-Lesbarkeit (ELK-Stack ready).
+    *   **Resilience**: Überwacht den FFmpeg-Prozess und startet ihn bei Absturz automatisch neu ("Self-Healing").
+    *   **Build**: Basiert auf modernem Multi-Stage Dockerfile mit **uv** Package Manager für minimale Image-Größe.
+
 *   **Outputs (Ausgabe):**
-    *   **Dateisystem**: Schreibt indexierte Dateien (`YYYY-MM-DD_HH-MM-SS.flac`) in den Ordner `/mnt/data/services/silvasonic/recorder/recordings`.
-    *   **Netzwerk (Lokal)**: Sendet einen rohen PCM-Stream via UDP an den `livesound`-Container zur Visualisierung/Streaming.
-    *   **Status**: Schreibt Heartbeat-JSONs nach `/mnt/data/services/silvasonic/status`, damit der Healthchecker die Funktion prüfen kann.
+    *   **Dateisystem**: Schreibt FLAC-Dateien in 10-Sekunden-Chunks.
+        *   Pfad: `/mnt/data/services/silvasonic/recorder/recordings/[PROFILE_SLUG]/YYYY-MM-DD_HH-MM-SS.flac`
+        *   *(Hinweis: Erstellt jetzt Unterordner basierend auf Recorder-ID oder Profil-Name)*
+    *   **UDP Stream**: Sendet 16-bit PCM Raw Audio (Mono) an `livesound` (Port via Config).
+    *   **Status**: Schreibt Heartbeat-JSON nach `/mnt/data/services/silvasonic/status/recorder_[ID].json`.
+        *   Enthält jetzt Metadaten zum aktiven Mikrofon-Profil und genutzter Hardware.
 
 ## 4. Abgrenzung (Was ist NICHT seine Aufgabe)
 *   **Keine Analyse**: Der Recorder weiß nicht, *was* er aufnimmt. Ob Vogel, Fledermaus oder Stille – er speichert alles blind. Die Auswertung macht **BirdNET**.
 *   **Kein Cloud-Sync**: Der Recorder lädt nichts ins Internet. Das ist exklusive Aufgabe des **Uploaders**.
 *   **Kein Playback**: Der Recorder spielt nichts ab. Das machen **Dashboard** oder **Livesound**.
-*   **Kein Hardware-Management**: Er initialisiert keine Soundkarten-Treiber (das macht das Host-System/Kernel), er nutzt sie nur.
+*   **Kein Hardware-Init**: Er verlässt sich darauf, dass das Host-System (Kernel/ALSA) die Soundkarten bereits initialisiert hat.

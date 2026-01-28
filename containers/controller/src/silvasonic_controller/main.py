@@ -103,6 +103,45 @@ class Controller:
         # Load Profiles
         self.profiles = load_profiles(Path("/app/mic_profiles"))  # Use mounted profiles
 
+    async def adopt_orphans(self) -> None:
+        """Adopt existing recorder containers on startup."""
+        logger.info("Scanning for existing recorder containers...")
+        active = await self.orchestrator.list_active_recorders()
+
+        for container in active:
+            try:
+                # Parse labels from container info
+                # "Labels" key might vary depending on podman version/json format,
+                # but with --format json it is usually under "Labels"
+                labels = container.get("Labels", {})
+
+                # Check for critical labels
+                s_profile = labels.get("silvasonic.profile")
+                s_port_str = labels.get("silvasonic.port")
+                s_rec_id = labels.get("silvasonic.rec_id")
+                s_card_id = labels.get("card_id")
+
+                # Depending on Podman version/format, Names might be a list or string
+                c_names = container.get("Names", [])
+                c_name = c_names[0] if isinstance(c_names, list) and c_names else str(c_names)
+
+                if s_profile and s_port_str and s_rec_id and s_card_id:
+                    port = int(s_port_str)
+
+                    session = SessionInfo(
+                        container_name=c_name, rec_id=s_rec_id, port=port, profile_slug=s_profile
+                    )
+
+                    self.active_sessions[s_card_id] = session
+                    logger.info(f"Adopted existing session: {s_rec_id} (Card {s_card_id})")
+                else:
+                    logger.warning(
+                        f"Found unmanaged/legacy recorder container {c_name} without full labels. "
+                        "It will likely be restarted."
+                    )
+            except Exception as e:
+                logger.error(f"Failed to adopt container {container}: {e}")
+
     async def write_status(self, status: str = "Running") -> None:
         """Writes the Controller's own heartbeat asynchronously."""
         try:
@@ -262,6 +301,9 @@ class Controller:
 
     async def run(self) -> None:
         logger.info("Starting Silvasonic Controller (AsyncIO)...")
+
+        # Adopt existing containers
+        await self.adopt_orphans()
 
         # Initial Reconcile
         await self.reconcile()

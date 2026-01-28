@@ -73,7 +73,7 @@ def test_ghost_recorder_cleanup(mock_status_dir):
     mock_mailer = MagicMock()
 
     # Run Check
-    check_services_status(mock_mailer)
+    check_services_status(mock_mailer, {})
 
     # Assertions
 

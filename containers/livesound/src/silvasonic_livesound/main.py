@@ -71,6 +71,10 @@ logging.basicConfig(level=logging.INFO, handlers=handlers, force=True)
 
 logger = structlog.get_logger("Main")
 
+# Global Error State
+_last_error: str | None = None
+_last_error_time: float | None = None
+
 
 def write_status() -> None:
     """Writes the Livesound's own heartbeat."""
@@ -79,10 +83,13 @@ def write_status() -> None:
 
     while True:
         try:
+            global _last_error, _last_error_time
             data = {
                 "service": "livesound",
                 "timestamp": time.time(),
-                "status": "Running",
+                "status": "Running" if not _last_error else "Error: Degraded",
+                "last_error": _last_error,
+                "last_error_time": _last_error_time,
                 "cpu_percent": psutil.cpu_percent(),
                 "memory_usage_mb": psutil.Process(os.getpid()).memory_info().rss / 1024 / 1024,
                 "pid": os.getpid(),
@@ -110,12 +117,21 @@ def main() -> None:
     import uvicorn
 
     # Loading via string to allow reload support if mapped, though we run direct here
-    uvicorn.run(
-        "silvasonic_livesound.live.server:app",
-        host=settings.HOST,
-        port=settings.PORT,
-        log_level="info",
-    )
+    try:
+        uvicorn.run(
+            "silvasonic_livesound.live.server:app",
+            host=settings.HOST,
+            port=settings.PORT,
+            log_level="info",
+        )
+    except Exception as e:
+        logger.critical(f"Livesound Main Crash: {e}")
+        global _last_error, _last_error_time
+        _last_error = str(e)
+        _last_error_time = time.time()
+        # Give the status thread a chance to write the error
+        time.sleep(6)
+        raise
 
 
 if __name__ == "__main__":

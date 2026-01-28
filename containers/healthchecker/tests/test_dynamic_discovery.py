@@ -48,7 +48,7 @@ def test_dynamic_service_discovery(mock_status_dir):
     mock_mailer = MagicMock()
 
     # Run Check
-    check_services_status(mock_mailer)
+    check_services_status(mock_mailer, {})
 
     # Verify Output
     status_output = mock_status_dir / "system_status.json"
@@ -94,7 +94,7 @@ def test_garbage_file_ignore(mock_status_dir):
         json.dump({"some": "stats", "count": 10}, f)
 
     mock_mailer = MagicMock()
-    check_services_status(mock_mailer)
+    check_services_status(mock_mailer, {})
 
     status_output = mock_status_dir / "system_status.json"
     with open(status_output) as f:

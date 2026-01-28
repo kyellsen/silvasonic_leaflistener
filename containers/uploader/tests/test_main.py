@@ -68,6 +68,46 @@ class TestMain:
             assert data["meta"]["queue_size"] == 5
             assert data["meta"]["disk_usage_percent"] == 45.0
             assert "timestamp" in data
+            assert data["last_error"] is None
+
+    @patch("silvasonic_uploader.main.STATUS_FILE", new_callable=lambda: "status.json")
+    def test_write_status_with_error(self, mock_status_file: MagicMock, temp_fs: str) -> None:
+        """Test writing status containing error info."""
+        status_path = os.path.join(temp_fs, "status.json")
+
+        with (
+            patch("silvasonic_uploader.main.STATUS_FILE", status_path),
+            patch("silvasonic_uploader.main.psutil") as mock_psutil,
+        ):
+            mock_psutil.cpu_percent.return_value = 5.0
+            mock_psutil.Process.return_value.memory_info.return_value.rss = 100
+
+            # Reset global error state for test safety
+            import silvasonic_uploader.main as main_mod
+            from silvasonic_uploader.main import write_status
+
+            main_mod._last_error = None
+
+            # Act: Write with error
+            err_obj = ConnectionError("Nextcloud Down")
+            write_status("Error", last_upload=0, queue_size=1, disk_usage=10.0, error=err_obj)
+
+            # Assert
+            with open(status_path) as f:
+                data = json.load(f)
+
+            assert data["status"] == "Error"
+            assert data["last_error"] == "Nextcloud Down"
+            assert data["last_error_time"] > 0
+
+            # Act: Succeed later
+            write_status("Idle", last_upload=1, queue_size=0, disk_usage=10.0)
+
+            # Assert: Error persisted
+            with open(status_path) as f:
+                data2 = json.load(f)
+            assert data2["status"] == "Idle"
+            assert data2["last_error"] == "Nextcloud Down"
 
     @patch("silvasonic_uploader.main.setup_environment")
     @patch("silvasonic_uploader.main.DatabaseHandler")

@@ -231,6 +231,7 @@ dependencies = [
     { name = "resampy" },
     { name = "soundfile" },
     { name = "sqlalchemy" },
+    { name = "sqlmodel" },
     { name = "structlog" },
     { name = "watchdog" },
 ]
@@ -259,6 +260,7 @@ requires-dist = [
     { name = "resampy", specifier = ">=0.4.0" },
     { name = "soundfile" },
     { name = "sqlalchemy" },
+    { name = "sqlmodel", specifier = ">=0.0.16" },
     { name = "structlog", specifier = ">=24.0.0" },
     { name = "watchdog" },
 ]
@@ -2187,6 +2189,7 @@ source = { editable = "containers/recorder" }
 dependencies = [
     { name = "psutil" },
     { name = "pydantic" },
+    { name = "pydantic-settings" },
     { name = "pyyaml" },
     { name = "structlog" },
 ]
@@ -2195,6 +2198,7 @@ dependencies = [
 requires-dist = [
     { name = "psutil" },
     { name = "pydantic", specifier = ">=2.0" },
+    { name = "pydantic-settings" },
     { name = "pyyaml" },
     { name = "structlog", specifier = ">=24.0.0" },
 ]
@@ -2331,6 +2335,19 @@ wheels = [
     { url = "https://files.pythonhosted.org/packages/9f/25/6dcf8abafff1389a21c7185364de145107b7394ecdcb05233815b236330d/sqlalchemy-2.0.46-cp311-cp311-win32.whl", hash = "sha256:9d80ea2ac519c364a7286e8d765d6cd08648f5b21ca855a8017d9871f075542d", size = 2114564, upload-time = "2026-01-21T18:33:15.85Z" },
     { url = "https://files.pythonhosted.org/packages/93/5f/e081490f8523adc0088f777e4ebad3cac21e498ec8a3d4067074e21447a1/sqlalchemy-2.0.46-cp311-cp311-win_amd64.whl", hash = "sha256:585af6afe518732d9ccd3aea33af2edaae4a7aa881af5d8f6f4fe3a368699597", size = 2139233, upload-time = "2026-01-21T18:33:17.528Z" },
     { url = "https://files.pythonhosted.org/packages/fc/a1/9c4efa03300926601c19c18582531b45aededfb961ab3c3585f1e24f120b/sqlalchemy-2.0.46-py3-none-any.whl", hash = "sha256:f9c11766e7e7c0a2767dda5acb006a118640c9fc0a4104214b96269bfb78399e", size = 1937882, upload-time = "2026-01-21T18:22:10.456Z" },
+]
+
+[[package]]
+name = "sqlmodel"
+version = "0.0.31"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "pydantic" },
+    { name = "sqlalchemy" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/56/b8/e7cd6def4a773f25d6e29ffce63ccbfd6cf9488b804ab6fb9b80d334b39d/sqlmodel-0.0.31.tar.gz", hash = "sha256:2d41a8a9ee05e40736e2f9db8ea28cbfe9b5d4e5a18dd139e80605025e0c516c", size = 94952, upload-time = "2025-12-28T12:35:01.436Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/6c/72/5aa5be921800f6418a949a73c9bb7054890881143e6bc604a93d228a95a3/sqlmodel-0.0.31-py3-none-any.whl", hash = "sha256:6d946d56cac4c2db296ba1541357cee2e795d68174e2043cd138b916794b1513", size = 27093, upload-time = "2025-12-28T12:35:00.108Z" },
 ]
 
 [[package]]

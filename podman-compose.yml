@@ -94,6 +94,8 @@ services:
       - ./containers/recorder/src/microphones:/app/mic_profiles:ro
       - ${SILVASONIC_DATA_DIR}/recorder/recordings:/data/recording:z
       - ${SILVASONIC_DATA_DIR}/logs:/var/log/silvasonic:z
+      - /proc/asound:/proc/asound:ro
+      - /sys:/sys:ro
 
   livesound:
     build:
@@ -175,8 +177,10 @@ services:
     # 4. Set environment:
     #      - AUDIO_PROFILE=back_mic  # Folder will be /data/recording/back_mic
     #      - LIVE_STREAM_PORT=1235   # Unique port
-    # 5. Map correct device:
+    # 5. Map correct device & Discovery paths:
     #      - /dev/snd/pcmC2D0c:/dev/snd/pcmC2D0c
+    #      - /proc/asound:/proc/asound:ro
+    #      - /sys:/sys:ro
 
     #livesound:
     #  environment:

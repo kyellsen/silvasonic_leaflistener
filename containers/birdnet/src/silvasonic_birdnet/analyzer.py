@@ -306,13 +306,8 @@ class BirdNETAnalyzer:
             event_id = f"{int(time.time() * 1000)}_{detection.scientific_name.replace(' ', '_')}"
             event_path = queue_dir / f"{event_id}.json"
 
-            # Use model_dump for clean dict
-            data_dict = detection.model_dump()
-
-            # Ensure timestamp is serialized correctly
-            # (Pydantic does it, but to be safe for JSON if not using jsonable_encoder equivalent)
-            if data_dict.get("timestamp"):
-                data_dict["timestamp"] = data_dict["timestamp"].isoformat()
+            # Use model_dump for clean dict, preserving aliases (lat/lon) and serializing datetimes
+            data_dict = detection.model_dump(mode="json", by_alias=True)
 
             payload = {"type": "bird_detection", "timestamp": time.time(), "data": data_dict}
 

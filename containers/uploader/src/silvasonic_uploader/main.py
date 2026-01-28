@@ -58,6 +58,11 @@ CLEANUP_TARGET = int(os.getenv("UPLOADER_CLEANUP_TARGET", 60))
 MIN_AGE = os.getenv("UPLOADER_MIN_AGE", "1m")
 
 
+# Global Status State
+_last_error: str | None = None
+_last_error_time: float | None = None
+
+
 def setup_environment() -> None:
     """Setup logging and directories."""
     os.makedirs("/var/log/silvasonic", exist_ok=True)
@@ -135,10 +140,19 @@ def calculate_queue_size(directory: str, db: typing.Any) -> int:
 
 
 def write_status(
-    status: str, last_upload: float = 0, queue_size: int = -1, disk_usage: float = 0
+    status: str,
+    last_upload: float = 0,
+    queue_size: int = -1,
+    disk_usage: float = 0,
+    error: Exception | str | None = None,
 ) -> None:
     """Write current status to JSON file for dashboard. Blocking IO."""
     try:
+        global _last_error, _last_error_time
+        if error:
+            _last_error = str(error)
+            _last_error_time = time.time()
+
         data = {
             "service": "uploader",
             "timestamp": time.time(),
@@ -150,6 +164,8 @@ def write_status(
                 "queue_size": queue_size,
                 "disk_usage_percent": disk_usage,
             },
+            "last_error": _last_error,
+            "last_error_time": _last_error_time,
             # Keeping top-level for backwards compat if needed temporarily,
             # but dashboard should update
             "last_upload": last_upload,
@@ -338,12 +354,19 @@ async def main_loop() -> None:
                         last_upload_success,
                         queue_size,
                         disk_usage,
+                        None,  # error argument positionally
                     )
 
             else:
                 logger.error(f"Source directory {SOURCE_DIR} does not exist!")
                 await loop.run_in_executor(
-                    None, write_status, "Error: No Source", last_upload_success
+                    None,
+                    write_status,
+                    "Error: No Source",
+                    last_upload_success,
+                    -1,
+                    0,
+                    f"Source dir {SOURCE_DIR} missing",
                 )
 
             logger.info(f"Sleeping for {SYNC_INTERVAL} seconds...")
@@ -358,7 +381,7 @@ async def main_loop() -> None:
             report_error("main_loop_crash", e)
             try:
                 await loop.run_in_executor(
-                    None, write_status, "Error: Crashed", last_upload_success
+                    None, write_status, "Error: Crashed", last_upload_success, -1, 0, e
                 )
             except Exception:
                 pass

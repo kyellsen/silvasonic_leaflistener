@@ -68,6 +68,11 @@ def setup_logging() -> None:
 
 logger = structlog.get_logger("Weather")
 
+# Global Error State
+_last_error: str | None = None
+_last_error_time: float | None = None
+
+
 # Database
 engine = create_engine(settings.database_url)
 
@@ -166,17 +171,28 @@ def fetch_weather() -> None:
 
     except Exception as e:
         logger.exception(f"Fetch failed: {e}")
+        write_status("Error: Fetch Failed", error=e)
 
 
-def write_status(status_msg: str, station: str | None = None) -> None:
+def write_status(
+    status_msg: str, station: str | None = None, error: Exception | str | None = None
+) -> None:
     """Write the current status to a JSON file."""
     try:
         import psutil
+
+        global _last_error, _last_error_time
+
+        if error:
+            _last_error = str(error)
+            _last_error_time = time.time()
 
         data = {
             "service": "weather",
             "timestamp": time.time(),
             "status": status_msg,
+            "last_error": _last_error,
+            "last_error_time": _last_error_time,
             "cpu_percent": psutil.cpu_percent(),
             "memory_usage_mb": psutil.Process(os.getpid()).memory_info().rss / 1024 / 1024,
             "meta": {"station_id": station},
@@ -267,6 +283,7 @@ if __name__ == "__main__":
             time.sleep(1)
         except KeyboardInterrupt:
             break
-        except Exception:
+        except Exception as e:
             logger.exception("Weather Service Crashed:")
+            write_status("Error: Crashed", error=e)
             time.sleep(60)

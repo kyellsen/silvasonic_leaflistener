@@ -1,0 +1,89 @@
+============================= test session starts ==============================
+platform linux -- Python 3.11.14, pytest-9.0.2, pluggy-1.6.0
+rootdir: /mnt/data/dev/packages/silvasonic
+configfile: pyproject.toml
+plugins: asyncio-1.3.0, cov-7.0.0, playwright-0.7.2, base-url-2.1.0, anyio-4.12.1
+asyncio: mode=Mode.STRICT, debug=False, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function
+collected 3 items
+
+containers/healthchecker/tests/test_dynamic_discovery.py ..              [ 66%]
+containers/healthchecker/tests/test_ghosts.py F                          [100%]
+
+=================================== FAILURES ===================================
+_________________________ test_ghost_recorder_cleanup __________________________
+
+mock_status_dir = PosixPath('/tmp/pytest-of-kyellsen/pytest-86/test_ghost_recorder_cleanup0')
+
+    def test_ghost_recorder_cleanup(mock_status_dir):
+        """Test that stale recorder files are deleted."""
+    
+        # 1. Create a "Live" recorder status file (1 minute old)
+        live_file = mock_status_dir / "recorder_live.json"
+        live_data = {
+            "service": "recorder",
+            "timestamp": time.time() - 60,
+            "status": "Recording",
+            "cpu_percent": 10.0,
+            "memory_usage_mb": 50.0,
+            "pid": 123,
+            "meta": {"profile": {"name": "Test Mic"}},
+        }
+        with open(live_file, "w") as f:
+            json.dump(live_data, f)
+    
+        # 2. Create a "Ghost" recorder status file (20 minutes old - way past 5 min threshold)
+        ghost_file = mock_status_dir / "recorder_ghost.json"
+        ghost_data = {
+            "service": "recorder",
+            "timestamp": time.time() - (RECORDER_GHOST_THRESHOLD + 600),
+            "status": "Recording",
+            "cpu_percent": 0.0,
+            "memory_usage_mb": 0.0,
+            "pid": 999,
+            "meta": {"profile": {"name": "Ghost Mic"}},
+        }
+        with open(ghost_file, "w") as f:
+            json.dump(ghost_data, f)
+        # Explicitly set mtime to the past
+        ghost_mtime = time.time() - (RECORDER_GHOST_THRESHOLD + 600)
+        os.utime(ghost_file, (ghost_mtime, ghost_mtime))
+    
+        # 3. Create a "Stale but not Ghost" recorder status file (4 minutes old - within 5 min threshold)
+        # expect this to be reported as DOWN but NOT deleted
+        stale_file = mock_status_dir / "recorder_stale.json"
+        stale_data = {
+            "service": "recorder",
+            "timestamp": time.time() - (RECORDER_GHOST_THRESHOLD - 60),
+            "status": "Recording",
+            "cpu_percent": 0.0,
+            "memory_usage_mb": 0.0,
+            "pid": 888,
+            "meta": {"profile": {"name": "Stale Mic"}},
+        }
+        with open(stale_file, "w") as f:
+            json.dump(stale_data, f)
+        # Explicitly set mtime to the past
+        stale_mtime = time.time() - (RECORDER_GHOST_THRESHOLD - 60)
+        os.utime(stale_file, (stale_mtime, stale_mtime))
+    
+        # Mock Mailer
+        mock_mailer = MagicMock()
+    
+        # Run Check
+>       check_services_status(mock_mailer)
+E       TypeError: check_services_status() missing 1 required positional argument: 'service_states'
+
+containers/healthchecker/tests/test_ghosts.py:76: TypeError
+================================ tests coverage ================================
+_______________ coverage: platform linux, python 3.11.14-final-0 _______________
+
+Name                                                              Stmts   Miss  Cover   Missing
+-----------------------------------------------------------------------------------------------
+containers/healthchecker/src/silvasonic_healthchecker/mailer.py      81     70    14%   13-17, 21-38, 44-116, 120-141
+containers/healthchecker/src/silvasonic_healthchecker/main.py       235    131    44%   81-82, 87-88, 95, 106-114, 136-138, 168-179, 190-192, 208, 225-226, 234-237, 243-245, 253-254, 263-264, 297-298, 303-338, 343-359, 367-412, 417-446, 450
+containers/healthchecker/src/silvasonic_healthchecker/models.py      35      0   100%
+-----------------------------------------------------------------------------------------------
+TOTAL                                                               351    201    43%
+=========================== short test summary info ============================
+FAILED containers/healthchecker/tests/test_ghosts.py::test_ghost_recorder_cleanup
+========================= 1 failed, 2 passed in 5.21s ==========================

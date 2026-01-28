@@ -391,17 +391,25 @@ def find_matching_profile(
     return None, None
 
 
-def get_active_profile() -> tuple[MicrophoneProfile | None, DetectedDevice | None]:
+def get_active_profile(
+    mock_mode: bool | None = None,
+    force_profile: str | None = None,
+    strict_mode: bool | None = None,
+) -> tuple[MicrophoneProfile | None, DetectedDevice | None]:
     """Main entry point: Get the active microphone profile and device.
 
-    Environment variables:
-        MOCK_HARDWARE: Set to 'true' for mock mode
-        AUDIO_PROFILE: Force a specific profile by name/slug
-        STRICT_HARDWARE_MATCH: Set to 'true' to disable generic fallback
+    Args:
+        mock_mode: Override MOCK_HARDWARE env var.
+        force_profile: Override AUDIO_PROFILE env var.
+        strict_mode: Override STRICT_HARDWARE_MATCH env var.
     """
-    mock_mode = os.getenv("MOCK_HARDWARE", "false").lower() == "true"
-    force_profile = os.getenv("AUDIO_PROFILE")
-    strict_mode = os.getenv("STRICT_HARDWARE_MATCH", "false").lower() == "true"
+    # Load defaults from env if not provided
+    if mock_mode is None:
+        mock_mode = os.getenv("MOCK_HARDWARE", "false").lower() == "true"
+    if force_profile is None:
+        force_profile = os.getenv("AUDIO_PROFILE")
+    if strict_mode is None:
+        strict_mode = os.getenv("STRICT_HARDWARE_MATCH", "false").lower() == "true"
 
     profiles = load_profiles()
 

@@ -114,7 +114,7 @@ def load_timeout_overrides() -> dict[str, int]:
         return {}
 
 
-def check_services_status(mailer: Mailer) -> None:
+def check_services_status(mailer: Mailer, service_states: dict[str, str]) -> None:
     """Checks status files for all services and produces a consolidated system status."""
     current_time = time.time()
     system_status = {}
@@ -138,9 +138,13 @@ def check_services_status(mailer: Mailer) -> None:
                 service_data["last_seen"] = current_time
             else:
                 msg = "Postgres DB is unreachable."
-                logger.error("postgres_down", msg=msg)
-                # mailer.send_alert("Postgres Down", msg) # Optional: Enable if needed
+                # State check for Postgres
+                if service_states.get("postgres") != "Down":
+                    logger.error("postgres_down", msg=msg)
+                    # mailer.send_alert("Postgres Down", msg) # Optional: Enable if needed
+                service_data["status"] = "Down"
 
+            service_states["postgres"] = service_data["status"]
             system_status["postgres"] = service_data
             continue
 
@@ -219,12 +223,26 @@ def check_services_status(mailer: Mailer) -> None:
                     service_data["status"] = "Down"
                     service_data["message"] = f"Timeout ({int(time_diff)}s > {timeout_val}s)"
 
-                    # Alerting (Only for non-recorders usually, or specific policy)
-                    # We avoid spamming alerts for every recorder timeout, but for core services:
+                # State Transition Check
+                prev_status = service_states.get(instance_id, "Unknown")
+                curr_status = service_data["status"]
+
+                if curr_status == "Down" and prev_status != "Down":
+                    # Transition to Down
                     if service_id != "recorder":
                         msg = f"Service {instance_id} is silent. No heartbeat for {int(time_diff)} seconds."
-                        logger.error("service_timeout", service=instance_id, diff=int(time_diff))
+                        logger.error("service_down", service=instance_id, diff=int(time_diff))
                         mailer.send_alert(f"{display_name} Down", msg)
+
+                elif curr_status == "Running" and prev_status == "Down":
+                    # Transition to Running (Recovery)
+                    # Only alert recovery for non-recorders to keep noise down? Or all?
+                    # Let's alert for all significant services.
+                    if service_id != "recorder":
+                        logger.info("service_recovered", service=instance_id)
+                        mailer.send_alert(f"{display_name} Recovered", "Service is back online.")
+
+                service_states[instance_id] = curr_status
 
                 # Uploader Special Logic
                 if service_id == "uploader" and getattr(status_obj, "last_upload", None):
@@ -254,6 +272,12 @@ def check_services_status(mailer: Mailer) -> None:
                 "message": "No instance found",
                 "timeout_threshold": timeouts_override.get(service_id, config.timeout),
             }
+
+            # Missing Service Alert Logic
+            if service_states.get(service_id) != "Down":
+                logger.error("service_missing", service=service_id)
+                mailer.send_alert(f"{config.name} Down", "No instance found.")
+            service_states[service_id] = "Down"
 
     # Add HealthChecker itself
     system_status["healthchecker"] = {
@@ -397,13 +421,15 @@ def main() -> None:
     ensure_dirs()
     mailer = Mailer()
 
+    service_states: dict[str, str] = {}
+
     while running:
         try:
             # Efficient reload check instead of full re-instantiation
             mailer.reload_if_needed()
 
             write_status()  # Heartbeat
-            check_services_status(mailer)
+            check_services_status(mailer, service_states)
             check_error_drops(mailer)
             check_notification_queue(mailer)
         except Exception:
