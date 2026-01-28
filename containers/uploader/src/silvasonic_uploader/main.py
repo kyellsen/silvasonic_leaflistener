@@ -40,7 +40,7 @@ structlog.configure(
 logger = structlog.get_logger("Uploader")
 
 # --- Globals for Service Management ---
-_service_task: asyncio.Task | None = None
+_service_task: asyncio.Task[None] | None = None
 _current_settings: UploaderSettings | None = None
 _db_handler: DatabaseHandler | None = None
 
@@ -231,7 +231,8 @@ async def service_loop(settings: UploaderSettings) -> None:
     try:
         while True:
             # Check for cancellation
-            if asyncio.current_task().cancelled():
+            current_task = asyncio.current_task()
+            if current_task and current_task.cancelled():
                 raise asyncio.CancelledError()
 
             try:
@@ -283,7 +284,7 @@ async def service_loop(settings: UploaderSettings) -> None:
                                             size = os.path.getsize(full_path)
 
                                     # Log to DB
-                                    def db_task():
+                                    def db_task() -> None:
                                         db.log_upload(
                                             filename=filename,
                                             remote_path=f"{target_dir}/{filename}",
@@ -453,7 +454,7 @@ async def reload_service() -> None:
 
 
 @asynccontextmanager
-async def lifespan(app: FastAPI):
+async def lifespan(app: FastAPI) -> typing.AsyncIterator[None]:
     # Startup
     setup_logging()
 

@@ -17,7 +17,9 @@ class UploaderSettings(BaseSettings):
     # Nextcloud / WebDAV
     nextcloud_url: str = Field(default="", description="URL of the Nextcloud instance (WebDAV)")
     nextcloud_user: str = Field(default="", description="Username for Nextcloud")
-    nextcloud_password: SecretStr = Field(default="", description="App Password for Nextcloud")
+    nextcloud_password: SecretStr = Field(
+        default=SecretStr(""), description="App Password for Nextcloud"
+    )
 
     # Sync Settings
     sync_interval: int = Field(default=10, description="Interval in seconds between sync attempts")
