@@ -52,6 +52,9 @@ def test_fetch_weather_success(mock_wetterdienst, mock_db_engine, sample_weather
 
     # Verify connection usage
     assert mock_cls.call_count >= 1
+    # Verify that we used the correct argument name 'parameters'
+    call_kwargs = mock_cls.call_args[1]
+    assert "parameters" in call_kwargs
 
     # Verify DB insert
     insert_call = None
