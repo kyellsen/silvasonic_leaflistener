@@ -14,6 +14,7 @@ import psutil
 import structlog
 import uvicorn
 from silvasonic_controller import api
+from silvasonic_controller.persistence import PersistenceManager
 from silvasonic_controller.service_manager import ServiceManager
 
 # Setup Path to find modules
@@ -112,6 +113,9 @@ class Controller:
 
         # Service Manager
         self.service_manager = ServiceManager(self.orchestrator)
+
+        # Persistence (Soft Dependency)
+        self.persistence = PersistenceManager()
 
     async def adopt_orphans(self) -> None:
         """Adopt existing recorder containers on startup."""
@@ -269,6 +273,7 @@ class Controller:
         for card_id in active_ids:
             if card_id not in current_card_ids:
                 logger.info(f"Device {card_id} removed. Stopping recorder...")
+                await self.persistence.log_event("device_removed", {"card_id": card_id})
                 session = self.active_sessions[card_id]
                 await self.orchestrator.stop_recorder(session.container_name)
                 del self.active_sessions[card_id]
@@ -279,6 +284,7 @@ class Controller:
                 continue  # Already running
 
             logger.info(f"New Device Found: {device.name} (Card {device.card_id})")
+            await self.persistence.log_event("device_discovered", asdict(device))
 
             # Match Profile
             matched_profile = None
@@ -542,6 +548,10 @@ class Controller:
             if config.enabled:
                 await self.service_manager.start_service(service_name)
 
+        # Start Persistence
+        await self.persistence.start()
+        sync_task = asyncio.create_task(self.persistence.sync_loop())
+
         # Start API Server
         api.controller_instance = self
         config = uvicorn.Config(api.app, host="0.0.0.0", port=8002, log_level="info")
@@ -563,6 +573,8 @@ class Controller:
             monitor_task.cancel()
             heartbeat_task.cancel()
             health_task.cancel()
+            sync_task.cancel()
+            await self.persistence.stop()
             if "api_task" in locals():
                 api_task.cancel()  # pyright: ignore
             logger.info("Shutdown complete.")
