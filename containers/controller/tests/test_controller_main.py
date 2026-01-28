@@ -44,7 +44,7 @@ def test_setup_logging() -> None:
 async def test_write_live_config(mock_deps) -> None:
     dm, po, lp = mock_deps
     ctrl = Controller(dm.return_value, po.return_value)
-    ctrl.active_sessions["1"] = SessionInfo("c", "id", 1234, "slug")
+    ctrl.active_sessions["1"] = SessionInfo("c", "id", 8003, "slug")
 
     with patch("builtins.open", mock_open()) as m_open:
         with patch("os.rename"):
@@ -111,7 +111,7 @@ async def test_reconcile_ignore_existing(mock_deps) -> None:
     ctrl = Controller(dm.return_value, po.return_value)
 
     # Initial State: Session exists
-    ctrl.active_sessions["1"] = SessionInfo("cont", "id", 1234, "slug")
+    ctrl.active_sessions["1"] = SessionInfo("cont", "id", 8003, "slug")
 
     # Scan returns same device
     device = AudioDevice(name="Test Device", card_id="1", dev_path="...")
@@ -129,8 +129,8 @@ async def test_reconcile_remove_stale(mock_deps) -> None:
     ctrl = Controller(dm.return_value, po.return_value)
 
     # Initial sessions
-    ctrl.active_sessions["1"] = SessionInfo("cont_1", "id", 1234, "slug")
-    ctrl.active_sessions["2"] = SessionInfo("cont_2", "id", 1234, "slug")
+    ctrl.active_sessions["1"] = SessionInfo("cont_1", "id", 8003, "slug")
+    ctrl.active_sessions["2"] = SessionInfo("cont_2", "id", 8003, "slug")
 
     # Scan returns only device 2
     device2 = AudioDevice(name="Test", card_id="2", dev_path="...")

@@ -160,7 +160,7 @@ Silvasonic supports recording from multiple microphones simultaneously (e.g., a 
     - Set a unique `LIVE_STREAM_PORT` (e.g., `1235`).
     - Map the specific hardware device (e.g., `/dev/snd/pcmC2D0c:/dev/snd/pcmC2D0c`).
 3.  **Update LiveSound**:
-    - Add `LISTEN_PORTS=front:1234,back:1235` to the `livesound` service environment.
+    - Add `LISTEN_PORTS=front:8003,back:1235` to the `livesound` service environment.
     - Expose the new UDP ports in the `ports` section.
 4.  **Deploy**: Run `sudo ./setup/install.sh` again to apply changes.
 
