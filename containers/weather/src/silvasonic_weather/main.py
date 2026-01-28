@@ -176,15 +176,21 @@ def fetch_weather() -> None:
 def write_status(
     status_msg: str, station: str | None = None, error: Exception | str | None = None
 ) -> None:
-    """Write the current status to a JSON file."""
+    """Write the current status to Redis."""
     try:
         import psutil
+        import redis
 
         global _last_error, _last_error_time
 
         if error:
             _last_error = str(error)
             _last_error_time = time.time()
+
+        # Connect to Redis (creates new connection each time, which is fine for infrequent updates,
+        # or we could use a global if frequency is high. For weather (every 20m), this is fine)
+        # Actually, let's use a simple direct connection with timeout
+        r = redis.Redis(host="silvasonic_redis", port=6379, db=0, socket_connect_timeout=1)
 
         data = {
             "service": "weather",
@@ -197,14 +203,16 @@ def write_status(
             "meta": {"station_id": station, "provider": "OpenMeteo"},
             "pid": os.getpid(),
         }
-        s_file = settings.status_file
-        os.makedirs(os.path.dirname(s_file), exist_ok=True)
-        tmp = f"{s_file}.tmp"
-        with open(tmp, "w") as f:
-            json.dump(data, f)
-        os.rename(tmp, s_file)
+
+        # 10 minute TTL because weather updates are slow?
+        # No, the loop calls this potentially on error or startup.
+        # Ideally we want it to persist "Idle" for the 20min sleep.
+        # But if the container dies, we want it gone.
+        # Let's set TTL to 25 minutes (1500s) since update interval is 20m.
+        r.setex("status:weather", 1500, json.dumps(data))
+
     except Exception as e:
-        logger.error(f"Status write failed: {e}")
+        logger.error(f"Status write to Redis failed: {e}")
 
 
 if __name__ == "__main__":

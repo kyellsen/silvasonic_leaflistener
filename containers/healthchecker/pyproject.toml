@@ -3,7 +3,13 @@ name = "silvasonic-healthchecker"
 version = "0.1.0"
 description = "Healthchecker for Silvasonic"
 requires-python = ">=3.11, <3.13"
-dependencies = ["apprise", "psutil", "pydantic>=2.0", "structlog"]
+dependencies = [
+    "apprise",
+    "psutil",
+    "pydantic>=2.0",
+    "structlog",
+    "redis>=5.0.0",
+]
 
 [build-system]
 requires = ["hatchling"]

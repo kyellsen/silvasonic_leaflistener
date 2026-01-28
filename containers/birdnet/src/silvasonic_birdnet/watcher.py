@@ -7,6 +7,7 @@ import threading
 import time
 
 import psutil
+import redis
 from watchdog.events import FileClosedEvent, FileSystemEventHandler
 from watchdog.observers import Observer
 
@@ -139,6 +140,11 @@ class WatcherService:
             processing_duration = time.time() - self._current_file_start_time
 
         try:
+            if not hasattr(self, "_redis"):
+                self._redis = redis.Redis(
+                    host="silvasonic_redis", port=6379, db=0, socket_connect_timeout=1
+                )
+
             data = {
                 "service": "birdnet",
                 "timestamp": time.time(),
@@ -160,15 +166,14 @@ class WatcherService:
             }
 
             hostname = socket.gethostname()
-            status_file = f"/mnt/data/services/silvasonic/status/birdnet_{hostname}.json"
-            os.makedirs(os.path.dirname(status_file), exist_ok=True)
+            # Key: status:birdnet:<hostname>
+            key = f"status:birdnet:{hostname}"
 
-            tmp_file = f"{status_file}.tmp"
-            with open(tmp_file, "w") as f:
-                json.dump(data, f)
-            os.rename(tmp_file, status_file)
+            # 10s TTL
+            self._redis.setex(key, 10, json.dumps(data))
+
         except Exception as e:
-            logger.error(f"Failed to write status: {e}")
+            logger.error(f"Failed to write status to Redis: {e}")
 
     def scan_existing(self) -> None:
         self.write_status("Scanning")

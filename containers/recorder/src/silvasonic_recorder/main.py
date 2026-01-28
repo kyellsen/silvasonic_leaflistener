@@ -19,6 +19,7 @@ import typing
 from pathlib import Path
 
 import psutil
+import redis
 import structlog
 
 from silvasonic_recorder.config import settings
@@ -273,50 +274,48 @@ class Recorder:
         profile: MicrophoneProfile | None = None,
         device: DetectedDevice | None = None,
     ) -> None:
-        """Write status file securely."""
-        profile_data = profile.model_dump() if profile else {}
-        device_data = device.model_dump() if device else {}
+        """Write status to Redis with TTL."""
+        try:
+            # Lazy init Redis connection to handle potential startup race conditions
+            if not hasattr(self, "_redis"):
+                self._redis = redis.Redis(
+                    host="silvasonic_redis", port=6379, db=0, socket_connect_timeout=1
+                )
 
-        data = {
-            "service": "recorder",
-            "timestamp": time.time(),
-            "status": status,
-            "cpu_percent": psutil.cpu_percent(),
-            "memory_usage_mb": psutil.Process(os.getpid()).memory_info().rss / 1024 / 1024,
-            "meta": {
-                "profile": profile_data,
-                "device": device_data,
-                "mode": "Continuous + Live Stream",
-                "recorder_id": settings.RECORDER_ID,
-            },
-            "pid": os.getpid(),
-        }
+            profile_data = profile.model_dump() if profile else {}
+            device_data = device.model_dump() if device else {}
 
-        # Content hash check to reduce IO
-        stable_content = f"{status}-{data['meta']}"
-        current_hash = hash(stable_content)
-        now = time.time()
+            payload = {
+                "service": "recorder",
+                "timestamp": time.time(),
+                "status": status,
+                "cpu_percent": psutil.cpu_percent(),
+                "memory_usage_mb": psutil.Process(os.getpid()).memory_info().rss / 1024 / 1024,
+                "meta": {
+                    "profile": profile_data,
+                    "device": device_data,
+                    "mode": "Continuous + Live Stream",
+                    "recorder_id": settings.RECORDER_ID,
+                },
+                "pid": os.getpid(),
+            }
 
-        if current_hash != self._last_status_hash or (now - self._last_status_write) > 60:
-            try:
-                # Filename logic
-                if settings.RECORDER_ID:
-                    filename = f"recorder_{settings.RECORDER_ID}.json"
-                else:
-                    slug = profile.slug if profile else "default"
-                    filename = f"recorder_{slug}.json"
+            # Use Redis key 'status:recorder:<id>' or 'status:recorder:<slug>'
+            if settings.RECORDER_ID:
+                key = f"status:recorder:{settings.RECORDER_ID}"
+            else:
+                slug = profile.slug if profile else "default"
+                key = f"status:recorder:{slug}"
 
-                filepath = os.path.join(settings.STATUS_DIR, filename)
-                tmp_file = f"{filepath}.tmp"
+            # Set with 10s TTL (Heartbeat)
+            self._redis.setex(key, 10, json.dumps(payload))
 
-                with open(tmp_file, "w") as f:
-                    json.dump(data, f)
-                os.rename(tmp_file, filepath)
+            # Optional: Publish for real-time consumers
+            self._redis.publish("status_updates", json.dumps({"event": "update", "key": key}))
 
-                self._last_status_write = now
-                self._last_status_hash = current_hash
-            except Exception as e:
-                logger.error(f"Failed to write status: {e}")
+        except Exception as e:
+            # Log but don't crash main loop
+            logger.warning(f"Failed to write status to Redis: {e}")
 
     def stop(self) -> None:
         """Stop the service gracefully."""

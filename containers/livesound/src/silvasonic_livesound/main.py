@@ -8,6 +8,7 @@ import time
 import typing
 
 import psutil
+import redis
 import structlog
 
 from .config import settings
@@ -77,13 +78,18 @@ _last_error_time: float | None = None
 
 
 def write_status() -> None:
-    """Writes the Livesound's own heartbeat."""
-    status_file = settings.STATUS_FILE
-    os.makedirs(os.path.dirname(status_file), exist_ok=True)
+    """Writes the Livesound's own heartbeat to Redis."""
+    logger.info("Starting Redis Heartbeat Thread")
+
+    # Lazy connection
+    r: redis.Redis | None = None
 
     while True:
         try:
             global _last_error, _last_error_time
+            if r is None:
+                r = redis.Redis(host="silvasonic_redis", port=6379, db=0, socket_connect_timeout=1)
+
             # Retrieve Live Source Stats (Option B)
             from .live.processor import processor
 
@@ -101,12 +107,13 @@ def write_status() -> None:
                 "sources": source_stats,  # <--- NEW: Detailed Signal Health
             }
 
-            tmp_file = f"{status_file}.tmp"
-            with open(tmp_file, "w") as f:
-                json.dump(data, f)
-            os.rename(tmp_file, status_file)
+            key = "status:livesound"
+            r.setex(key, 10, json.dumps(data))
+
         except Exception as e:
-            logger.error(f"Failed to write livesound status: {e}")
+            logger.error(f"Failed to write livesound status to Redis: {e}")
+            # Try to reconnect next time if it was a connection error
+            r = None
 
         time.sleep(5)
 

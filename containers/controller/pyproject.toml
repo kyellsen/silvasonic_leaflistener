@@ -5,6 +5,7 @@ description = "Dynamic Hardware Supervisor for Silvasonic"
 readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
+    "redis>=5.0.0",
     "pyudev>=0.24.0",
     "pyyaml>=6.0",
     "psutil",
