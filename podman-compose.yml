@@ -35,7 +35,7 @@ services:
     environment:
       - PUID=1000
       - PGID=1000
-      - POSTGRES_HOST=silvasonic_db
+      - POSTGRES_HOST=db
     volumes:
       - ./containers/uploader/src:/app/src:z
       - ${SILVASONIC_DATA_DIR}/recorder/recordings:/data/recording:ro

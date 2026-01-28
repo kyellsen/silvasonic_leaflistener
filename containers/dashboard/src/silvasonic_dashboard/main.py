@@ -188,11 +188,11 @@ async def dashboard(request: Request, auth: typing.Any = Depends(require_auth)) 
     if isinstance(auth, RedirectResponse):
         return auth
 
-    stats = SystemService.get_stats()
+    stats = await SystemService.get_stats()
     detections = await BirdNetService.get_recent_detections(limit=5)
     birdnet_stats = await BirdNetStatsService.get_stats()
     uploader_stats = UploaderService.get_status()
-    recorder_stats = RecorderService.get_status()
+    recorder_stats = await RecorderService.get_status()
     raw_containers = HealthCheckerService.get_system_metrics()
 
     # Throughput / Lag Metrics
@@ -205,8 +205,8 @@ async def dashboard(request: Request, auth: typing.Any = Depends(require_auth)) 
     latest_uploaded = await UploaderService.get_latest_uploaded_filename()
 
     # 2. Calculate Lag (Files waiting)
-    analyzer_lag = RecorderService.count_files_after(latest_processed)
-    uploader_lag = RecorderService.count_files_after(latest_uploaded)
+    analyzer_lag = await RecorderService.count_files_after(latest_processed)
+    uploader_lag = await RecorderService.count_files_after(latest_uploaded)
 
     # Status Logic (Thresholds)
     # 0-2 files: OK
@@ -220,7 +220,7 @@ async def dashboard(request: Request, auth: typing.Any = Depends(require_auth)) 
         return "lagging"
 
     # Fetch Recorder Statuses for Throughput
-    recorder_statuses = RecorderService.get_status()
+    recorder_statuses = recorder_stats
     recorders_throughput = []
 
     for r in recorder_statuses:
@@ -253,7 +253,7 @@ async def dashboard(request: Request, auth: typing.Any = Depends(require_auth)) 
         )
 
     throughput = {
-        "recorder_active": RecorderService.get_creation_rate(10) > 0,  # Global activity
+        "recorder_active": (await RecorderService.get_creation_rate(10)) > 0,  # Global activity
         "recorders": recorders_throughput,  # List of individual recorders
         "analyzer_lag": analyzer_lag,
         "uploader_lag": uploader_lag,
@@ -399,7 +399,7 @@ async def sse_system_status(
 
                 if changed:
                     # Logic duplicated from dashboard route (refactor ideally, but inline for now is robust)
-                    stats = SystemService.get_stats()  # Fresh stats
+                    stats = await SystemService.get_stats()  # Fresh stats
                     raw_containers = HealthCheckerService.get_system_metrics()
 
                     # Construct Containers List (Same logic as dashboard view)
@@ -809,9 +809,9 @@ async def recorder_page(request: Request, auth: typing.Any = Depends(require_aut
     if isinstance(auth, RedirectResponse):
         return auth
 
-    stats = RecorderService.get_status()
+    stats = await RecorderService.get_status()
     # Also get system stats for context if needed
-    sys_stats = SystemService.get_stats()
+    sys_stats = await SystemService.get_stats()
     recordings = await RecorderService.get_recent_recordings()
 
     return render(
@@ -870,7 +870,7 @@ async def livesound_page(request: Request, auth: typing.Any = Depends(require_au
         return auth
 
     # Fetch recorder stats to populate source dropdown
-    recorder_stats = RecorderService.get_status()
+    recorder_stats = await RecorderService.get_status()
 
     return render(
         request,

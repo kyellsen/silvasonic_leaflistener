@@ -41,7 +41,7 @@ Verwendet dieser Container die für seine spezifische Aufgabe (Edge/IoT) sinnvol
 
 2. **Performance & Edge-Eignung:**
 
-Der Pi 5 hat begrenzte Ressourcen.
+Der Pi 5 hat begrenzte Ressourcen. Er läuft aber vollständig auf einer M.2 NVME SSD mit min. 265GB und nicht auf SD Karte. Er hat außerdem 16GB RAM.
 
 - Wo verschwendet dieser Container CPU-Zyklen oder RAM?
 

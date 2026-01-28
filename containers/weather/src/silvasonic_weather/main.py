@@ -68,7 +68,7 @@ def fetch_weather() -> None:
     try:
         # Common DWD parameters
         request = DwdObservationRequest(
-            parameter=[
+            parameters=[
                 "temperature_air_mean_2m",
                 "humidity",
                 "precipitation_height",
