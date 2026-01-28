@@ -1,6 +1,7 @@
 import json
 import logging
 import os
+import socket
 import time
 
 import psutil
@@ -77,7 +78,8 @@ class WatcherService:
                 "pid": os.getpid(),
             }
 
-            status_file = "/mnt/data/services/silvasonic/status/birdnet.json"
+            hostname = socket.gethostname()
+            status_file = f"/mnt/data/services/silvasonic/status/birdnet_{hostname}.json"
             os.makedirs(os.path.dirname(status_file), exist_ok=True)
 
             tmp_file = f"{status_file}.tmp"

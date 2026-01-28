@@ -1,3 +1,4 @@
+import socket
 from typing import Any
 
 from pydantic import Field, field_validator
@@ -27,10 +28,13 @@ class Settings(BaseSettings):
         description="Mapping of source names to UDP ports",
     )
 
+    # Instance Identity
+    INSTANCE_ID: str = Field(default_factory=socket.gethostname, description="Unique Instance ID")
+
     # Paths
     LOG_DIR: str = Field(default="/var/log/silvasonic", description="Directory for log files")
     STATUS_FILE: str = Field(
-        default="/mnt/data/services/silvasonic/status/livesound.json",
+        default="",  # Calculated in validator if empty
         description="Path to status file",
     )
 
@@ -61,6 +65,15 @@ class Settings(BaseSettings):
             return {"default": 1234}
 
         return ports
+
+    @field_validator("STATUS_FILE", mode="after")
+    def set_status_file(cls, v: str, info: Any) -> str:
+        if v:
+            return v
+        # Construct default using INSTANCE_ID
+        # Note: In Pydantic V2 'info.data' holds previously validated fields
+        instance_id = info.data.get("INSTANCE_ID", "default")
+        return f"/mnt/data/services/silvasonic/status/livesound_{instance_id}.json"
 
 
 settings = Settings()

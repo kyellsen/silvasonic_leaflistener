@@ -4,6 +4,7 @@ import os
 import shutil
 import subprocess
 import time
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 import soundfile as sf
@@ -42,6 +43,13 @@ class BirdNETAnalyzer:
             return
 
         logger.info(f"Processing: {path.name}")
+
+        # Parse Timestamp from Filename (CRITICAL for Data Integrity)
+        file_start_time = self._parse_timestamp_from_filename(path.name)
+        if file_start_time is None:
+            logger.warning(
+                f"Could not parse timestamp from filename: {path.name}. defaulting to Processing Time (NOW)."
+            )
 
         # Setup temp paths
         start_time_epoch = time.time()
@@ -123,6 +131,14 @@ class BirdNETAnalyzer:
                                 common_name = row[3]
                                 scientific_name = row[2]
 
+                                # Calculate Exact Timestamp
+                                detection_timestamp = None
+                                if file_start_time:
+                                    # Timestamp = File Start + Detection Start Offset
+                                    detection_timestamp = file_start_time + timedelta(
+                                        seconds=start_t
+                                    )
+
                                 # Save Clip
                                 clip_path = self._save_clip(
                                     temp_resampled, start_t, end_t, common_name
@@ -141,7 +157,7 @@ class BirdNETAnalyzer:
                                     lon=config.birdnet.lon,
                                     clip_path=clip_path or None,  # Ensure None if empty string
                                     source_device=path.parent.name,  # Extract source from folder
-                                    timestamp=None,  # let DB default or set here? DB defaults to now()
+                                    timestamp=detection_timestamp,
                                 )
 
                                 db.save_detection(detection)
@@ -191,6 +207,23 @@ class BirdNETAnalyzer:
                 temp_resampled.unlink()
         except Exception:
             pass
+
+    def _parse_timestamp_from_filename(
+        self, filename: str, format_str: str = "%Y-%m-%d_%H-%M-%S"
+    ) -> datetime | None:
+        """
+        Parses the timestamp from the filename.
+        Expected format: YYYY-MM-DD_HH-MM-SS.flac or similar.
+        """
+        try:
+            # Remove extension
+            stem = Path(filename).stem
+            # Attempt parse
+            dt = datetime.strptime(stem, format_str)
+            return dt.replace(tzinfo=UTC)
+        except ValueError:
+            # Try to handle potential variations or fail gracefully
+            return None
 
     def _save_clip(self, audio_path: Path, start_time: float, end_time: float, species: str) -> str:
         """Extracts and saves the audio clip for a detection.
@@ -275,6 +308,11 @@ class BirdNETAnalyzer:
 
             # Use model_dump for clean dict
             data_dict = detection.model_dump()
+
+            # Ensure timestamp is serialized correctly
+            # (Pydantic does it, but to be safe for JSON if not using jsonable_encoder equivalent)
+            if data_dict.get("timestamp"):
+                data_dict["timestamp"] = data_dict["timestamp"].isoformat()
 
             payload = {"type": "bird_detection", "timestamp": time.time(), "data": data_dict}
 

@@ -148,6 +148,54 @@ def write_status(status_msg: str, station: str | None = None) -> None:
         logger.error(f"Status write failed: {e}")
 
 
+def init_db() -> None:
+    """Initialize the database (create views)."""
+    try:
+        with get_db_connection() as conn:
+            try:
+                # Create View for Analysis
+                conn.execute(
+                    text(
+                        """
+                CREATE OR REPLACE VIEW weather.bird_stats_view AS
+                WITH w_stats AS (
+                    SELECT
+                        date_trunc('hour', timestamp) as bucket,
+                        AVG(temperature_c) as avg_temp,
+                        AVG(humidity_percent) as avg_humid,
+                        AVG(precipitation_mm) as total_precip
+                    FROM weather.measurements
+                    GROUP BY 1
+                ),
+                b_stats AS (
+                    SELECT
+                        date_trunc('hour', timestamp) as bucket,
+                        COUNT(*) as detection_count,
+                        COUNT(DISTINCT scientific_name) as species_count
+                    FROM birdnet.detections
+                    GROUP BY 1
+                )
+                SELECT
+                    w.bucket,
+                    w.avg_temp,
+                    w.avg_humid,
+                    w.total_precip,
+                    COALESCE(b.detection_count, 0) as detection_count,
+                    COALESCE(b.species_count, 0) as species_count
+                FROM w_stats w
+                LEFT JOIN b_stats b ON w.bucket = b.bucket;
+            """
+                    )
+                )
+                conn.commit()
+                logger.info("Database initialized (Views created).")
+            except Exception:
+                conn.rollback()
+                raise
+    except Exception as e:
+        logger.error(f"Failed to initialize DB: {e}")
+
+
 if __name__ == "__main__":
     try:
         setup_logging()
@@ -156,6 +204,8 @@ if __name__ == "__main__":
         logger.exception(f"Startup failed: {e}")
         time.sleep(10)
         exit(1)
+
+    init_db()  # Initialize View
 
     fetch_weather()
 

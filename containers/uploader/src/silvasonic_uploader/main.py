@@ -31,7 +31,7 @@ TARGET_DIR = f"{BASE_TARGET_DIR}/{SENSOR_ID}"
 
 SOURCE_DIR = "/data/recording"
 SYNC_INTERVAL = int(os.getenv("UPLOADER_SYNC_INTERVAL", 10))
-STATUS_FILE = "/mnt/data/services/silvasonic/status/uploader.json"
+STATUS_FILE = f"/mnt/data/services/silvasonic/status/uploader_{SENSOR_ID}.json"
 ERROR_DIR = "/mnt/data/services/silvasonic/errors"
 CLEANUP_THRESHOLD = int(os.getenv("UPLOADER_CLEANUP_THRESHOLD", 70))
 CLEANUP_TARGET = int(os.getenv("UPLOADER_CLEANUP_TARGET", 60))

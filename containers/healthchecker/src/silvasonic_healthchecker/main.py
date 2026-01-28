@@ -68,6 +68,7 @@ STATUS_DIR = f"{BASE_DIR}/status"
 ERROR_DIR = f"{BASE_DIR}/errors"
 ARCHIVE_DIR = f"{BASE_DIR}/errors/archive"
 CHECK_INTERVAL = 5  # Check every 5 seconds
+RECORDER_GHOST_THRESHOLD = 300  # 5 minutes
 
 
 # Global flag for graceful shutdown
@@ -212,6 +213,17 @@ def check_services_status(mailer: Mailer) -> None:
             filename = os.path.basename(rec_file)
             # recorder_front.json -> recorder_front
             rec_id = os.path.splitext(filename)[0]
+
+            # Check file modification time first for ghost detection
+            try:
+                mtime = os.path.getmtime(rec_file)
+                file_age = current_time - mtime
+                if file_age > RECORDER_GHOST_THRESHOLD:
+                    logger.warning("ghost_recorder_cleanup", file=filename, age=int(file_age))
+                    os.remove(rec_file)
+                    continue
+            except OSError:
+                continue
 
             with open(rec_file) as f:
                 content = f.read()
