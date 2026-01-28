@@ -69,6 +69,27 @@ class DetectedDevice(BaseModel):
     usb_id: str | None = None  # e.g. "1b3f:2008"
 
 
+def get_usb_ids_from_modalias(card_idx: str) -> str | None:
+    """Try to extract USB vendor:product from modalias file.
+
+    Format of modalias: usb:v1234p5678d...
+    """
+    try:
+        # Check /sys/class/sound/cardX/device/modalias
+        modalias_path = Path(f"/sys/class/sound/card{card_idx}/device/modalias")
+        if modalias_path.exists():
+            content = modalias_path.read_text().strip()
+            # Match usb:vXXXXpYYYY
+            match = re.search(r"usb:v([0-9A-Fa-f]{4})p([0-9A-Fa-f]{4})", content)
+            if match:
+                vid = match.group(1).lower()
+                pid = match.group(2).lower()
+                return f"{vid}:{pid}"
+    except Exception:
+        pass
+    return None
+
+
 def get_alsa_devices() -> list[DetectedDevice]:
     """Get list of ALSA capture devices with USB IDs."""
     devices = []
@@ -124,6 +145,14 @@ def get_alsa_devices() -> list[DetectedDevice]:
                         logger.debug(f"Resolved Card {card_idx} -> USB {resolved_usb_id}")
                     except Exception:
                         pass
+                else:
+                    # Fallback: Try modalias (more robust on some distros)
+                    modalias_id = get_usb_ids_from_modalias(card_idx)
+                    if modalias_id:
+                        card_usb_ids[card_idx] = modalias_id
+                        logger.debug(
+                            f"Resolved Card {card_idx} -> USB {modalias_id} (via modalias)"
+                        )
 
     except Exception as e:
         logger.warning(f"Failed to resolve USB IDs: {e}")
@@ -201,7 +230,10 @@ def load_profiles(profiles_dir: Path | None = None) -> list[MicrophoneProfile]:
 
 
 def find_matching_profile(
-    profiles: list[MicrophoneProfile], force_mock: bool = False, force_profile: str | None = None
+    profiles: list[MicrophoneProfile],
+    force_mock: bool = False,
+    force_profile: str | None = None,
+    strict_mode: bool = False,
 ) -> tuple[MicrophoneProfile | None, DetectedDevice | None]:
     """Find a profile that matches an available audio device.
 
@@ -344,6 +376,12 @@ def find_matching_profile(
                     return profile, device
 
     # Fallback: use generic profile with first device
+    # Fallback: use generic profile with first device
+    if strict_mode:
+        logger.warning("Strict mode enabled: skipping generic fallback.")
+        logger.error("No specific profile matched available hardware.")
+        return None, None
+
     logger.warning("No specific profile matched, trying generic fallback")
     generic = next((p for p in profiles if "generic" in p.name.lower()), None)
     if generic:
@@ -359,9 +397,11 @@ def get_active_profile() -> tuple[MicrophoneProfile | None, DetectedDevice | Non
     Environment variables:
         MOCK_HARDWARE: Set to 'true' for mock mode
         AUDIO_PROFILE: Force a specific profile by name/slug
+        STRICT_HARDWARE_MATCH: Set to 'true' to disable generic fallback
     """
     mock_mode = os.getenv("MOCK_HARDWARE", "false").lower() == "true"
     force_profile = os.getenv("AUDIO_PROFILE")
+    strict_mode = os.getenv("STRICT_HARDWARE_MATCH", "false").lower() == "true"
 
     profiles = load_profiles()
 
@@ -369,7 +409,12 @@ def get_active_profile() -> tuple[MicrophoneProfile | None, DetectedDevice | Non
         logger.critical("No profiles loaded!")
         return None, None
 
-    return find_matching_profile(profiles, force_mock=mock_mode, force_profile=force_profile)
+    return find_matching_profile(
+        profiles,
+        force_mock=mock_mode,
+        force_profile=force_profile,
+        strict_mode=strict_mode,
+    )
 
 
 def create_strategy_for_profile(

@@ -347,11 +347,17 @@ class BirdNetService:
                 if not wiki_data:
                     from silvasonic_dashboard.wikimedia import WikimediaService
 
-                    print(f"Fetching Wikimedia data for {sci_name}...")
-                    wiki_data = await WikimediaService.fetch_species_data(sci_name)
+                    # Check if we recently checked and it was empty (Negative Caching)
+                    # If cache exists but has no image and was updated recently, skip
+                    if cache and not cache.image_url:
+                        # We could check last_updated here if we wanted to retry periodically
+                        # For now, we assume if it wasn't there, it won't be there soon.
+                        pass
+                    else:
+                        print(f"Fetching Wikimedia data for {sci_name}...")
+                        wiki_data = await WikimediaService.fetch_species_data(sci_name)
 
-                    if wiki_data:
-                        # 3. Cache Result
+                        # 3. Cache Result (Positive OR Negative)
                         # We use UPSERT (INSERT ... ON CONFLICT)
                         query_upsert = text(
                             """
@@ -370,9 +376,22 @@ class BirdNetService:
                                 last_updated = NOW()
                         """
                         )
-                        # Fill gaps
-                        wiki_data["common_name"] = info.get("com_name")
-                        wiki_data["family"] = ""  # ToDo
+
+                        if wiki_data:
+                            # Fill gaps
+                            wiki_data["common_name"] = info.get("com_name")
+                            wiki_data["family"] = ""  # ToDo
+                        else:
+                            # Negative Cache Entry
+                            wiki_data = {
+                                "scientific_name": sci_name,
+                                "common_name": info.get("com_name"),
+                                "german_name": None,
+                                "family": None,
+                                "image_url": None,
+                                "description": None,
+                                "wikipedia_url": None,
+                            }
 
                         await conn.execute(query_upsert, wiki_data)
                         await conn.commit()

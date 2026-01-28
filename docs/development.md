@@ -110,7 +110,13 @@ If you prefer to run Python natively on your host (e.g., for direct PyCharm/VSCo
 👉 **See [Native Podman Guide](native_podman_dev.md)**
 
 
-More Commands:
+# More Commands:
 git pull
 sudo podman-compose down --volumes
 sudo podman-compose -f podman-compose.yml up -d --build
+
+# Cleanup: 
+
+The Bomb: podman-compose down --volumes --images all
+The Nuke: podman system prune -a --volumes --force
+

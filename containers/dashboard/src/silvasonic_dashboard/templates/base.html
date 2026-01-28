@@ -57,6 +57,72 @@
     <script src="/static/js/apexcharts.min.js"></script>
     <!-- Alpine.js (Local) -->
     <script defer src="/static/js/alpine.min.js"></script>
+    <script>
+      document.addEventListener('alpine:init', () => {
+        Alpine.store('logs', {
+            open: false,
+            loading: false,
+            content: '',
+            target: 'healthchecker', // Default/Fallback
+
+            toggle() {
+                this.open = !this.open;
+                if (this.open) {
+                    this.refresh();
+                }
+            },
+
+            setTarget(path) {
+                // Strict Mapping Logic
+                if (path === '/' || path.startsWith('/dashboard') || path.startsWith('/settings')) {
+                    this.target = 'healthchecker';
+                } else if (path.startsWith('/recorder')) {
+                    this.target = 'recorder';
+                } else if (path.startsWith('/livesound')) {
+                    this.target = 'livesound';
+                } else if (path.startsWith('/uploader')) {
+                    this.target = 'uploader';
+                } else if (path.startsWith('/weather')) {
+                    this.target = 'weather';
+                } else if (path.startsWith('/birdnet/discover')) {
+                    this.target = 'dashboard';
+                } else if (path.startsWith('/stats')) {
+                    this.target = 'dashboard';
+                } else if (path.startsWith('/birdnet')) {
+                   // Generic BirdNET page (BUT discover is above so order matters!)
+                   this.target = 'birdnet';
+                } else {
+                    this.target = 'healthchecker';
+                }
+            },
+
+            async refresh() {
+                if (!this.target) return;
+                this.loading = true;
+                const term = document.getElementById("log-terminal");
+                if(term) term.classList.add("opacity-50");
+
+                try {
+                    const res = await fetch(`/api/logs/${this.target}`);
+                    if (!res.ok) throw new Error("Failed to load logs");
+                    const data = await res.json();
+                    this.content = data.content || "[No Content]";
+                } catch (err) {
+                    this.content = `Error loading logs: ${err.message}`;
+                } finally {
+                    this.loading = false;
+                     if(term) {
+                        term.classList.remove("opacity-50");
+                         // Scroll to bottom next tick
+                        setTimeout(() => {
+                             term.scrollTop = term.scrollHeight;
+                        }, 10);
+                     }
+                }
+            }
+        });
+      });
+    </script>
     <!-- HTMX (Local) -->
     <script src="/static/js/htmx.min.js"></script>
     <!-- HTMX SSE Extension -->
@@ -169,6 +235,10 @@
   <body
     class="bg-gray-50 dark:bg-dark-bg text-gray-900 dark:text-gray-200 font-sans h-screen flex flex-col overflow-hidden selection:bg-silva-500 selection:text-white"
     hx-boost="true"
+    x-data
+    @htmx:after-swap.window="$store.logs.setTarget(window.location.pathname)"
+    @popstate.window="$store.logs.setTarget(window.location.pathname)"
+    x-init="$store.logs.setTarget(window.location.pathname)"
   >
     <!-- Header -->
     <header
@@ -726,7 +796,9 @@
       <!-- Log Viewer Overlay (Persistent) -->
       <div
         id="log-viewer"
-        class="fixed bottom-4 left-4 right-4 md:left-24 lg:right-[21rem] h-96 bg-gray-900/95 backdrop-blur-xl border border-gray-700/50 shadow-2xl transform transition-transform duration-300 translate-y-[150%] z-[60] flex flex-col rounded-xl"
+        class="fixed bottom-4 left-4 right-4 md:left-24 lg:right-[21rem] h-96 bg-gray-900/95 backdrop-blur-xl border border-gray-700/50 shadow-2xl transform transition-transform duration-300 z-[60] flex flex-col rounded-xl"
+        :class="$store.logs.open ? 'translate-y-0' : 'translate-y-[150%]'"
+        x-cloak
       >
         <div
           class="flex items-center justify-between px-4 py-2 bg-white/90 dark:bg-gray-800/50 border-b border-gray-200 dark:border-gray-700/50 rounded-t-lg"
@@ -755,12 +827,13 @@
             <span
               id="log-context-label"
               class="text-xs font-mono text-silva-600 dark:text-silva-400 bg-silva-500/10 px-2 py-0.5 rounded border border-silva-500/20"
+              x-text="$store.logs.target.toUpperCase()"
               >SYSTEM</span
             >
           </div>
           <div class="flex gap-2">
             <button
-              onclick="refreshLogs()"
+              @click="$store.logs.refresh()"
               class="text-gray-400 hover:text-white transition p-1 hover:bg-white/10 rounded group"
               title="Refresh Logs"
             >
@@ -779,7 +852,7 @@
               </svg>
             </button>
             <button
-              onclick="toggleLogs()"
+              @click="$store.logs.toggle()"
               class="text-gray-400 hover:text-white transition p-1 hover:bg-white/10 rounded"
             >
               <svg
@@ -801,6 +874,7 @@
         <div
           class="flex-1 overflow-auto p-4 font-mono text-xs text-gray-700 dark:text-blue-100/80 bg-gray-50 dark:bg-black/20 whitespace-pre-wrap"
           id="log-terminal"
+          x-text="$store.logs.content"
         >
           <!-- Logs stream here -->
           <div class="text-gray-500 italic opacity-50">
@@ -884,7 +958,7 @@
         <div class="h-4 w-px bg-gray-300 dark:bg-gray-700"></div>
 
         <button
-          onclick="toggleLogs()"
+          @click="$store.logs.toggle()"
           class="group flex items-center gap-2 px-3 py-1 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 border border-transparent hover:border-gray-200 dark:hover:border-gray-700 transition duration-200"
         >
           <svg
@@ -902,6 +976,8 @@
           </svg>
           <span
             class="font-medium text-gray-700 dark:text-gray-300 group-hover:text-silva-600 dark:group-hover:text-silva-400"
+            x-text="$store.logs.target + ' Logs'"
+            class="uppercase"
             >System Logs</span
           >
           <svg
@@ -928,86 +1004,9 @@
     </footer>
 
     <script>
-      // Log Viewer Logic
-      let currentLogContext = null;
+      // Log Viewer Logic (Alpine.js handled)
+      // Legacy code removed.
 
-      function toggleLogs() {
-        const viewer = document.getElementById("log-viewer");
-        const term = document.getElementById("log-terminal");
-        // Check for the new class
-        const isHidden = viewer.classList.contains("translate-y-[150%]");
-
-        if (isHidden) {
-          viewer.classList.remove("translate-y-[150%]");
-          if (!currentLogContext) {
-            updateLogContextFromUrl();
-          }
-          refreshLogs();
-        } else {
-          viewer.classList.add("translate-y-[150%]");
-        }
-      }
-
-      function updateLogContextFromUrl() {
-        const path = window.location.pathname;
-        let context = "healthchecker";
-
-        if (path.includes("/recorder")) context = "recorder";
-        else if (path.includes("/uploader")) context = "uploader";
-        else if (path.includes("/livesound")) context = "livesound";
-        else if (path.includes("/birdnet")) context = "birdnet";
-
-        setLogContext(context);
-      }
-
-      function setLogContext(context) {
-        if (currentLogContext === context) return;
-
-        currentLogContext = context;
-        document.getElementById("log-context-label").innerText =
-          context.toUpperCase();
-
-        const viewer = document.getElementById("log-viewer");
-        // Check using the new class
-        if (!viewer.classList.contains("translate-y-[150%]")) {
-          refreshLogs();
-        }
-      }
-
-      async function refreshLogs() {
-        if (!currentLogContext) return;
-
-        const term = document.getElementById("log-terminal");
-        // Optional: Add loading indicator opacity
-        term.classList.add("opacity-50");
-
-        try {
-          const res = await fetch(`/api/logs/${currentLogContext}`);
-          if (!res.ok) throw new Error("Failed to load logs");
-          const data = await res.json();
-
-          if (data.content) {
-            term.innerText = data.content;
-          } else {
-            term.innerText = "[No Content]";
-          }
-
-          // Scroll to bottom
-          term.scrollTop = term.scrollHeight;
-        } catch (err) {
-          term.innerText = `Error loading logs: ${err.message}`;
-        } finally {
-          term.classList.remove("opacity-50");
-        }
-      }
-
-      document.body.addEventListener("htmx:afterSwap", function (evt) {
-        updateLogContextFromUrl();
-      });
-
-      document.addEventListener("DOMContentLoaded", () => {
-        updateLogContextFromUrl();
-      });
 
       // Global Player Logic
       function playGlobalAudio(filename, name, conf) {

@@ -31,6 +31,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libasound2 \
     alsa-utils \
     ffmpeg \
+    usbutils \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
