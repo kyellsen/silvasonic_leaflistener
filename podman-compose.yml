@@ -25,6 +25,10 @@ services:
       # 5. Shared Status (Live Config)
       - ${SILVASONIC_DATA_DIR}/status:/mnt/data/services/silvasonic/status:z
     restart: always
+    ports:
+      - "8002:8002"
+    depends_on:
+      - db
 
   uploader:
     build:
@@ -62,26 +66,17 @@ services:
       - ${SILVASONIC_DATA_DIR}/notifications:/data/notifications:z
       - ${SILVASONIC_DATA_DIR}/logs:/var/log/silvasonic:z
 
+
+
   birdnet:
     build:
       context: containers/birdnet
     image: silvasonic-birdnet:latest
-    container_name: silvasonic_birdnet
-    environment:
-      - PYTHONUNBUFFERED=1
-      - INPUT_DIR=/data/recording
-      - RESULTS_DIR=/data/results
-      - MIN_CONFIDENCE=0.7
-      - RECURSIVE_WATCH=true
+    container_name: silvasonic_birdnet_template
+    entrypoint: ["/bin/true"]
+    restart: "no"
     volumes:
       - ./containers/birdnet/src:/app/src:z
-      - ${SILVASONIC_DATA_DIR}/recorder/recordings:/data/recording:ro
-      - ${SILVASONIC_DATA_DIR}/config:/config:ro
-      - ${SILVASONIC_DATA_DIR}/birdnet/results:/data/results:z
-      - ${SILVASONIC_DATA_DIR}/logs:/var/log/silvasonic:z
-      - ${SILVASONIC_DATA_DIR}/status:/mnt/data/services/silvasonic/status:z
-      - ${SILVASONIC_DATA_DIR}/notifications:/data/notifications:z
-    restart: always
 
   recorder:
     build:
@@ -138,18 +133,17 @@ services:
       - ${SILVASONIC_DATA_DIR}/logs:/var/log/silvasonic:z
       - ${SILVASONIC_DATA_DIR}/status:/mnt/data/services/silvasonic/status:z
 
+
+
   weather:
     build:
       context: containers/weather
     image: silvasonic-weather:latest
-    container_name: silvasonic_weather
-    restart: always
-    env_file: .env
+    container_name: silvasonic_weather_template
+    entrypoint: ["/bin/true"]
+    restart: "no"
     volumes:
       - ./containers/weather/src:/app/src:z
-      - ./containers/weather/tests:/app/tests:z
-      - ${SILVASONIC_DATA_DIR}/config:/config:z
-      - ${SILVASONIC_DATA_DIR}/logs:/var/log/silvasonic:z
 
   db:
     image: docker.io/library/postgres:15-alpine

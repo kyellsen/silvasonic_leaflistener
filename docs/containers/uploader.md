@@ -1,28 +1,27 @@
 # Container: Uploader
 
 ## 1. Das Problem / Die Lücke
-Die Audio-Daten werden lokal auf SSD gespeichert, aber Wissenschaftler benötigen sie zentral in der Cloud oder im Labor zur Analyse. Ein manuelles Kopieren per USB-Stick ist bei Feldgeräten unpraktikabel. Da Mobilfunkverbindungen instabil oder langsam sein können, darf der Upload-Prozess niemals den Recorder blockieren. Es wird ein robuster, asynchroner Mechanismus benötigt, der "Fire and Forget" ermöglicht.
+Aufgenommene Daten liegen zunächst isoliert auf dem Edge-Device im Wald. Um sie wissenschaftlich zu nutzen oder dauerhaft zu sichern, müssen sie auf einen zentralen Server transportiert werden. Da Mobilfunkverbindungen instabil sein können, darf dieser Prozess niemals die Aufnahme blockieren. Es wird ein robuster "Fire and Forget" Hintergrund-Dienst benötigt.
 
 ## 2. Nutzen für den User
-*   **Datensicherung:** Automatisches Backup der Aufnahmen auf einen externen Server (Nextcloud, S3, FTP).
-*   **Remote-Zugriff:** Daten sind verfügbar, ohne physisch zum Gerät fahren zu müssen.
-*   **Bandbreiten-Management:** Lädt im Hintergrund hoch, nutzt "Low Priority" QoS, um SSH-Zugriffe nicht zu verstopfen.
+*   **Datensicherung:** Schützt vor Datenverlust durch Hardware-Defekt oder Diebstahl des Geräts (Off-Site Backup).
+*   **Fernzugriff:** Macht die Aufnahmen bequem im Labor/Büro verfügbar.
+*   **Speichermanagement:** Der "Janitor" (Hausmeister) sorgt dafür, dass lokal Platz freigegeben wird, sobald Daten sicher in der Cloud liegen.
 
 ## 3. Kernaufgaben (Core Responsibilities)
 *   **Inputs:**
-    *   Dateisystem (`/mnt/data/.../recordings`): Überwacht Ordner auf *fertige* Dateien (die nicht mehr vom Recorder geschrieben werden).
-    *   Credentials: Zugangsdaten für den Ziel-Server (via Environment Variables / Rclone Config).
-    *   Netzwerk-Verbindung.
+    *   **Recordings:** Überwacht das Aufnahmeverzeichnis auf neue, abgeschlossene Dateien.
+    *   **Credentials:** Zugangsdaten für Cloud-Storage (Nextcloud/WebDAV/S3).
+    *   **Konfiguration:** Upload-Strategie (z.B. "Nur im WLAN", "Sofort").
 *   **Processing:**
-    *   Erkennung neuer Dateien.
-    *   Wrapper um `rclone` oder interne Python-Sync-Logik.
-    *   Retry-Mechanismen bei Netzwerkabbrüchen (Exponential Backoff).
-    *   Integritätsprüfung (Checksums).
+    *   **Sync-Engine:** Nutzt `rclone` (oder kompatiblen Wrapper) für effizienten, wiederaufnehmbaren Datei-Transfer.
+    *   **Queue-Management:** Berechnet die Warteschlange und schätzt die Upload-Dauer.
+    *   **Janitor:** Löscht lokale Kopien *erst*, wenn der Upload verifiziert ist und der lokale Speicherplatz knapp wird (Threshold-basiert).
+    *   **DB-Logging:** Führt Buch über jede hochgeladene Datei in der Datenbank.
 *   **Outputs:**
-    *   Daten-Transfer (Upload) zum Ziel.
-    *   (Optional) Löschen oder Markieren lokaler Dateien nach erfolgreichem Upload (Archivierungs-Flag).
+    *   **Upload:** Transferiert Dateien an den Remote-Server.
+    *   **Löschung:** Entfernt Dateien vom lokalen Datenträger (wenn konfiguriert).
 
 ## 4. Abgrenzung (Out of Scope)
 *   Nimmt **KEIN** Audio auf.
-*   Analysiert **KEINE** Daten.
-*   Entscheidet **NICHT** über Disk-Cleanup bei vollem Speicher (das macht der `healthchecker` als "Last Resort", auch wenn der Uploader idealerweise Platz freigeben würde, ist die Notfall-Löschung getrennt).
+*   Entscheidet **NICHT** über "Notfall-Löschungen" bei kritisch vollem Speicher (das ist die letzte Verteidigungslinie des `healthchecker`, der Uploader macht "sauberes" Aufräumen).

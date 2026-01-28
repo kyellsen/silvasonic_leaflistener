@@ -148,14 +148,93 @@ class PodmanOrchestrator:
             logger.error(f"Spawn Exception: {e}")
             return False
 
-    async def stop_recorder(self, container_id: str) -> None:
-        """Stop a recorder container asynchronously."""
+    async def spawn_service(
+        self,
+        service_name: str,
+        image: str,
+        env_vars: dict[str, str],
+        mounts: list[dict[str, str]],
+        network: str = "silvasonic_default",
+        restart_policy: str = "always",
+        ports: list[str] | None = None,
+        labels: dict[str, str] | None = None,
+    ) -> bool:
+        """Spawn a generic service container."""
+        container_name = f"silvasonic_{service_name}"
+
+        # Prepare Env Vars
+        env_args = []
+        for k, v in env_vars.items():
+            env_args.extend(["-e", f"{k}={v}"])
+
+        # Prepare Mounts
+        vol_args = []
+        for mount in mounts:
+            # mount dict: {source, target, mode}
+            mode = f":{mount.get('mode', 'z')}" if mount.get("mode") else ""
+            vol_args.extend(["-v", f"{mount['source']}:{mount['target']}{mode}"])
+
+        # Prepare Ports
+        port_args = []
+        if ports:
+            for p in ports:
+                port_args.extend(["-p", p])
+
+        # Default Labels
+        if labels is None:
+            labels = {}
+        labels["managed_by"] = "silvasonic-controller"
+        labels["silvasonic.service"] = service_name
+
+        label_args = []
+        for k, v in labels.items():
+            label_args.extend(["--label", f"{k}={v}"])
+
+        cmd = [
+            "podman",
+            "run",
+            "-d",
+            "--name",
+            container_name,
+            "--replace",
+            f"--restart={restart_policy}",
+            "--network",
+            network,
+            *env_args,
+            *vol_args,
+            *port_args,
+            *label_args,
+            image,
+        ]
+
+        logger.info(f"Spawning service {container_name}...")
+        logger.debug(f"CMD: {' '.join(cmd)}")
+
+        try:
+            process = await asyncio.create_subprocess_exec(
+                *cmd,
+                stdout=asyncio.subprocess.PIPE,
+                stderr=asyncio.subprocess.PIPE,
+            )
+            stdout, stderr = await process.communicate()
+
+            if process.returncode != 0:
+                err_msg = stderr.decode() if stderr else "Unknown error"
+                logger.error(f"Failed to spawn {service_name}: {err_msg}")
+                return False
+            return True
+        except Exception as e:
+            logger.error(f"Spawn Exception for {service_name}: {e}")
+            return False
+
+    async def stop_container(self, container_name: str) -> None:
+        """Stop and remove a generic container."""
         try:
             # Stop
             p_stop = await asyncio.create_subprocess_exec(
                 "podman",
                 "stop",
-                container_id,
+                container_name,
                 stdout=asyncio.subprocess.PIPE,
                 stderr=asyncio.subprocess.PIPE,
             )
@@ -166,10 +245,15 @@ class PodmanOrchestrator:
                 "podman",
                 "rm",
                 "-f",
-                container_id,
+                container_name,
                 stdout=asyncio.subprocess.PIPE,
                 stderr=asyncio.subprocess.PIPE,
             )
             await p_rm.wait()
         except Exception as e:
-            logger.error(f"Error stopping container {container_id}: {e}")
+            logger.error(f"Error stopping container {container_name}: {e}")
+
+    async def stop_recorder(self, container_id: str) -> None:
+        """Stop a recorder container asynchronously."""
+        # Wrapper around generic stop for backward compatibility
+        await self.stop_container(container_id)

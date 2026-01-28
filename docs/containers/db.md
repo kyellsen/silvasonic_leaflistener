@@ -1,26 +1,26 @@
 # Container: Database (DB)
 
 ## 1. Das Problem / Die Lücke
-Wir haben strukturierte Daten (Vogel-Detektionen, Wetterdaten, System-Logs), die relational verknüpft und effizient durchsuchbar sein müssen. Flat-Files (CSV/JSON) sind für komplexe Abfragen ("Zeige alle Rotkehlchen zwischen 05:00 und 06:00 Uhr mit Konfidenz > 0.8") zu langsam und unhandlich. Es wird ein persistenter, transaktionssicherer Speicher benötigt.
+Silvasonic generiert komplexe, strukturierte Daten (Vogel-Detektionen, Wetterdaten, System-Logs, Konfigurationen), die relational verknüpft sind. Flache Dateien (CSV/JSON) skalieren schlecht bei Suchabfragen ("Zeige alle Eichelhäher der letzten Woche"). Ein zentraler, transaktionssicherer Datenspeicher ist für Datenkonsistenz und Performance essenziell.
 
 ## 2. Nutzen für den User
-*   **Historie:** Ermöglicht Langzeitanalysen über Wochen oder Monate.
-*   **Schnelligkeit:** Das Dashboard kann Aggregationen (z.B. "Anzahl Detektionen pro Woche") in Millisekunden abrufen, statt tausende Dateien zu parsen.
-*   **Datenhoheit:** Alle Metadaten liegen lokal auf dem Gerät und sind auch offline verfügbar.
+*   **Performance:** Das Dashboard kann komplexe Statistiken in Millisekunden abrufen, statt tausende Dateien parsen zu müssen.
+*   **Integrität:** Verhindert Datenkorruption bei gleichzeitigen Zugriffen mehrerer Container (BirdNET schreibt, Dashboard liest).
+*   **Persistenz:** Daten überleben Container-Neustarts und Updates sicher auf dem Daten-Volume.
 
 ## 3. Kernaufgaben (Core Responsibilities)
 *   **Inputs:**
-    *   `birdnet`: Schreibt neue Detektionen (Species, Confidence, Time).
-    *   `weather`: Schreibt Umgebungsdaten.
-    *   `recorder`: (Optional) Metadaten zu Aufnahmen.
+    *   **BirdNET:** INSERT von Detektions-Events.
+    *   **Weather:** INSERT von Umweltdaten.
+    *   **Dashboard:** READ/WRITE von System-Konfigurationen und User-Actions.
+    *   **Controller:** Statussynchronisation (via Service-Tabellen).
 *   **Processing:**
-    *   Speicherung relationaler Daten.
-    *   Indizierung für schnelle Suchanfragen.
-    *   Ausführung von SQL-Queries durch andere Container.
+    *   Bereitstellung einer Standard PostgreSQL-Instanz.
+    *   Verwaltung von Indizes (z.B. auf Zeitstempel, Spezies) für schnelle Queries.
 *   **Outputs:**
-    *   Result-Sets für Dashboard-Anfragen.
-    *   Persistente Speicherung auf dem Daten-Volume.
+    *   Strukturierte Antwort-Sets (Result Rows) auf SQL-Anfragen.
+    *   Persistente Speicherung im Docker-Volume (`pg_data`).
 
 ## 4. Abgrenzung (Out of Scope)
-*   Der Container selbst enthält meist keine eigene Applikationslogik (nur Standard PostgreSQL).
-*   Speichert **KEINE** Audio-Blobs (nur Referenzen/Dateipfade auf das Filesystem).
+*   Enthält **KEINE** Applikationslogik (außer evtl. Stored Procedures / Trigger für Wartungsaufgaben).
+*   Speichert **KEINE** großen Blobs (Audio/Bilder bleiben im Filesystem, DB speichert nur Pfade).

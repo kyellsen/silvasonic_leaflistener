@@ -1,0 +1,44 @@
+services:
+  birdnet:
+    image: "silvasonic-birdnet:latest"
+    enabled: true
+    restart_policy: "always"
+    network: "silvasonic_default"
+    env:
+      PYTHONUNBUFFERED: "1"
+      INPUT_DIR: "/data/recording"
+      RESULTS_DIR: "/data/results"
+      MIN_CONFIDENCE: "0.7"
+      RECURSIVE_WATCH: "true"
+    mounts:
+      - source: "${HOST_SILVASONIC_DATA_DIR}/recorder/recordings"
+        target: "/data/recording"
+        mode: "ro"
+      - source: "${HOST_SILVASONIC_DATA_DIR}/config"
+        target: "/config"
+        mode: "ro"
+      - source: "${HOST_SILVASONIC_DATA_DIR}/birdnet/results"
+        target: "/data/results"
+        mode: "z"
+      - source: "${HOST_SILVASONIC_DATA_DIR}/logs"
+        target: "/var/log/silvasonic"
+        mode: "z"
+      - source: "${HOST_SILVASONIC_DATA_DIR}/status"
+        target: "/mnt/data/services/silvasonic/status"
+        mode: "z"
+      - source: "${HOST_SILVASONIC_DATA_DIR}/notifications"
+        target: "/data/notifications"
+        mode: "z"
+
+  weather:
+    image: "silvasonic-weather:latest"
+    enabled: true
+    restart_policy: "always"
+    network: "silvasonic_default"
+    mounts:
+      - source: "${HOST_SILVASONIC_DATA_DIR}/config"
+        target: "/config"
+        mode: "z"
+      - source: "${HOST_SILVASONIC_DATA_DIR}/logs"
+        target: "/var/log/silvasonic"
+        mode: "z"

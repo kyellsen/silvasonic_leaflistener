@@ -1,27 +1,29 @@
 # Container: Healthchecker
 
 ## 1. Das Problem / Die Lücke
-In einem verteilten System aus unabhängigen Containern kann ein einzelner Service (z.B. der Uploader) hängen bleiben, ohne dass der Rest des Systems es merkt. Ein "stiller Tod" eines Containers würde bedeuten, dass tagelang keine Daten hochgeladen werden. Es wird eine unabhängige Instanz benötigt, die das Gesamtsystem überwacht und bei Problemen eingreifen oder alarmieren kann.
+In einem verteilten System operieren viele Container unabhängig voneinander. Ein einzelner Service (z.B. der Uploader) kann "leise sterben" (Deadlock, Endlosschleife), während der Container-Status laut Docker noch "Running" ist. Ohne Überwachung würde ein solcher Ausfall erst nach Tagen auffallen (Datenlücke). Es wird ein zentraler Wächter benötigt, der die Vitalfunktionen aller Services prüft.
 
 ## 2. Nutzen für den User
-*   **Selbstheilung:** Das System versucht, hängende Dienste automatisch neu zu starten (falls konfiguriert).
-*   **Wartung:** Übernimmt Aufgaben wie Log-Rotation und Bereinigung alter Dateien, damit die Festplatte nicht vollläuft.
-*   **Benachrichtigung:** Informiert den User über kritische Zustände (z.B. Disk Full).
+*   **Zuverlässigkeit:** Erkennt Probleme, bevor Daten verloren gehen (z.B. "Uploader lädt seit 1h nichts hoch").
+*   **Wartung:** Automatisiert Routineaufgaben wie das Löschen verwaister Status-Dateien ("Ghost Recorders") oder Log-Rotation.
+*   **Benachrichtigung:** Sendet Alerts (z.B. per E-Mail) bei kritischen Fehlern (Disk Full, Service Down) oder interessanten Funden (Vogel-Benachrichtigung).
+*   **Consolidated Status:** Bietet dem Dashboard eine "Source of Truth" (`system_status.json`) über den gesamten Systemzustand.
 
 ## 3. Kernaufgaben (Core Responsibilities)
 *   **Inputs:**
-    *   Docker/Podman Socket (zum Abfragen des Container-Status).
-    *   System-Ressourcen (Disk Usage, RAM).
-    *   HTTP-Health-Endpoints der anderen Services.
+    *   **Status-Files:** Pollt regelmäßig das `status/`-Verzeichnis, wo alle Container ihre Heartbeats (`.json`) ablegen.
+    *   **Notification Queue:** Überwacht `notifications/` auf neue Events (z.B. BirdNET Alerts).
+    *   **Probes:** Führt aktive Checks durch (z.B. TCP Connect zu Postgres).
 *   **Processing:**
-    *   Periodische Checks (z.B. alle 60 Sekunden): "Läuft der Recorder?", "Ist die DB erreichbar?".
-    *   Watchdog-Logik: Neustart von Containern, die als "unhealthy" markiert sind.
-    *   Disk-Management: Löschen ältester Aufnahmen, wenn Speicherplatz-Limit erreicht (Retention Policy).
+    *   **Watchdog-Logik:** Vergleicht Zeitstempel der Heartbeats mit Timeouts (z.B. "Recorder muss sich alle 2 Min melden").
+    *   **State Machine:** Erkennt Status-Übergänge (Running -> Down -> Recovered) und generiert entsprechende Logs/Alerts.
+    *   **Mailer:** Versendet E-Mail-Benachrichtigungen bei Konfiguration.
+    *   **Cleanup:** Löscht alte "Ghost"-Einträge von entfernten Mikrofonen.
 *   **Outputs:**
-    *   Logs/Alerts.
-    *   Kommandos an den Docker/Podman Daemon (Restart).
+    *   `system_status.json`: Eine aggregierte Übersicht für das Dashboard.
+    *   **Alerts:** Ausgehende E-Mails oder gesicherte Fehlerberichte in `archive/`.
 
 ## 4. Abgrenzung (Out of Scope)
-*   Startet **NICHT** die Hardware initial (Aufgabe von `controller`).
-*   Ersetzt **NICHT** das Monitoring des Host-OS (Systemd/Kernel Panic).
+*   Startet/Stoppt **KEINE** Hardware-Container (Aufgabe von `controller`).
+*   Überwacht **NICHT** den Kernel oder Host-OS-Crashes.
 *   Speichert **KEINE** Audio-Daten.

@@ -1,28 +1,30 @@
 # Container: Dashboard
 
 ## 1. Das Problem / Die Lücke
-Ein Headless-System (ohne Monitor/Tastatur) im Feld ist schwer zu überwachen. Man weiß nicht, ob es aufnimmt, wie voll die Festplatte ist oder was gerade erkannt wurde. Es fehlte eine benutzerfreundliche Schnittstelle für den lokalen Zugriff (via Hotspot/LAN) zur Visualisierung der Daten und Systemzustände ohne Cloud-Abhängigkeit.
+Ein Headless-System (ohne Monitor/Tastatur) im Feld ist eine "Black Box". Der Benutzer weiß nicht, ob das System aufnimmt, wie voll der Speicher ist oder was gerade erkannt wurde. Es fehlte eine intuitive, lokale Schnittstelle (Local-First Ansatz), um das Gerät zu warten und Daten zu sichten, ohne auf eine Internetverbindung oder externe Cloud angewiesen zu sein.
 
 ## 2. Nutzen für den User
-*   **Sofortiges Feedback:** Sehen, was das Gerät *jetzt gerade* hört und tut.
-*   **Daten-Exploration:** Durchsuchen der lokalen Vogel-Detektionen (Listen, Grafiken) direkt am Gerät.
-*   **System-Health:** Überprüfung von Speicherplatz, CPU-Last und Service-Status auf einen Blick.
+*   **Visuelle Rückmeldung:** Sofortiges Feedback ("Was hört das Gerät jetzt?") und Explorationsmöglichkeiten (Listen, Graphen).
+*   **System-Kontrolle:** Services (z.B. Wetter, Uploader) können einfach per Klick ein- oder ausgeschaltet werden.
+*   **Konfiguration:** Änderungen an Einstellungen (z.B. Upload-Strategie, WLAN) können bequem über ein Web-Interface vorgenommen werden.
+*   **Unabhängigkeit:** Volle Funktionalität auch im Offline-Betrieb (z.B. im Wald via Hotspot).
 
 ## 3. Kernaufgaben (Core Responsibilities)
 *   **Inputs:**
-    *   Datenbank (PostgreSQL) für Detektionen und Statistiken.
-    *   Dateisystem (für Zugriff auf Audio-Snippets/Spektrogramme).
-    *   System-Metriken (via `psutil` oder Healthchecker-Logs).
+    *   **Datenbank:** Liest Detektionen, Statistiken und Konfigurationen (`SystemConfig`, `SystemService`) aus PostgreSQL.
+    *   **Filesystem:** Zugriff auf Audio-Dateien und generierte Artefakte (Spektrogramme).
+    *   **User-Input:** Interaktionen über das Web-Frontend (Klicks, Formulare).
 *   **Processing:**
-    *   Webserver (Uvicorn/FastAPI) zur Bereitstellung der UI.
-    *   Aggregation von Statistiken (z.B. "Top 5 Vögel heute").
-    *   Rendering von HTML-Templates (Jinja2) und API-Endpoints.
+    *   **Webserver stack:** FastAPI + Uvicorn stellen die Applikation bereit.
+    *   **Rendering:** Generiert HTML-Seiten mittels Jinja2-Templates und CSS (Tailwind).
+    *   **Logic Layer:** Aggregiert Statistiken (Cache für Performance), verwaltet User-Sessions (Auth) und validiert API-Requests.
+    *   **Service Control:** Kommuniziert mit dem Controller (oder via DB-State), um Services zu steuern.
 *   **Outputs:**
-    *   Web-Interface (HTTP auf Port 80/8080).
-    *   Interaktive Grafiken und Audio-Player im Browser.
+    *   **Web-UI:** Responsives Interface (HTTP Port 8000/8080/80) für Browser.
+    *   **Status-Updates:** Schreibt Heartbeat und ggf. Konfigurationsänderungen zurück in die DB.
 
 ## 4. Abgrenzung (Out of Scope)
-*   Macht **KEINE** Audio-Analyse (Aufgabe von `birdnet` oder `livesound`).
-*   Steuert **NICHT** die Hardware (Aufgabe von `controller`).
-*   Ist **NICHT** das Internet-Backend (das ist die Cloud/Nextcloud).
-*   Das Dashboard ist eine reine *View*-Komponente für lokale Daten.
+*   Macht **KEINE** Audio-Analyse (Aufgabe von `birdnet`).
+*   Verwaltet **NICHT** die Hardware-Ports oder Container direkt (Aufgabe von `controller`).
+*   Ist **NICHT** die Cloud (Nextcloud ist separat).
+*   Dient primär als *Visualisierungsschicht* und *Control Plane*.

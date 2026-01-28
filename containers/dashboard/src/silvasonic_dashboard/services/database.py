@@ -1,6 +1,11 @@
 import os
 
-from sqlalchemy.ext.asyncio import AsyncConnection, create_async_engine
+from sqlalchemy.ext.asyncio import (
+    AsyncConnection,
+    AsyncSession,
+    create_async_engine,
+)
+from sqlalchemy.orm import sessionmaker
 
 
 class DatabaseHandler:
@@ -13,10 +18,16 @@ class DatabaseHandler:
 
         self.db_url = f"postgresql+asyncpg://{self.user}:{self.password}@{self.host}:{self.port}/{self.db_name}"
         self.engine = create_async_engine(self.db_url, pool_pre_ping=True)
-        # self.Session = sessionmaker(bind=self.engine) # We primarily use direct connection in this legacy code
+        self.async_session_maker = sessionmaker(
+            self.engine, class_=AsyncSession, expire_on_commit=False
+        )
 
     def get_connection(self) -> AsyncConnection:
         return self.engine.connect()
+
+    async def get_db(self):
+        async with self.async_session_maker() as session:
+            yield session
 
 
 db = DatabaseHandler()

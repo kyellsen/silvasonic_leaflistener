@@ -12,6 +12,9 @@ from pathlib import Path
 
 import psutil
 import structlog
+import uvicorn
+from silvasonic_controller import api
+from silvasonic_controller.service_manager import ServiceManager
 
 # Setup Path to find modules
 sys.path.append("/app")  # noqa: E402
@@ -103,6 +106,9 @@ class Controller:
 
         # Load Profiles
         self.profiles = load_profiles(Path("/app/mic_profiles"))  # Use mounted profiles
+
+        # Service Manager
+        self.service_manager = ServiceManager(self.orchestrator)
 
     async def adopt_orphans(self) -> None:
         """Adopt existing recorder containers on startup."""
@@ -399,6 +405,18 @@ class Controller:
         # Initial Reconcile
         await self.reconcile()
 
+        # Start Generic Services (Architecture 2.0)
+        logger.info("Starting default services...")
+        for service_name, config in self.service_manager._services.items():
+            if config.enabled:
+                await self.service_manager.start_service(service_name)
+
+        # Start API Server
+        api.controller_instance = self
+        config = uvicorn.Config(api.app, host="0.0.0.0", port=8002, log_level="info")
+        server = uvicorn.Server(config)
+        api_task = asyncio.create_task(server.serve())
+
         # Start background tasks
         monitor_task = asyncio.create_task(self.monitor_hardware())
         heartbeat_task = asyncio.create_task(self.heartbeat_loop())
@@ -412,6 +430,8 @@ class Controller:
         finally:
             monitor_task.cancel()
             heartbeat_task.cancel()
+            if "api_task" in locals():
+                api_task.cancel()  # pyright: ignore
             logger.info("Shutdown complete.")
 
     def stop(self) -> None:
