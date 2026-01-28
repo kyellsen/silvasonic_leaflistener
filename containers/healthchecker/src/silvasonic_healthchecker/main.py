@@ -190,7 +190,7 @@ def check_services_status(mailer: Mailer) -> None:
                         else f"{config.name} ({instance_id})"
                     )
                 else:
-                    status_obj = ServiceStatus.model_validate_json(content)  # type: ignore[assignment]
+                    status_obj = ServiceStatus.model_validate_json(content)
 
                     if instance_id == service_id:
                         display_name = config.name

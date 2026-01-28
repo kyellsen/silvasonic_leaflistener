@@ -65,7 +65,8 @@ def setup_environment() -> None:
     os.makedirs("/var/log/silvasonic", exist_ok=True)
 
     # Bridge to stdlib logging for formatting
-    pre_chain = [
+    # Bridge to stdlib logging for formatting
+    pre_chain: list[typing.Any] = [
         structlog.stdlib.add_log_level,
         structlog.stdlib.add_logger_name,
         structlog.processors.TimeStamper(fmt="iso"),
@@ -78,7 +79,8 @@ def setup_environment() -> None:
     )
 
     # Handlers
-    handlers = []
+    # Handlers
+    handlers: list[logging.Handler] = []
 
     # Stdout
     stream = logging.StreamHandler(sys.stdout)

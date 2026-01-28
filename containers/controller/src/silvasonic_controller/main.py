@@ -58,7 +58,7 @@ def setup_logging() -> None:
         foreign_pre_chain=pre_chain,
     )
 
-    handlers = []
+    handlers: list[logging.Handler] = []
 
     # Stdout
     s = logging.StreamHandler(sys.stdout)

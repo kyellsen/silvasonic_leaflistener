@@ -34,9 +34,9 @@ Untersuche die Interaktion aller Backend-Container (`containers/*`) sowie die Or
 ### OUTPUT (Der "Integrations-Report")
 Erstelle eine Liste der **"Inkonsistenzen & Risiken"**, gruppiert nach Schweregrad:
 
-* **🚨 Critical (Systembruch):** Schnittstellen passen nicht (z.B. Dateinamen-Mismatch, fehlende Mounts).
-* **⚠️ Warning (Wartbarkeit):** Unterschiedliche Python-Versionen, verschiedene DB-Libs, inkonsistentes Logging.
-* **ℹ️ Info (Optimierung):** Möglichkeiten zur Vereinheitlichung (Shared Code, Base Images).
+* **Critical (Systembruch):** Schnittstellen passen nicht (z.B. Dateinamen-Mismatch, fehlende Mounts).
+* **Warning (Wartbarkeit):** Unterschiedliche Python-Versionen, verschiedene DB-Libs, inkonsistentes Logging.
+* **Info (Optimierung):** Möglichkeiten zur Vereinheitlichung (Shared Code, Base Images).
 
 Schlage am Ende **3 globale Standards** vor, die wir im Projekt einführen sollten, um diese Probleme zu lösen.
 

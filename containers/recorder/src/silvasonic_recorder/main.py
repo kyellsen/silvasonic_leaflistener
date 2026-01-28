@@ -92,7 +92,7 @@ class RecorderService:
         # we need to ensure the formatter for these handlers creates the JSON.
         # structlog.stdlib.ProcessorFormatter is the bridge.
 
-        pre_chain = [
+        pre_chain: list[typing.Any] = [
             structlog.stdlib.add_log_level,
             structlog.stdlib.add_logger_name,
             structlog.processors.TimeStamper(fmt="iso"),
