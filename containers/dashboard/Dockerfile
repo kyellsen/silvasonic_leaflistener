@@ -27,8 +27,8 @@ FROM node:20-slim AS frontend
 WORKDIR /app
 COPY tailwind.config.js .
 COPY src ./src
-RUN npm init -y && npm install tailwindcss
-RUN ./node_modules/.bin/tailwindcss -i ./src/silvasonic_dashboard/static/css/tailwind.css -o ./styles.css --minify
+RUN npm init -y && npm install tailwindcss postcss autoprefixer
+RUN npx tailwindcss -i ./src/silvasonic_dashboard/static/css/tailwind.css -o ./styles.css --minify
 
 # --- Final Stage ---
 FROM python:3.11-slim-bookworm
