@@ -1,0 +1,13 @@
+{
+  "name": "silvasonic-dashboard",
+  "version": "1.0.0",
+  "description": "Dashboard for Silvasonic",
+  "scripts": {
+    "build:css": "tailwindcss -i ./src/silvasonic_dashboard/static/css/tailwind.css -o ./styles.css --minify"
+  },
+  "devDependencies": {
+    "autoprefixer": "^10.4.17",
+    "postcss": "^8.4.35",
+    "tailwindcss": "^3.4.1"
+  }
+}

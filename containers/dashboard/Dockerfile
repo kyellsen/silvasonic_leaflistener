@@ -25,10 +25,11 @@ RUN uv venv --python /usr/local/bin/python && \
 # --- Frontend Build Stage ---
 FROM node:20-slim AS frontend
 WORKDIR /app
+COPY package.json .
+RUN npm install
 COPY tailwind.config.js .
 COPY src ./src
-RUN npm init -y && npm install tailwindcss postcss autoprefixer
-RUN npx tailwindcss -i ./src/silvasonic_dashboard/static/css/tailwind.css -o ./styles.css --minify
+RUN npm run build:css
 
 # --- Final Stage ---
 FROM python:3.11-slim-bookworm
