@@ -25,7 +25,9 @@ async def sse_system_status(
 
     async def event_generator() -> typing.AsyncGenerator[str, None]:
         # Connect to Redis
-        r = redis.Redis(host="silvasonic_redis", port=6379, db=0, socket_connect_timeout=1)
+        r: redis.Redis = redis.Redis(
+            host="silvasonic_redis", port=6379, db=0, socket_connect_timeout=1
+        )
 
         last_system_status_raw: bytes | None = None
 
@@ -41,7 +43,9 @@ async def sse_system_status(
 
                 # To be non-blocking in async loop, run in executor
                 loop = asyncio.get_running_loop()
-                current_raw = await loop.run_in_executor(None, r.get, "system:status")
+                current_raw = typing.cast(
+                    bytes | None, await loop.run_in_executor(None, r.get, "system:status")
+                )
 
                 if current_raw and current_raw != last_system_status_raw:
                     last_system_status_raw = current_raw

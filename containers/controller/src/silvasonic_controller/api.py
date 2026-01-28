@@ -1,5 +1,5 @@
 import json
-from typing import Any
+from typing import Any, cast
 
 import redis
 from fastapi import FastAPI, HTTPException, status
@@ -49,8 +49,10 @@ async def get_status() -> list[ServiceStatus]:
     # Fetch System Status from Redis
     system_status = {}
     try:
-        r = redis.Redis(host="silvasonic_redis", port=6379, db=0, socket_connect_timeout=0.5)
-        raw = r.get("system:status")
+        r: redis.Redis = redis.Redis(
+            host="silvasonic_redis", port=6379, db=0, socket_connect_timeout=0.5
+        )
+        raw = cast(bytes | None, r.get("system:status"))
         if raw:
             system_status = json.loads(raw)
     except Exception:

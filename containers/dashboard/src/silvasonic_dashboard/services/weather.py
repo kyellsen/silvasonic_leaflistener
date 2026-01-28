@@ -1,7 +1,7 @@
 import datetime
 import json
 import time
-from typing import Any
+from typing import Any, cast
 
 import redis
 from sqlalchemy import text
@@ -143,8 +143,10 @@ class WeatherService:
     def get_status() -> dict[str, Any]:
         """Get service status from Redis."""
         try:
-            r = redis.Redis(host="silvasonic_redis", port=6379, db=0, socket_connect_timeout=1)
-            raw = r.get("status:weather")
+            r: redis.Redis = redis.Redis(
+                host="silvasonic_redis", port=6379, db=0, socket_connect_timeout=1
+            )
+            raw = cast(bytes | None, r.get("status:weather"))
             if raw:
                 data: dict[str, Any] = json.loads(raw)
                 # Check staleness (20 mins schedule, so maybe 25 min stale check)

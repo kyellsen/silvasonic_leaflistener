@@ -1,7 +1,7 @@
 import datetime
 import json
 import os
-from typing import Any
+from typing import Any, cast
 
 import redis
 from async_lru import alru_cache
@@ -29,17 +29,19 @@ class RecorderService:
         return 48000 * 1 * 2  # Default to 48kHz, Mono, 16-bit (96000 Bps)
 
     @staticmethod
-    @alru_cache(ttl=1)  # Faster refresh for Redis
+    @alru_cache(ttl=1)
     async def get_status() -> list[dict[str, Any]]:
         """Returns a list of status dicts for all detected recorders from Redis."""
         statuses = []
         try:
             # Connect to Redis
-            r = redis.Redis(host="silvasonic_redis", port=6379, db=0, socket_connect_timeout=1)
+            r: redis.Redis = redis.Redis(
+                host="silvasonic_redis", port=6379, db=0, socket_connect_timeout=1
+            )
 
             # Find all recorder keys
             # Pattern: status:recorder:*
-            keys = r.keys("status:recorder:*")
+            keys = cast(list[bytes], r.keys("status:recorder:*"))
 
             # Also check legacy single recorder key if it exists?
             # keys("status:recorder") might return it if it doesn't have colon?
@@ -62,7 +64,7 @@ class RecorderService:
             for key in keys:
                 try:
                     # mget would be faster but keys list is small
-                    raw_data = r.get(key)
+                    raw_data = cast(bytes | None, r.get(key))
                     if not raw_data:
                         continue
 
@@ -132,7 +134,9 @@ class RecorderService:
                     data["storage_forecast"] = forecast
                     statuses.append(data)
                 except Exception as e:
-                    logger.error(f"Error reading redis key {key}: {e}")
+                    logger.error(
+                        f"Error reading redis key {key.decode('utf-8', errors='replace')}: {e}"
+                    )
 
             # Sort by profile name or slug for stability
             statuses.sort(key=lambda x: x.get("profile", {}).get("name", ""))

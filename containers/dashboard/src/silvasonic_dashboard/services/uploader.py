@@ -14,10 +14,12 @@ class UploaderService:
     @staticmethod
     def get_status() -> dict[str, typing.Any]:
         try:
-            r = redis.Redis(host="silvasonic_redis", port=6379, db=0, socket_connect_timeout=1)
+            r: redis.Redis = redis.Redis(
+                host="silvasonic_redis", port=6379, db=0, socket_connect_timeout=1
+            )
             # Uploader writes status:uploader:<sensor_id>
             # We scan for any uploader status
-            keys = r.keys("status:uploader:*")
+            keys = typing.cast(list[bytes], r.keys("status:uploader:*"))
             if not keys:
                 # Try legacy key if exists
                 if r.exists("status:uploader"):
@@ -25,7 +27,7 @@ class UploaderService:
 
             if keys:
                 # Just take the first one for now (Singleton assumption for dashboard view)
-                raw = r.get(keys[0])
+                raw = typing.cast(bytes | None, r.get(keys[0]))
                 if raw:
                     data = json.loads(raw)
 

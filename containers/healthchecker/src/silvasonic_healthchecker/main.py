@@ -124,9 +124,11 @@ def check_services_status(mailer: Mailer, service_states: dict[str, str]) -> Non
 
     # Lazy Redis connection
     try:
-        r = redis.Redis(host="silvasonic_redis", port=6379, db=0, socket_connect_timeout=2)
+        r: redis.Redis = redis.Redis(
+            host="silvasonic_redis", port=6379, db=0, socket_connect_timeout=2
+        )
         # Scan for all status keys
-        keys = r.keys("status:*")
+        keys = cast(list[bytes], r.keys("status:*"))
     except Exception as e:
         logger.error(f"Redis connection failed: {e}")
         return
@@ -235,7 +237,7 @@ def check_services_status(mailer: Mailer, service_states: dict[str, str]) -> Non
             system_status[instance_id] = service_data
 
         except Exception as e:
-            logger.error(f"Error processing key {k}: {e}")
+            logger.error(f"Error processing key {k.decode('utf-8', errors='replace')}: {e}")
 
     # Check for Missing Core Services (that we expect but didn't find keys for)
     for service_id, config in SERVICES_CONFIG.items():
@@ -364,7 +366,9 @@ def write_status() -> None:
             "pid": os.getpid(),
         }
 
-        r = redis.Redis(host="silvasonic_redis", port=6379, db=0, socket_connect_timeout=2)
+        r: redis.Redis = redis.Redis(
+            host="silvasonic_redis", port=6379, db=0, socket_connect_timeout=2
+        )
         r.setex("status:healthchecker", 10, json.dumps(data))
 
     except Exception as e:
