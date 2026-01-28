@@ -2,6 +2,7 @@ import asyncio
 import os
 import typing
 
+import aiofiles
 import structlog
 from fastapi import APIRouter, Depends, Request
 from fastapi.responses import RedirectResponse, StreamingResponse
@@ -133,3 +134,26 @@ async def sse_system_status(
             await asyncio.sleep(1)  # Check frequency (Internal loop) faster than poll
 
     return StreamingResponse(event_generator(), media_type="text/event-stream")
+
+
+@router.get("/api/logs/{service_name}")
+async def get_service_logs(
+    service_name: str, auth: typing.Any = Depends(require_auth)
+) -> dict[str, str] | RedirectResponse:
+    """Get logs for a specific service."""
+    if isinstance(auth, RedirectResponse):
+        return auth
+
+    from silvasonic_dashboard.core.constants import LOG_DIR
+
+    log_file = os.path.join(LOG_DIR, f"{service_name}.log")
+    if not os.path.exists(log_file):
+        return {"content": f"Log file for {service_name} not found."}
+
+    try:
+        # Read last 1000 lines or full content (simple read for now as per tests)
+        async with aiofiles.open(log_file) as f:
+            content = await f.read()
+            return {"content": content}
+    except Exception as e:
+        return {"content": f"Error reading logs: {str(e)}"}

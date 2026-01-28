@@ -22,7 +22,7 @@ def mock_auth():
 @pytest.fixture
 def temp_log_dir(tmp_path, monkeypatch):
     """Point LOG_DIR to a temporary path for testing"""
-    monkeypatch.setattr("silvasonic_dashboard.main.LOG_DIR", str(tmp_path))
+    monkeypatch.setattr("silvasonic_dashboard.core.constants.LOG_DIR", str(tmp_path))
     return tmp_path
 
 

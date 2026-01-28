@@ -10,8 +10,11 @@ client = TestClient(app)
 @pytest.fixture(autouse=True)
 def mock_sockets():
     """Mock socket operations to prevent real network binding during tests."""
-    with patch("socket.socket") as mock:
-        yield mock
+    with (
+        patch("silvasonic_livesound.live.processor.socket") as mock_sock,
+        patch("silvasonic_livesound.live.processor.processor.start"),
+    ):
+        yield mock_sock
 
 
 @pytest.fixture(autouse=True)

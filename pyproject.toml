@@ -56,6 +56,7 @@ dev = [
     "silvasonic-healthchecker",
     "silvasonic-uploader",
     "pre-commit>=4.5.1",
+    "pytest-sugar>=1.1.1",
 ]
 
 [tool.uv]

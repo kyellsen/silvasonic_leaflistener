@@ -46,7 +46,8 @@ def test_file_handler_ignores_files():
 @patch("silvasonic_birdnet.watcher.json.dump")
 @patch("silvasonic_birdnet.watcher.open")
 @patch("silvasonic_birdnet.watcher.os.rename")
-def test_write_status(mock_rename, mock_open, mock_dump, watcher):
+@patch("silvasonic_birdnet.watcher.psutil")
+def test_write_status(mock_psutil, mock_rename, mock_open, mock_dump, watcher):
     """Test status file writing."""
     watcher.write_status("Idle")
 
