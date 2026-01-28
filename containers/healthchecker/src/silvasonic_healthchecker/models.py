@@ -26,7 +26,7 @@ class BaseStatus(BaseModel):
     """Base class for status files."""
 
     model_config = ConfigDict(extra="ignore")  # Ignore unknown fields for forward compatibility
-    timestamp: float = Field(0.0, description="Unix timestamp of the last heartbeat")
+    timestamp: float = Field(..., description="Unix timestamp of the last heartbeat")
 
 
 class RecorderMetaProfile(BaseModel):
