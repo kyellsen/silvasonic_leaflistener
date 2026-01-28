@@ -62,6 +62,7 @@ class RcloneWrapper:
         dest: str,
         transfers: int = 4,
         checkers: int = 8,
+        bwlimit: str | None = None,
         callback: Callable[[str, str, str], typing.Awaitable[None]] | None = None,
     ) -> bool:
         """Runs the sync command asynchronously."""
@@ -81,7 +82,7 @@ class RcloneWrapper:
             "--retries",
             "5",
         ]
-        return await self._run_transfer(cmd, source, dest, callback=callback)
+        return await self._run_transfer(cmd, source, dest, bwlimit=bwlimit, callback=callback)
 
     async def copy(
         self,
@@ -90,6 +91,7 @@ class RcloneWrapper:
         transfers: int = 4,
         checkers: int = 8,
         min_age: str | None = None,
+        bwlimit: str | None = None,
         callback: Callable[[str, str, str], typing.Awaitable[None]] | None = None,
     ) -> bool:
         """Runs the copy command asynchronously."""
@@ -113,17 +115,21 @@ class RcloneWrapper:
         if min_age:
             cmd.extend(["--min-age", min_age])
 
-        return await self._run_transfer(cmd, source, dest, callback=callback)
+        return await self._run_transfer(cmd, source, dest, bwlimit=bwlimit, callback=callback)
 
     async def _run_transfer(
         self,
         cmd: list[str],
         source: str,
         dest: str,
+        bwlimit: str | None = None,
         callback: Callable[[str, str, str], typing.Awaitable[None]] | None = None,
     ) -> bool:
         """Helper to run transfer commands and stream logs asynchronously."""
-        logger.info(f"Starting transfer: {source} -> {dest}")
+        if bwlimit:
+            cmd.extend(["--bwlimit", bwlimit])
+
+        logger.info(f"Starting transfer: {source} -> {dest} (bwlimit={bwlimit})")
         start_time = asyncio.get_running_loop().time()
 
         # Regex for parsing rclone logs

@@ -70,6 +70,18 @@ class TestMain:
             assert "timestamp" in data
             assert data["last_error"] is None
 
+            # Test with progress
+            progress_data = {"batch_total": 100, "batch_processed": 10, "percent": 10.0}
+            write_status(
+                "Syncing", last_upload=123.0, queue_size=90, disk_usage=45.0, progress=progress_data
+            )
+
+            with open(status_path) as f:
+                data2 = json.load(f)
+
+            assert data2["meta"]["progress"] == progress_data
+            assert data2["meta"]["queue_size"] == 90
+
     @patch("silvasonic_uploader.main.STATUS_FILE", new_callable=lambda: "status.json")
     def test_write_status_with_error(self, mock_status_file: MagicMock, temp_fs: str) -> None:
         """Test writing status containing error info."""

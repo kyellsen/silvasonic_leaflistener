@@ -2,34 +2,56 @@ import json
 import sys
 from unittest.mock import MagicMock, patch
 
-import pandas as pd
 from silvasonic_weather import main
 from silvasonic_weather.config import Settings, settings
 
 
-def test_fetch_weather_success(mock_wetterdienst, mock_db_engine, sample_weather_df) -> None:
-    """Test successful weather fetch and storage."""
-    mock_cls, mock_req = mock_wetterdienst
+def test_fetch_weather_success(mock_db_engine) -> None:
+    """Test successful weather fetch and storage via OpenMeteo."""
     mock_engine, mock_conn = mock_db_engine
 
-    # Setup mock return chain
-    mock_values = MagicMock()
-    mock_values.all.return_value.df = sample_weather_df
+    # Sample OpenMeteo Response
+    api_response = {
+        "latitude": 52.52,
+        "longitude": 13.41,
+        "generationtime_ms": 0.1,
+        "utc_offset_seconds": 0,
+        "timezone": "UTC",
+        "timezone_abbreviation": "UTC",
+        "elevation": 38.0,
+        "current": {
+            "time": "2023-10-27T12:00:00",
+            "interval": 900,
+            "temperature_2m": 20.0,
+            "relative_humidity_2m": 65.0,
+            "precipitation": 0.5,
+            "rain": 0.5,
+            "showers": 0.0,
+            "snowfall": 0.0,
+            "cloud_cover": 45.0,
+            "wind_speed_10m": 3.5,
+            "wind_gusts_10m": 8.2,
+            "weather_code": 3,
+            "sunshine_duration": 600.0,
+        },
+    }
 
-    mock_filtered = MagicMock()
-    mock_filtered.values = mock_values
+    # Mock httpx.Client
+    with patch("httpx.Client") as mock_client_cls:
+        mock_client = mock_client_cls.return_value.__enter__.return_value
+        mock_client.get.return_value.json.return_value = api_response
+        mock_client.get.return_value.raise_for_status = MagicMock()
 
-    mock_req.filter_by_rank.return_value = mock_filtered
+        # Mock Settings.get_location (class patch)
+        with patch.object(Settings, "get_location", return_value=(52.52, 13.41)):
+            main.fetch_weather()
 
-    # Mock Settings.get_location (class patch)
-    with patch.object(Settings, "get_location", return_value=(50.0, 10.0)):
-        main.fetch_weather()
-
-    # Verify connection usage
-    assert mock_cls.call_count >= 1
-    # Verify that we used the correct argument name 'parameters'
-    call_kwargs = mock_cls.call_args[1]
-    assert "parameters" in call_kwargs
+        # Verify API called correctly
+        mock_client.get.assert_called_once()
+        args, kwargs = mock_client.get.call_args
+        assert args[0] == "https://api.open-meteo.com/v1/forecast"
+        assert kwargs["params"]["latitude"] == 52.52
+        assert kwargs["params"]["longitude"] == 13.41
 
     # Verify DB insert
     insert_call = None
@@ -45,27 +67,27 @@ def test_fetch_weather_success(mock_wetterdienst, mock_db_engine, sample_weather
     # Check values passed to execute (now a dict from model_dump)
     inserted_params = insert_call[0][1]
 
-    assert inserted_params["station_id"] == "00433"
-    assert abs(inserted_params["temperature_c"] - 20.0) < 0.001
+    assert inserted_params["station_id"] == "OpenMeteo-52.52-13.41"
+    assert inserted_params["temperature_c"] == 20.0
     assert inserted_params["humidity_percent"] == 65.0
     assert inserted_params["precipitation_mm"] == 0.5
+    assert inserted_params["wind_speed_ms"] == 3.5
+    assert inserted_params["condition_code"] == "3"
 
 
-def test_fetch_weather_no_data(mock_wetterdienst, mock_db_engine) -> None:
-    """Test handling of empty API response."""
-    mock_cls, mock_req = mock_wetterdienst
+def test_fetch_weather_no_data(mock_db_engine) -> None:
+    """Test handling of empty/malformed API response."""
     mock_engine, mock_conn = mock_db_engine
 
-    # Return empty DF
-    mock_values = MagicMock()
-    mock_values.all.return_value.df = pd.DataFrame()
+    # Return empty current object
+    api_response = {"current": {}}
 
-    mock_filtered = MagicMock()
-    mock_filtered.values = mock_values
-    mock_req.filter_by_rank.return_value = mock_filtered
+    with patch("httpx.Client") as mock_client_cls:
+        mock_client = mock_client_cls.return_value.__enter__.return_value
+        mock_client.get.return_value.json.return_value = api_response
 
-    with patch.object(Settings, "get_location", return_value=(50.0, 10.0)):
-        main.fetch_weather()
+        with patch.object(Settings, "get_location", return_value=(50.0, 10.0)):
+            main.fetch_weather()
 
     # We can check that execute was NOT called with INSERT
     for c in mock_conn.execute.call_args_list:
@@ -89,13 +111,6 @@ def test_get_location_config(tmp_path):
 
     with open(config_file, "w") as f:
         json.dump(config_data, f)
-
-    # Patch field on instance is allowed if it's a field... but config_path IS a field.
-    # settings.config_path = str(config_file) should work?
-    # But Settings is frozen by default? No, BaseSettings default config.
-    # Let's try direct assignment in test, or patch.
-    # Since config_path is a field, we can just set it if model is not frozen.
-    # BaseSettings is not frozen by default.
 
     original = settings.config_path
     settings.config_path = str(config_file)

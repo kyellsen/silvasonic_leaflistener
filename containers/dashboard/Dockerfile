@@ -22,6 +22,14 @@ RUN uv venv --python /usr/local/bin/python && \
     uv pip compile pyproject.toml -o requirements.txt && \
     uv pip install --no-cache -r requirements.txt
 
+# --- Frontend Build Stage ---
+FROM node:20-slim AS frontend
+WORKDIR /app
+COPY tailwind.config.js .
+COPY src ./src
+RUN npm install -g tailwindcss
+RUN npx tailwindcss -i ./src/silvasonic_dashboard/static/css/tailwind.css -o ./styles.css --minify
+
 # --- Final Stage ---
 FROM python:3.11-slim-bookworm
 
@@ -44,6 +52,9 @@ ENV PATH="/app/.venv/bin:$PATH"
 
 # Copy application code
 COPY src /app/src
+
+# Copy compiled frontend assets
+COPY --from=frontend /app/styles.css /app/src/silvasonic_dashboard/static/css/styles.css
 
 # Environment variables
 ENV PYTHONUNBUFFERED=1

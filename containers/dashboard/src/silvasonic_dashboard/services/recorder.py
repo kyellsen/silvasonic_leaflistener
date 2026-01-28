@@ -1,8 +1,6 @@
 import datetime
 import json
 import os
-import time
-from datetime import UTC
 from typing import Any, cast
 
 from async_lru import alru_cache
@@ -251,54 +249,12 @@ class RecorderService:
             return {}
 
     @staticmethod
-    @alru_cache(ttl=60)
     async def get_creation_rate(minutes: int = 60) -> float:
         """Calculate files created per minute over the last X minutes."""
-        try:
-            now = time.time()
-            cutoff = now - (minutes * 60)
+        # Use cached stats to avoid blocking I/O
+        from .stats_cache import StatsManager
 
-            if not os.path.exists(REC_DIR):
-                return 0.0
-
-            # Scan directory (non-recursive for now, assuming flat structure or dated folders?)
-            # Recorder uses dated folders typically?
-            # Actually pattern is "%Y-%m-%d_%H-%M-%S.flac" inside BASE_OUTPUT_DIR/profile_slug
-            # But REC_DIR should point to the active profile dir?
-            # Dashboard Config: AUDIO_DIR = "/data/recording"
-            # We might need to scan subdirs if profile is used.
-            # Let's assume recursion for robustness or check depth 1.
-
-            # Return rate per minute
-            def count_recent() -> int:
-                count = 0
-                for root, _dirs, files in os.walk(REC_DIR):
-                    for f in files:
-                        if not f.endswith(".flac"):
-                            continue
-
-                        ts_str = f.split(".")[0]
-                        try:
-                            dt = datetime.datetime.strptime(ts_str, "%Y-%m-%d_%H-%M-%S")
-                            ts = dt.replace(tzinfo=UTC).timestamp()
-                            if ts >= cutoff:
-                                count += 1
-                        except Exception:
-                            # Fallback
-                            try:
-                                mtime = os.path.getmtime(os.path.join(root, f))
-                                if mtime >= cutoff:
-                                    count += 1
-                            except Exception:
-                                pass
-                return count
-
-            total = await run_in_executor(count_recent)
-            return round(total / minutes, 2)
-
-        except Exception as e:
-            logger.error(f"Recorder Rate Error: {e}")
-            return 0.0
+        return StatsManager.get_instance().get_creation_rate(minutes)
 
     @staticmethod
     async def get_latest_filename() -> str | None:
@@ -322,30 +278,9 @@ class RecorderService:
             return None
 
     @staticmethod
-    @alru_cache(ttl=30)
     async def count_files_after(filename: str | None) -> int:
         """Count how many files on disk are lexicographically 'after' the given filename."""
-        if not filename:
-            # If no comparison file provided, count ALL files (queue is full)
-            # But this might be huge if starting fresh.
-            # If processed table is empty, lag is Everything.
-            # We should probably count all.
-            pass
+        # Use cached stats to avoid blocking I/O
+        from .stats_cache import StatsManager
 
-        try:
-            if not os.path.exists(REC_DIR):
-                return 0
-
-            def count_walk() -> int:
-                c = 0
-                for _root, _dirs, files in os.walk(REC_DIR):
-                    for f in files:
-                        if f.endswith(".flac"):
-                            if not filename or f > filename:
-                                c += 1
-                return c
-
-            return await run_in_executor(count_walk)
-        except Exception as e:
-            logger.error(f"Recorder Count After Error: {e}")
-            return 0
+        return StatsManager.get_instance().count_files_after(filename)

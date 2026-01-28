@@ -82,6 +82,15 @@ async def lifespan(app: FastAPI) -> typing.AsyncGenerator[None, None]:
     # Startup: Start status writer in thread
     t = threading.Thread(target=write_status, daemon=True)
     t.start()
+
+    # Start Stats Cache Manager
+    try:
+        from silvasonic_dashboard.services.stats_cache import StatsManager
+
+        StatsManager.get_instance().start_background_task()
+    except ImportError:
+        logger.error("Failed to start StatsManager")
+
     yield
     # Shutdown logic can go here if needed
 

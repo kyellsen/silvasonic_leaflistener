@@ -4,11 +4,12 @@ import os
 import sys
 import time
 import typing
+from datetime import UTC, datetime
 
+import httpx
 import schedule
 import structlog
 from sqlalchemy import create_engine, text
-from wetterdienst.provider.dwd.observation import DwdObservationRequest
 
 from silvasonic_weather.config import settings
 from silvasonic_weather.models import WeatherMeasurement
@@ -83,72 +84,70 @@ def get_db_connection() -> typing.Any:
 
 
 def fetch_weather() -> None:
-    """Fetch weather data and store it."""
-    logger.info("Fetching weather data...")
+    """Fetch weather data from OpenMeteo and store it."""
+    logger.info("Fetching weather data from OpenMeteo...")
     lat, lon = settings.get_location()
 
     try:
-        # Common DWD parameters
-        request = DwdObservationRequest(
-            parameters=[
-                "temperature_air_mean_2m",
-                "humidity",
-                "precipitation_height",
-                "wind_speed",
-                "wind_gust_max",
-                "sunshine_duration",
-                "cloud_cover_total",
-            ],
-            resolution="10_minutes",
-        ).filter_by_rank(latlon=(lat, lon), rank=1)
+        # OpenMeteo API
+        url = "https://api.open-meteo.com/v1/forecast"
+        params = {
+            "latitude": lat,
+            "longitude": lon,
+            "current": ",".join(
+                [
+                    "temperature_2m",
+                    "relative_humidity_2m",
+                    "precipitation",
+                    "rain",
+                    "showers",
+                    "snowfall",
+                    "cloud_cover",
+                    "wind_speed_10m",
+                    "wind_gusts_10m",
+                    "weather_code",
+                    "sunshine_duration",
+                ]
+            ),
+            "wind_speed_unit": "ms",
+            "timeformat": "iso8601",
+            "timezone": "UTC",
+        }
 
-        values = request.values.all().df
+        with httpx.Client(timeout=10.0) as client:
+            response = client.get(url, params=params)
+            response.raise_for_status()
+            data = response.json()
 
-        if values.empty:
-            logger.warning("No data received.")
+        current = data.get("current", {})
+
+        if not current:
+            logger.warning("No current weather data received.")
             return
 
-        # Get the latest timestamp
-        latest_ts = values["date"].max()
-        current = values[values["date"] == latest_ts]
+        # Map OpenMeteo data to our model
+        # OpenMeteo provides ISO timestamp in "time" field
+        ts_str = current.get("time")
+        # Ensure UTC timezone awareness if not present
+        timestamp = datetime.fromisoformat(ts_str)
+        if timestamp.tzinfo is None:
+            timestamp = timestamp.replace(tzinfo=UTC)
 
-        # Map parameters to our schema
-        data_map = {}
-        station_id = None
+        # Create station ID from location to track source
+        station_id = f"OpenMeteo-{lat:.2f}-{lon:.2f}"
 
-        for _, row in current.iterrows():
-            param = row["parameter"]
-            val = row["value"]
-            station_id = str(row["station_id"])
-
-            if param == "temperature_air_mean_2m":
-                data_map["temperature_c"] = val - 273.15  # Convert Kelvin to Celsius
-            elif param == "humidity":
-                data_map["humidity_percent"] = val
-            elif param == "precipitation_height":
-                data_map["precipitation_mm"] = val
-            elif param == "wind_speed":
-                data_map["wind_speed_ms"] = val
-            elif param == "wind_gust_max":
-                data_map["wind_gust_ms"] = val
-            elif param == "sunshine_duration":
-                data_map["sunshine_seconds"] = val
-            elif param == "cloud_cover_total":
-                data_map["cloud_cover_percent"] = val
-
-        # Ensure we have a station_id
-        if not station_id:
-            logger.warning("No station ID found in data.")
-            return
-
-        # Create and validate model
         measurement = WeatherMeasurement(
-            timestamp=latest_ts.to_pydatetime(), station_id=station_id, **data_map
+            timestamp=timestamp,
+            station_id=station_id,
+            temperature_c=current.get("temperature_2m"),
+            humidity_percent=current.get("relative_humidity_2m"),
+            precipitation_mm=current.get("precipitation"),
+            wind_speed_ms=current.get("wind_speed_10m"),
+            wind_gust_ms=current.get("wind_gusts_10m"),
+            sunshine_seconds=current.get("sunshine_duration"),
+            cloud_cover_percent=current.get("cloud_cover"),
+            condition_code=str(current.get("weather_code", "")),
         )
-
-        # Unit adjustment check (optional, but kept for logic parity)
-        if measurement.temperature_c and measurement.temperature_c > 200:
-            measurement.temperature_c -= 273.15
 
         # Insert into DB
         with get_db_connection() as conn:
@@ -163,11 +162,11 @@ def fetch_weather() -> None:
                 ) ON CONFLICT (timestamp) DO NOTHING
             """
             )
-            # Dump model to dict, excluding None/unset if needed, but here we want all fields
             conn.execute(stmt, measurement.model_dump())
             conn.commit()
 
-        logger.info(f"Stored weather data for {latest_ts} (Station {station_id})")
+        logger.info(f"Stored weather data for {timestamp} (Station {station_id})")
+        write_status("Idle (Waiting for next schedule)")
 
     except Exception as e:
         logger.exception(f"Fetch failed: {e}")
@@ -195,7 +194,7 @@ def write_status(
             "last_error_time": _last_error_time,
             "cpu_percent": psutil.cpu_percent(),
             "memory_usage_mb": psutil.Process(os.getpid()).memory_info().rss / 1024 / 1024,
-            "meta": {"station_id": station},
+            "meta": {"station_id": station, "provider": "OpenMeteo"},
             "pid": os.getpid(),
         }
         s_file = settings.status_file
@@ -208,70 +207,18 @@ def write_status(
         logger.error(f"Status write failed: {e}")
 
 
-def init_db() -> None:
-    """Initialize the database (create views)."""
-    try:
-        with get_db_connection() as conn:
-            try:
-                # Create View for Analysis
-                conn.execute(
-                    text(
-                        """
-                CREATE OR REPLACE VIEW weather.bird_stats_view AS
-                WITH w_stats AS (
-                    SELECT
-                        date_trunc('hour', timestamp) as bucket,
-                        AVG(temperature_c) as avg_temp,
-                        AVG(humidity_percent) as avg_humid,
-                        AVG(precipitation_mm) as total_precip
-                    FROM weather.measurements
-                    GROUP BY 1
-                ),
-                b_stats AS (
-                    SELECT
-                        date_trunc('hour', timestamp) as bucket,
-                        COUNT(*) as detection_count,
-                        COUNT(DISTINCT scientific_name) as species_count
-                    FROM birdnet.detections
-                    GROUP BY 1
-                )
-                SELECT
-                    w.bucket,
-                    w.avg_temp,
-                    w.avg_humid,
-                    w.total_precip,
-                    COALESCE(b.detection_count, 0) as detection_count,
-                    COALESCE(b.species_count, 0) as species_count
-                FROM w_stats w
-                LEFT JOIN b_stats b ON w.bucket = b.bucket;
-            """
-                    )
-                )
-                conn.commit()
-                logger.info("Database initialized (Views created).")
-            except Exception:
-                conn.rollback()
-                raise
-    except Exception as e:
-        logger.error(f"Failed to initialize DB: {e}")
-
-
 if __name__ == "__main__":
     try:
         setup_logging()
-
     except Exception as e:
         logger.exception(f"Startup failed: {e}")
         time.sleep(10)
         exit(1)
 
-    init_db()  # Initialize View
-
+    # Initial fetch
     fetch_weather()
 
     schedule.every(20).minutes.do(fetch_weather)
-
-    # Analysis is now handled via SQL View, no scheduled job needed.
 
     logger.info("Weather service started.")
     write_status("Starting")
@@ -279,7 +226,12 @@ if __name__ == "__main__":
     while True:
         try:
             schedule.run_pending()
-            write_status("Running")
+            # Don't overwrite specific statuses like "Fetching..." with "Running" constantly
+            # Only update heartbeat if needed, or let fetch_weather handle status
+            if _last_error:
+                # If we are in error state, keep it visible or clear it after some time?
+                # ideally we just update timestamp
+                pass
             time.sleep(1)
         except KeyboardInterrupt:
             break

@@ -39,6 +39,8 @@ class WatcherService:
         self.observer = Observer()
         self.file_queue: queue.Queue[str] = queue.Queue()
         self.is_processing = False
+        self._current_file: str | None = None
+        self._current_file_start_time: float | None = None
         self._last_error: str | None = None
         self._last_error_time: float | None = None
         self._stop_event = threading.Event()
@@ -101,6 +103,12 @@ class WatcherService:
                     continue
 
                 self.is_processing = True
+                self._current_file = os.path.basename(file_path)
+                self._current_file_start_time = time.time()
+
+                # Update status immediately to show "Processing..."
+                self.write_status("Processing")
+
                 try:
                     # Give a small grace period (logic moved from Handler, but fine here too)
                     time.sleep(0.5)
@@ -111,7 +119,11 @@ class WatcherService:
                     self._last_error_time = time.time()
                 finally:
                     self.is_processing = False
+                    self._current_file = None
+                    self._current_file_start_time = None
                     self.file_queue.task_done()
+                    # Update status immediately to return to Idle
+                    self.write_status("Idle (Watching)")
 
             except Exception as e:
                 logger.error(f"Worker thread error: {e}")
@@ -121,6 +133,11 @@ class WatcherService:
         if error:
             self._last_error = str(error)
             self._last_error_time = time.time()
+
+        processing_duration = 0.0
+        if self._current_file_start_time and self.is_processing:
+            processing_duration = time.time() - self._current_file_start_time
+
         try:
             data = {
                 "service": "birdnet",
@@ -132,6 +149,10 @@ class WatcherService:
                     "input_dir": str(config.INPUT_DIR),
                     "recursive": config.RECURSIVE_WATCH,
                     "queue_size": self.file_queue.qsize(),
+                    "current_file": self._current_file,
+                    "processing_duration_sec": round(processing_duration, 2)
+                    if self.is_processing
+                    else None,
                 },
                 "last_error": self._last_error,
                 "last_error_time": self._last_error_time,

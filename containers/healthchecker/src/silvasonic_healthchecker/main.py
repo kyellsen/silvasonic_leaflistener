@@ -209,14 +209,26 @@ def check_services_status(mailer: Mailer, service_states: dict[str, str]) -> Non
                 last_ts = status_obj.timestamp
                 time_diff = current_time - last_ts
 
+                # Rich Status Passthrough
+                # If the service reports a message, use it. Otherwise default to "Active".
+                source_message = getattr(status_obj, "message", None)
+                final_message = source_message if source_message else "Active"
+
+                # If the service reports a specific state (e.g. "Recording"), use it?
+                # For now, we mainly want the message visible.
+                # We can also pass 'state' if we want the dashboard to use it.
+
                 service_data = {
                     "id": instance_id,
                     "name": display_name,
                     "status": "Running",
                     "last_seen": last_ts,
-                    "message": "Active",
+                    "message": final_message,
                     "timeout_threshold": timeout_val,
                 }
+
+                if getattr(status_obj, "state", None):
+                    service_data["state"] = status_obj.state
 
                 # Timeout Check
                 if time_diff > timeout_val:

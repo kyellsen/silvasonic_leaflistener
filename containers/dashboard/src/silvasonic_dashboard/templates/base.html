@@ -13,46 +13,9 @@
       rel="stylesheet"
     />
 
-    <!-- Tailwind CSS (CDN) -->
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script>
-      tailwind.config = {
-        darkMode: "class",
-        theme: {
-          extend: {
-            fontFamily: {
-              sans: ["Inter", "sans-serif"],
-              heading: ["Outfit", "sans-serif"],
-            },
-            colors: {
-              silva: {
-                50: "#ecfdf5",
-                100: "#d1fae5",
-                200: "#a7f3d0",
-                300: "#6ee7b7",
-                400: "#34d399",
-                500: "#10b981",
-                600: "#059669",
-                700: "#047857",
-                800: "#065f46",
-                900: "#064e3b",
-                950: "#022c22",
-              },
-              dark: {
-                bg: "#020617", // Slate 950 base
-                surface: "#0f172a", // Slate 900
-                surface_light: "#1e293b", // Slate 800
-                border: "#1e293b", // Slate 800
-              },
-            },
-            boxShadow: {
-              neon: '0 0 5px theme("colors.silva.400"), 0 0 20px theme("colors.silva.900")',
-              glass: "0 4px 30px rgba(0, 0, 0, 0.1)",
-            },
-          },
-        },
-      };
-    </script>
+    <!-- Tailwind CSS (Local) -->
+    <link href="/static/css/styles.css" rel="stylesheet" />
+
     <!-- ApexCharts (Local) -->
     <script src="/static/js/apexcharts.min.js"></script>
     <!-- Alpine.js (Local) -->
@@ -89,8 +52,8 @@
                 } else if (path.startsWith('/stats')) {
                     this.target = 'dashboard';
                 } else if (path.startsWith('/birdnet')) {
-                   // Generic BirdNET page (BUT discover is above so order matters!)
-                   this.target = 'birdnet';
+                    // Generic BirdNET page (BUT discover is above so order matters!)
+                    this.target = 'birdnet';
                 } else {
                     this.target = 'healthchecker';
                 }
@@ -142,92 +105,6 @@
       }
       ::-webkit-scrollbar-thumb:hover {
         background: #475569;
-      }
-
-      /* Glassmorphism Utilities */
-      .glass {
-        background: rgba(255, 255, 255, 0.7);
-        backdrop-filter: blur(10px);
-        -webkit-backdrop-filter: blur(10px);
-        border-bottom: 1px solid rgba(0, 0, 0, 0.05);
-      }
-      .dark .glass {
-        background: rgba(15, 23, 42, 0.6); /* Slate 900 with alpha */
-        border: 1px solid rgba(255, 255, 255, 0.05);
-      }
-
-      /* Standard Card Styles */
-      .silva-card {
-        background-color: white;
-        border: 1px solid #e5e7eb; /* gray-200 */
-        border-radius: 0.75rem; /* rounded-xl */
-        box-shadow:
-          0 4px 6px -1px rgba(0, 0, 0, 0.1),
-          0 2px 4px -1px rgba(0, 0, 0, 0.06); /* shadow-md */
-        position: relative;
-        overflow: hidden;
-        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-      }
-      .dark .silva-card {
-        background-color: rgba(30, 41, 59, 0.7); /* slate-800 with opacity */
-        border-color: rgba(255, 255, 255, 0.05);
-        backdrop-filter: blur(20px);
-        -webkit-backdrop-filter: blur(20px);
-      }
-
-      .silva-card-hover {
-        cursor: pointer;
-      }
-      .silva-card-hover:hover {
-        --tw-ring-offset-width: 0px;
-        --tw-ring-width: 2px;
-        --tw-ring-opacity: 1;
-        box-shadow:
-          0 20px 25px -5px rgba(0, 0, 0, 0.1),
-          0 10px 10px -5px rgba(0, 0, 0, 0.04); /* shadow-xl */
-        transform: scale(1.01);
-      }
-
-      /* Legacy Glass Support (for non-card elements if needed) */
-      .glass-panel {
-        @apply silva-card;
-      }
-
-      /* Sidebar Label Visibility */
-      .sidebar-label {
-        opacity: 0;
-        width: 0;
-        transition: opacity 0.3s ease-in-out;
-      }
-      #sidebar-menu.expanded .sidebar-label {
-        opacity: 1;
-        width: auto;
-      }
-
-      /* Animations */
-      @keyframes fade-in {
-        from {
-          opacity: 0;
-        }
-        to {
-          opacity: 1;
-        }
-      }
-      .animate-fade-in {
-        animation: fade-in 0.2s ease-out;
-      }
-
-      @keyframes float {
-        0%,
-        100% {
-          transform: translateY(0);
-        }
-        50% {
-          transform: translateY(-10px);
-        }
-      }
-      .animate-float {
-        animation: float 6s ease-in-out infinite;
       }
     </style>
     {% block head %}{% endblock %}

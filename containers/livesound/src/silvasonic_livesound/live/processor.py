@@ -1,17 +1,25 @@
 import asyncio
 import logging
-import os
+import math
 import socket
 import threading
 import typing
+from dataclasses import dataclass
 
 import librosa
 import numpy as np
 import orjson
 
 from ..config import settings
+from .models import SourceStatus
 
 logger = logging.getLogger("LiveProcessor")
+
+
+@dataclass
+class StreamMetrics:
+    packets_received: int = 0
+    rms_db: float = -100.0
 
 
 class AudioIngestor:
@@ -21,13 +29,17 @@ class AudioIngestor:
         """Initialize the AudioIngestor."""
         # Sockets: {source_name: socket}
         self.sockets: dict[str, socket.socket] = {}
+        # Port mapping: {source_name: port}
+        self.source_ports: dict[str, int] = {}
 
         # Threads: {source_name: thread}
         self.threads: dict[str, threading.Thread] = {}
+        # Metrics: {source_name: StreamMetrics}
+        self.metrics: dict[str, StreamMetrics] = {}
+
         self._lock = threading.Lock()
 
         self.running = False
-        self.status_dir = "/mnt/data/services/silvasonic/status"
 
         # Thread-safe integration with AsyncIO
         self.loop: asyncio.AbstractEventLoop | None = None
@@ -46,25 +58,59 @@ class AudioIngestor:
         # 1. Add New
         for source, port in new_ports.items():
             if source not in self.sockets:
-                try:
-                    self._setup_socket(source, port)
-                    # Start thread if running
-                    if self.running and source in self.sockets:
-                        t = threading.Thread(
-                            target=self._ingest_loop,
-                            args=(source, self.sockets[source]),
-                            daemon=True,
-                        )
-                        self.threads[source] = t
-                        t.start()
-                except Exception as e:
-                    logger.error(f"Failed to add source {source}: {e}")
+                self.add_source(source, port)
 
-        # 2. Remove Old (Optional - closing sockets might be safer than leaving them)
-        # For now, we accumulate. Closing running threads is tricky without signaling.
-        # But we can try.
-        # If a port moves? (Unlikely)
-        pass
+    def add_source(self, name: str, port: int) -> None:
+        """Add a new audio source dynamically."""
+        with self._lock:
+            if name in self.sockets:
+                logger.warning(f"Source {name} already exists.")
+                return
+
+            try:
+                self._setup_socket(name, port)
+                self.source_ports[name] = port
+                self.metrics[name] = StreamMetrics()
+
+                # Start thread if running
+                if self.running and name in self.sockets:
+                    self._start_ingestion_thread(name)
+            except Exception as e:
+                logger.error(f"Failed to add source {name}: {e}")
+
+    def remove_source(self, name: str) -> None:
+        """Remove a source dynamically."""
+        # Optimistic removal
+        sock = self.sockets.pop(name, None)
+        self.source_ports.pop(name, None)
+        self.metrics.pop(name, None)
+
+        if sock:
+            try:
+                sock.close()
+            except Exception:
+                pass
+
+        # Thread handles its own exit when socket is closed or recv fails
+        logger.info(f"Removed source {name}")
+
+    def get_source_stats(self) -> list[SourceStatus]:
+        """Get snapshot of current source statistics."""
+        stats = []
+        with self._lock:
+            for name, port in self.source_ports.items():
+                m = self.metrics.get(name, StreamMetrics())
+                active = name in self.threads and self.threads[name].is_alive()
+                stats.append(
+                    SourceStatus(
+                        name=name,
+                        port=port,
+                        active=active,
+                        rms_db=m.rms_db,
+                        packets_received=m.packets_received,
+                    )
+                )
+        return stats
 
     def _setup_socket(self, source: str, port: int) -> None:
         try:
@@ -76,29 +122,7 @@ class AudioIngestor:
             logger.info(f"Bound source '{source}' to UDP {settings.HOST}:{port}")
         except Exception as e:
             logger.error(f"Failed to bind source '{source}' on port {port}: {e}")
-
-    def _watch_config_loop(self) -> None:
-        """Poll for dynamic source configuration."""
-        import json
-        import time
-
-        config_file = os.path.join(os.path.dirname(settings.STATUS_FILE), "livesound_sources.json")
-        last_mtime: float = 0.0
-
-        while self.running:
-            try:
-                if os.path.exists(config_file):
-                    mtime = os.path.getmtime(config_file)
-                    if mtime > last_mtime:
-                        last_mtime = mtime
-                        with open(config_file) as f:
-                            sources = json.load(f)
-                            if isinstance(sources, dict):
-                                self.update_sources(sources)
-            except Exception as e:
-                logger.error(f"Config Watch Error: {e}")
-
-            time.sleep(2)
+            raise
 
     def start(self, loop: asyncio.AbstractEventLoop) -> None:
         """Start the ingestion threads."""
@@ -106,17 +130,17 @@ class AudioIngestor:
         self.running = True
 
         # Start existing threads
-        for source, sock in self.sockets.items():
-            if source not in self.threads or not self.threads[source].is_alive():
-                t = threading.Thread(target=self._ingest_loop, args=(source, sock), daemon=True)
-                self.threads[source] = t
-                t.start()
-
-        # Start Config Watcher
-        self.watcher_thread = threading.Thread(target=self._watch_config_loop, daemon=True)
-        self.watcher_thread.start()
+        for source in list(self.sockets.keys()):
+            self._start_ingestion_thread(source)
 
         logger.info("Audio ingestion threads started.")
+
+    def _start_ingestion_thread(self, source: str) -> None:
+        if source not in self.threads or not self.threads[source].is_alive():
+            sock = self.sockets[source]
+            t = threading.Thread(target=self._ingest_loop, args=(source, sock), daemon=True)
+            self.threads[source] = t
+            t.start()
 
     def stop(self) -> None:
         """Stop the ingestion threads."""
@@ -135,13 +159,6 @@ class AudioIngestor:
         if source == "default":
             if "default" not in self.sockets and self.sockets:
                 source = next(iter(self.sockets))
-
-        # Validate against ACTUAL hardware sockets, not queue dict
-        if source not in self.sockets:
-            logger.warning(f"Subscribe request for known source: {source}")
-            # We can still register it, but it won't get data.
-            # Alternatively, we could auto-create a socket if we were truly dynamic,
-            # but here we just safely register the queue.
 
         with self._lock:
             if source not in self._spectrogram_queues:
@@ -223,28 +240,6 @@ class AudioIngestor:
             fmax=14000,  # Birds range
         )
 
-        # --- Ring Buffer Optimization ---
-        # We need a buffer large enough to hold [Historical Data + New Chunk]
-        # We need at least fft_window samples to compute one frame.
-        # But we really want to process a stream.
-        # To avoid np.concatenate, we allocate a fixed size buffer.
-        # Size = fft_window + chunk_size (max new data)
-        # Actually, we just need a rolling window of size fft_window.
-        # But since we receive chunk_size data, we need room to shift.
-
-        # ring_buffer holds the latest audio samples used for FFT
-        # Initial capacity: Enough to hold the FFT window.
-        # But wait, audio_chunk can be up to chunk_size (4096).
-        # We want to perform FFT on the *last* fft_window (2048) samples
-        # AFTER appending the new chunk.
-
-        # Strategy:
-        # 1. Keep a persistent buffer of size (fft_window + chunk_size).
-        # 2. On new data (len=N):
-        #    - Shift existing data left by N: buffer[:-N] = buffer[N:]
-        #    - Insert new data at end: buffer[-N:] = new_data
-        #    - Slice the last fft_window samples for processing: buffer[-fft_window:]
-
         rb_size = settings.FFT_WINDOW + settings.CHUNK_SIZE
         ring_buffer = np.zeros(rb_size, dtype=np.float32)
 
@@ -256,7 +251,20 @@ class AudioIngestor:
                 if not data:
                     continue
 
-                # 1. Distribute Raw Audio (Bytes)
+                # --- 1. Update Metrics ---
+                # We need a rough RMS estimate.
+                # int16 -> float
+                audio_chunk_int16 = np.frombuffer(data, dtype=np.int16)
+                new_samples = audio_chunk_int16.astype(np.float32) / 32768.0
+
+                rms = float(np.sqrt(np.mean(new_samples**2)))
+                rms_db = 20 * math.log10(rms) if rms > 1e-9 else -100.0
+
+                if source in self.metrics:
+                    self.metrics[source].packets_received += 1
+                    self.metrics[source].rms_db = round(rms_db, 1)
+
+                # --- 2. Distribute Raw Audio (Bytes) ---
                 if source in self._audio_queues:
                     self._broadcast_safe(self._audio_queues[source], data)
 
@@ -264,17 +272,9 @@ class AudioIngestor:
                 if source not in self._spectrogram_queues or not self._spectrogram_queues[source]:
                     continue
 
-                # 2. Process Spectrogram
-                # int16 -> float32
-                # We assume 16-bit PCM input
-                audio_chunk_int16 = np.frombuffer(data, dtype=np.int16)
-
-                # Normalize to -1.0 .. 1.0
-                new_samples = audio_chunk_int16.astype(np.float32) / 32768.0
-
+                # --- 3. Process Spectrogram ---
                 n_new = len(new_samples)
 
-                # --- Ring Buffer Logic ---
                 # Shift left
                 ring_buffer[:-n_new] = ring_buffer[n_new:]
                 # Append new
@@ -284,7 +284,6 @@ class AudioIngestor:
                 y = ring_buffer[-settings.FFT_WINDOW :]
 
                 # Compute STFT
-                # Calculate power spectrogram (amplitude squared)
                 stft_matrix = librosa.stft(
                     y, n_fft=settings.FFT_WINDOW, hop_length=settings.HOP_LENGTH
                 )
@@ -300,22 +299,19 @@ class AudioIngestor:
                 normalized_spec = np.clip((log_mel_spec + 80) * (255 / 80), 0, 255).astype(np.uint8)
 
                 # Provide a flat list of the latest spectral frame
-                # Taking the mean of the frames in this chunk to represent "now"
                 if normalized_spec.shape[1] > 0:
                     frame = np.mean(normalized_spec, axis=1).astype(np.uint8)
-
-                    # --- Performance Boost: orjson ---
-                    # Pack simple JSON-friendly struct directly to bytes
-                    # orjson can serialize numpy arrays natively via OPT_SERIALIZE_NUMPY
                     payload = orjson.dumps(frame, option=orjson.OPT_SERIALIZE_NUMPY)
                     self._broadcast_safe(self._spectrogram_queues[source], payload)
 
+            except OSError:
+                # Socket closed or similar
+                if not self.running:
+                    break
             except Exception as e:
                 if self.running:
                     logger.error(f"Ingest Error [{source}]: {e}")
 
 
 # Singleton
-# We can initialize with default config, but main.py might override it
-# For now, let's allow it to be configured via Env in main.py
 processor = AudioIngestor()

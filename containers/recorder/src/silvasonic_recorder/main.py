@@ -58,7 +58,7 @@ def setup_logging() -> None:
         pass  # Ignore if we can't create it
 
     # JSON Formatter for stdlib handlers
-    pre_chain = [
+    pre_chain: list[typing.Any] = [
         structlog.stdlib.add_log_level,
         structlog.stdlib.add_logger_name,
         structlog.processors.TimeStamper(fmt="iso"),
@@ -189,10 +189,13 @@ class Recorder:
 
     def _discover_hardware(self) -> tuple[MicrophoneProfile | None, DetectedDevice | None]:
         """Wrapper for get_active_profile using settings."""
-        return get_active_profile(
-            mock_mode=settings.MOCK_HARDWARE,
-            force_profile=settings.AUDIO_PROFILE,
-            strict_mode=settings.STRICT_HARDWARE_MATCH,
+        return typing.cast(
+            tuple[MicrophoneProfile | None, DetectedDevice | None],
+            get_active_profile(
+                mock_mode=settings.MOCK_HARDWARE,
+                force_profile=settings.AUDIO_PROFILE,
+                strict_mode=settings.STRICT_HARDWARE_MATCH,
+            ),
         )
 
     def _start_ffmpeg(

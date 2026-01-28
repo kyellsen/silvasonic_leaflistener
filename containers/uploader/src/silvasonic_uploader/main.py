@@ -56,6 +56,7 @@ ERROR_DIR = "/mnt/data/services/silvasonic/errors"
 CLEANUP_THRESHOLD = int(os.getenv("UPLOADER_CLEANUP_THRESHOLD", 70))
 CLEANUP_TARGET = int(os.getenv("UPLOADER_CLEANUP_TARGET", 60))
 MIN_AGE = os.getenv("UPLOADER_MIN_AGE", "1m")
+BW_LIMIT = os.getenv("UPLOADER_BWLIMIT")  # e.g. "500k", "1M"
 
 
 # Global Status State
@@ -145,6 +146,7 @@ def write_status(
     queue_size: int = -1,
     disk_usage: float = 0,
     error: Exception | str | None = None,
+    progress: dict[str, typing.Any] | None = None,
 ) -> None:
     """Write current status to JSON file for dashboard. Blocking IO."""
     try:
@@ -171,6 +173,10 @@ def write_status(
             "last_upload": last_upload,
             "pid": os.getpid(),
         }
+
+        if progress:
+            data["meta"]["progress"] = progress
+
         # Atomic write
         tmp_file = f"{STATUS_FILE}.tmp"
         with open(tmp_file, "w") as f:
@@ -252,6 +258,11 @@ async def main_loop() -> None:
                     None, wrapper.get_disk_usage_percent, SOURCE_DIR
                 )
 
+                # Initialize batch tracking
+                batch_total = queue_size
+                batch_processed = 0
+                last_status_update = 0.0
+
                 # --- PHASE 1: UPLOAD ---
                 await loop.run_in_executor(
                     None, write_status, "Syncing", last_upload_success, queue_size, disk_usage
@@ -266,9 +277,16 @@ async def main_loop() -> None:
                     with db.get_session() as session:
 
                         async def upload_callback_async(
-                            filename: str, status: str, error: str
+                            filename: str,
+                            status: str,
+                            error: str,
+                            # Bind loop variables to avoid B023
+                            batch_total: int = batch_total,
+                            last_upload_success: float = last_upload_success,
+                            disk_usage: float = disk_usage,
                         ) -> None:
                             """Async callback that schedules sync DB write."""
+                            nonlocal batch_processed, queue_size, last_status_update
                             try:
                                 # Get file size if success (Blocking stat)
                                 size = 0
@@ -279,6 +297,7 @@ async def main_loop() -> None:
                                         # For standard SSD/SD, acceptable.
                                         size = os.path.getsize(full_path)
 
+                                # Update DB
                                 def db_update() -> None:
                                     db.log_upload(
                                         filename=filename,
@@ -294,6 +313,42 @@ async def main_loop() -> None:
                                 # Execute in thread pool
                                 await loop.run_in_executor(None, db_update)
 
+                                # Update Progress
+                                batch_processed += 1
+                                # Decrease queue size logic: if success, queue shrinks.
+                                # If failed, it might still remain in queue depending on logic,
+                                # but usually rclone retries. If it fails finally, it stays in queue?
+                                # For simplicity, we assume process = attempt.
+                                # But accurate queue_size is diff(local, uploaded).
+                                # If upload success, queue_size decrements.
+                                if status == "success":
+                                    queue_size = max(0, queue_size - 1)
+
+                                # Throttle status updates (max 1 per second)
+                                now = time.time()
+                                if now - last_status_update > 1.0:
+                                    percent = 0.0
+                                    if batch_total > 0:
+                                        percent = round((batch_processed / batch_total) * 100, 1)
+
+                                    progress_data = {
+                                        "batch_total": batch_total,
+                                        "batch_processed": batch_processed,
+                                        "percent": percent,
+                                    }
+
+                                    await loop.run_in_executor(
+                                        None,
+                                        write_status,
+                                        "Syncing",
+                                        last_upload_success,
+                                        queue_size,
+                                        disk_usage,
+                                        None,
+                                        progress_data,
+                                    )
+                                    last_status_update = now
+
                             except Exception as e:
                                 logger.error(f"Callback error: {e}")
 
@@ -302,6 +357,7 @@ async def main_loop() -> None:
                             SOURCE_DIR,
                             f"remote:{TARGET_DIR}",
                             min_age=MIN_AGE,
+                            bwlimit=BW_LIMIT,
                             callback=upload_callback_async,
                         )
 

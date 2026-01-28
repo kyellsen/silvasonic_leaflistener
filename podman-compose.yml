@@ -95,6 +95,7 @@ services:
       - ${SILVASONIC_DATA_DIR}/recorder/recordings:/data/recording:z
       - ${SILVASONIC_DATA_DIR}/logs:/var/log/silvasonic:z
       - /proc/asound:/proc/asound:ro
+      - ${SILVASONIC_DATA_DIR}/status:/mnt/data/services/silvasonic/status:z
       - /sys:/sys:ro
 
   livesound:
@@ -161,7 +162,9 @@ services:
       - ${SILVASONIC_DATA_DIR}/db/data:/var/lib/postgresql/data:z
       - ./containers/db/init:/docker-entrypoint-initdb.d:z
       - ./containers/db/postgresql.conf:/etc/postgresql/postgresql.conf:z
-    command: ["postgres", "-c", "config_file=/etc/postgresql/postgresql.conf"]
+      - ${SILVASONIC_DATA_DIR}/status:/mnt/data/services/silvasonic/status:z
+      - ./containers/db/scripts:/scripts:z
+    command: ["/scripts/entrypoint_wrapper.sh", "postgres", "-c", "config_file=/etc/postgresql/postgresql.conf"]
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U silvasonic"]
       interval: 10s

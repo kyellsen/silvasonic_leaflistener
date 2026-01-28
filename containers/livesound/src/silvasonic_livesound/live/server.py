@@ -7,6 +7,7 @@ from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse, StreamingResponse
 
+from .models import SourceConfig, SourceStatus
 from .processor import processor
 
 logger = logging.getLogger("LiveServer")
@@ -36,6 +37,32 @@ app.add_middleware(
 @app.get("/")
 async def get() -> HTMLResponse:
     return HTMLResponse("<h1>Silvasonic LiveSound</h1><p>Active.</p>")
+
+
+# --- User-Centric API (Option C) ---
+
+
+@app.get("/sources", response_model=list[SourceStatus])
+async def list_sources() -> list[SourceStatus]:
+    """Get active audio sources and their live signal health."""
+    return processor.get_source_stats()
+
+
+@app.post("/sources")
+async def add_source(config: SourceConfig) -> dict[str, str]:
+    """Add a new audio source dynamically."""
+    processor.add_source(config.name, config.port)
+    return {"status": "added", "name": config.name}
+
+
+@app.delete("/sources/{name}")
+async def remove_source(name: str) -> dict[str, str]:
+    """Remove an audio source."""
+    processor.remove_source(name)
+    return {"status": "removed", "name": name}
+
+
+# --- Streaming Endpoints ---
 
 
 @app.websocket("/ws/spectrogram")

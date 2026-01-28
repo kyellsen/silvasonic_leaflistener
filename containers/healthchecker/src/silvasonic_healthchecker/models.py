@@ -27,6 +27,10 @@ class BaseStatus(BaseModel):
 
     model_config = ConfigDict(extra="ignore")  # Ignore unknown fields for forward compatibility
     timestamp: float = Field(..., description="Unix timestamp of the last heartbeat")
+    message: str | None = Field(
+        default=None, description="Detailed status message from the service"
+    )
+    state: str | None = Field(default=None, description="Internal state of the service")
 
 
 class RecorderMetaProfile(BaseModel):

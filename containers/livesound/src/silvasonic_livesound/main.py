@@ -84,6 +84,11 @@ def write_status() -> None:
     while True:
         try:
             global _last_error, _last_error_time
+            # Retrieve Live Source Stats (Option B)
+            from .live.processor import processor
+
+            source_stats = [stats.model_dump() for stats in processor.get_source_stats()]
+
             data = {
                 "service": "livesound",
                 "timestamp": time.time(),
@@ -93,6 +98,7 @@ def write_status() -> None:
                 "cpu_percent": psutil.cpu_percent(),
                 "memory_usage_mb": psutil.Process(os.getpid()).memory_info().rss / 1024 / 1024,
                 "pid": os.getpid(),
+                "sources": source_stats,  # <--- NEW: Detailed Signal Health
             }
 
             tmp_file = f"{status_file}.tmp"
