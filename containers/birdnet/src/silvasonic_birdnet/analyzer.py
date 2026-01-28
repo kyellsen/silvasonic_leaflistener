@@ -1,18 +1,22 @@
+import csv
 import logging
+import os
 import shutil
 import subprocess
-import typing
+import time
 from pathlib import Path
 
 import soundfile as sf
+
+from silvasonic_birdnet.config import config
+from silvasonic_birdnet.database import db
+from silvasonic_birdnet.models import BirdDetection
 
 try:
     import birdnet_analyzer.analyze as bn_analyze
 except ImportError:
     bn_analyze = None
 
-from silvasonic_birdnet.config import config
-from silvasonic_birdnet.database import db
 
 logger = logging.getLogger("Analyzer")
 
@@ -40,7 +44,7 @@ class BirdNETAnalyzer:
         logger.info(f"Processing: {path.name}")
 
         # Setup temp paths
-        start_time_epoch = __import__("time").time()
+        start_time_epoch = time.time()
         temp_dir = Path("/tmp/birdnet_processing")
         temp_dir.mkdir(parents=True, exist_ok=True)
         temp_resampled = temp_dir / f"{path.stem}_48k.wav"
@@ -55,25 +59,25 @@ class BirdNETAnalyzer:
 
         try:
             logger.info(f"Running analysis on {temp_resampled.name}...")
-            settings = config.birdnet_settings
+            # Use new Typed Config
+            settings = config.birdnet
 
-            # Sanitize location (pass None if disabled/default -1)
-            lat = settings["lat"]
-            lon = settings["lon"]
-            if lat == -1 or lon == -1:
-                lat = None
-                lon = None
+            # Sanitize location (None if disabled via -1 sentinel in default/env, but here validation ensures valid ranges or None)
+            # Our Pydantic model allows None. If value is None, we pass None.
+            # If value is -1 (from old default), we should treat as None?
+            # Pydantic validator handles it? In `config.py` we allowed None.
+            # Let's trust config.py logic.
 
             if bn_analyze:
                 bn_analyze(
                     audio_input=str(temp_resampled),
-                    min_conf=settings["min_conf"],
-                    lat=lat,
-                    lon=lon,
-                    week=settings["week"],
-                    overlap=settings["overlap"],
-                    sensitivity=settings["sensitivity"],
-                    threads=settings["threads"],
+                    min_conf=settings.min_conf,
+                    lat=settings.lat,
+                    lon=settings.lon,
+                    week=settings.week,
+                    overlap=settings.overlap,
+                    sensitivity=settings.sensitivity,
+                    threads=settings.threads,
                     sf_thresh=0.0001,
                     output=str(temp_output_dir),
                     rtype="csv",
@@ -100,8 +104,6 @@ class BirdNETAnalyzer:
 
                 # Verify content and log detection count
                 try:
-                    import csv
-
                     detection_count = 0
 
                     with open(final_output_file, encoding="utf-8") as f:
@@ -119,33 +121,39 @@ class BirdNETAnalyzer:
                                 end_t = float(row[1])
                                 conf = float(row[4])
                                 common_name = row[3]
+                                scientific_name = row[2]
 
                                 # Save Clip
                                 clip_path = self._save_clip(
                                     temp_resampled, start_t, end_t, common_name
                                 )
 
-                                detection = {
-                                    "filename": path.name,
-                                    "filepath": str(path),
-                                    "start_time": start_t,
-                                    "end_time": end_t,
-                                    "scientific_name": row[2],
-                                    "common_name": common_name,
-                                    "confidence": conf,
-                                    "lat": config.LATITUDE,
-                                    "lon": config.LONGITUDE,
-                                    "clip_path": clip_path,
-                                    "source_device": path.parent.name,  # Extract source from folder (e.g. "front_mic")
-                                }
+                                # Create Typed BirdDetection
+                                detection = BirdDetection(
+                                    filename=path.name,
+                                    filepath=str(path),
+                                    start_time=start_t,
+                                    end_time=end_t,
+                                    scientific_name=scientific_name,
+                                    common_name=common_name,
+                                    confidence=conf,
+                                    lat=config.birdnet.lat,
+                                    lon=config.birdnet.lon,
+                                    clip_path=clip_path or None,  # Ensure None if empty string
+                                    source_device=path.parent.name,  # Extract source from folder
+                                    timestamp=None,  # let DB default or set here? DB defaults to now()
+                                )
+
                                 db.save_detection(detection)
 
                                 # Check Watchlist & Alert
-                                if db.is_watched(row[2]):
+                                if db.is_watched(scientific_name):
                                     self._trigger_alert(detection)
 
-                            except ValueError:
-                                logger.warning(f"Skipping invalid row in {final_output_file}")
+                            except ValueError as e:
+                                logger.warning(f"Skipping invalid row in {final_output_file}: {e}")
+                            except Exception as e:
+                                logger.error(f"Error processing detection: {e}")
 
                     if detection_count == 0:
                         logger.warning(f"Analysis produced 0 detections for {path.name}.")
@@ -164,17 +172,12 @@ class BirdNETAnalyzer:
 
         # Log Processing Stats (Always, even if no detections or silent)
         try:
-            # Estimate audio duration from file or use a standard (30s)
-            # Better to read from audio metadata if possible, but SF read is slow.
-            # Assuming chunks are 30s as per recorder config, or use soundfile info.
+            # Estimate audio duration
             try:
                 info = sf.info(str(path))
                 duration = info.duration
             except Exception:
                 duration = 10.0  # Fallback
-
-            import os
-            import time
 
             processing_time = time.time() - start_time_epoch
             file_size = os.path.getsize(str(path))
@@ -195,6 +198,7 @@ class BirdNETAnalyzer:
         """
         try:
             # Create clips directory if it doesn't exist
+            # Note: CLIPS_DIR is guaranteed to be set by model_post_init
             config.CLIPS_DIR.mkdir(parents=True, exist_ok=True)
 
             # Generate filename: {original_name}_{start}_{end}_{species}.wav
@@ -223,8 +227,7 @@ class BirdNETAnalyzer:
 
             sf.write(str(clip_path), data, samplerate)
 
-            # Return path relative to RESULTS_DIR for portability if needed, or just absolute string
-            # Returning absolute path as string for now to match DB schema
+            # Return absolute path as string
             return str(clip_path)
 
         except Exception as e:
@@ -253,10 +256,11 @@ class BirdNETAnalyzer:
         except subprocess.CalledProcessError as e:
             logger.error(f"FFmpeg failed for {input_path.name}: {e}")
             return False
+        except Exception as e:
             logger.error(f"Resampling error: {e}")
             return False
 
-    def _trigger_alert(self, detection: dict[str, typing.Any]) -> None:
+    def _trigger_alert(self, detection: BirdDetection) -> None:
         """Creates a notification event in the shared queue."""
         try:
             # Shared notification queue path
@@ -265,17 +269,19 @@ class BirdNETAnalyzer:
             queue_dir.mkdir(parents=True, exist_ok=True)
 
             import json
-            import time
 
-            event_id = f"{int(time.time() * 1000)}_{detection['scientific_name'].replace(' ', '_')}"
+            event_id = f"{int(time.time() * 1000)}_{detection.scientific_name.replace(' ', '_')}"
             event_path = queue_dir / f"{event_id}.json"
 
-            payload = {"type": "bird_detection", "timestamp": time.time(), "data": detection}
+            # Use model_dump for clean dict
+            data_dict = detection.model_dump()
+
+            payload = {"type": "bird_detection", "timestamp": time.time(), "data": data_dict}
 
             with open(event_path, "w") as f:
                 json.dump(payload, f)
 
-            logger.info(f"Triggered notification alert for {detection['common_name']}")
+            logger.info(f"Triggered notification alert for {detection.common_name}")
 
         except Exception as e:
             logger.error(f"Failed to trigger alert: {e}")

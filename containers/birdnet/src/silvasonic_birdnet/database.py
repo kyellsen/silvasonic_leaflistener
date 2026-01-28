@@ -10,6 +10,8 @@ from sqlalchemy.exc import OperationalError, ProgrammingError
 from sqlalchemy.orm import declarative_base, sessionmaker
 from sqlalchemy.schema import CreateSchema
 
+from silvasonic_birdnet.models import BirdDetection
+
 # Setup logging
 logger = logging.getLogger("Database")
 
@@ -68,7 +70,7 @@ class Watchlist(Base):  # type: ignore[misc]
     common_name = Column(String(255), nullable=True)  # Cache for display if needed
     enabled = Column(
         Integer, default=1
-    )  # 1=Enabled, 0=Disabled. Using Integer for PG compat just in case, though Boolean is fine in PG.
+    )  # 1=Enabled, 0=Disabled. Using Integer for PG compat just in case.
     last_notification = Column(DateTime, nullable=True)
 
     # Notification Settings (Future Proofing)
@@ -119,7 +121,6 @@ class DatabaseHandler:
                         conn.commit()
                     except ProgrammingError as e:
                         # Sometimes race condition or perm issue, but CreateSchema if_not_exists handles most
-                        # This catch is generic for DB errors
                         logger.warning(f"Schema creation warning: {e}")
                         conn.rollback()
 
@@ -132,7 +133,7 @@ class DatabaseHandler:
                         )
                         conn.commit()
                     except Exception:
-                        conn.rollback()  # Ignore if fails (e.g. table doesn't exist yet)
+                        conn.rollback()
 
                 # Create Tables
                 Base.metadata.create_all(self.engine)
@@ -151,39 +152,32 @@ class DatabaseHandler:
 
         return False
 
-    def save_detection(self, detection_dict: dict[str, typing.Any]) -> None:
-        """Save a single detection to the database.
-
-        Args:
-            detection_dict: {
-                'filename': str,
-                'start_time': float,
-                'end_time': float,
-                'confidence': float,
-                'common_name': str,
-                'scientific_name': str,
-                ...
-            }
-        """
+    def save_detection(self, detection: BirdDetection) -> None:
+        """Save a single detection to the database."""
         if not self.Session:
             logger.error("DB Session not initialized.")
             return
 
         session = self.Session()
         try:
+            # Use Pydantic model attributes directly
+            # timestamp handles default in DB or Pydantic (if passed).
+            # If not passed in Pydantic, DB defaults to now().
+
             det = BirdNETDetection(
-                filename=detection_dict.get("filename"),
-                filepath=detection_dict.get("filepath", ""),
-                start_time=detection_dict.get("start_time"),
-                end_time=detection_dict.get("end_time"),
-                confidence=detection_dict.get("confidence"),
-                common_name=detection_dict.get("common_name"),
-                scientific_name=detection_dict.get("scientific_name"),
-                latitude=detection_dict.get("lat"),
-                longitude=detection_dict.get("lon"),
-                clip_path=detection_dict.get("clip_path"),
-                source_device=detection_dict.get("source_device"),
-                timestamp=datetime.now(UTC),
+                filename=detection.filename,
+                filepath=detection.filepath,
+                start_time=detection.start_time,
+                end_time=detection.end_time,
+                confidence=detection.confidence,
+                common_name=detection.common_name,
+                scientific_name=detection.scientific_name,
+                species_code=detection.species_code,
+                latitude=detection.lat,
+                longitude=detection.lon,
+                clip_path=detection.clip_path,
+                source_device=detection.source_device,
+                timestamp=detection.timestamp or datetime.now(UTC),
             )
             session.add(det)
             session.commit()
@@ -215,7 +209,7 @@ class DatabaseHandler:
             item = session.query(Watchlist).filter_by(scientific_name=scientific_name).first()
             if item:
                 item.enabled = 1 if enabled else 0
-                item.common_name = common_name  # Update common name just in case
+                item.common_name = common_name
             else:
                 item = Watchlist(
                     scientific_name=scientific_name,
@@ -238,7 +232,6 @@ class DatabaseHandler:
             return False
         session = self.Session()
         try:
-            # We trust scientific name to be stable
             count: int = (
                 session.query(Watchlist)
                 .filter_by(scientific_name=scientific_name, enabled=1)

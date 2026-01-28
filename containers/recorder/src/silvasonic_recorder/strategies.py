@@ -1,16 +1,7 @@
 import logging
 import subprocess
-import typing
 from abc import ABC, abstractmethod
 from pathlib import Path
-
-# Try importing soundfile/numpy, but don't crash if missing (though they should be installed)
-try:
-    import numpy as np
-    import soundfile as sf
-except ImportError:
-    np: typing.Any = None  # type: ignore[no-redef]
-    sf: typing.Any = None  # type: ignore[no-redef]
 
 logger = logging.getLogger("recorder.strategies")
 

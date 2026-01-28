@@ -57,6 +57,51 @@ def init_db() -> None:
             )
         )
         conn.commit()
+
+        # Create Analysis View (Strict Isolation)
+        # We replace the old table with a dynamic view.
+        # This might fail if birdnet schema doesn't exist yet, so we handle it gracefully.
+        try:
+            conn.execute(text("DROP TABLE IF EXISTS weather.bird_stats;"))
+            conn.execute(
+                text(
+                    """
+                CREATE OR REPLACE VIEW weather.bird_stats_view AS
+                WITH w_stats AS (
+                    SELECT
+                        date_trunc('hour', timestamp) as ts,
+                        AVG(temperature_c) as temp,
+                        SUM(precipitation_mm) as rain,
+                        AVG(wind_speed_ms) as wind
+                    FROM weather.measurements
+                    GROUP BY 1
+                ),
+                b_stats AS (
+                    SELECT
+                        date_trunc('hour', timestamp) as ts,
+                        COUNT(*) as det_count,
+                        COUNT(DISTINCT common_name) as sp_count
+                    FROM birdnet.detections
+                    GROUP BY 1
+                )
+                SELECT
+                    w_stats.ts as timestamp,
+                    w_stats.temp as temperature_c,
+                    w_stats.rain as precipitation_mm,
+                    w_stats.wind as wind_speed_ms,
+                    COALESCE(b_stats.det_count, 0) as detection_count,
+                    COALESCE(b_stats.sp_count, 0) as species_count
+                FROM w_stats
+                LEFT JOIN b_stats ON w_stats.ts = b_stats.ts;
+            """
+                )
+            )
+            conn.commit()
+            logger.info("Analysis View created successfully.")
+        except Exception as e:
+            logger.warning(f"Could not create Analysis View (BirdNET schema might be missing): {e}")
+            conn.rollback()
+
     logger.info("Database initialized.")
 
 
@@ -188,11 +233,7 @@ if __name__ == "__main__":
 
     schedule.every(20).minutes.do(fetch_weather)
 
-    from silvasonic_weather.analysis import init_analysis_db, run_analysis
-
-    init_analysis_db()
-    run_analysis()
-    schedule.every(1).hours.do(run_analysis)
+    # Analysis is now handled via SQL View, no scheduled job needed.
 
     logger.info("Weather service started.")
     write_status("Starting")

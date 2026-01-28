@@ -4,58 +4,21 @@ import os
 import socket
 import threading
 import typing
-from dataclasses import dataclass, field
 
 import librosa
 import numpy as np
 import orjson
 
+from ..config import settings
+
 logger = logging.getLogger("LiveProcessor")
-
-
-@dataclass
-class StreamConfig:
-    """Configuration for the audio stream processing."""
-
-    host: str = "0.0.0.0"
-    # Mapping of Source Name -> Port
-    # e.g. {"front": 1234, "back": 1235}
-    ports: dict[str, int] = field(default_factory=dict)
-    sample_rate: int = 48000
-    channels: int = 1
-
-    def __post_init__(self) -> None:
-        """Parse LISTEN_PORTS env var if ports not provided."""
-        if not self.ports:
-            env_ports = os.getenv("LISTEN_PORTS", "")
-            if env_ports:
-                # Format: "front:1234,back:1235"
-                try:
-                    for part in env_ports.split(","):
-                        name, port = part.split(":")
-                        self.ports[name.strip()] = int(port.strip())
-                except ValueError:
-                    logger.error(f"Invalid LISTEN_PORTS format: {env_ports}. Fallback to default.")
-
-            if not self.ports:
-                # Default fallback
-                self.ports = {"default": 1234}
-
-    # 4096 samples @ 48k = ~85ms latency chunks
-    chunk_size: int = 4096
-    fft_window: int = 2048
-    hop_length: int = 512
 
 
 class AudioIngestor:
     """Ingests audio from multiple UDP streams and processes them for visualization."""
 
-    def __init__(self, config: StreamConfig | None = None):
+    def __init__(self):
         """Initialize the AudioIngestor."""
-        if config is None:
-            config = StreamConfig()
-        self.config = config
-
         # Sockets: {source_name: socket}
         self.sockets: dict[str, socket.socket] = {}
 
@@ -74,7 +37,7 @@ class AudioIngestor:
         self._audio_queues: dict[str, set[asyncio.Queue[bytes]]] = {}
 
         # Initialize sockets from static config (env vars)
-        self.update_sources(self.config.ports)
+        self.update_sources(settings.LISTEN_PORTS)
 
         logger.info("AudioIngestor initialized.")
 
@@ -108,9 +71,9 @@ class AudioIngestor:
             sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
             # Allow reuse address to recover quickly
             sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-            sock.bind((self.config.host, port))
+            sock.bind((settings.HOST, port))
             self.sockets[source] = sock
-            logger.info(f"Bound source '{source}' to UDP {self.config.host}:{port}")
+            logger.info(f"Bound source '{source}' to UDP {settings.HOST}:{port}")
         except Exception as e:
             logger.error(f"Failed to bind source '{source}' on port {port}: {e}")
 
@@ -119,7 +82,7 @@ class AudioIngestor:
         import json
         import time
 
-        config_file = os.path.join(self.status_dir, "livesound_sources.json")
+        config_file = os.path.join(os.path.dirname(settings.STATUS_FILE), "livesound_sources.json")
         last_mtime: float = 0.0
 
         while self.running:
@@ -249,12 +212,12 @@ class AudioIngestor:
                 pass
 
     def _ingest_loop(self, source: str, sock: socket.socket) -> None:
-        buffer_size = self.config.chunk_size * 2 * 2  # Safety buffer
+        buffer_size = settings.CHUNK_SIZE * 2 * 2  # Safety buffer
 
         # Pre-calculate mel basis for performance
         mel_basis = librosa.filters.mel(
-            sr=self.config.sample_rate,
-            n_fft=self.config.fft_window,
+            sr=settings.SAMPLE_RATE,
+            n_fft=settings.FFT_WINDOW,
             n_mels=128,
             fmin=100,
             fmax=14000,  # Birds range
@@ -282,7 +245,7 @@ class AudioIngestor:
         #    - Insert new data at end: buffer[-N:] = new_data
         #    - Slice the last fft_window samples for processing: buffer[-fft_window:]
 
-        rb_size = self.config.fft_window + self.config.chunk_size
+        rb_size = settings.FFT_WINDOW + settings.CHUNK_SIZE
         ring_buffer = np.zeros(rb_size, dtype=np.float32)
 
         logger.info(f"Ingestion loop started for {source}")
@@ -318,12 +281,12 @@ class AudioIngestor:
                 ring_buffer[-n_new:] = new_samples
 
                 # Extract the analysis window (latest fft_window samples)
-                y = ring_buffer[-self.config.fft_window :]
+                y = ring_buffer[-settings.FFT_WINDOW :]
 
                 # Compute STFT
                 # Calculate power spectrogram (amplitude squared)
                 stft_matrix = librosa.stft(
-                    y, n_fft=self.config.fft_window, hop_length=self.config.hop_length
+                    y, n_fft=settings.FFT_WINDOW, hop_length=settings.HOP_LENGTH
                 )
                 power_spectrogram = np.abs(stft_matrix) ** 2
 

@@ -19,14 +19,3 @@ class WeatherMeasurement(BaseModel):
     sunshine_seconds: float | None = Field(None, ge=0)
     cloud_cover_percent: float | None = Field(None, ge=0, le=100)
     condition_code: str | None = None
-
-
-class BirdStat(BaseModel):
-    """Model for aggregated bird statistics."""
-
-    timestamp: datetime
-    temperature_c: float | None
-    precipitation_mm: float | None
-    wind_speed_ms: float | None
-    detection_count: int = Field(default=0, ge=0)
-    species_count: int = Field(default=0, ge=0)

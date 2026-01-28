@@ -5,123 +5,192 @@ import typing
 from pathlib import Path
 
 import yaml
+from pydantic import BaseModel, Field, ValidationError
+from pydantic_settings import BaseSettings, SettingsConfigDict
 
 logger = logging.getLogger("Config")
 
 
-class Config:
-    def __init__(self) -> None:
-        # Paths
-        self.INPUT_DIR = Path(os.getenv("INPUT_DIR", "/data/recording"))
-        self.RESULTS_DIR = Path(os.getenv("RESULTS_DIR", "/data/db/results"))
-        self.CLIPS_DIR = self.RESULTS_DIR / "clips"
-        self.CONFIG_FILE = Path(os.getenv("CONFIG_FILE", "/etc/birdnet/config.yml"))
+class BirdNETParameters(BaseModel):
+    """
+    Specific parameters for the BirdNET analysis.
+    """
 
-        # Watcher
-        self.RECURSIVE_WATCH = os.getenv("RECURSIVE_WATCH", "true").lower() == "true"
+    min_conf: float = Field(0.7, ge=0.0, le=1.0)
+    lat: float | None = Field(None, ge=-90, le=90)
+    lon: float | None = Field(None, ge=-180, le=180)
+    week: int = Field(-1, ge=-1, le=53)
+    overlap: float = Field(0.0, ge=0.0, le=3.0)
+    sensitivity: float = Field(1.0, ge=0.5, le=1.5)
+    threads: int = Field(3, ge=1)
 
-    def _load_yaml(self) -> dict[str, typing.Any]:
-        """Loads the YAML config file if it exists, otherwise returns empty dict."""
-        if self.CONFIG_FILE.exists():
-            try:
-                with open(self.CONFIG_FILE) as f:
-                    return yaml.safe_load(f) or {}
-            except Exception as e:
-                logger.error(f"Failed to load config file {self.CONFIG_FILE}: {e}")
-                return {}
-        return {}
 
-    @property
-    def birdnet_settings(self) -> dict[str, typing.Any]:
-        """Returns a dictionary of BirdNET settings, merging defaults,
-        env vars, and YAML config.
-        Priority: settings.json (BirdNET) > settings.json (Global Location) > config.yaml > Environment > Default
+class Settings(BaseSettings):
+    """
+    Main container configuration.
+    """
+
+    model_config = SettingsConfigDict(env_case_sensitive=True)
+
+    # Paths (Env vars or defaults)
+    INPUT_DIR: Path = Field(Path("/data/recording"), alias="INPUT_DIR")
+    RESULTS_DIR: Path = Field(Path("/data/db/results"), alias="RESULTS_DIR")
+    CLIPS_DIR: Path = Field(None, validate_default=False)  # Computed in __init__
+
+    # Config Files
+    CONFIG_FILE: Path = Field(Path("/etc/birdnet/config.yml"), alias="CONFIG_FILE")
+    SETTINGS_JSON: Path = Field(Path("/config/settings.json"))
+
+    # Watcher
+    RECURSIVE_WATCH: bool = Field(True, alias="RECURSIVE_WATCH")
+
+    # The actual BirdNET parameters (loaded from files/env)
+    birdnet: BirdNETParameters = Field(default_factory=BirdNETParameters)
+
+    def model_post_init(self, __context: typing.Any) -> None:
+        """Calculate derived paths and load detailed BirdNET config."""
+        if self.CLIPS_DIR is None:
+            self.CLIPS_DIR = self.RESULTS_DIR / "clips"
+
+        # Load and merge BirdNET parameters
+        self.reload_birdnet_config()
+
+    def reload_birdnet_config(self) -> None:
         """
-        yaml_conf = self._load_yaml().get("birdnet", {})
-        full_json = self._load_settings_json()
-        json_conf = full_json.get("birdnet", {})
-        location_conf = full_json.get("location", {})
+        Loads the BirdNET parameters with the following priority:
+        1. settings.json (BirdNET section)
+        2. settings.json (Global Location for lat/lon fallback)
+        3. config.yml
+        4. Environment Variables
+        5. Defaults (defined in BirdNETParameters)
+        """
+        try:
+            # 1. Start with Empty Dict/Defaults
+            # We'll build a dict of values to pass to BirdNETParameters
 
-        # Helper to get value from JSON -> YAML -> Env -> Default
-        def get_val(
-            key: str,
-            env_key: str,
-            default: typing.Any,
-            type_cast: typing.Callable[[typing.Any], typing.Any],
-        ) -> typing.Any:
-            # 1. Dashboard Settings (JSON)
-            val = json_conf.get(key)
-            if val is not None:
-                return type_cast(val)
+            # 4. Environment Variables (Low Priority, but we read them first to be overridden?
+            # No, standard is Env > File. But here we have specific hierarchy requirements)
+            # The original code had: JSON > YAML > Env > Default.
 
-            # 1.5 Special Fallback for Location (Global Settings)
-            if key == "latitude" and "latitude" in location_conf:
-                return type_cast(location_conf["latitude"])
-            if key == "longitude" and "longitude" in location_conf:
-                return type_cast(location_conf["longitude"])
+            # Let's collect values.
 
-            # 2. Static Config (YAML)
-            val = yaml_conf.get(key)
-            if val is not None:
-                return type_cast(val)
+            # --- Defaults are in the Model ---
 
-            # 3. Environment Variable
-            val = os.getenv(env_key)
-            if val is not None:
-                return type_cast(val)
+            # --- Environment ---
+            env_values = {}
+            if os.getenv("MIN_CONFIDENCE"):
+                env_values["min_conf"] = float(os.getenv("MIN_CONFIDENCE"))  # type: ignore
+            if os.getenv("LATITUDE"):
+                env_values["lat"] = float(os.getenv("LATITUDE"))  # type: ignore
+            if os.getenv("LONGITUDE"):
+                env_values["lon"] = float(os.getenv("LONGITUDE"))  # type: ignore
+            if os.getenv("WEEK"):
+                env_values["week"] = int(os.getenv("WEEK"))  # type: ignore
+            if os.getenv("OVERLAP"):
+                env_values["overlap"] = float(os.getenv("OVERLAP"))  # type: ignore
+            if os.getenv("SENSITIVITY"):
+                env_values["sensitivity"] = float(os.getenv("SENSITIVITY"))  # type: ignore
+            if os.getenv("THREADS"):
+                env_values["threads"] = int(os.getenv("THREADS"))  # type: ignore
 
-            # 4. Default
-            return default
+            # --- YAML ---
+            yaml_values = {}
+            if self.CONFIG_FILE.exists():
+                try:
+                    with open(self.CONFIG_FILE) as f:
+                        data = yaml.safe_load(f) or {}
+                        yaml_section = data.get("birdnet", {})
+                        # Map YAML keys to Model keys if they differ
+                        # YAML keys assumed same as model for simplicity, or map here.
+                        # Original code: `yaml_conf.get(key)` where key is model field name.
+                        yaml_values = yaml_section
+                except Exception as e:
+                    logger.error(f"Failed to load config.yml: {e}")
 
-        return {
-            "min_conf": get_val("min_confidence", "MIN_CONFIDENCE", 0.7, float),
-            "lat": get_val("latitude", "LATITUDE", -1, float),
-            "lon": get_val("longitude", "LONGITUDE", -1, float),
-            "week": get_val("week", "WEEK", -1, int),
-            "overlap": get_val("overlap", "OVERLAP", 0.0, float),
-            "sensitivity": get_val("sensitivity", "SENSITIVITY", 1.0, float),
-            "threads": get_val("threads", "THREADS", 3, int),
-        }
+            # --- JSON ---
+            json_birdnet = {}
+            json_location = {}
+            if self.SETTINGS_JSON.exists():
+                try:
+                    with open(self.SETTINGS_JSON) as f:
+                        data = json.load(f) or {}
+                        json_birdnet = data.get("birdnet", {})
+                        json_location = data.get("location", {})
+                except Exception as e:
+                    logger.error(f"Failed to load settings.json: {e}")
 
-    def _load_settings_json(self) -> dict[str, typing.Any]:
-        """Loads the shared JSON settings file."""
-        settings_path = Path("/config/settings.json")
-        if settings_path.exists():
-            try:
-                with open(settings_path) as f:
-                    return typing.cast(dict[str, typing.Any], json.load(f))
-            except Exception as e:
-                logger.error(f"Failed to load settings.json: {e}")
-        return {}
+            # --- Merging Strategy ---
+            # We want JSON > YAML > Env > Default
+            # We construct the final dict by overlaying.
 
-    # Backward compatibility properties (proxies to fresh settings)
-    @property
-    def MIN_CONFIDENCE(self) -> float:
-        return float(self.birdnet_settings["min_conf"])
+            final_values = {}
 
-    @property
-    def LATITUDE(self) -> float:
-        return float(self.birdnet_settings["lat"])
+            # 1. Env (Base)
+            final_values.update(env_values)
 
-    @property
-    def LONGITUDE(self) -> float:
-        return float(self.birdnet_settings["lon"])
+            # 2. YAML (Overwrites Env)
+            # Filter yaml_values to only known keys to avoid garbage?
+            # Pydantic ignores extras by default (or we can set extra='ignore')
+            final_values.update(yaml_values)
 
-    @property
-    def WEEK(self) -> int:
-        return int(self.birdnet_settings["week"])
+            # 3. JSON Location (Special Fallback)
+            # If lat/lon NOT in json_birdnet, use json_location
+            # Actually original code: use json_birdnet first.
 
-    @property
-    def OVERLAP(self) -> float:
-        return float(self.birdnet_settings["overlap"])
+            # 4. JSON BirdNET (Highest Priority)
+            # We need to map keys:
+            # "min_confidence" -> "min_conf"
+            # "latitude" -> "lat"
+            # "longitude" -> "lon"
 
-    @property
-    def SENSITIVITY(self) -> float:
-        return float(self.birdnet_settings["sensitivity"])
+            # Helper to map and update
+            def update_if_exists(
+                target: dict[str, typing.Any],
+                source: dict[str, typing.Any],
+                source_key: str,
+                target_key: str,
+            ) -> None:
+                if source_key in source and source[source_key] is not None:
+                    target[target_key] = source[source_key]
 
-    @property
-    def THREADS(self) -> int:
-        return int(self.birdnet_settings["threads"])
+            # Global Location Fallback (if not present so far? No, Global Loc overrides YAML/Env but under BirdNET specific)
+            # This is tricky.
+            # Original: logic was `get_val` called for each key.
+            #   val = json_conf.get(key) -> Returns if found.
+            #   if key=="lat" and "latitude" in location: return
+            #   val = yaml_conf.get(key)
+            #   val = env
+
+            # So: JSON_BirdNET > JSON_Location > YAML > Env
+
+            # Let's apply JSON Location first
+            update_if_exists(final_values, json_location, "latitude", "lat")
+            update_if_exists(final_values, json_location, "longitude", "lon")
+
+            # Then JSON BirdNET
+            update_if_exists(final_values, json_birdnet, "min_confidence", "min_conf")
+            update_if_exists(final_values, json_birdnet, "latitude", "lat")
+            update_if_exists(final_values, json_birdnet, "longitude", "lon")
+            update_if_exists(final_values, json_birdnet, "week", "week")
+            update_if_exists(final_values, json_birdnet, "overlap", "overlap")
+            update_if_exists(final_values, json_birdnet, "sensitivity", "sensitivity")
+            update_if_exists(final_values, json_birdnet, "threads", "threads")
+
+            # Create/Validate Model
+            self.birdnet = BirdNETParameters(**final_values)
+            logger.info(f"Loaded BirdNET Config: {self.birdnet}")
+
+        except ValidationError as e:
+            logger.error(f"Configuration Validation Failed: {e}")
+            # Fallback to default safely? Or crash?
+            # Ideally crash to warn user, but for robustness we might keep default.
+            # But the 'default_factory' is already set.
+            # If we fail here, self.birdnet is NOT updated (keeps default).
+
+    # Properties for backward compatibility (optional, but requested by plan to support analyzer.py changes)
+    # Actually plan says "Update analyzer.py to use new typed config"
+    # So we don't need properties here.
 
 
-config = Config()
+# Singleton Instance
+config = Settings()

@@ -8,6 +8,8 @@ import time
 
 import psutil
 
+from .config import settings
+
 os.makedirs("/var/log/silvasonic", exist_ok=True)
 
 logging.basicConfig(
@@ -16,9 +18,11 @@ logging.basicConfig(
     handlers=[logging.StreamHandler(sys.stdout)],
 )
 
+
 try:
+    log_file = os.path.join(settings.LOG_DIR, "sound_analyser.log")
     file_handler = logging.handlers.TimedRotatingFileHandler(
-        "/var/log/silvasonic/sound_analyser.log",
+        log_file,
         when="midnight",
         interval=1,
         backupCount=30,
@@ -33,7 +37,7 @@ logger = logging.getLogger("Main")
 
 def write_status() -> None:
     """Writes the Livesound's own heartbeat."""
-    status_file = "/mnt/data/services/silvasonic/status/livesound.json"
+    status_file = settings.STATUS_FILE
     os.makedirs(os.path.dirname(status_file), exist_ok=True)
 
     while True:
@@ -69,7 +73,12 @@ def main() -> None:
     import uvicorn
 
     # Loading via string to allow reload support if mapped, though we run direct here
-    uvicorn.run("silvasonic_livesound.live.server:app", host="0.0.0.0", port=8000, log_level="info")
+    uvicorn.run(
+        "silvasonic_livesound.live.server:app",
+        host=settings.HOST,
+        port=settings.PORT,
+        log_level="info",
+    )
 
 
 if __name__ == "__main__":

@@ -4,22 +4,25 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 # Assuming src is in path via conftest
-from silvasonic_livesound.live.processor import AudioIngestor, StreamConfig
+from silvasonic_livesound.live.processor import AudioIngestor
 
 
 @pytest.mark.asyncio
 async def test_ingestor_initialization():
-    config = StreamConfig(ports={"test_mic": 9999})
+    with patch("silvasonic_livesound.live.processor.settings") as mock_settings:
+        mock_settings.HOST = "0.0.0.0"
+        mock_settings.LISTEN_PORTS = {"test_mic": 9999}
+        mock_settings.CHUNK_SIZE = 4096
+        mock_settings.FFT_WINDOW = 2048
 
-    with patch("socket.socket") as mock_socket_cls:
-        ingestor = AudioIngestor(config)
+        with patch("socket.socket") as mock_socket_cls:
+            ingestor = AudioIngestor()
 
-        # Verify socket binding
-        assert "test_mic" in ingestor.sockets
-        assert ingestor.config.ports["test_mic"] == 9999
+            # Verify socket binding
+            assert "test_mic" in ingestor.sockets
 
-        mock_sock_instance = mock_socket_cls.return_value
-        mock_sock_instance.bind.assert_called_with(("0.0.0.0", 9999))
+            mock_sock_instance = mock_socket_cls.return_value
+            mock_sock_instance.bind.assert_called_with(("0.0.0.0", 9999))
 
 
 @pytest.mark.asyncio
@@ -51,13 +54,19 @@ async def test_subscribe_audio():
 @pytest.mark.asyncio
 async def test_ingest_loop_logic():
     """Verify that data received on the socket is put into the appropriate queues."""
-    config = StreamConfig(ports={"test_mic": 9999}, chunk_size=1024)
+    with patch("silvasonic_livesound.live.processor.settings") as mock_settings:
+        mock_settings.HOST = "0.0.0.0"
+        mock_settings.LISTEN_PORTS = {"test_mic": 9999}
+        mock_settings.CHUNK_SIZE = 1024  # Custom chunk size for this test
+        mock_settings.SAMPLE_RATE = 48000
+        mock_settings.FFT_WINDOW = 2048
+        mock_settings.HOP_LENGTH = 512
 
-    with patch("socket.socket") as mock_socket_cls:
-        mock_sock = MagicMock()
-        mock_socket_cls.return_value = mock_sock
+        with patch("socket.socket") as mock_socket_cls:
+            mock_sock = MagicMock()
+            mock_socket_cls.return_value = mock_sock
 
-        ingestor = AudioIngestor(config)
+            ingestor = AudioIngestor()
         ingestor.running = True
         ingestor.loop = asyncio.get_running_loop()
 

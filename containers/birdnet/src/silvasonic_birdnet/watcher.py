@@ -1,7 +1,9 @@
+import json
 import logging
 import os
 import time
 
+import psutil
 from watchdog.events import FileClosedEvent, FileSystemEventHandler
 from watchdog.observers import Observer
 
@@ -36,10 +38,6 @@ class WatcherService:
         self.observer = Observer()
 
     def run(self) -> None:
-        # Scan existing files first?
-        # Often good to process backlog, but BirdNET is heavy.
-        # Let's verify backlog only if not huge or we can rely on manual trigger.
-        # For now, we will scan existing to catch up on missed files during restart.
         logger.info("Scanning existing files...")
         self.scan_existing()
 
@@ -69,11 +67,6 @@ class WatcherService:
 
     def write_status(self, status: str) -> None:
         try:
-            import json
-            import os
-
-            import psutil
-
             data = {
                 "service": "birdnet",
                 "timestamp": time.time(),
@@ -98,16 +91,5 @@ class WatcherService:
         self.write_status("Scanning")
         if not config.INPUT_DIR.exists():
             return
-
-        # Simplistic approach: Just list all files.
-        # Ideally we check DB if already analyzed to avoid re-work.
-        # Implementation of "Check DB" logic:
-        # For this MVP, we might skip full re-scan or just rely on 'new' files.
-        # However, to be robust, let's just log count.
-        # Processing ALL existing files on every startup is dangerous if there are thousands.
-        # Users requested "pull current files", implying real-time focus.
-        # Let's skip scanning OLD files for now to avoid CPU storm, unless the folder is small.
-        # Or better: Only process if we want to catch up.
-        # Given the "Current files from recorder" request: "Er soll sich immer die aktuellen files vom recorder ziehen"
-        # I will assume "Watch new files" is the priority.
+        # MVP: Skip deep scan for now to avoid CPU storm on restart
         pass
