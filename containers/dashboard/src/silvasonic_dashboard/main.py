@@ -10,6 +10,7 @@ import sys
 import threading
 import time
 import typing
+from contextlib import asynccontextmanager
 
 import psutil
 from fastapi import Depends, FastAPI, Form, HTTPException, Request
@@ -75,7 +76,17 @@ CLIPS_DIR = "/data/db/results/clips"
 
 VERSION = "0.1.0"
 
-app = FastAPI(title="Silvasonic Dashboard")
+
+@asynccontextmanager
+async def lifespan(app: FastAPI) -> typing.AsyncGenerator[None, None]:
+    # Startup: Start status writer in thread
+    t = threading.Thread(target=write_status, daemon=True)
+    t.start()
+    yield
+    # Shutdown logic can go here if needed
+
+
+app = FastAPI(title="Silvasonic Dashboard", lifespan=lifespan)
 templates = Jinja2Templates(directory=TEMPLATES_DIR)
 
 
@@ -127,13 +138,6 @@ def write_status() -> None:
             logger.error(f"Failed to write dashboard status: {e}")
 
         time.sleep(5)  # Check every 5s
-
-
-@app.on_event("startup")
-async def startup_event() -> None:
-    # Start status writer in thread
-    t = threading.Thread(target=write_status, daemon=True)
-    t.start()
 
 
 # Mount Static

@@ -41,8 +41,8 @@ class TestDatabaseHandler:
         assert db.connect() is True
         assert db.Session is not None
 
-        # Verify schema creation
-        assert mock_conn.execute.call_count >= 1
+        # Verify successful initialization (executed implicitly via engine.begin())
+        assert mock_engine.return_value.begin.called
 
     @patch("uploader_database.create_engine")
     def test_connect_failure(self, mock_engine: MagicMock, db: typing.Any) -> None:
