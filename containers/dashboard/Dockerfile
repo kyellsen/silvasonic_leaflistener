@@ -27,7 +27,7 @@ FROM node:20-slim AS frontend
 WORKDIR /app
 COPY tailwind.config.js .
 COPY src ./src
-RUN npm install -g tailwindcss
+RUN npm init -y && npm install tailwindcss
 RUN npx tailwindcss -i ./src/silvasonic_dashboard/static/css/tailwind.css -o ./styles.css --minify
 
 # --- Final Stage ---
