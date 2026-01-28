@@ -4,7 +4,7 @@ import pytest
 from silvasonic_birdnet.database import DatabaseHandler
 from silvasonic_birdnet.models import BirdDetection, Watchlist
 from sqlalchemy.exc import OperationalError
-from sqlmodel import Session, SQLModel, create_engine
+from sqlmodel import Session, SQLModel, create_engine, select
 
 
 @pytest.fixture
@@ -53,7 +53,7 @@ def test_connect_creates_tables(test_db):
     # Verify table existence by inspecting metadata or trying a query
     with Session(test_db.engine) as session:
         # Should not raise error
-        results = session.query(Watchlist).all()
+        results = session.exec(select(Watchlist)).all()
         assert results == []
 
 
@@ -84,6 +84,7 @@ def test_save_detection(test_db):
     """Test saving a detection."""
     detection = BirdDetection(
         filename="test.wav",
+        filepath="/tmp/test.wav",
         scientific_name="Turdus merula",
         common_name="Blackbird",
         confidence=0.95,
@@ -94,7 +95,7 @@ def test_save_detection(test_db):
     test_db.save_detection(detection)
 
     with Session(test_db.engine) as session:
-        saved = session.query(BirdDetection).first()
+        saved = session.exec(select(BirdDetection)).first()
         assert saved is not None
         assert saved.scientific_name == "Turdus merula"
         assert saved.confidence == 0.95
@@ -110,7 +111,7 @@ def test_log_processed_file(test_db):
     from silvasonic_birdnet.models import ProcessedFile
 
     with Session(test_db.engine) as session:
-        log = session.query(ProcessedFile).first()
+        log = session.exec(select(ProcessedFile)).first()
         assert log is not None
         assert log.filename == "test.wav"
         assert log.audio_duration_sec == 10.0
