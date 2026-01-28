@@ -7,7 +7,7 @@ import signal
 import sys
 import time
 import typing
-from dataclasses import dataclass
+from dataclasses import asdict, dataclass
 from pathlib import Path
 
 import psutil
@@ -99,6 +99,7 @@ class Controller:
 
         # State: {card_id: SessionInfo}
         self.active_sessions: dict[str, SessionInfo] = {}
+        self.unconfigured_devices: list[typing.Any] = []  # List[AudioDevice]
 
         # Load Profiles
         self.profiles = load_profiles(Path("/app/mic_profiles"))  # Use mounted profiles
@@ -163,6 +164,8 @@ class Controller:
                 "memory_usage_mb": mem,
                 "pid": os.getpid(),
                 "meta": {"active_sessions": active_list},
+                # Option A: Report unconfigured devices
+                "unconfigured_devices": [asdict(d) for d in self.unconfigured_devices],
             }
             status_file = f"{STATUS_DIR}/controller.json"
             tmp_file = f"{status_file}.tmp"
@@ -204,10 +207,53 @@ class Controller:
         except Exception as e:
             logger.error(f"Failed to write live config: {e}")
 
+    async def write_recorder_inventory(self) -> None:
+        """Writes detailed recorder inventory for Dashboard (Option C)."""
+        try:
+            os.makedirs(STATUS_DIR, exist_ok=True)
+            inventory = []
+
+            for card_id, session in self.active_sessions.items():
+                # Try to find matching profile for name
+                profile_name = "Unknown"
+                if session.profile_slug:
+                    for p in self.profiles:
+                        if p.slug == session.profile_slug:
+                            profile_name = p.name
+                            break
+
+                item = {
+                    "rec_id": session.rec_id,
+                    "container_name": session.container_name,
+                    "status": "Running",  # Inferred
+                    "port": session.port,
+                    "profile_name": profile_name,
+                    "profile_slug": session.profile_slug,
+                    "card_id": card_id,
+                    # We could match card_id back to device name if we cached scan results,
+                    # but session doesn't store device name currently.
+                    # For now, this is sufficient.
+                }
+                inventory.append(item)
+
+            inventory_file = f"{STATUS_DIR}/active_recorders.json"
+            tmp_file = f"{inventory_file}.tmp"
+
+            def _write() -> None:
+                with open(tmp_file, "w") as f:
+                    json.dump(inventory, f, indent=2)
+                os.rename(tmp_file, inventory_file)
+
+            await asyncio.to_thread(_write)
+        except Exception as e:
+            logger.error(f"Failed to write recorder inventory: {e}")
+
     async def reconcile(self) -> None:
         """Sync Hardware with Containers."""
         devices = await self.device_manager.scan_devices()
         current_card_ids = {d.card_id for d in devices}
+        # Reset detected but unconfigured list for this cycle
+        self.unconfigured_devices.clear()
 
         # 1. Cleanup Stale Sessions (Device unplugged)
         active_ids = list(self.active_sessions.keys())
@@ -267,11 +313,15 @@ class Controller:
                         profile_slug=matched_profile.slug,
                     )
                     self.active_sessions[device.card_id] = session
+                    self.active_sessions[device.card_id] = session
             else:
                 logger.warning(f"No profile found for {device.name}, ignoring.")
+                self.unconfigured_devices.append(device)
 
         # Update LiveSound Config
         await self.write_live_config()
+        # Option C: Write Active Recorders Inventory
+        await self.write_recorder_inventory()
 
     async def monitor_hardware(self) -> None:
         """Background task to poll for hardware changes."""

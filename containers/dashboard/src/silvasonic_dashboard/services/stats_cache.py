@@ -31,13 +31,13 @@ class StatsManager:
                     cls._instance = cls()
         return cls._instance
 
-    def start_background_task(self):
+    def start_background_task(self) -> None:
         """Starts the background thread logic."""
         t = threading.Thread(target=self._update_loop, daemon=True)
         t.start()
         logger.info("StatsManager background thread started.")
 
-    def _update_loop(self):
+    def _update_loop(self) -> None:
         while True:
             try:
                 self._refresh_cache()
@@ -50,7 +50,7 @@ class StatsManager:
             # Maybe 30s is a good compromise.
             time.sleep(15)
 
-    def _refresh_cache(self):
+    def _refresh_cache(self) -> None:
         if not os.path.exists(REC_DIR):
             return
 
