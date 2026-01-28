@@ -11,10 +11,10 @@ from silvasonic_dashboard.services import (
     BirdNetStatsService,
     HealthCheckerService,
     RecorderService,
-    SettingsService,
     SystemService,
     UploaderService,
 )
+from silvasonic_dashboard.settings import SettingsService
 from starlette.status import HTTP_302_FOUND
 
 logger = structlog.get_logger()
