@@ -9,7 +9,7 @@
 *   **Users:** Field scientists/biologists (Non-technical).
 
 ## 2. Tech Stack
-*   **Container Runtime:** Podman (Rootless, via `podman-compose`).
+*   **Container Runtime:** Podman (Root, via `sudo podman-compose`).
 *   **Language:** Python 3.11+.
 *   **Dependencies:** Management via `uv` (faster `pip` replacement).
 *   **Config:** `pyproject.toml` is the authority for dependencies.

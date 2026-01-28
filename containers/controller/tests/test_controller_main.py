@@ -13,6 +13,7 @@ def mock_deps():
         patch("silvasonic_controller.main.DeviceManager") as dm,
         patch("silvasonic_controller.main.PodmanOrchestrator") as po,
         patch("silvasonic_controller.main.load_profiles") as lp,
+        patch("silvasonic_controller.main.PersistenceManager") as pm,
     ):
         # Setup mock behavior for ASYNC methods
         dm_instance = dm.return_value
@@ -23,6 +24,13 @@ def mock_deps():
         po_instance.spawn_recorder = AsyncMock(return_value=True)
         po_instance.stop_recorder = AsyncMock()
         po_instance.list_active_recorders = AsyncMock(return_value=[])
+
+        # PersistenceManager mocks
+        pm_instance = pm.return_value
+        pm_instance.start = AsyncMock()
+        pm_instance.log_event = AsyncMock()
+        pm_instance.sync_loop = AsyncMock()
+        pm_instance.stop = AsyncMock()
 
         lp.return_value = [MicrophoneProfile(name="Test", slug="test", device_patterns=["Test"])]
 

@@ -6,9 +6,10 @@ from silvasonic_uploader.config import UploaderSettings
 
 
 class TestConfig:
+    @patch.dict(os.environ, {}, clear=True)
     def test_defaults(self):
         """Test default values."""
-        settings = UploaderSettings()
+        settings = UploaderSettings(_env_file=None)
         assert settings.sync_interval == 10
         assert settings.cleanup_threshold == 70
         assert settings.nextcloud_url == ""

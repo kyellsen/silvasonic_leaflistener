@@ -124,24 +124,26 @@ def test_get_location_config(tmp_path):
 
 def test_write_status(monkeypatch) -> None:
     """Test writing status file."""
-    mock_open = MagicMock()
-    mock_file = MagicMock()
-    mock_open.return_value.__enter__.return_value = mock_file
+    # Mock Redis global class
+    with patch("redis.Redis") as mock_redis_cls:
+        mock_redis_instance = mock_redis_cls.return_value
 
-    monkeypatch.setattr("builtins.open", mock_open)
-    monkeypatch.setattr("os.makedirs", MagicMock())
-    monkeypatch.setattr("os.rename", MagicMock())
-    monkeypatch.setattr("os.getpid", MagicMock(return_value=123))
+        # Mock psutil
+        mock_psutil = MagicMock()
+        mock_psutil.cpu_percent.return_value = 10.0
+        mock_mem = MagicMock()
+        mock_mem.rss = 1024 * 1024 * 10
+        mock_psutil.Process.return_value.memory_info.return_value = mock_mem
 
-    # Mock psutil
-    mock_psutil = MagicMock()
-    mock_psutil.cpu_percent.return_value = 10.0
-    mock_mem = MagicMock()
-    mock_mem.rss = 1024 * 1024 * 10
-    mock_psutil.Process.return_value.memory_info.return_value = mock_mem
-    sys.modules["psutil"] = mock_psutil
+        # Patch psutil in sys.modules because it is imported at top level
+        with patch.dict(sys.modules, {"psutil": mock_psutil}):
+            monkeypatch.setattr("os.getpid", MagicMock(return_value=123))
 
-    main.write_status("Testing")
+            main.write_status("Testing")
 
-    assert mock_open.called
-    assert mock_psutil.cpu_percent.called
+            # Verify Redis call
+            mock_redis_instance.setex.assert_called_once()
+            args = mock_redis_instance.setex.call_args[0]
+            assert args[0] == "status:weather"
+            assert args[1] == 1500
+            assert "Testing" in args[2]

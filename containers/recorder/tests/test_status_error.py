@@ -21,12 +21,19 @@ class TestRecorderStatusError(unittest.TestCase):
         # Mock Redis
         self.recorder._redis = MagicMock()
 
+        # Mock psutil to avoid MagicMock serialization errors
+        self.psutil_patcher = patch("silvasonic_recorder.main.psutil")
+        self.mock_psutil = self.psutil_patcher.start()
+        self.mock_psutil.cpu_percent.return_value = 10.0
+        self.mock_psutil.Process.return_value.memory_info.return_value.rss = 1024 * 1024
+
         # Reset internal state
         self.recorder._last_status_write = 0
         self.recorder._last_status_hash = 0
 
     def tearDown(self):
         self.settings_patcher.stop()
+        self.psutil_patcher.stop()
 
     def test_json_content(self):
         # Arrange

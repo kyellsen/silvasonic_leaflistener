@@ -50,6 +50,9 @@ def test_write_status(mock_psutil, mock_redis_cls, watcher):
     """Test status file writing."""
     mock_redis = mock_redis_cls.return_value
 
+    mock_psutil.cpu_percent.return_value = 10.0
+    mock_psutil.Process.return_value.memory_info.return_value.rss = 1048576
+
     watcher.write_status("Idle")
 
     mock_redis.setex.assert_called_once()

@@ -9,22 +9,24 @@ from silvasonic_healthchecker.models import ServiceConfig
 SERVICES_CONFIG["test_service"] = ServiceConfig(name="Test Service", timeout=60)
 
 
-def test_rich_status_passthrough(tmp_path):
-    # Setup mock status directory
+@patch("silvasonic_healthchecker.main.redis.Redis")
+def test_rich_status_passthrough(mock_redis_cls, tmp_path):
+    # Setup mock status directory (output)
     status_dir = tmp_path / "status"
     status_dir.mkdir()
 
-    # Create a mock status file for 'test_service' with a custom message
-    status_file = status_dir / "test_service.json"
+    # Mock Redis return values
+    mock_redis = mock_redis_cls.return_value
+    mock_redis.keys.return_value = [b"status:test_service"]
+
     current_time = time.time()
     status_content = {
         "timestamp": current_time,
         "status": "Running",
-        "message": "Processing Job #123",  # Rich message
-        "state": "Processing",  # Rich state
+        "message": "Processing Job #123",
+        "state": "Processing",
     }
-    with open(status_file, "w") as f:
-        json.dump(status_content, f)
+    mock_redis.get.return_value = json.dumps(status_content).encode("utf-8")
 
     # Mock Mailer
     mock_mailer = MagicMock()
