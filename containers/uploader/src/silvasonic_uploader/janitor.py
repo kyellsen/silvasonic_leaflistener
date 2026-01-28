@@ -39,6 +39,7 @@ class StorageJanitor:
         current_usage = get_usage_callback(self.source_dir)
 
         if current_usage < self.threshold_percent:
+            # OPTIMIZATION: Early Exit. Don't scan directory if usage is fine.
             logger.info(
                 f"Disk usage {current_usage:.1f}% is below threshold {self.threshold_percent}%. "
                 "No cleanup needed."
@@ -51,32 +52,35 @@ class StorageJanitor:
         )
 
         # 1. Collect all local files efficiently
-        # Store as tuples: (mtime, size, absolute_path) to save memory compared to dicts
-        local_files = list(self._yield_local_files())
+        # Store as tuples: (mtime, size, relative_path) to save memory and avoid relpath calls.
+        # This list materialization is necessary for global sorting (oldest first).
+        try:
+            local_files = list(self._yield_local_files())
+        except Exception as e:
+            logger.error(f"Failed to scan local files: {e}")
+            return
 
         # 2. Sort by age (oldest first)
-        # itemgetter(0) is slightly faster than lambda x: x[0]
+        # itemgetter(0) is optimized C-level fetch
         local_files.sort(key=itemgetter(0))
 
         deleted_count = 0
         deleted_size = 0
 
-        for _, size, path in local_files:
+        for _, size, rel_path in local_files:
             # Check if we've reached the target
+            # Optimization: Check usage every N files or subtract deleted bytes from total?
+            # Re-checking disk usage (syscall) is cheap enough (statvfs).
             if get_usage_callback(self.source_dir) <= self.target_percent:
                 logger.info(f"Target usage {self.target_percent}% reached. Stopping cleanup.")
                 break
 
-            rel_path = os.path.relpath(path, self.source_dir)
-
             # 3. VERIFY: Exists on remote?
             if rel_path not in remote_files:
-                logger.warning(f"Skipping {rel_path}: Not found on remote.")
+                # logger.debug(f"Skipping {rel_path}: Not found on remote.")
                 continue
 
             # 4. VERIFY: Size matches?
-            # Note: Remote might report different size if compressed/encrypted,
-            # but for basic copy it should match.
             remote_size = remote_files[rel_path]
             local_size = size
 
@@ -85,13 +89,14 @@ class StorageJanitor:
                 continue
 
             # 5. Delete
+            abs_path = os.path.join(self.source_dir, rel_path)
             try:
-                os.remove(path)
-                logger.info(f"Deleted {rel_path} (Local: {local_size}b, Remote: {remote_size}b)")
+                os.remove(abs_path)
+                logger.info(f"Deleted {rel_path} (Local: {local_size}b)")
                 deleted_count += 1
                 deleted_size += local_size
             except Exception as e:
-                logger.error(f"Failed to delete {path}: {e}")
+                logger.error(f"Failed to delete {abs_path}: {e}")
 
         logger.info(
             f"Cleanup finished. Deleted {deleted_count} files "
@@ -99,30 +104,31 @@ class StorageJanitor:
         )
 
     def _yield_local_files(self) -> typing.Iterator[tuple[float, int, str]]:
-        """Yields local files as (mtime, size, absolute_path) tuples using os.scandir."""
-        try:
-            # Scan recursively? os.scandir is not recursive itself.
-            # We need a recursive walker that uses scandir.
-            # Implementing a simple stack-based scandir walker.
-            stack = [self.source_dir]
-            while stack:
-                current_dir = stack.pop()
-                if not os.path.exists(current_dir):
-                    continue
+        """Yields local files as (mtime, size, relative_path) tuples using os.scandir."""
+        # Stack stores (absolute_path, relative_prefix)
+        # Root: (source_dir, "")
+        stack = [(self.source_dir, "")]
 
-                try:
-                    with os.scandir(current_dir) as it:
-                        for entry in it:
-                            if entry.is_dir(follow_symlinks=False):
-                                stack.append(entry.path)
-                            elif entry.is_file(follow_symlinks=False):
-                                try:
-                                    stat = entry.stat()
-                                    yield (stat.st_mtime, stat.st_size, entry.path)
-                                except FileNotFoundError:
-                                    # File disappeared between scan and stat
-                                    pass
-                except OSError as e:
-                    logger.warning(f"Failed to scan directory {current_dir}: {e}")
-        except Exception as e:
-            logger.error(f"Unexpected error traversing directories: {e}")
+        while stack:
+            current_abs, current_rel = stack.pop()
+            if not os.path.exists(current_abs):
+                continue
+
+            try:
+                with os.scandir(current_abs) as it:
+                    for entry in it:
+                        if entry.is_dir(follow_symlinks=False):
+                            # Push subdirectory
+                            # New rel path is current_rel + entry.name
+                            new_rel = os.path.join(current_rel, entry.name)
+                            stack.append((entry.path, new_rel))
+                        elif entry.is_file(follow_symlinks=False):
+                            try:
+                                stat = entry.stat()
+                                # Yield relative path!
+                                rel_path = os.path.join(current_rel, entry.name)
+                                yield (stat.st_mtime, stat.st_size, rel_path)
+                            except FileNotFoundError:
+                                pass
+            except OSError as e:
+                logger.warning(f"Failed to scan directory {current_abs}: {e}")

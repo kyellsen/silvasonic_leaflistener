@@ -64,26 +64,32 @@ def setup_environment() -> None:
 
 
 def calculate_queue_size(directory: str, db: typing.Any) -> int:
-    """Calculate pending files (local files - uploaded files).Blocking IO."""
-    files = []
+    """Calculate pending files (local files - uploaded files) using Set Diff.
+
+    This version avoids building a massive list of all local files in memory.
+    """
+    queue_count = 0
     try:
-        # Use simple walk here, optimization in Janitor is separate
+        # 1. Get Set of ALL uploaded files from DB (O(1) lookup)
+        # This might be large (50MB for 500k files), but better than list overhead
+        uploaded_set = db.get_all_uploaded_set()
+
+        # 2. Iterate filesystem without building a list
+        # Using a generator to walk
         for root, _, filenames in os.walk(directory):
             for f in filenames:
-                # Get relative path to match DB entries
                 rel_path = os.path.relpath(os.path.join(root, f), directory)
-                files.append(rel_path)
-    except Exception:
+
+                # 3. Check membership
+                if rel_path not in uploaded_set:
+                    queue_count += 1
+
+    except Exception as e:
+        logger = logging.getLogger("Uploader")  # Re-get logger cleanly
+        logger.error(f"Failed to calculate queue size: {e}")
         return 0
 
-    if not files:
-        return 0
-
-    # Get set of files that are already uploaded
-    uploaded = db.get_uploaded_filenames(files)
-
-    # Queue is what's left
-    return len(files) - len(uploaded)
+    return queue_count
 
 
 def write_status(

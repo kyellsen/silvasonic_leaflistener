@@ -24,16 +24,13 @@ class TestMain:
             f.write("b")
 
         # Mock DB to say file1 is uploaded
-        mock_db.get_uploaded_filenames.return_value = {"file1.txt"}
+        mock_db.get_all_uploaded_set.return_value = {"file1.txt"}
 
         queue_size = calculate_queue_size(temp_fs, mock_db)
         # Total 2, 1 uploaded -> 1 pending
         assert queue_size == 1
 
-        mock_db.get_uploaded_filenames.assert_called_once()
-        args = mock_db.get_uploaded_filenames.call_args[0][0]
-        assert "file1.txt" in args
-        assert "subdir/file2.txt" in args
+        mock_db.get_all_uploaded_set.assert_called_once()
 
     def test_calculate_queue_size_empty(self, temp_fs: str, mock_db: MagicMock) -> None:
         """Test queue size is 0 when directory is empty."""
@@ -41,7 +38,10 @@ class TestMain:
 
         queue_size = calculate_queue_size(temp_fs, mock_db)
         assert queue_size == 0
-        mock_db.get_uploaded_filenames.assert_not_called()
+
+        # Depending on implementation order, it might call DB or not.
+        # Current implementation: ALWAYS calls DB first.
+        mock_db.get_all_uploaded_set.assert_called_once()
 
     @patch("silvasonic_uploader.main.STATUS_FILE", new_callable=lambda: "status.json")
     def test_write_status(self, mock_status_file: MagicMock, temp_fs: str) -> None:

@@ -17,7 +17,7 @@ logger = logging.getLogger("LiveProcessor")
 class AudioIngestor:
     """Ingests audio from multiple UDP streams and processes them for visualization."""
 
-    def __init__(self):
+    def __init__(self) -> None:
         """Initialize the AudioIngestor."""
         # Sockets: {source_name: socket}
         self.sockets: dict[str, socket.socket] = {}

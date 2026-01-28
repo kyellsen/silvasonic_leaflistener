@@ -104,6 +104,7 @@ class TestStorageJanitor:
             mock_entry.is_dir.return_value = False
             mock_entry.is_file.return_value = True
             mock_entry.path = "/root/ghost.file"
+            mock_entry.name = "ghost.file"  # Required for new rel_path logic
             mock_entry.stat.side_effect = FileNotFoundError
 
             # Setup iterator

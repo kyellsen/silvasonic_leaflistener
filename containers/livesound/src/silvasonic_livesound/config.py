@@ -11,15 +11,15 @@ class Settings(BaseSettings):
     """
 
     # Service Configuration
-    HOST: str = Field("0.0.0.0", description="Host to bind the service to")
-    PORT: int = Field(8000, description="Port to bind the service to")
+    HOST: str = Field(default="0.0.0.0", description="Host to bind the service to")
+    PORT: int = Field(default=8000, description="Port to bind the service to")
 
     # Audio Processing Configuration
-    SAMPLE_RATE: int = Field(48000, description="Audio sample rate in Hz")
-    CHANNELS: int = Field(1, description="Number of audio channels")
-    CHUNK_SIZE: int = Field(4096, description="Processing chunk size (samples)")
-    FFT_WINDOW: int = Field(2048, description="FFT Window size")
-    HOP_LENGTH: int = Field(512, description="FFT Hop length")
+    SAMPLE_RATE: int = Field(default=48000, description="Audio sample rate in Hz")
+    CHANNELS: int = Field(default=1, description="Number of audio channels")
+    CHUNK_SIZE: int = Field(default=4096, description="Processing chunk size (samples)")
+    FFT_WINDOW: int = Field(default=2048, description="FFT Window size")
+    HOP_LENGTH: int = Field(default=512, description="FFT Hop length")
 
     # Port Configuration
     LISTEN_PORTS: dict[str, int] = Field(
@@ -28,9 +28,10 @@ class Settings(BaseSettings):
     )
 
     # Paths
-    LOG_DIR: str = Field("/var/log/silvasonic", description="Directory for log files")
+    LOG_DIR: str = Field(default="/var/log/silvasonic", description="Directory for log files")
     STATUS_FILE: str = Field(
-        "/mnt/data/services/silvasonic/status/livesound.json", description="Path to status file"
+        default="/mnt/data/services/silvasonic/status/livesound.json",
+        description="Path to status file",
     )
 
     model_config = SettingsConfigDict(

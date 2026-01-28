@@ -16,13 +16,13 @@ class BirdNETParameters(BaseModel):
     Specific parameters for the BirdNET analysis.
     """
 
-    min_conf: float = Field(0.7, ge=0.0, le=1.0)
-    lat: float | None = Field(None, ge=-90, le=90)
-    lon: float | None = Field(None, ge=-180, le=180)
-    week: int = Field(-1, ge=-1, le=53)
-    overlap: float = Field(0.0, ge=0.0, le=3.0)
-    sensitivity: float = Field(1.0, ge=0.5, le=1.5)
-    threads: int = Field(3, ge=1)
+    min_conf: float = Field(default=0.7, ge=0.0, le=1.0)
+    lat: float | None = Field(default=None, ge=-90, le=90)
+    lon: float | None = Field(default=None, ge=-180, le=180)
+    week: int = Field(default=-1, ge=-1, le=53)
+    overlap: float = Field(default=0.0, ge=0.0, le=3.0)
+    sensitivity: float = Field(default=1.0, ge=0.5, le=1.5)
+    threads: int = Field(default=3, ge=1)
 
 
 class Settings(BaseSettings):
@@ -30,22 +30,22 @@ class Settings(BaseSettings):
     Main container configuration.
     """
 
-    model_config = SettingsConfigDict(env_case_sensitive=True)
+    model_config = SettingsConfigDict(case_sensitive=True)
 
     # Paths (Env vars or defaults)
-    INPUT_DIR: Path = Field(Path("/data/recording"), alias="INPUT_DIR")
-    RESULTS_DIR: Path = Field(Path("/data/db/results"), alias="RESULTS_DIR")
-    CLIPS_DIR: Path = Field(None, validate_default=False)  # Computed in __init__
+    INPUT_DIR: Path = Field(default=Path("/data/recording"), alias="INPUT_DIR")
+    RESULTS_DIR: Path = Field(default=Path("/data/db/results"), alias="RESULTS_DIR")
+    CLIPS_DIR: Path | None = Field(default=None, validate_default=False)  # Computed in __init__
 
     # Config Files
-    CONFIG_FILE: Path = Field(Path("/etc/birdnet/config.yml"), alias="CONFIG_FILE")
-    SETTINGS_JSON: Path = Field(Path("/config/settings.json"))
+    CONFIG_FILE: Path = Field(default=Path("/etc/birdnet/config.yml"), alias="CONFIG_FILE")
+    SETTINGS_JSON: Path = Field(default=Path("/config/settings.json"))
 
     # Watcher
-    RECURSIVE_WATCH: bool = Field(True, alias="RECURSIVE_WATCH")
+    RECURSIVE_WATCH: bool = Field(default=True, alias="RECURSIVE_WATCH")
 
     # The actual BirdNET parameters (loaded from files/env)
-    birdnet: BirdNETParameters = Field(default_factory=BirdNETParameters)
+    birdnet: BirdNETParameters = Field(default_factory=lambda: BirdNETParameters())
 
     def model_post_init(self, __context: typing.Any) -> None:
         """Calculate derived paths and load detailed BirdNET config."""
@@ -77,7 +77,7 @@ class Settings(BaseSettings):
             # --- Defaults are in the Model ---
 
             # --- Environment ---
-            env_values = {}
+            env_values: dict[str, typing.Any] = {}
             if os.getenv("MIN_CONFIDENCE"):
                 env_values["min_conf"] = float(os.getenv("MIN_CONFIDENCE"))  # type: ignore
             if os.getenv("LATITUDE"):
@@ -94,7 +94,7 @@ class Settings(BaseSettings):
                 env_values["threads"] = int(os.getenv("THREADS"))  # type: ignore
 
             # --- YAML ---
-            yaml_values = {}
+            yaml_values: dict[str, typing.Any] = {}
             if self.CONFIG_FILE.exists():
                 try:
                     with open(self.CONFIG_FILE) as f:
@@ -108,8 +108,8 @@ class Settings(BaseSettings):
                     logger.error(f"Failed to load config.yml: {e}")
 
             # --- JSON ---
-            json_birdnet = {}
-            json_location = {}
+            json_birdnet: dict[str, typing.Any] = {}
+            json_location: dict[str, typing.Any] = {}
             if self.SETTINGS_JSON.exists():
                 try:
                     with open(self.SETTINGS_JSON) as f:
@@ -123,7 +123,7 @@ class Settings(BaseSettings):
             # We want JSON > YAML > Env > Default
             # We construct the final dict by overlaying.
 
-            final_values = {}
+            final_values: dict[str, typing.Any] = {}
 
             # 1. Env (Base)
             final_values.update(env_values)

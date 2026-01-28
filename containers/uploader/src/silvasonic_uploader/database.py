@@ -166,6 +166,7 @@ class DatabaseHandler:
         """Check which of the provided filenames have been successfully uploaded.
 
         Returns a set of filenames that are marked as 'success' in the database.
+        DEPRECATED: Use get_all_uploaded_set() for bulk operations to avoid large IN clauses.
         """
         if not filenames or not self.Session:
             if not self.Session and not self.connect():
@@ -204,3 +205,37 @@ class DatabaseHandler:
             session.close()
 
         return uploaded
+
+    def get_all_uploaded_set(self) -> set[str]:
+        """Retrieve ALL filenames that have been successfully uploaded.
+
+        Returns a set of filenames (strings).
+        This is used for Inverted-Set-Pattern (Client-Side Diff) to avoid sending
+        massive file lists to the DB.
+        """
+        if not self.Session:
+            if not self.connect():
+                return set()
+
+        assert self.Session is not None
+        session = self.Session()
+        uploaded_set = set()
+
+        try:
+            # Fetch only filename column, where status is success
+            # Use stream_results=True or yield_per if supported/needed,
+            # but for <1M rows, standard fetchall is usually faster than overhead.
+            # We select ONLY the filename to minimize bandwidth.
+            query = text("SELECT filename FROM uploader.uploads WHERE status = 'success'")
+            result = session.execute(query)
+
+            # Consume result directly into set
+            # result.scalars() yields the first column
+            uploaded_set = set(result.scalars().all())
+
+        except Exception as e:
+            logger.error(f"Failed to fetch all uploaded filenames: {e}")
+        finally:
+            session.close()
+
+        return uploaded_set
