@@ -1,11 +1,12 @@
 import datetime
 import json
 import os
-from typing import Any, cast
+from typing import Any
 
+import redis
 from async_lru import alru_cache
 
-from .common import REC_DIR, STATUS_DIR, logger, run_in_executor
+from .common import REC_DIR, logger, run_in_executor
 
 
 class RecorderService:
@@ -28,23 +29,27 @@ class RecorderService:
         return 48000 * 1 * 2  # Default to 48kHz, Mono, 16-bit (96000 Bps)
 
     @staticmethod
-    @alru_cache(ttl=30)
+    @alru_cache(ttl=1)  # Faster refresh for Redis
     async def get_status() -> list[dict[str, Any]]:
-        """Returns a list of status dicts for all detected recorders."""
+        """Returns a list of status dicts for all detected recorders from Redis."""
         statuses = []
         try:
-            import glob
+            # Connect to Redis
+            r = redis.Redis(host="silvasonic_redis", port=6379, db=0, socket_connect_timeout=1)
 
-            # blocking IO -> thread pool
-            def scan_status_files() -> list[str]:
-                files = glob.glob(os.path.join(STATUS_DIR, "recorder_*.json"))
-                if os.path.exists(os.path.join(STATUS_DIR, "recorder.json")):
-                    files.append(os.path.join(STATUS_DIR, "recorder.json"))
-                return list(set(files))
+            # Find all recorder keys
+            # Pattern: status:recorder:*
+            keys = r.keys("status:recorder:*")
 
-            files = await run_in_executor(scan_status_files)
+            # Also check legacy single recorder key if it exists?
+            # keys("status:recorder") might return it if it doesn't have colon?
+            # Our pattern used colon.
 
-            if not files:
+            # Additional keys that might match: "status:recorder"
+            if r.exists("status:recorder"):
+                keys.append(b"status:recorder")
+
+            if not keys:
                 return [
                     {
                         "status": "Unknown",
@@ -54,14 +59,14 @@ class RecorderService:
                     }
                 ]
 
-            for status_file in files:
+            for key in keys:
                 try:
+                    # mget would be faster but keys list is small
+                    raw_data = r.get(key)
+                    if not raw_data:
+                        continue
 
-                    def read_json(path: str) -> dict[str, Any]:
-                        with open(path) as f:
-                            return cast(dict[str, Any], json.load(f))
-
-                    data = await run_in_executor(read_json, status_file)
+                    data = json.loads(raw_data)
 
                     # Flatten meta for compatibility or just return rich data
                     meta = data.get("meta", {})
@@ -93,6 +98,7 @@ class RecorderService:
 
                     if isinstance(profile, dict) and "audio" in profile:
                         try:
+                            # Use staticmethod call
                             bps = RecorderService.get_audio_settings(profile)
                             compression = 0.6
                             bytes_per_day = bps * 60 * 60 * 24 * compression
@@ -102,6 +108,7 @@ class RecorderService:
                             forecast["daily_str"] = f"~{gb_per_day:.1f} GB"
 
                             # Calculate Remaining using shutil on the recording path
+                            # Disk check still needs FS access, which is fine (Audio volume)
                             import shutil
 
                             def get_usage() -> tuple[int, int, int]:
@@ -125,7 +132,7 @@ class RecorderService:
                     data["storage_forecast"] = forecast
                     statuses.append(data)
                 except Exception as e:
-                    logger.error(f"Error reading {status_file}: {e}")
+                    logger.error(f"Error reading redis key {key}: {e}")
 
             # Sort by profile name or slug for stability
             statuses.sort(key=lambda x: x.get("profile", {}).get("name", ""))

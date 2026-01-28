@@ -3,20 +3,24 @@ import os
 import time
 
 import psutil
+import redis
 import structlog
 
 logger = structlog.get_logger()
 
 
 def write_status() -> None:
-    """Writes the Dashboard's own heartbeat."""
-    status_file = "/mnt/data/services/silvasonic/status/dashboard.json"
-    os.makedirs(os.path.dirname(status_file), exist_ok=True)
+    """Writes the Dashboard's own heartbeat to Redis."""
+    logger.info("Starting Dashboard Redis Heartbeat")
 
-    logger.info("Starting Dashboard Heartbeat")
+    # Lazy connect
+    r: redis.Redis | None = None
 
     while True:
         try:
+            if r is None:
+                r = redis.Redis(host="silvasonic_redis", port=6379, db=0, socket_connect_timeout=2)
+
             data = {
                 "service": "dashboard",
                 "timestamp": time.time(),
@@ -26,11 +30,10 @@ def write_status() -> None:
                 "pid": os.getpid(),
             }
 
-            tmp_file = f"{status_file}.tmp"
-            with open(tmp_file, "w") as f:
-                json.dump(data, f)
-            os.rename(tmp_file, status_file)
+            r.setex("status:dashboard", 10, json.dumps(data))
+
         except Exception as e:
-            logger.error("Failed to write dashboard status", error=str(e))
+            logger.error("Failed to write dashboard status to Redis", error=str(e))
+            r = None
 
         time.sleep(5)  # Check every 5s

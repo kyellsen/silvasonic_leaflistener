@@ -1,12 +1,12 @@
 import datetime
 import json
-import os
 import time
 from typing import Any
 
+import redis
 from sqlalchemy import text
 
-from .common import STATUS_DIR, logger
+from .common import logger
 from .database import db
 
 
@@ -141,16 +141,16 @@ class WeatherService:
 
     @staticmethod
     def get_status() -> dict[str, Any]:
-        """Get service status from JSON file."""
+        """Get service status from Redis."""
         try:
-            status_file = os.path.join(STATUS_DIR, "weather.json")
-            if os.path.exists(status_file):
-                with open(status_file) as f:
-                    data: dict[str, Any] = json.load(f)
-                    # Check staleness (20 mins schedule, so maybe 25 min stale check)
-                    if time.time() - data.get("timestamp", 0) > 1500:
-                        data["status"] = "Stalen"
-                    return data
+            r = redis.Redis(host="silvasonic_redis", port=6379, db=0, socket_connect_timeout=1)
+            raw = r.get("status:weather")
+            if raw:
+                data: dict[str, Any] = json.loads(raw)
+                # Check staleness (20 mins schedule, so maybe 25 min stale check)
+                if time.time() - data.get("timestamp", 0) > 1500:
+                    data["status"] = "Stalen"
+                return data
         except Exception as e:
             logger.error(f"Weather Status Error: {e}", exc_info=True)
         return {"status": "Unknown"}

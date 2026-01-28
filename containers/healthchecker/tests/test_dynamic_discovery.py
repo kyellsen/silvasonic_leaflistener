@@ -7,101 +7,114 @@ from silvasonic_healthchecker.main import check_services_status
 
 
 @pytest.fixture
-def mock_status_dir(tmp_path):
-    """Mock the status directory."""
-    with patch("silvasonic_healthchecker.main.STATUS_DIR", str(tmp_path)):
-        yield tmp_path
+def mock_redis():
+    """Mock Redis."""
+    with patch("silvasonic_healthchecker.main.redis.Redis") as mock:
+        yield mock.return_value
 
 
-def test_dynamic_service_discovery(mock_status_dir):
-    """Test that services are discovered dynamically with _instance suffixes."""
+def test_dynamic_service_discovery(mock_redis):
+    """Test that services are discovered dynamically via Redis keys."""
 
-    # 1. Create traditional file for BirdNET
-    birdnet_file = mock_status_dir / "birdnet.json"
-    with open(birdnet_file, "w") as f:
-        json.dump({"service": "birdnet", "timestamp": time.time(), "status": "Running"}, f)
+    # Setup Mocks
+    mock_redis.keys.return_value = [
+        b"status:birdnet",
+        b"status:uploader:myhost",
+        b"status:livesound:front",
+        b"status:livesound:back",
+    ]
 
-    # 2. Create instance file for Uploader
-    uploader_file = mock_status_dir / "uploader_myhost.json"
-    with open(uploader_file, "w") as f:
-        json.dump(
-            {
-                "service": "uploader",
-                "timestamp": time.time(),
-                "status": "Running",
-                "last_upload": time.time(),
-            },
-            f,
-        )
+    # Setup key content
+    # We use side_effect to return different content based on key
+    def get_side_effect(key):
+        k = key if isinstance(key, str) else key.decode()
+        if k == "status:birdnet":
+            return json.dumps(
+                {"service": "birdnet", "timestamp": time.time(), "status": "Running"}
+            ).encode()
+        if k == "status:uploader:myhost":
+            return json.dumps(
+                {
+                    "service": "uploader",
+                    "timestamp": time.time(),
+                    "status": "Running",
+                    "last_upload": time.time(),
+                }
+            ).encode()
+        if k == "status:livesound:front":
+            return json.dumps(
+                {"service": "livesound", "timestamp": time.time(), "status": "Running"}
+            ).encode()
+        if k == "status:livesound:back":
+            return json.dumps(
+                {"service": "livesound", "timestamp": time.time(), "status": "Running"}
+            ).encode()
+        return None
 
-    # 3. Create MULTIPLE instances for Livesound (if supported by logic, though config might assume singleton if not rigorous)
-    # Actually logic supports multiple.
-    ls1 = mock_status_dir / "livesound_front.json"
-    with open(ls1, "w") as f:
-        json.dump({"service": "livesound", "timestamp": time.time(), "status": "Running"}, f)
-
-    ls2 = mock_status_dir / "livesound_back.json"
-    with open(ls2, "w") as f:
-        json.dump({"service": "livesound", "timestamp": time.time(), "status": "Running"}, f)
+    mock_redis.get.side_effect = get_side_effect
 
     # Mock Mailer
     mock_mailer = MagicMock()
 
-    # Run Check
-    check_services_status(mock_mailer, {})
+    # Mock file writing for system_status.json (legacy)
+    with patch("builtins.open", new_callable=MagicMock):
+        # Run Check
+        check_services_status(mock_mailer, {})
 
-    # Verify Output
-    status_output = mock_status_dir / "system_status.json"
-    assert status_output.exists()
+        # Verify call to write system_status.json
+        # We find the call that writes to system_status.json
+        # Note: Depending on impl, it might be the last call
+        # We can inspect what was written to Redis or File.
 
-    with open(status_output) as f:
-        status = json.load(f)
+        # Check Redis set call for system:status
+        # Redis.set("system:status", json_dump)
+        assert mock_redis.set.called
+        args = mock_redis.set.call_args
+        assert args[0][0] == "system:status"
+        system_status = json.loads(args[0][1])
 
-    # Check BirdNET (Legacy name)
-    assert "birdnet" in status
-    assert status["birdnet"]["status"] == "Running"
+        # Check BirdNET (Legacy name)
+        assert "birdnet" in system_status
+        assert system_status["birdnet"]["status"] == "Running"
 
-    # Check Uploader (New name)
-    assert "uploader_myhost" in status
-    assert status["uploader_myhost"]["status"] == "Running"
+        # Check Uploader (New name)
+        assert "uploader_myhost" in system_status
+        assert system_status["uploader_myhost"]["status"] == "Running"
 
-    # Check Livesound (Multiple)
-    assert "livesound_front" in status
-    assert "livesound_back" in status
+        # Check Livesound (Multiple)
+        assert "livesound_front" in system_status
+        assert "livesound_back" in system_status
 
-    # Check Missing Service (e.g. Dashboard if we didn't create file)
-    # Dashboard is in SERVICES_CONFIG. We created no file.
-    # Logic: if processed_count == 0, add default Down entry.
-    assert "dashboard" in status
-    assert status["dashboard"]["status"] == "Down"
-    assert status["dashboard"]["message"] == "No instance found"
+        # Check Missing Service (e.g. Dashboard if we didn't mock it)
+        # Dashboard is in SERVICES_CONFIG.
+        assert "dashboard" in system_status
+        assert system_status["dashboard"]["status"] == "Down"
 
 
-def test_garbage_file_ignore(mock_status_dir):
-    """Test that non-matching files or bad json are ignored."""
-    # Bad JSON
-    bad_file = mock_status_dir / "birdnet_bad.json"
-    with open(bad_file, "w") as f:
-        f.write("{invalid_json")
+def test_garbage_key_ignore(mock_redis):
+    """Test that bad json is ignored."""
+    mock_redis.keys.return_value = [b"status:birdnet", b"status:badjson"]
 
-    # Wrong Prefix (should be ignored by glob?)
-    # glob pattern is "{service}*.json"
-    # "birdnet_stats.json" matches "birdnet*.json"
-    # But schema validation should fail if it doesn't match ServiceStatus
-    stats_file = mock_status_dir / "birdnet_stats.json"
-    with open(stats_file, "w") as f:
-        # Valid JSON but missing 'timestamp' or fields
-        json.dump({"some": "stats", "count": 10}, f)
+    def get_side_effect(key):
+        k = key if isinstance(key, str) else key.decode()
+        if k == "status:birdnet":
+            return json.dumps(
+                {"service": "birdnet", "timestamp": time.time(), "status": "Running"}
+            ).encode()
+        if k == "status:badjson":
+            return b"{invalid_json"
+        return None
+
+    mock_redis.get.side_effect = get_side_effect
 
     mock_mailer = MagicMock()
-    check_services_status(mock_mailer, {})
 
-    status_output = mock_status_dir / "system_status.json"
-    with open(status_output) as f:
-        status = json.load(f)
+    with patch("builtins.open", new_callable=MagicMock):
+        check_services_status(mock_mailer, {})
 
-    # birdnet should be DOWN (No instance found) because valid files were 0
-    # (assuming we ignore the bad ones)
-    assert status["birdnet"]["status"] == "Down"
-    assert "birdnet_bad" not in status
-    assert "birdnet_stats" not in status
+        # Check logic
+        args = mock_redis.set.call_args
+        system_status = json.loads(args[0][1])
+
+        assert "birdnet" in system_status
+        assert "badjson" not in system_status

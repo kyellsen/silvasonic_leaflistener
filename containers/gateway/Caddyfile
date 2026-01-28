@@ -1,0 +1,10 @@
+:80 {
+	# API routes forwarded to Dashboard (as requested)
+	reverse_proxy /api/* silvasonic_dashboard:8080
+
+	# Live sound routes forwarded to Livesound
+	reverse_proxy /live/* silvasonic_livesound:8000
+
+	# Default route (Dashboard)
+	reverse_proxy /* silvasonic_dashboard:8080
+}

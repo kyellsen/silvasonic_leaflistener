@@ -16,11 +16,10 @@ Die akustische Überwachung erfordert eine absolut unterbrechungsfreie Aufnahme 
     *   **FFmpeg Wrapper:** Steuert einen persistenten `ffmpeg`-Subprozess zur Aufnahme.
     *   **Segmentierung:** Schneidet den Stream in handliche 10-Sekunden-Chunks (`.flac`).
     *   **Self-Healing:** Überwacht den Aufnahme-Prozess und startet ihn bei Absturz sofort neu.
-    *   **Stream Copy:** Dupliziert den Audio-Stream für UDP-Streaming ohne Transcoding-Overhead.
 *   **Outputs:**
-    *   **Dateien:** Schreibt `.flac` Dateien (komprimiert) auf das Daten-Volume `/data/recording`.
-    *   **UDP Stream:** Sendet rohes Audio (PCM) oder FLAC-Stream via UDP an den `livesound` Container.
-    *   **Metadaten:** Schreibt detaillierten Status (genutztes Profil, Device-Name) in den Heartbeat (Redis).
+    *   **Dateien:** Schreibt `.flac` Dateien (komprimiert) auf das Daten-Volume.
+    *   **UDP Stream:** Sendet rohes Audio (PCM) via UDP an den `livesound` Container.
+    *   **Metadaten:** Schreibt detaillierten Status (genutztes Profil, Device-Name) in den Heartbeat.
 
 ## 4. Abgrenzung (Out of Scope)
 *   Analysiert **KEINE** Audiodaten (Aufgabe von `birdnet`).

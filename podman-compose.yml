@@ -1,6 +1,32 @@
 version: "3.8"
 
 services:
+  tailscale:
+    image: tailscale/tailscale:latest
+    container_name: silvasonic_tailscale
+    hostname: ${HOSTNAME:-silvasonic-unit}
+    environment:
+      - TS_AUTHKEY=${TS_AUTHKEY}
+      - TS_HOSTNAME=${HOSTNAME:-silvasonic-unit}
+      - TS_STATE_DIR=/var/lib/tailscale
+      - TS_USERSPACE=false
+    volumes:
+      - tailscale_state:/var/lib/tailscale
+      - /dev/net/tun:/dev/net/tun
+    cap_add:
+      - NET_ADMIN
+      - NET_RAW
+    restart: always
+
+  gateway:
+    image: caddy:alpine
+    container_name: silvasonic_gateway
+    restart: always
+    ports:
+      - "80:80"
+    volumes:
+      - ./containers/gateway/Caddyfile:/etc/caddy/Caddyfile:ro
+
   controller:
     build:
       context: containers/controller
@@ -23,10 +49,7 @@ services:
       # 4. Logs
       - ${SILVASONIC_DATA_DIR}/logs:/var/log/silvasonic:z
       # 5. Shared Status (Live Config)
-      - ${SILVASONIC_DATA_DIR}/status:/mnt/data/services/silvasonic/status:z
     restart: always
-    ports:
-      - "8002:8002"
 
 
   uploader:
@@ -44,7 +67,7 @@ services:
       - ${SILVASONIC_DATA_DIR}/recorder/recordings:/data/recording:ro
       - ${SILVASONIC_DATA_DIR}/uploader/config:/config/rclone:z
       - ${SILVASONIC_DATA_DIR}/logs:/var/log/silvasonic:z
-      - ${SILVASONIC_DATA_DIR}/status:/mnt/data/services/silvasonic/status:z
+
       - ${SILVASONIC_DATA_DIR}/errors:/mnt/data/services/silvasonic/errors:z
     ports:
       - "8001:8001"
@@ -60,7 +83,7 @@ services:
     volumes:
       - ./containers/healthchecker/src:/app/src:z
       - ${SILVASONIC_DATA_DIR}/config:/config:z
-      - ${SILVASONIC_DATA_DIR}/status:/mnt/data/services/silvasonic/status:z
+
       - ${SILVASONIC_DATA_DIR}/errors:/mnt/data/services/silvasonic/errors:z
       - ${SILVASONIC_DATA_DIR}/notifications:/data/notifications:z
       - ${SILVASONIC_DATA_DIR}/logs:/var/log/silvasonic:z
@@ -91,7 +114,7 @@ services:
       - ${SILVASONIC_DATA_DIR}/recorder/recordings:/data/recording:z
       - ${SILVASONIC_DATA_DIR}/logs:/var/log/silvasonic:z
       - /proc/asound:/proc/asound:ro
-      - ${SILVASONIC_DATA_DIR}/status:/mnt/data/services/silvasonic/status:z
+
       - /sys:/sys:ro
 
   livesound:
@@ -102,14 +125,13 @@ services:
     environment:
       - PYTHONUNBUFFERED=1
     ports:
-      - "8000:8000"
       - "8010:8010/udp"
     cpu_shares: 512
     volumes:
       - ./containers/livesound/src:/app/src:z
       - ${SILVASONIC_DATA_DIR}/recorder/recordings:/data/recording:ro
       - ${SILVASONIC_DATA_DIR}/logs:/var/log/silvasonic:z
-      - ${SILVASONIC_DATA_DIR}/status:/mnt/data/services/silvasonic/status:z
+
     restart: always
 
   dashboard:
@@ -122,15 +144,14 @@ services:
     env_file: .env
     environment:
       - PYTHONUNBUFFERED=1
-    ports:
-      - "8080:8080"
+    ports: []
     volumes:
       - ./containers/dashboard/src:/app/src:z
       - ${SILVASONIC_DATA_DIR}/recorder/recordings:/data/recording:ro
       - ${SILVASONIC_DATA_DIR}/config:/config:z
       - ${SILVASONIC_DATA_DIR}/config/profiles:/app/mic_profiles:z
       - ${SILVASONIC_DATA_DIR}/logs:/var/log/silvasonic:z
-      - ${SILVASONIC_DATA_DIR}/status:/mnt/data/services/silvasonic/status:z
+
 
 
 
@@ -157,7 +178,7 @@ services:
       - ${SILVASONIC_DATA_DIR}/db/data:/var/lib/postgresql/data:z
       - ./containers/db/init:/docker-entrypoint-initdb.d:z
       - ./containers/db/postgresql.conf:/etc/postgresql/postgresql.conf:z
-      - ${SILVASONIC_DATA_DIR}/status:/mnt/data/services/silvasonic/status:z
+
       - ./containers/db/scripts:/scripts:z
     command: ["/scripts/entrypoint_wrapper.sh", "postgres", "-c", "config_file=/etc/postgresql/postgresql.conf"]
     healthcheck:
@@ -200,6 +221,9 @@ services:
     #  ports:
     #    - "1235:1235/udp"  # Expose extra ports
 
-    #uploader:
     #  environment:
     #    - SENSOR_ID=my_sensor_01  # Optional: Override hostname for cloud upload path
+
+volumes:
+  tailscale_state:
+

@@ -1,14 +1,16 @@
 import asyncio
+import json
 import os
 import typing
 
 import aiofiles
+import redis
 import structlog
 from fastapi import APIRouter, Depends, Request
 from fastapi.responses import RedirectResponse, StreamingResponse
 from silvasonic_dashboard.auth import require_auth
 from silvasonic_dashboard.core.templates import templates
-from silvasonic_dashboard.services import HealthCheckerService, SystemService
+from silvasonic_dashboard.services import SystemService
 
 logger = structlog.get_logger()
 router = APIRouter()
@@ -22,12 +24,10 @@ async def sse_system_status(
         return auth
 
     async def event_generator() -> typing.AsyncGenerator[str, None]:
-        # Watch system_status.json for changes
-        status_file = "/mnt/data/services/silvasonic/status/system_status.json"
-        dashboard_stats_file = "/mnt/data/services/silvasonic/status/dashboard.json"  # Watch this too as it has disk stats
+        # Connect to Redis
+        r = redis.Redis(host="silvasonic_redis", port=6379, db=0, socket_connect_timeout=1)
 
-        last_mtime: float = 0.0
-        last_dash_mtime: float = 0.0
+        last_system_status_raw: bytes | None = None
 
         while True:
             # Check if client disconnected
@@ -35,26 +35,24 @@ async def sse_system_status(
                 break
 
             try:
-                changed = False
+                # Poll Redis for system:status
+                # We do raw comparison to detect changes cheaply
+                # Using get() is fast.
 
-                # Check System Status File
-                if os.path.exists(status_file):
-                    mtime = os.path.getmtime(status_file)
-                    if mtime > last_mtime:
-                        last_mtime = mtime
-                        changed = True
+                # To be non-blocking in async loop, run in executor
+                loop = asyncio.get_running_loop()
+                current_raw = await loop.run_in_executor(None, r.get, "system:status")
 
-                # Check Dashboard Stats File (Disk usage)
-                if os.path.exists(dashboard_stats_file):
-                    mtime = os.path.getmtime(dashboard_stats_file)
-                    if mtime > last_dash_mtime:
-                        last_dash_mtime = mtime
-                        changed = True  # Update if disk stats change
+                if current_raw and current_raw != last_system_status_raw:
+                    last_system_status_raw = current_raw
 
-                if changed:
                     # Logic duplicated from dashboard route (refactor ideally, but inline for now is robust)
                     stats = await SystemService.get_stats()  # Fresh stats
-                    raw_containers = HealthCheckerService.get_system_metrics()
+                    raw_containers = {}
+                    try:
+                        raw_containers = json.loads(current_raw)
+                    except Exception:
+                        pass
 
                     # Construct Containers List (Same logic as dashboard view)
                     container_config = [
@@ -131,7 +129,8 @@ async def sse_system_status(
             except Exception as e:
                 logger.error("SSE Error", error=str(e))
 
-            await asyncio.sleep(1)  # Check frequency (Internal loop) faster than poll
+            # 1 second poll interval
+            await asyncio.sleep(1)
 
     return StreamingResponse(event_generator(), media_type="text/event-stream")
 

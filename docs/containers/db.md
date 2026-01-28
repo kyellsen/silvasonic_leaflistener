@@ -1,26 +1,27 @@
 # Container: Database (DB)
 
 ## 1. Das Problem / Die Lücke
-Silvasonic generiert komplexe, strukturierte Daten (Vogel-Detektionen, Wetterdaten, System-Logs, Konfigurationen), die relational verknüpft sind. Flache Dateien (CSV/JSON) skalieren schlecht bei Suchabfragen ("Zeige alle Eichelhäher der letzten Woche"). Ein zentraler, transaktionssicherer Datenspeicher ist für Datenkonsistenz und Performance essenziell.
+Silvasonic generiert komplexe, strukturierte Daten (Vogel-Detektionen, Wetterdaten, System-Logs, Konfigurationen), die relational verknüpft sind. Die Speicherung in flachen Dateien skaliert nicht für komplexe Abfragen und Analysen. Ein zentraler, transaktionssicherer Datenspeicher ist für Datenkonsistenz und Performance unerlässlich.
 
 ## 2. Nutzen für den User
-*   **Performance:** Das Dashboard kann komplexe Statistiken in Millisekunden abrufen, statt tausende Dateien parsen zu müssen.
-*   **Integrität:** Verhindert Datenkorruption bei gleichzeitigen Zugriffen mehrerer Container (BirdNET schreibt, Dashboard liest).
-*   **Persistenz:** Daten überleben Container-Neustarts und Updates sicher auf dem Daten-Volume.
+*   **Performance:** Ermöglicht schnelle Abfragen und Statistiken auch über große Zeiträume und Datenmengen.
+*   **Integrität:** Verhindert Datenkorruption bei gleichzeitigem Schreibzugriff mehrerer Container.
+*   **Persistenz:** Sichert alle Metadaten, Konfigurationen und Ergebnisse dauerhaft auf dem Daten-Volume, unabhängig von Container-Neustarts.
 
 ## 3. Kernaufgaben (Core Responsibilities)
 *   **Inputs:**
-    *   **BirdNET:** INSERT von Detektions-Events.
-    *   **Weather:** INSERT von Umweltdaten.
-    *   **Dashboard:** READ/WRITE von System-Konfigurationen und User-Actions.
-    *   **Controller:** Statussynchronisation (via Service-Tabellen).
+    *   **BirdNET:** Speichert Analyse-Ergebnisse (Detektionen).
+    *   **Weather:** Speichert gesammelte Umweltdaten.
+    *   **Dashboard:** Liest/Schreibt System-Konfigurationen und User-Interaktionen.
+    *   **Controller:** Synchronisiert Service-Status und Hardware-Events.
 *   **Processing:**
-    *   Bereitstellung einer Standard PostgreSQL-Instanz.
-    *   Verwaltung von Indizes (z.B. auf Zeitstempel, Spezies) für schnelle Queries.
+    *   **PostgreSQL Engine:** Bereitstellung einer relationalen Datenbankinstanz.
+    *   **Indexierung:** Optimierung von Abfragen durch Indizes (z.B. auf Zeitstempel, Spezies).
+    *   **Wartung:** Ausführung von Initialisierungsskripten (`/docker-entrypoint-initdb.d/`) beim ersten Start.
 *   **Outputs:**
-    *   Strukturierte Antwort-Sets (Result Rows) auf SQL-Anfragen.
-    *   Persistente Speicherung im Docker-Volume (`pg_data`).
+    *   **Query Results:** Liefert strukturierte Daten auf SQL-Anfragen der anderen Container.
+    *   **Persistenter Storage:** Hält den Datenbestand im Volume `pg_data`.
 
 ## 4. Abgrenzung (Out of Scope)
-*   Enthält **KEINE** Applikationslogik (außer evtl. Stored Procedures / Trigger für Wartungsaufgaben).
-*   Speichert **KEINE** großen Blobs (Audio/Bilder bleiben im Filesystem, DB speichert nur Pfade).
+*   Enthält **KEINE** Applikationslogik (reiner Datenspeicher).
+*   Speichert **KEINE** großen Media-Dateien (Audio/Bilder bleiben im Filesystem, DB speichert nur Dateipfade/Metadaten).

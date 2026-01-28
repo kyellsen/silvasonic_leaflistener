@@ -4,9 +4,9 @@ import os
 import time
 import typing
 
+import redis
 from sqlalchemy import text
 
-from .common import STATUS_DIR
 from .database import db
 
 
@@ -14,10 +14,20 @@ class UploaderService:
     @staticmethod
     def get_status() -> dict[str, typing.Any]:
         try:
-            status_file = os.path.join(STATUS_DIR, "uploader.json")
-            if os.path.exists(status_file):
-                with open(status_file) as f:
-                    data = json.load(f)
+            r = redis.Redis(host="silvasonic_redis", port=6379, db=0, socket_connect_timeout=1)
+            # Uploader writes status:uploader:<sensor_id>
+            # We scan for any uploader status
+            keys = r.keys("status:uploader:*")
+            if not keys:
+                # Try legacy key if exists
+                if r.exists("status:uploader"):
+                    keys = [b"status:uploader"]
+
+            if keys:
+                # Just take the first one for now (Singleton assumption for dashboard view)
+                raw = r.get(keys[0])
+                if raw:
+                    data = json.loads(raw)
 
                     # Convert last_upload ts to readable
                     last_upload = data.get("meta", {}).get("last_upload", 0)

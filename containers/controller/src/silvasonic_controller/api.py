@@ -1,5 +1,7 @@
+import json
 from typing import Any
 
+import redis
 from fastapi import FastAPI, HTTPException, status
 from pydantic import BaseModel
 
@@ -43,22 +45,54 @@ async def get_status() -> list[ServiceStatus]:
         raise HTTPException(status_code=500, detail="Service Manager not available")
 
     statuses = []
+
+    # Fetch System Status from Redis
+    system_status = {}
+    try:
+        r = redis.Redis(host="silvasonic_redis", port=6379, db=0, socket_connect_timeout=0.5)
+        raw = r.get("system:status")
+        if raw:
+            system_status = json.loads(raw)
+    except Exception:
+        # If Redis fails, we default to Unknown statuses
+        pass
+
     # Generic Services
     for name, config in ctrl.service_manager._services.items():
-        # TODO: Check actual running status from orchestrator or cache
+        # Lookup in system_status
+        # system_status keys are instance_ids. For singletons, id=name.
+        # But name in ServiceManager might be "uploader", system_status has "uploader" or "uploader_sensor1".
+        # We try exact match first.
+        s_data = system_status.get(name, {})
+        status_str = s_data.get("status", "Unknown")
+
         statuses.append(
             ServiceStatus(
                 name=name,
                 enabled=config.enabled,
-                status="Unknown",  # We need to link real status later
+                status=status_str,
             )
         )
 
     # Recorders
+    # Controller knows active sessions (Desired State).
+    # System Status has actual state (Reported State).
+    # structure of system_status for recorders: "recorder_front", "recorder_back".
     for _card_id, session in ctrl.active_sessions.items():
-        statuses.append(
-            ServiceStatus(name=f"recorder_{session.rec_id}", enabled=True, status="Running")
-        )
+        rec_id = f"recorder_{session.rec_id}"
+        s_data = system_status.get(rec_id, {})
+        status_str = s_data.get("status", "Unknown")
+
+        statuses.append(ServiceStatus(name=rec_id, enabled=True, status=status_str))
+
+    # Also include any other services found in system_status that are not in _services?
+    # e.g. "postgres", "healthchecker".
+    # For now, UI might only expect specific list, but let's add core infra if invalid?
+    # The API filter seems to be "managed services". Postgres/Healthchecker are static.
+    # Controller usually manages Dynamic services.
+    # But for visibility, we might want them.
+    # Current API contract: get_status() -> list[ServiceStatus].
+    # Let's stick to managed + recorders for now to avoid UI clutter of duplicates or unmanaged items.
 
     return statuses
 

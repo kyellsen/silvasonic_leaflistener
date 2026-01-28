@@ -11,11 +11,11 @@ Die Analyse von Audiodaten mittels Deep Learning ist extrem ressourcenintensiv (
 ## 3. Kernaufgaben (Core Responsibilities)
 *   **Inputs:**
     *   Neue `.flac` Audio-Dateien (bereitgestellt via Shared Volume vom Recorder).
-    *   Konfiguration (Schwellenwerte für Konfidenz, Geo-Location, Sensitivität) via `config.yml` oder Environment-Variablen.
+    *   Konfiguration (Schwellenwerte für Konfidenz, Geo-Location, Sensitivität) via `config.yml`, `settings.json` oder Environment-Variablen.
     *   BirdNET-Modell (`.tflite`) und Label-Dateien.
 *   **Processing:**
-    *   **Watcher Service:** Überwacht das Aufnahmeverzeichnis rekursiv auf neu geschlossene Dateien (via `watchdog`).
-    *   **Preprocessing:** Resampling der Audiodaten (auf 48kHz) und Segmentierung für das Modell.
+    *   **Watcher Service:** Überwacht das Aufnahmeverzeichnis rekursiv auf neu geschlossene Dateien (`IN_CLOSE_WRITE`).
+    *   **Preprocessing:** Resampling der Audiodaten (typisch auf 48kHz) und Segmentierung für das Modell.
     *   **Inferenz:** Führt das TensorFlow Lite Modell auf den Audio-Segmenten aus.
     *   **Filtering:** Wendet Filterlogik an (Minimum Confidence, Geo-Location Filter, Wochen-Filter).
 *   **Outputs:**

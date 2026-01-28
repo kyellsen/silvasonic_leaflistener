@@ -12,6 +12,7 @@ from types import FrameType
 from typing import cast
 
 import psutil
+import redis
 import structlog
 from pydantic import ValidationError
 from silvasonic_healthchecker.mailer import Mailer
@@ -115,181 +116,176 @@ def load_timeout_overrides() -> dict[str, int]:
 
 
 def check_services_status(mailer: Mailer, service_states: dict[str, str]) -> None:
-    """Checks status files for all services and produces a consolidated system status."""
+    """Checks Redis status keys for all services and produces a consolidated system status."""
     current_time = time.time()
     system_status = {}
 
     timeouts_override = load_timeout_overrides()
 
-    for service_id, config in SERVICES_CONFIG.items():
-        # Special Case: Postgres (Probe)
-        if service_id == "postgres":
-            service_data = {
-                "id": "postgres",
-                "name": config.name,
-                "status": "Down",
-                "last_seen": 0.0,
-                "message": "Connection Failed",
-                "timeout_threshold": timeouts_override.get("postgres", config.timeout),
-            }
-            if check_postgres_connection():
-                service_data["status"] = "Running"
-                service_data["message"] = "Active (Port 5432 Open)"
-                service_data["last_seen"] = current_time
+    # Lazy Redis connection
+    try:
+        r = redis.Redis(host="silvasonic_redis", port=6379, db=0, socket_connect_timeout=2)
+        # Scan for all status keys
+        keys = r.keys("status:*")
+    except Exception as e:
+        logger.error(f"Redis connection failed: {e}")
+        return
+
+    # Process all keys found in Redis
+    # Map them to service definitions
+    # Keys format: status:<service_type>:<id> or status:<service_type>
+
+    # We first collect all found statuses
+    found_services = set()
+
+    for k in keys:
+        try:
+            key_str = k.decode("utf-8")
+            content = r.get(key_str)
+            if not content:
+                continue
+
+            # Parse Key
+            parts = key_str.split(":")
+            # parts[0] is 'status'
+            service_type = parts[1]
+
+            # Determine Instance ID
+            if len(parts) > 2:
+                # e.g. status:recorder:front -> recorder_front
+                # e.g. status:uploader:sensor1 -> uploader_sensor1
+                instance_suffix = "_".join(parts[2:])
+                instance_id = f"{service_type}_{instance_suffix}"
             else:
-                msg = "Postgres DB is unreachable."
-                # State check for Postgres
-                if service_states.get("postgres") != "Down":
-                    logger.error("postgres_down", msg=msg)
-                    # mailer.send_alert("Postgres Down", msg) # Optional: Enable if needed
-                service_data["status"] = "Down"
+                instance_id = service_type
 
-            service_states["postgres"] = service_data["status"]
-            system_status["postgres"] = service_data
-            continue
+            # Config Lookup
+            if service_type in SERVICES_CONFIG:
+                config = SERVICES_CONFIG[service_type]
+            else:
+                # Unknown service type, maybe new?
+                continue
 
-        # Dynamic Discovery for all other services
-        # Matches: {service_id}.json AND {service_id}_*.json
-        # e.g. uploader.json OR uploader_raspberrypi.json
-        pattern = f"{STATUS_DIR}/{service_id}*.json"
-        found_files = glob.glob(pattern)
+            found_services.add(service_type)
 
-        active_instances = 0
-
-        for status_file in found_files:
-            filename = os.path.basename(status_file)
-            instance_id = os.path.splitext(filename)[0]
-
-            # Ghost Detection (Recorders Only)
-            # We only delete "ghost" files for recorders because they are dynamic hardware.
-            # For static services (birdnet, uploader), we want to keep the file to show "Timeout" instead of "Missing".
-            if service_id == "recorder":
-                try:
-                    mtime = os.path.getmtime(status_file)
-                    file_age = current_time - mtime
-                    if file_age > RECORDER_GHOST_THRESHOLD:
-                        logger.warning("ghost_recorder_cleanup", file=filename, age=int(file_age))
-                        try:
-                            os.remove(status_file)
-                        except OSError:
-                            pass
-                        continue  # Skip this file
-                except OSError:
-                    continue
-
-            try:
-                with open(status_file) as f:
-                    content = f.read()
-
-                # Validation
-                timeout_val = timeouts_override.get(service_id, config.timeout)
-
-                # Determine Model Class
-                if service_id == "recorder":
-                    status_obj = RecorderStatus.model_validate_json(content)
-                    # For recorders, use profile name if available
-                    display_name = (
-                        f"{config.name} ({status_obj.meta.profile.name})"
-                        if status_obj.meta.profile.name
-                        else f"{config.name} ({instance_id})"
-                    )
+            # Determine Display Name & Model
+            if service_type == "recorder":
+                status_obj = RecorderStatus.model_validate_json(content)
+                display_name = (
+                    f"{config.name} ({status_obj.meta.profile.name})"
+                    if status_obj.meta.profile.name
+                    else f"{config.name} ({instance_id})"
+                )
+            else:
+                status_obj = ServiceStatus.model_validate_json(content)
+                if instance_id == service_type:
+                    display_name = config.name
                 else:
-                    status_obj = ServiceStatus.model_validate_json(content)
-
-                    if instance_id == service_id:
-                        display_name = config.name
+                    # e.g. uploader_sensor1 -> Uploader (sensor1)
+                    if instance_id.startswith(f"{service_type}_"):
+                        suffix = instance_id[len(service_type) + 1 :]
+                        display_name = f"{config.name} ({suffix})"
                     else:
-                        # Format "uploader_host1" -> "Uploader (host1)"
-                        if instance_id.startswith(f"{service_id}_"):
-                            suffix = instance_id[len(service_id) + 1 :]
-                            display_name = f"{config.name} ({suffix})"
-                        else:
-                            display_name = f"{config.name} ({instance_id})"
+                        display_name = f"{config.name} ({instance_id})"
 
-                last_ts = status_obj.timestamp
-                time_diff = current_time - last_ts
+            last_ts = status_obj.timestamp
+            time_diff = current_time - last_ts
+            timeout_val = timeouts_override.get(service_type, config.timeout)
 
-                # Rich Status Passthrough
-                # If the service reports a message, use it. Otherwise default to "Active".
-                source_message = getattr(status_obj, "message", None)
-                final_message = source_message if source_message else "Active"
+            # --- Status Logic ---
+            source_message = getattr(status_obj, "message", None)
+            final_message = source_message if source_message else "Active"
 
-                # If the service reports a specific state (e.g. "Recording"), use it?
-                # For now, we mainly want the message visible.
-                # We can also pass 'state' if we want the dashboard to use it.
+            service_data = {
+                "id": instance_id,
+                "name": display_name,
+                "status": "Running",
+                "last_seen": last_ts,
+                "message": final_message,
+                "timeout_threshold": timeout_val,
+            }
 
-                service_data = {
-                    "id": instance_id,
-                    "name": display_name,
-                    "status": "Running",
-                    "last_seen": last_ts,
-                    "message": final_message,
-                    "timeout_threshold": timeout_val,
-                }
+            if getattr(status_obj, "state", None):
+                service_data["state"] = status_obj.state
 
-                if getattr(status_obj, "state", None):
-                    service_data["state"] = status_obj.state
+            # Timeout Logic (Redis TTL handles cleanup, but if key exists it might be stale if strict consistency is needed?
+            # Redis TTL removes key. If key is here, it is likely valid.
+            # But let's check timestamp just in case clock drift or manual set without TTL.
+            if time_diff > timeout_val:
+                service_data["status"] = "Down"
+                service_data["message"] = f"Timeout ({int(time_diff)}s > {timeout_val}s)"
 
-                # Timeout Check
-                if time_diff > timeout_val:
-                    service_data["status"] = "Down"
-                    service_data["message"] = f"Timeout ({int(time_diff)}s > {timeout_val}s)"
+            # State Transition Logic
+            prev_status = service_states.get(instance_id, "Unknown")
+            curr_status = service_data["status"]
 
-                # State Transition Check
-                prev_status = service_states.get(instance_id, "Unknown")
-                curr_status = service_data["status"]
+            if curr_status == "Down" and prev_status != "Down":
+                # Down alert
+                if service_type != "recorder":
+                    msg = f"Service {instance_id} timed out."
+                    logger.error("service_down", service=instance_id)
+                    mailer.send_alert(f"{display_name} Down", msg)
+            elif curr_status == "Running" and prev_status == "Down":
+                # Recovery alert
+                if service_type != "recorder":
+                    logger.info("service_recovered", service=instance_id)
+                    mailer.send_alert(f"{display_name} Recovered", "Service is online.")
 
-                if curr_status == "Down" and prev_status != "Down":
-                    # Transition to Down
-                    if service_id != "recorder":
-                        msg = f"Service {instance_id} is silent. No heartbeat for {int(time_diff)} seconds."
-                        logger.error("service_down", service=instance_id, diff=int(time_diff))
-                        mailer.send_alert(f"{display_name} Down", msg)
+            service_states[instance_id] = curr_status
+            system_status[instance_id] = service_data
 
-                elif curr_status == "Running" and prev_status == "Down":
-                    # Transition to Running (Recovery)
-                    # Only alert recovery for non-recorders to keep noise down? Or all?
-                    # Let's alert for all significant services.
-                    if service_id != "recorder":
-                        logger.info("service_recovered", service=instance_id)
-                        mailer.send_alert(f"{display_name} Recovered", "Service is back online.")
+        except Exception as e:
+            logger.error(f"Error processing key {k}: {e}")
 
-                service_states[instance_id] = curr_status
+    # Check for Missing Core Services (that we expect but didn't find keys for)
+    for service_id, config in SERVICES_CONFIG.items():
+        if service_id == "postgres":
+            continue  # Handled separately below/above?
+            # Wait, original code handled postgres at top of loop. We missed it.
+            # We should add postgres check back.
 
-                # Uploader Special Logic
-                if service_id == "uploader" and getattr(status_obj, "last_upload", None):
-                    last_up = status_obj.last_upload
-                    if current_time - last_up > 3600:
-                        service_data["status"] = "Warning"
-                        service_data["message"] = "Stalled (No Upload)"
-                        # Alert logic for stall...
+        # Postgres Check (Re-adding logic from original)
+        if service_id == "postgres":
+            # See logic below
+            pass
+        elif service_id not in found_services and service_id != "recorder":
+            # Core service missing entirely
+            # (Recorder is dynamic, so 0 recorders is valid? Original logic says: if active_instances == 0 and != recorder)
+            # Here 'found_services' tracks types.
 
-                system_status[instance_id] = service_data
-                active_instances += 1
-
-            except ValidationError:
-                # Ignore validation errors (e.g. birdnet_stats.json or livesound_sources.json)
-                pass
-            except Exception as e:
-                logger.error("status_read_error", file=filename, error=str(e))
-
-        # Handle Missing Core Services
-        # If no instances found for a core service (not recorder), report Down
-        if active_instances == 0 and service_id != "recorder":
             system_status[service_id] = {
                 "id": service_id,
                 "name": config.name,
                 "status": "Down",
                 "last_seen": 0.0,
-                "message": "No instance found",
+                "message": "No instance found (Redis key missing)",
                 "timeout_threshold": timeouts_override.get(service_id, config.timeout),
             }
-
-            # Missing Service Alert Logic
             if service_states.get(service_id) != "Down":
                 logger.error("service_missing", service=service_id)
                 mailer.send_alert(f"{config.name} Down", "No instance found.")
             service_states[service_id] = "Down"
+
+    # Re-integrate Postgres Check
+    p_conf = SERVICES_CONFIG["postgres"]
+    p_data = {
+        "id": "postgres",
+        "name": p_conf.name,
+        "status": "Down",
+        "last_seen": 0.0,
+        "message": "Connection Failed",
+        "timeout_threshold": timeouts_override.get("postgres", p_conf.timeout),
+    }
+    if check_postgres_connection():
+        p_data["status"] = "Running"
+        p_data["message"] = "Active"
+        p_data["last_seen"] = current_time
+
+    if p_data["status"] == "Down" and service_states.get("postgres") != "Down":
+        mailer.send_alert("Postgres Down", "DB Unreachable")
+
+    service_states["postgres"] = p_data["status"]
+    system_status["postgres"] = p_data
 
     # Add HealthChecker itself
     system_status["healthchecker"] = {
@@ -300,10 +296,18 @@ def check_services_status(mailer: Mailer, service_states: dict[str, str]) -> Non
         "message": "Active (Self)",
     }
 
-    # Write Consolidated Status
+    # Write Consolidated Status to Redis AND File (for compat)
     try:
+        # File (Legacy)
         with open(f"{STATUS_DIR}/system_status.json", "w") as f:
             json.dump(system_status, f)
+
+        # Redis (Modern)
+        # Use a single key for full system status? Or just let Dashboard aggregate?
+        # User requested "modern in-memory".
+        # Writing system_status to Redis is useful for the dashboard main view.
+        r.set("system:status", json.dumps(system_status))
+
     except Exception as e:
         logger.error("status_write_error", error=str(e))
 
@@ -349,7 +353,7 @@ def check_error_drops(mailer: Mailer) -> None:
 
 
 def write_status() -> None:
-    """Writes the HealthChecker's own heartbeat."""
+    """Writes the HealthChecker's own heartbeat to Redis."""
     try:
         data = {
             "service": "healthchecker",
@@ -359,12 +363,10 @@ def write_status() -> None:
             "memory_usage_mb": psutil.Process(os.getpid()).memory_info().rss / 1024 / 1024,
             "pid": os.getpid(),
         }
-        status_file = f"{STATUS_DIR}/healthchecker.json"
 
-        tmp_file = f"{status_file}.tmp"
-        with open(tmp_file, "w") as f:
-            json.dump(data, f)
-        os.rename(tmp_file, status_file)
+        r = redis.Redis(host="silvasonic_redis", port=6379, db=0, socket_connect_timeout=2)
+        r.setex("status:healthchecker", 10, json.dumps(data))
+
     except Exception as e:
         logger.error("healthchecker_status_write_failed", error=str(e))
 

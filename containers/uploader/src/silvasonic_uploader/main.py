@@ -9,6 +9,7 @@ import typing
 from contextlib import asynccontextmanager
 
 import psutil
+import redis
 import structlog
 import uvicorn
 from fastapi import FastAPI
@@ -119,14 +120,12 @@ def write_status(
     error: Exception | str | None = None,
     progress: dict[str, typing.Any] | None = None,
 ) -> None:
-    """Write current status to JSON file for dashboard."""
+    """Write current status to Redis for dashboard."""
     try:
         global _last_error, _last_error_time
         if error:
             _last_error = str(error)
             _last_error_time = time.time()
-
-        status_file = STATUS_FILE_TEMPLATE.format(sensor_id=sensor_id)
 
         data = {
             "service": "uploader",
@@ -148,14 +147,14 @@ def write_status(
         if progress:
             data["meta"]["progress"] = progress
 
-        # Atomic write
-        os.makedirs(os.path.dirname(status_file), exist_ok=True)
-        tmp_file = f"{status_file}.tmp"
-        with open(tmp_file, "w") as f:
-            json.dump(data, f)
-        os.rename(tmp_file, status_file)
+        # Redis Write
+        # Uploader can sleep for long intervals (default 1h timeout in healthchecker).
+        # We set TTL to 65 minutes to ensure it survives the sleep cycle.
+        r = redis.Redis(host="silvasonic_redis", port=6379, db=0, socket_connect_timeout=1)
+        r.setex(f"status:uploader:{sensor_id}", 3900, json.dumps(data))
+
     except Exception as e:
-        logger.error(f"Failed to write status: {e}")
+        logger.error(f"Failed to write status to Redis: {e}")
 
 
 def report_error(context: str, error: Exception) -> None:
