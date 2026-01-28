@@ -19,6 +19,7 @@ Der Container arbeitet als **Audio-Pipeline-Manager**.
 
 *   **Inputs (Eingabe):**
     *   **Hardware (ALSA)**: Liest Audio direkt vom Kernel-Subsystem (via `AlsaStrategy`). Nutzt USB-IDs zur strikten Identifikation der Hardware.
+    *   **Desktop (PulseAudio/PipeWire)**: Für Development auf Workstations – nutzt den Sound-Server des Host-Systems (via `PulseAudioStrategy`). Aktiviert durch `AUDIO_PROFILE=desktop`.
     *   **Mock (File Injection)**: Für Development/Testing ohne Hardware – liest Audio-Loops aus Verzeichnissen (via `FileMockStrategy`).
     *   **Konfiguration**: Validiert Hardware-Profile strikt gegen **Pydantic Models** aus `mic_profiles.yml`.
 

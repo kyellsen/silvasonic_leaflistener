@@ -32,6 +32,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     alsa-utils \
     ffmpeg \
     usbutils \
+    pulseaudio-utils \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app

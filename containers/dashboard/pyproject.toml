@@ -23,6 +23,7 @@ dependencies = [
     "soundfile>=0.12.1",
     "aiofiles>=23.2.1",
     "async_lru>=2.0.4",
+    "pyyaml>=6.0.1",
 ]
 
 [build-system]

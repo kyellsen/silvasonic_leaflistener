@@ -3,19 +3,23 @@ import json
 import logging
 import logging.handlers
 import os
-import signal
 import sys
 import time
 import typing
+from contextlib import asynccontextmanager
 
 import psutil
 import structlog
+import uvicorn
+from fastapi import FastAPI
+from silvasonic_uploader.api import router as api_router
+from silvasonic_uploader.api import set_reloader
+from silvasonic_uploader.config import UploaderSettings
 from silvasonic_uploader.database import DatabaseHandler
 from silvasonic_uploader.janitor import StorageJanitor
 from silvasonic_uploader.rclone_wrapper import RcloneWrapper
 
-# Configure Logging
-# --- Structlog Configuration ---
+# --- Logging Configuration ---
 structlog.configure(
     processors=[
         structlog.stdlib.filter_by_level,
@@ -33,45 +37,25 @@ structlog.configure(
     cache_logger_on_first_use=True,
 )
 
-# Configure Logging
 logger = structlog.get_logger("Uploader")
 
-# Configuration from Env
-NEXTCLOUD_URL = os.getenv("UPLOADER_NEXTCLOUD_URL")
-NEXTCLOUD_USER = os.getenv("UPLOADER_NEXTCLOUD_USER")
-NEXTCLOUD_PASSWORD = os.getenv("UPLOADER_NEXTCLOUD_PASSWORD")
-SOCKET_HOSTNAME = __import__("socket").gethostname()
-SENSOR_ID = os.getenv("SENSOR_ID", SOCKET_HOSTNAME)
-
-# Base Target Dir (e.g. "silvasonic")
-BASE_TARGET_DIR = os.getenv("UPLOADER_TARGET_DIR", "silvasonic")
-
-# Final Target Dir: silvasonic/<sensor_id>
-TARGET_DIR = f"{BASE_TARGET_DIR}/{SENSOR_ID}"
-
-SOURCE_DIR = "/data/recording"
-SYNC_INTERVAL = int(os.getenv("UPLOADER_SYNC_INTERVAL", 10))
-STATUS_FILE = f"/mnt/data/services/silvasonic/status/uploader_{SENSOR_ID}.json"
-ERROR_DIR = "/mnt/data/services/silvasonic/errors"
-CLEANUP_THRESHOLD = int(os.getenv("UPLOADER_CLEANUP_THRESHOLD", 70))
-CLEANUP_TARGET = int(os.getenv("UPLOADER_CLEANUP_TARGET", 60))
-MIN_AGE = os.getenv("UPLOADER_MIN_AGE", "1m")
-BW_LIMIT = os.getenv("UPLOADER_BWLIMIT")  # e.g. "500k", "1M"
-
+# --- Globals for Service Management ---
+_service_task: asyncio.Task | None = None
+_current_settings: UploaderSettings | None = None
+_db_handler: DatabaseHandler | None = None
 
 # Global Status State
 _last_error: str | None = None
 _last_error_time: float | None = None
 
+STATUS_FILE_TEMPLATE = "/mnt/data/services/silvasonic/status/uploader_{sensor_id}.json"
+ERROR_DIR = "/mnt/data/services/silvasonic/errors"
 
-def setup_environment() -> None:
-    """Setup logging and directories."""
+
+def setup_logging() -> None:
+    """Setup logging handlers."""
     os.makedirs("/var/log/silvasonic", exist_ok=True)
 
-    os.makedirs("/var/log/silvasonic", exist_ok=True)
-
-    # Bridge to stdlib logging for formatting
-    # Bridge to stdlib logging for formatting
     pre_chain: list[typing.Any] = [
         structlog.stdlib.add_log_level,
         structlog.stdlib.add_logger_name,
@@ -84,8 +68,6 @@ def setup_environment() -> None:
         foreign_pre_chain=pre_chain,
     )
 
-    # Handlers
-    # Handlers
     handlers: list[logging.Handler] = []
 
     # Stdout
@@ -106,54 +88,45 @@ def setup_environment() -> None:
 
     logging.basicConfig(level=logging.INFO, handlers=handlers, force=True)
 
-    # Ensure directories exist
-    os.makedirs(os.path.dirname(STATUS_FILE), exist_ok=True)
-    os.makedirs(ERROR_DIR, exist_ok=True)
-
 
 def calculate_queue_size(directory: str, db: typing.Any) -> int:
-    """Calculate pending files (local files - uploaded files) using Set Diff.
-
-    This version avoids building a massive list of all local files in memory.
-    """
+    """Calculate pending files (local files - uploaded files) manually."""
     queue_count = 0
     try:
-        # 1. Get Set of ALL uploaded files from DB (O(1) lookup)
-        # This might be large (50MB for 500k files), but better than list overhead
-        uploaded_set = db.get_all_uploaded_set()
+        if not os.path.exists(directory):
+            return 0
 
-        # 2. Iterate filesystem without building a list
-        # Using a generator to walk
+        uploaded_set = db.get_all_uploaded_set()
         for root, _, filenames in os.walk(directory):
             for f in filenames:
                 rel_path = os.path.relpath(os.path.join(root, f), directory)
-
-                # 3. Check membership
                 if rel_path not in uploaded_set:
                     queue_count += 1
-
     except Exception as e:
-        logger = logging.getLogger("Uploader")  # Re-get logger cleanly
-        logger.error(f"Failed to calculate queue size: {e}")
+        # Create a fresh logger since this runs in a thread
+        lgr = logging.getLogger("Uploader")
+        lgr.error(f"Failed to calculate queue size: {e}")
         return 0
-
     return queue_count
 
 
 def write_status(
     status: str,
+    sensor_id: str,
     last_upload: float = 0,
     queue_size: int = -1,
     disk_usage: float = 0,
     error: Exception | str | None = None,
     progress: dict[str, typing.Any] | None = None,
 ) -> None:
-    """Write current status to JSON file for dashboard. Blocking IO."""
+    """Write current status to JSON file for dashboard."""
     try:
         global _last_error, _last_error_time
         if error:
             _last_error = str(error)
             _last_error_time = time.time()
+
+        status_file = STATUS_FILE_TEMPLATE.format(sensor_id=sensor_id)
 
         data = {
             "service": "uploader",
@@ -168,8 +141,6 @@ def write_status(
             },
             "last_error": _last_error,
             "last_error_time": _last_error_time,
-            # Keeping top-level for backwards compat if needed temporarily,
-            # but dashboard should update
             "last_upload": last_upload,
             "pid": os.getpid(),
         }
@@ -178,10 +149,11 @@ def write_status(
             data["meta"]["progress"] = progress
 
         # Atomic write
-        tmp_file = f"{STATUS_FILE}.tmp"
+        os.makedirs(os.path.dirname(status_file), exist_ok=True)
+        tmp_file = f"{status_file}.tmp"
         with open(tmp_file, "w") as f:
             json.dump(data, f)
-        os.rename(tmp_file, STATUS_FILE)
+        os.rename(tmp_file, status_file)
     except Exception as e:
         logger.error(f"Failed to write status: {e}")
 
@@ -189,6 +161,7 @@ def write_status(
 def report_error(context: str, error: Exception) -> None:
     """Write critical error to shared error directory."""
     try:
+        os.makedirs(ERROR_DIR, exist_ok=True)
         timestamp = int(time.time())
         filename = f"{ERROR_DIR}/error_uploader_{timestamp}.json"
 
@@ -202,290 +175,316 @@ def report_error(context: str, error: Exception) -> None:
 
         with open(filename, "w") as f:
             json.dump(data, f)
-
         logger.error(f"Critical error reported to {filename}")
     except Exception as ie:
         logger.error(f"Failed to report error: {ie}")
 
 
-async def main_loop() -> None:
-    """Main async loop."""
-    logger.info("--- Silvasonic Uploader (AsyncIO Edition) ---")
+async def service_loop(settings: UploaderSettings) -> None:
+    """The main business logic loop."""
+    logger.info(f"Starting service loop with interval {settings.sync_interval}s")
+
+    # Constants from settings
+    source_dir = "/data/recording"
+    target_dir = f"{settings.target_dir}/{settings.sensor_id}"
+
+    # Initialize components
+    wrapper = RcloneWrapper()
+    janitor = StorageJanitor(
+        source_dir,
+        threshold_percent=settings.cleanup_threshold,
+        target_percent=settings.cleanup_target,
+    )
+
+    # Re-use global DB handler if available, else create new
+    global _db_handler
+    if _db_handler is None:
+        _db_handler = DatabaseHandler()
+    db = _db_handler
 
     loop = asyncio.get_running_loop()
 
-    wrapper = RcloneWrapper()
-    janitor = StorageJanitor(
-        SOURCE_DIR, threshold_percent=CLEANUP_THRESHOLD, target_percent=CLEANUP_TARGET
-    )
-    db = DatabaseHandler()
-
-    # Database Connection (Blocking, run in executor if slow, but usually fast enough for init)
-    # We loop here to ensure DB is up
+    # Ensure DB is connected
     while True:
         try:
-            # Run connect in executor to be safe against timeouts blocking the loop
             connected = await loop.run_in_executor(None, db.connect)
             if connected:
                 break
         except Exception as e:
             logger.error(f"DB Connect Error: {e}")
-
-        logger.warning(f"Database not accessible at {db.host}:{db.port}. Retrying in 5s...")
+        logger.warning("Waiting for DB...")
         await asyncio.sleep(5)
 
-    # 1. Configuration Check
-    if NEXTCLOUD_URL and NEXTCLOUD_USER and NEXTCLOUD_PASSWORD:
+    # Configure Remote
+    if settings.nextcloud_url and settings.nextcloud_user and settings.nextcloud_password:
         await wrapper.configure_webdav(
             remote_name="remote",
-            url=NEXTCLOUD_URL,
-            user=NEXTCLOUD_USER,
-            password=NEXTCLOUD_PASSWORD,
+            url=settings.nextcloud_url,
+            user=settings.nextcloud_user,
+            password=settings.nextcloud_password.get_secret_value(),
         )
     else:
-        logger.warning("Environment variables missing. Assuming config file already exists.")
+        logger.warning("Nextcloud credentials incomplete. Skipping remote config.")
 
     last_upload_success: float = 0.0
 
-    while True:
-        try:
-            if os.path.exists(SOURCE_DIR):
-                # Gather Metrics (Blocking IO -> thread)
-                # Note: creating short lived session for queue size calculation if needed?
-                # calculate_queue_size manages its own session/connection usage via db methods
-                queue_size = await loop.run_in_executor(None, calculate_queue_size, SOURCE_DIR, db)
-                disk_usage = await loop.run_in_executor(
-                    None, wrapper.get_disk_usage_percent, SOURCE_DIR
-                )
+    try:
+        while True:
+            # Check for cancellation
+            if asyncio.current_task().cancelled():
+                raise asyncio.CancelledError()
 
-                # Initialize batch tracking
-                batch_total = queue_size
-                batch_processed = 0
-                last_status_update = 0.0
-
-                # --- PHASE 1: UPLOAD ---
-                await loop.run_in_executor(
-                    None, write_status, "Syncing", last_upload_success, queue_size, disk_usage
-                )
-
-                # Context Manager for DB Session Reuse
-                # get_session is sync context manager. We open it here.
-                # Note: This holds a DB connection open during the entire upload phase.
-                # This is efficient (1 connection vs N connections) but holds resource.
-                # Given uploader's dedicated role, this is correct pattern.
-                try:
-                    with db.get_session() as session:
-
-                        async def upload_callback_async(
-                            filename: str,
-                            status: str,
-                            error: str,
-                            # Bind loop variables to avoid B023
-                            batch_total: int = batch_total,
-                            last_upload_success: float = last_upload_success,
-                            disk_usage: float = disk_usage,
-                        ) -> None:
-                            """Async callback that schedules sync DB write."""
-                            nonlocal batch_processed, queue_size, last_status_update
-                            try:
-                                # Get file size if success (Blocking stat)
-                                size = 0
-                                if status == "success":
-                                    full_path = os.path.join(SOURCE_DIR, filename)
-                                    if os.path.exists(full_path):
-                                        # os.path.getsize is fast, but technically blocking.
-                                        # For standard SSD/SD, acceptable.
-                                        size = os.path.getsize(full_path)
-
-                                # Update DB
-                                def db_update() -> None:
-                                    db.log_upload(
-                                        filename=filename,
-                                        remote_path=f"{TARGET_DIR}/{filename}",
-                                        status=status,
-                                        size_bytes=size,
-                                        error_message=error,
-                                        session=session,
-                                    )
-                                    # Commit immediately for dashboard visibility
-                                    session.commit()
-
-                                # Execute in thread pool
-                                await loop.run_in_executor(None, db_update)
-
-                                # Update Progress
-                                batch_processed += 1
-                                # Decrease queue size logic: if success, queue shrinks.
-                                # If failed, it might still remain in queue depending on logic,
-                                # but usually rclone retries. If it fails finally, it stays in queue?
-                                # For simplicity, we assume process = attempt.
-                                # But accurate queue_size is diff(local, uploaded).
-                                # If upload success, queue_size decrements.
-                                if status == "success":
-                                    queue_size = max(0, queue_size - 1)
-
-                                # Throttle status updates (max 1 per second)
-                                now = time.time()
-                                if now - last_status_update > 1.0:
-                                    percent = 0.0
-                                    if batch_total > 0:
-                                        percent = round((batch_processed / batch_total) * 100, 1)
-
-                                    progress_data = {
-                                        "batch_total": batch_total,
-                                        "batch_processed": batch_processed,
-                                        "percent": percent,
-                                    }
-
-                                    await loop.run_in_executor(
-                                        None,
-                                        write_status,
-                                        "Syncing",
-                                        last_upload_success,
-                                        queue_size,
-                                        disk_usage,
-                                        None,
-                                        progress_data,
-                                    )
-                                    last_status_update = now
-
-                            except Exception as e:
-                                logger.error(f"Callback error: {e}")
-
-                        # Use COPY instead of SYNC to prevent deleting files on remote
-                        success = await wrapper.copy(
-                            SOURCE_DIR,
-                            f"remote:{TARGET_DIR}",
-                            min_age=MIN_AGE,
-                            bwlimit=BW_LIMIT,
-                            callback=upload_callback_async,
-                        )
-
-                except Exception as e:
-                    logger.error(f"Session/Upload error: {e}")
-                    success = False
-
-                # Update metrics
-                queue_size = await loop.run_in_executor(None, calculate_queue_size, SOURCE_DIR, db)
-                disk_usage = await loop.run_in_executor(
-                    None, wrapper.get_disk_usage_percent, SOURCE_DIR
-                )
-
-                if success:
-                    last_upload_success = time.time()
-                    await loop.run_in_executor(
-                        None, write_status, "Idle", last_upload_success, queue_size, disk_usage
-                    )
-
-                    # --- PHASE 2: CLEANUP ---
-                    await loop.run_in_executor(
-                        None, write_status, "Cleaning", last_upload_success, queue_size, disk_usage
-                    )
-
-                    # List Remote Files (Async rclone)
-                    remote_files = await wrapper.list_files(f"remote:{TARGET_DIR}")
-
-                    # Run cleanup (Blocking IO -> thread)
-                    # We pass wrapper.get_disk_usage_percent as callback
-                    await loop.run_in_executor(
-                        None, janitor.check_and_clean, remote_files, wrapper.get_disk_usage_percent
-                    )
-
-                    # Final update
+            try:
+                if os.path.exists(source_dir):
+                    # Metrics
                     queue_size = await loop.run_in_executor(
-                        None, calculate_queue_size, SOURCE_DIR, db
+                        None, calculate_queue_size, source_dir, db
                     )
                     disk_usage = await loop.run_in_executor(
-                        None, wrapper.get_disk_usage_percent, SOURCE_DIR
+                        None, wrapper.get_disk_usage_percent, source_dir
                     )
-                    await loop.run_in_executor(
-                        None, write_status, "Idle", last_upload_success, queue_size, disk_usage
-                    )
-                else:
-                    logger.error("Upload failed. Validation and cleanup skipped.")
+
+                    batch_total = queue_size
+                    batch_processed = 0
+                    last_status_update = 0.0
+
+                    # Update Status: Syncing
                     await loop.run_in_executor(
                         None,
                         write_status,
-                        "Error: Upload Failed",
+                        "Syncing",
+                        settings.sensor_id,
                         last_upload_success,
                         queue_size,
                         disk_usage,
-                        None,  # error argument positionally
                     )
 
-            else:
-                logger.error(f"Source directory {SOURCE_DIR} does not exist!")
-                await loop.run_in_executor(
-                    None,
-                    write_status,
-                    "Error: No Source",
-                    last_upload_success,
-                    -1,
-                    0,
-                    f"Source dir {SOURCE_DIR} missing",
-                )
+                    success = False
 
-            logger.info(f"Sleeping for {SYNC_INTERVAL} seconds...")
-            # We can just await sleep, it is cancellable
-            await asyncio.sleep(SYNC_INTERVAL)
+                    # Upload Logic
+                    try:
+                        with db.get_session() as session:
 
+                            async def upload_callback(
+                                filename: str,
+                                status: str,
+                                error: str,
+                                # bind vars to avoid B023
+                                batch_total: int = batch_total,
+                                last_upload_success: float = last_upload_success,
+                                disk_usage: float = disk_usage,
+                            ) -> None:
+                                nonlocal batch_processed, queue_size, last_status_update
+                                try:
+                                    size = 0
+                                    if status == "success":
+                                        full_path = os.path.join(source_dir, filename)
+                                        if os.path.exists(full_path):
+                                            size = os.path.getsize(full_path)
+
+                                    # Log to DB
+                                    def db_task():
+                                        db.log_upload(
+                                            filename=filename,
+                                            remote_path=f"{target_dir}/{filename}",
+                                            status=status,
+                                            size_bytes=size,
+                                            error_message=error,
+                                            session=session,
+                                        )
+                                        session.commit()
+
+                                    await loop.run_in_executor(None, db_task)
+
+                                    # Update Progress
+                                    batch_processed += 1
+                                    if status == "success":
+                                        queue_size = max(0, queue_size - 1)
+
+                                    # Write status (throttled)
+                                    now = time.time()
+                                    if now - last_status_update > 1.0:
+                                        percent = 0.0
+                                        if batch_total > 0:
+                                            percent = round(
+                                                (batch_processed / batch_total) * 100, 1
+                                            )
+
+                                        progress_data = {
+                                            "batch_total": batch_total,
+                                            "batch_processed": batch_processed,
+                                            "percent": percent,
+                                        }
+
+                                        await loop.run_in_executor(
+                                            None,
+                                            write_status,
+                                            "Syncing",
+                                            settings.sensor_id,
+                                            last_upload_success,
+                                            queue_size,
+                                            disk_usage,
+                                            None,
+                                            progress_data,
+                                        )
+                                        last_status_update = now
+
+                                except Exception as e:
+                                    logger.error(f"Callback error: {e}")
+
+                            # Execute Copy
+                            success = await wrapper.copy(
+                                source_dir,
+                                f"remote:{target_dir}",
+                                min_age=settings.min_age,
+                                bwlimit=settings.bwlimit,
+                                callback=upload_callback,
+                            )
+
+                    except Exception as e:
+                        logger.error(f"Upload session error: {e}")
+
+                    # Post-Upload Metadata Refresh
+                    queue_size = await loop.run_in_executor(
+                        None, calculate_queue_size, source_dir, db
+                    )
+                    disk_usage = await loop.run_in_executor(
+                        None, wrapper.get_disk_usage_percent, source_dir
+                    )
+
+                    if success:
+                        last_upload_success = time.time()
+
+                        # Cleanup Phase
+                        await loop.run_in_executor(
+                            None,
+                            write_status,
+                            "Cleaning",
+                            settings.sensor_id,
+                            last_upload_success,
+                            queue_size,
+                            disk_usage,
+                        )
+
+                        remote_files = await wrapper.list_files(f"remote:{target_dir}")
+                        await loop.run_in_executor(
+                            None,
+                            janitor.check_and_clean,
+                            remote_files,
+                            wrapper.get_disk_usage_percent,
+                        )
+
+                        # Final Idle Status
+                        queue_size = await loop.run_in_executor(
+                            None, calculate_queue_size, source_dir, db
+                        )
+                        disk_usage = await loop.run_in_executor(
+                            None, wrapper.get_disk_usage_percent, source_dir
+                        )
+                        await loop.run_in_executor(
+                            None,
+                            write_status,
+                            "Idle",
+                            settings.sensor_id,
+                            last_upload_success,
+                            queue_size,
+                            disk_usage,
+                        )
+                    else:
+                        await loop.run_in_executor(
+                            None,
+                            write_status,
+                            "Error: Upload Failed",
+                            settings.sensor_id,
+                            last_upload_success,
+                            queue_size,
+                            disk_usage,
+                        )
+
+                else:
+                    logger.warning(f"Source dir {source_dir} not found.")
+                    await loop.run_in_executor(
+                        None,
+                        write_status,
+                        "Error: No Source",
+                        settings.sensor_id,
+                        last_upload_success,
+                        -1,
+                        0,
+                        f"{source_dir} missing",
+                    )
+
+            except asyncio.CancelledError:
+                raise
+            except Exception as e:
+                logger.exception("Error in loop iteration")
+                report_error("loop_iteration", e)
+
+            await asyncio.sleep(settings.sync_interval)
+
+    except asyncio.CancelledError:
+        logger.info("Service loop cancelled.")
+        raise
+    except Exception as e:
+        logger.exception("Service loop crashed")
+        report_error("service_loop_crash", e)
+
+
+async def reload_service() -> None:
+    """Reloads the service task with new settings."""
+    global _service_task, _current_settings
+    logger.info("Reloading service...")
+
+    # 1. Cancel existing task
+    if _service_task:
+        _service_task.cancel()
+        try:
+            await _service_task
         except asyncio.CancelledError:
-            logger.info("Main loop cancelled. Shutting down...")
-            raise
-        except Exception as e:
-            logger.exception("Unexpected error in main loop:")
-            report_error("main_loop_crash", e)
-            try:
-                await loop.run_in_executor(
-                    None, write_status, "Error: Crashed", last_upload_success, -1, 0, e
-                )
-            except Exception:
-                pass
-            await asyncio.sleep(60)
+            pass
+        _service_task = None
+
+    # 2. Reload settings
+    _current_settings = UploaderSettings.load()
+
+    # 3. Start new task
+    _service_task = asyncio.create_task(service_loop(_current_settings))
+    logger.info("Service reloaded successfully.")
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Startup
+    setup_logging()
+
+    # Inject reloader into API
+    set_reloader(reload_service)
+
+    # Initial Start
+    global _current_settings, _service_task
+    _current_settings = UploaderSettings.load()
+    _service_task = asyncio.create_task(service_loop(_current_settings))
+
+    yield
+
+    # Shutdown
+    if _service_task:
+        _service_task.cancel()
+        try:
+            await _service_task
+        except asyncio.CancelledError:
+            pass
+
+
+# --- FastAPI App ---
+app = FastAPI(title="Silvasonic Uploader", lifespan=lifespan)
+app.include_router(api_router)
 
 
 def main() -> None:
-    setup_environment()
-
-    # Run async main
-    try:
-        asyncio.run(main_loop())
-    except KeyboardInterrupt:
-        # Should be handled by CancelledError inside run usually,
-        # but if we catch it here it's cleaner output
-        pass
-    except Exception as e:
-        logger.critical(f"Fatal error: {e}")
-        sys.exit(1)
+    """Entry point."""
+    uvicorn.run(app, host="0.0.0.0", port=8001, log_config=None)
 
 
 if __name__ == "__main__":
-    # Signal handling in asyncio.run handles SIGINT/SIGTERM by cancelling tasks?
-    # Actually asyncio.run doesn't handle SIGTERM by default on all platforms the same way.
-    # But on Linux/Docker, we want to catch SIGTERM and cancel the loop.
-    # However, asyncio.run() creates a loop. We can add signal handlers inside main_loop.
-    # But let's keep it simple: Standard asyncio.run handles KeyboardInterrupt (SIGINT).
-    # For SIGTERM (Docker stop), we need to register a handler.
-
-    # We'll use a slightly more manual approach to ensure SIGTERM works.
-    loop = asyncio.new_event_loop()
-    asyncio.set_event_loop(loop)
-
-    main_task = loop.create_task(main_loop())
-
-    def shutdown_handler() -> None:
-        logger.info("Received signal to stop.")
-        main_task.cancel()
-
-    loop.add_signal_handler(signal.SIGTERM, shutdown_handler)
-    loop.add_signal_handler(signal.SIGINT, shutdown_handler)
-
-    try:
-        loop.run_until_complete(main_task)
-    except asyncio.CancelledError:
-        pass  # Clean exit
-    except Exception as e:
-        logger.critical(f"Fatal startup error: {e}")
-    finally:
-        loop.close()
-        logger.info("Uploader service stopped.")
+    main()

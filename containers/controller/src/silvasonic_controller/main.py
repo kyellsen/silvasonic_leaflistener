@@ -323,10 +323,50 @@ class Controller:
         # Option C: Write Active Recorders Inventory
         await self.write_recorder_inventory()
 
+    def _check_profile_updates(self) -> None:
+        """Check if profile directory has changed and reload if necessary."""
+        try:
+            profiles_dir = Path("/app/mic_profiles")
+            if not profiles_dir.exists():
+                return
+
+            # Simple mtime check on the directory itself (works for added/removed files on Linux ext4)
+            # For modified contents of files, we might need to check max mtime of children,
+            # but usually directory mtime updates on file add/remove.
+            # To be safe for file *edits*, we should check max mtime of all .yml files.
+            current_mtime = profiles_dir.stat().st_mtime
+
+            # Also check children to catch file edits
+            max_child_mtime = current_mtime
+            for p in profiles_dir.glob("*.yml"):
+                t = p.stat().st_mtime
+                if t > max_child_mtime:
+                    max_child_mtime = t
+
+            # Combine logic
+            combined_hash = hash((current_mtime, max_child_mtime))
+
+            if not hasattr(self, "_last_profile_hash"):
+                self._last_profile_hash = combined_hash
+                return
+
+            if combined_hash != self._last_profile_hash:
+                logger.info("Detected change in mic_profiles. Reloading...")
+                self.profiles = load_profiles(profiles_dir)
+                self._last_profile_hash = combined_hash
+                # Trigger reconcile to apply new profiles to potentially unconfigured devices
+                asyncio.create_task(self.reconcile())
+
+        except Exception as e:
+            logger.error(f"Failed to check profile updates: {e}")
+
     async def monitor_hardware(self) -> None:
         """Background task to poll for hardware changes."""
         monitor = self.device_manager.start_monitoring()
         logger.info("Hardware monitor started.")
+
+        # Initialize hash
+        self._check_profile_updates()
 
         while self.running:
             try:
@@ -337,7 +377,8 @@ class Controller:
                     logger.info(f"Udev Event: {device.action} {device.device_node}")
                     await self.reconcile()
                 else:
-                    # Timeout, just loop
+                    # Timeout, check for profile updates
+                    await asyncio.to_thread(self._check_profile_updates)
                     pass
             except Exception as e:
                 logger.error(f"Monitor error: {e}")

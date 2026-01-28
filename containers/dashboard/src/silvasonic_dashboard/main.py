@@ -10,7 +10,7 @@ from silvasonic_dashboard.core.constants import BASE_DIR
 from silvasonic_dashboard.core.health import write_status
 from silvasonic_dashboard.core.logging import setup_logging
 from silvasonic_dashboard.core.middleware import add_security_headers
-from silvasonic_dashboard.routers import api, auth, views
+from silvasonic_dashboard.routers import api, auth, profiles, views
 
 # Setup Logging
 setup_logging()
@@ -48,4 +48,5 @@ app.mount("/static", StaticFiles(directory=os.path.join(BASE_DIR, "static")), na
 # Include Routers
 app.include_router(auth.router)
 app.include_router(api.router)
+app.include_router(profiles.router)
 app.include_router(views.router)

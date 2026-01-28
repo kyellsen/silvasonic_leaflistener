@@ -178,6 +178,30 @@ card 1: UAC20 [UAC2.0 Capture], device 0: USB Audio [USB Audio]
             self.assertIsInstance(strategy, FileMockStrategy)
             self.assertEqual(strategy.watch_dir, Path("/tmp/mock"))
 
+    def test_find_matching_profile_desktop_mode(self):
+        """Test desktop/pulse mode."""
+        profiles = [MicrophoneProfile(name="Rode")]
+
+        # 1. Test "desktop" trigger
+        match, dev = find_matching_profile(profiles, force_profile="desktop")
+
+        self.assertFalse(match.is_mock)
+        self.assertEqual(match.slug, "desktop")
+        self.assertEqual(match.name, "Desktop Audio")
+        self.assertEqual(dev.card_id, "pulse")
+        self.assertEqual(dev.hw_address, "default")
+
+    def test_create_strategy_factory_pulse(self):
+        """Test PulseAudioStrategy creation."""
+        from silvasonic_recorder.strategies import PulseAudioStrategy
+
+        profile = MicrophoneProfile(name="Desktop Audio", slug="desktop")
+        device = DetectedDevice(card_id="pulse", hw_address="default", description="Pulse")
+
+        strategy = create_strategy_for_profile(profile, device)
+        self.assertIsInstance(strategy, PulseAudioStrategy)
+        self.assertEqual(strategy.source_name, "default")
+
     @patch("silvasonic_recorder.mic_profiles.load_profiles")
     @patch("silvasonic_recorder.mic_profiles.find_matching_profile")
     def test_get_active_profile(self, mock_find, mock_load):

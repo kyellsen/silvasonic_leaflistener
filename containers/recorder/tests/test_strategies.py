@@ -46,6 +46,16 @@ class TestStrategies(unittest.TestCase):
         strategy.start_background_tasks(MagicMock())
         strategy.stop()
 
+    def test_pulse_audio_strategy(self):
+        """Test PulseAudioStrategy argument generation."""
+        from silvasonic_recorder.strategies import PulseAudioStrategy
+
+        strategy = PulseAudioStrategy(source_name="default", channels=1, sample_rate=48000)
+
+        args = strategy.get_ffmpeg_input_args()
+        self.assertEqual(args, ["-f", "pulse", "-ac", "1", "-ar", "48000"])
+        self.assertEqual(strategy.get_input_source(), "default")
+
 
 if __name__ == "__main__":
     unittest.main()

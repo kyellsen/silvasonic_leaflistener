@@ -264,6 +264,27 @@ def find_matching_profile(
         )
         return mock_profile, mock_device
 
+    # Handle Desktop/PulseAudio Mode (Virtual)
+    if force_profile and force_profile.lower() in ("desktop", "system", "pulse", "pipewire"):
+        logger.info(f"Desktop/System Audio Mode requested: '{force_profile}'")
+        desktop_profile = MicrophoneProfile(
+            name="Desktop Audio",
+            slug="desktop",
+            is_mock=False,  # It's real audio, just not hardware direct
+            audio=AudioConfig(sample_rate=48000),
+            recording=RecordingConfig(chunk_duration_seconds=10),
+            manufacturer="System",
+            model="PulseAudio/PipeWire",
+        )
+        # Use a "virtual" device descriptor
+        desktop_device = DetectedDevice(
+            card_id="pulse",
+            hw_address="default",
+            description="PulseAudio System Default",
+            usb_id=None,
+        )
+        return desktop_profile, desktop_device
+
     # Get available devices
     devices = get_alsa_devices()
 
@@ -429,7 +450,13 @@ def create_strategy_for_profile(
     profile: MicrophoneProfile, device: DetectedDevice
 ) -> "AudioStrategy":
     """Factory to create the appropriate AudioStrategy."""
-    from .strategies import AlsaStrategy, FileMockStrategy
+    from .strategies import AlsaStrategy, FileMockStrategy, PulseAudioStrategy
+
+    if profile.slug == "desktop" or profile.name == "Desktop Audio":
+        logger.info("Creating PulseAudioStrategy (System Default)")
+        return PulseAudioStrategy(
+            source_name=device.hw_address, sample_rate=profile.audio.sample_rate
+        )
 
     if profile.is_mock:
         # Check if it's the "File Injection" mock

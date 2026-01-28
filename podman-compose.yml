@@ -19,7 +19,7 @@ services:
       - /dev:/dev:ro
       - /run/udev:/run/udev:ro
       # 3. Source Code (Deployment)
-      - ./containers/recorder/src/microphones:/app/mic_profiles:ro
+      - ${SILVASONIC_DATA_DIR}/config/profiles:/app/mic_profiles:ro
       # 4. Logs
       - ${SILVASONIC_DATA_DIR}/logs:/var/log/silvasonic:z
       # 5. Shared Status (Live Config)
@@ -43,6 +43,8 @@ services:
       - ${SILVASONIC_DATA_DIR}/logs:/var/log/silvasonic:z
       - ${SILVASONIC_DATA_DIR}/status:/mnt/data/services/silvasonic/status:z
       - ${SILVASONIC_DATA_DIR}/errors:/mnt/data/services/silvasonic/errors:z
+    ports:
+      - "8001:8001"
     restart: always
 
   healthchecker:
@@ -91,7 +93,7 @@ services:
     restart: "no"
     volumes:
       - ./containers/recorder/src:/app/src:z
-      - ./containers/recorder/src/microphones:/app/mic_profiles:ro
+      - ${SILVASONIC_DATA_DIR}/config/profiles:/app/mic_profiles:ro
       - ${SILVASONIC_DATA_DIR}/recorder/recordings:/data/recording:z
       - ${SILVASONIC_DATA_DIR}/logs:/var/log/silvasonic:z
       - /proc/asound:/proc/asound:ro
@@ -132,6 +134,7 @@ services:
       - ./containers/dashboard/src:/app/src:z
       - ${SILVASONIC_DATA_DIR}/recorder/recordings:/data/recording:ro
       - ${SILVASONIC_DATA_DIR}/config:/config:z
+      - ${SILVASONIC_DATA_DIR}/config/profiles:/app/mic_profiles:z
       - ${SILVASONIC_DATA_DIR}/logs:/var/log/silvasonic:z
       - ${SILVASONIC_DATA_DIR}/status:/mnt/data/services/silvasonic/status:z
 
@@ -147,7 +150,6 @@ services:
       - ./containers/weather/tests:/app/tests:z
       - ${SILVASONIC_DATA_DIR}/config:/config:z
       - ${SILVASONIC_DATA_DIR}/logs:/var/log/silvasonic:z
-      - ${SILVASONIC_DATA_DIR}/status:/mnt/data/services/silvasonic/status:z
 
   db:
     image: docker.io/library/postgres:15-alpine

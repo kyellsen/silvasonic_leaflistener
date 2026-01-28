@@ -68,3 +68,29 @@ class FileMockStrategy(AudioStrategy):
 
     def get_input_source(self) -> str:
         return str(self.temp_playlist)
+
+
+class PulseAudioStrategy(AudioStrategy):
+    """Strategy for capturing from PulseAudio/PipeWire server."""
+
+    def __init__(self, source_name: str = "default", channels: int = 1, sample_rate: int = 48000):
+        self.source_name = source_name
+        self.channels = channels
+        self.sample_rate = sample_rate
+
+    def get_ffmpeg_input_args(self) -> list[str]:
+        # Using -f pulse.
+        # Note: Container needs access to pulse socket.
+        return [
+            "-f",
+            "pulse",
+            "-ac",
+            str(self.channels),
+            "-ar",
+            str(self.sample_rate),
+            # Pulse input may need fragment size adjustments for latency,
+            # but for recording default is usually fine.
+        ]
+
+    def get_input_source(self) -> str:
+        return self.source_name
