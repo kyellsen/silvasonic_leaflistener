@@ -34,16 +34,21 @@ usb_ids:
   - "1234:5678"
 """
 
+    @patch("silvasonic_recorder.mic_profiles.Path.exists")
     @patch("silvasonic_recorder.mic_profiles.Path.glob")
     @patch("builtins.open", new_callable=mock_open)
-    def test_load_profiles(self, mock_file, mock_glob):
+    def test_load_profiles(self, mock_file, mock_glob, mock_exists):
         """Test loading profiles from YAML."""
+        mock_exists.return_value = True
+
         # Setup mock file
         mock_file.side_effect = [mock_open(read_data=self.sample_profile_yaml).return_value]
 
         # Setup mock glob
+        # We need mock_path to behave like a Path object that can be opened
         mock_path = MagicMock(spec=Path)
         mock_path.stem = "test_mic"
+        mock_path.__str__.return_value = "/tmp/mock_profiles/test_mic.yml"
         mock_glob.return_value = [mock_path]
 
         profiles = load_profiles(self.mock_profiles_dir)

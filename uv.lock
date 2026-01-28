@@ -1756,6 +1756,7 @@ dependencies = [
     { name = "python-multipart" },
     { name = "soundfile" },
     { name = "sqlalchemy" },
+    { name = "structlog" },
     { name = "uvicorn" },
     { name = "watchfiles" },
 ]
@@ -1786,6 +1787,7 @@ requires-dist = [
     { name = "python-multipart", specifier = ">=0.0.9" },
     { name = "soundfile", specifier = ">=0.12.1" },
     { name = "sqlalchemy", specifier = ">=2.0.25" },
+    { name = "structlog", specifier = ">=24.0.0" },
     { name = "uvicorn", specifier = ">=0.27.0" },
     { name = "watchfiles", specifier = ">=0.21.0" },
 ]
