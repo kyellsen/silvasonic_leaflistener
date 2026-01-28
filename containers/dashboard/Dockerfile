@@ -43,9 +43,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libsndfile1 \
     && rm -rf /var/lib/apt/lists/*
 
-# Download frontend dependencies (Plotly)
-RUN mkdir -p /app/src/static/js && \
-    curl -L -o /app/src/static/js/plotly.min.js https://cdn.plot.ly/plotly-2.27.0.min.js
+# Download frontend dependencies (Plotly) - Stage to assets_dist
+RUN mkdir -p /app/assets_dist && \
+    curl -L -o /app/assets_dist/plotly.min.js https://cdn.plot.ly/plotly-2.27.0.min.js
 
 # Copy venv from builder
 COPY --from=builder /app/.venv /app/.venv
@@ -54,8 +54,12 @@ ENV PATH="/app/.venv/bin:$PATH"
 # Copy application code
 COPY src /app/src
 
-# Copy compiled frontend assets
-COPY --from=frontend /app/styles.css /app/src/silvasonic_dashboard/static/css/styles.css
+# Copy compiled frontend assets - Stage to assets_dist
+COPY --from=frontend /app/styles.css /app/assets_dist/styles.css
+
+# Copy and setup entrypoint
+COPY entrypoint.sh /app/entrypoint.sh
+RUN chmod +x /app/entrypoint.sh
 
 # Environment variables
 ENV PYTHONUNBUFFERED=1
@@ -64,6 +68,8 @@ ENV PYTHONPATH=/app/src
 # Healthcheck
 HEALTHCHECK --interval=30s --timeout=5s --start-period=5s --retries=3 \
   CMD curl -f http://localhost:8080/health || exit 1
+
+ENTRYPOINT ["/app/entrypoint.sh"]
 
 # Run the application
 CMD ["uvicorn", "silvasonic_dashboard.main:app", "--host", "0.0.0.0", "--port", "8080"]

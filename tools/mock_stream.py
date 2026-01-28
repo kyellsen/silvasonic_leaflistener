@@ -9,7 +9,7 @@ import soundfile as sf
 
 # Config matching LiveProcessor
 HOST = "127.0.0.1"
-PORT = 8003
+PORT = 8010
 SAMPLE_RATE = 48000
 CHUNK_SIZE = 4096  # Samples per packet
 CHANNELS = 1

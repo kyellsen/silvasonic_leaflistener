@@ -27,7 +27,7 @@ class TestRecorder(unittest.TestCase):
         self.mock_settings.AUDIO_PROFILE = None
         self.mock_settings.STRICT_HARDWARE_MATCH = False
         self.mock_settings.LIVE_STREAM_TARGET = "localhost"
-        self.mock_settings.LIVE_STREAM_PORT = 8003
+        self.mock_settings.LIVE_STREAM_PORT = 8010
 
         with patch("silvasonic_recorder.main.os.makedirs"):
             self.recorder = Recorder()

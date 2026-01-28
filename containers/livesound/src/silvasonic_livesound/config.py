@@ -24,7 +24,7 @@ class Settings(BaseSettings):
 
     # Port Configuration
     LISTEN_PORTS: dict[str, int] = Field(
-        default_factory=lambda: {"default": 8003},
+        default_factory=lambda: {"default": 8010},
         description="Mapping of source names to UDP ports",
     )
 
@@ -48,7 +48,7 @@ class Settings(BaseSettings):
             return v
 
         if not v or not isinstance(v, str):
-            return {"default": 8003}
+            return {"default": 8010}
 
         ports = {}
         try:
@@ -59,10 +59,10 @@ class Settings(BaseSettings):
                     ports[name.strip()] = int(port.strip())
         except ValueError:
             # Fallback to default if parsing fails, similar to original logic
-            return {"default": 8003}
+            return {"default": 8010}
 
         if not ports:
-            return {"default": 8003}
+            return {"default": 8010}
 
         return ports
 

@@ -44,7 +44,7 @@ def test_setup_logging() -> None:
 async def test_write_live_config(mock_deps) -> None:
     dm, po, lp = mock_deps
     ctrl = Controller(dm.return_value, po.return_value)
-    ctrl.active_sessions["1"] = SessionInfo("c", "id", 8003, "slug")
+    ctrl.active_sessions["1"] = SessionInfo("c", "id", 8010, "slug")
 
     with patch("builtins.open", mock_open()) as m_open:
         with patch("os.rename"):
