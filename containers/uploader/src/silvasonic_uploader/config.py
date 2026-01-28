@@ -38,7 +38,6 @@ class UploaderSettings(BaseSettings):
         env_prefix="UPLOADER_",
         env_file=".env",
         extra="ignore",
-        json_file_encoding="utf-8",
     )
 
     def save(self) -> None:
