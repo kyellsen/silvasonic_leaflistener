@@ -13,6 +13,7 @@ def mock_deps():
         patch("silvasonic_controller.main.DeviceManager") as dm,
         patch("silvasonic_controller.main.PodmanOrchestrator") as po,
         patch("silvasonic_controller.main.load_profiles") as lp,
+        patch("silvasonic_controller.main.psutil") as mock_psutil,
     ):
         dm_instance = dm.return_value
         dm_instance.scan_devices = AsyncMock(return_value=[])
@@ -24,6 +25,10 @@ def mock_deps():
         lp.return_value = [
             MicrophoneProfile(name="Test Profile", slug="test_profile", device_patterns=["Test"])
         ]
+
+        # Configure psutil mock
+        mock_psutil.cpu_percent.return_value = 5.0
+        mock_psutil.Process.return_value.memory_info.return_value.rss = 50 * 1024 * 1024
 
         yield dm, po, lp
 
