@@ -96,24 +96,29 @@ class ServiceManager:
                 # 1. Fetch Config from DB
                 db_config = await self.db.get_service_config()
 
-                # 2. Apply updates
+                # 2. Fetch Running Services
+                running_services = await self.orchestrator.list_active_services()
+
+                # 3. Apply updates
                 for name, config in self._services.items():
-                    # If DB has an opinion, use it. Otherwise keep default `enabled` from Registry.
+                    # Determine Desired State
+                    should_be_enabled = config.enabled  # Start with default or last known
                     if name in db_config:
                         should_be_enabled = db_config[name]
 
-                        if should_be_enabled != config.enabled:
-                            logger.info(
-                                f"Service {name} state changed: {config.enabled} -> {should_be_enabled}"
-                            )
-                            config.enabled = should_be_enabled
+                    # Update local config state
+                    config.enabled = should_be_enabled
 
-                            if should_be_enabled:
-                                await self.start_service(name)
-                            else:
-                                await self.stop_service(name)
+                    is_running = name in running_services
 
-                # 3. Wait
+                    if should_be_enabled and not is_running:
+                        logger.info(f"Service {name} is enabled but not running. Starting...")
+                        await self.start_service(name)
+                    elif not should_be_enabled and is_running:
+                        logger.info(f"Service {name} is disabled but running. Stopping...")
+                        await self.stop_service(name)
+
+                # 4. Wait
                 await asyncio.sleep(10)
 
             except Exception as e:

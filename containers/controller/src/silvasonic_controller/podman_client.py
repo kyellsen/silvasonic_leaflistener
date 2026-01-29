@@ -13,6 +13,46 @@ class PodmanOrchestrator:
         # which has the host socket mounted.
         pass
 
+    async def list_active_services(self) -> dict[str, str]:
+        """Returns dict of running services {service_name: container_id}."""
+        cmd = [
+            "podman",
+            "ps",
+            "--format",
+            "json",
+            "--filter",
+            "label=managed_by=silvasonic-controller",
+        ]
+        try:
+            process = await asyncio.create_subprocess_exec(
+                *cmd,
+                stdout=asyncio.subprocess.PIPE,
+                stderr=asyncio.subprocess.PIPE,
+            )
+            stdout, stderr = await process.communicate()
+
+            running_services = {}
+            if process.returncode == 0 and stdout:
+                output = stdout.decode().strip()
+                if output:
+                    try:
+                        containers = json.loads(output)
+                        # Handle case where json.loads returns a single dict instead of list (rare but possible?? no, --format json returns array usually, but let's be safe)
+                        if isinstance(containers, dict):
+                            containers = [containers]
+
+                        for container in containers:
+                            labels = container.get("Labels", {})
+                            service_name = labels.get("silvasonic.service")
+                            if service_name:
+                                running_services[service_name] = container.get("ID", "")
+                    except json.JSONDecodeError:
+                        return {}
+            return running_services
+        except Exception as e:
+            logger.error(f"Failed to list services: {e}")
+            return {}
+
     async def list_active_recorders(self) -> list[dict[typing.Any, typing.Any]]:
         """Returns list of running recorder containers."""
         cmd = [
