@@ -12,10 +12,10 @@ logger = logging.getLogger(__name__)
 
 
 class Thumbnailer:
-    def __init__(self):
+    def __init__(self) -> None:
         pass
 
-    def generate(self, wav_path):
+    def generate(self, wav_path: str) -> str | None:
         """
         Generates a PNG spectrogram for the given wav_path.
         The PNG is saved in the same directory with .png extension.

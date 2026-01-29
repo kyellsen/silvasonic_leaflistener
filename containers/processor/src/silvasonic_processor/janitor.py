@@ -5,13 +5,15 @@ import threading
 import time
 
 from sqlalchemy import select
-from src.db import Recording, get_session
+from sqlalchemy.orm import Session
+
+from silvasonic_processor.db import Recording, get_session
 
 logger = logging.getLogger(__name__)
 
 
 class Janitor(threading.Thread):
-    def __init__(self, shutdown_event):
+    def __init__(self, shutdown_event: threading.Event) -> None:
         super().__init__(name="Janitor")
         self.shutdown_event = shutdown_event
         self.interval = 300  # 5 minutes
@@ -19,7 +21,7 @@ class Janitor(threading.Thread):
         self.warn_percent = int(os.getenv("DISK_THRESHOLD_WARNING", 80))
         self.crit_percent = int(os.getenv("DISK_THRESHOLD_CRITICAL", 90))
 
-    def run(self):
+    def run(self) -> None:
         logger.info("Janitor started.")
         while not self.shutdown_event.is_set():
             try:
@@ -33,7 +35,7 @@ class Janitor(threading.Thread):
                     break
                 time.sleep(1)
 
-    def cleanup(self):
+    def cleanup(self) -> None:
         # Check disk usage
         total, used, free = shutil.disk_usage(self.data_dir)
         usage_percent = (used / total) * 100
@@ -63,7 +65,7 @@ class Janitor(threading.Thread):
         finally:
             session.close()
 
-    def delete_recursive(self, session, limit, force):
+    def delete_recursive(self, session: Session, limit: int, force: bool) -> None:
         # Find candidates
         stmt = select(Recording).order_by(Recording.time.asc()).limit(limit)
 
@@ -105,7 +107,7 @@ class Janitor(threading.Thread):
 
         logger.info(f"Janitor deleted {deleted_count} recordings.")
 
-    def delete_file(self, path):
+    def delete_file(self, path: str | None) -> None:
         if path and os.path.exists(path):
             try:
                 os.remove(path)

@@ -5,7 +5,9 @@ import subprocess
 import sys
 import threading
 import time
+import types
 
+import redis
 import structlog
 from silvasonic_uploader.config import UploaderSettings
 from silvasonic_uploader.database import DatabaseHandler
@@ -34,7 +36,7 @@ logger = structlog.get_logger("uploader")
 shutdown_event = threading.Event()
 
 
-def signal_handler(signum, frame):
+def signal_handler(signum: int, frame: types.FrameType | None) -> None:
     logger.info("Shutdown signal received")
     shutdown_event.set()
 
@@ -74,7 +76,7 @@ def compress_to_flac(input_path: str) -> str | None:
         return None
 
 
-def main():
+def main() -> None:
     signal.signal(signal.SIGINT, signal_handler)
     signal.signal(signal.SIGTERM, signal_handler)
 
@@ -94,10 +96,23 @@ def main():
         logger.warning("Waiting for DB connection...")
         time.sleep(5)
 
+    # Redis Connection
+    r = redis.Redis(host="silvasonic_redis", port=6379, db=0, socket_connect_timeout=2)
+
     RcloneWrapper()
 
     # Main Loop
+    last_heartbeat = 0.0
     while not shutdown_event.is_set():
+        # Heartbeat (Every 10s)
+        now = time.time()
+        if now - last_heartbeat > 10:
+            try:
+                r.set("status:uploader", now, ex=30)
+                last_heartbeat = now
+            except Exception:
+                pass  # Ignore redis errors
+
         try:
             pending = db.get_pending_recordings(limit=5)
 

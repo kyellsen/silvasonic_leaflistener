@@ -17,12 +17,11 @@ packages = ["scripts"]
 members = [
     "containers/birdnet",
     "containers/recorder",
-    "containers/livesound",
     "containers/weather",
     "containers/dashboard",
     "containers/controller",
-    "containers/healthchecker",
     "containers/uploader",
+    "containers/processor",
 ]
 
 [dependency-groups]
@@ -48,15 +47,14 @@ dev = [
     "httpx",
     "schedule",
     "silvasonic-controller",
-    "silvasonic-livesound",
     "silvasonic-recorder",
     "silvasonic-weather",
     "silvasonic-dashboard",
     "birdnet-container",
-    "silvasonic-healthchecker",
     "silvasonic-uploader",
     "pre-commit>=4.5.1",
     "pytest-sugar>=1.1.1",
+    "silvasonic-processor",
 ]
 
 [tool.uv]
@@ -123,10 +121,9 @@ ignore_errors = true
 
 [tool.uv.sources]
 silvasonic-controller = { workspace = true }
-silvasonic-livesound = { workspace = true }
 silvasonic-recorder = { workspace = true }
 silvasonic-weather = { workspace = true }
 silvasonic-dashboard = { workspace = true }
 birdnet-container = { workspace = true }
-silvasonic-healthchecker = { workspace = true }
 silvasonic-uploader = { workspace = true }
+silvasonic-processor = { workspace = true }

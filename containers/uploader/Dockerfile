@@ -35,12 +35,7 @@ FROM python:3.11-slim-bookworm
 RUN apt-get update && apt-get install -y --no-install-recommends \
     rclone \
     curl \
-    rclone \
-    curl \
-    rclone \
-    curl \
     libpq5 \
-    ffmpeg \
     ffmpeg \
     && rm -rf /var/lib/apt/lists/*
 

@@ -207,8 +207,6 @@ class Recorder:
         strategy: typing.Any,
     ) -> None:
         """Start the FFmpeg process with V2 Dual-Stream logic."""
-        udp_url = f"udp://{settings.LIVE_STREAM_TARGET}:{settings.LIVE_STREAM_PORT}"
-
         # Paths
         high_res_dir = output_dir / "high_res"
         low_res_dir = output_dir / "low_res"
@@ -264,16 +262,18 @@ class Recorder:
             "-c:a",
             "pcm_s16le",
             str(pattern_low),
-            # Output 3: Live Stream (48k) - UDP
+            # Output 3: Live Stream (Icecast)
             "-map",
             "[stream]",
+            "-c:a",
+            "libmp3lame",  # Encodes to MP3 for browser compatibility
+            "-b:a",
+            "192k",
+            "-content_type",
+            "audio/mpeg",
             "-f",
-            "s16le",
-            "-ac",
-            "1",
-            "-ar",
-            "48000",
-            udp_url,
+            "mp3",
+            f"icecast://source:{settings.LIVE_STREAM_PASSWORD}@{settings.LIVE_STREAM_TARGET}:{settings.LIVE_STREAM_PORT}{settings.LIVE_STREAM_MOUNT}",
         ]
 
         logger.info(f"Starting FFmpeg V2: {' '.join(cmd)}")

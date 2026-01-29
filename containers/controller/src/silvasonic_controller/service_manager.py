@@ -1,5 +1,6 @@
 import asyncio
 import logging
+import os
 import typing
 from dataclasses import dataclass, field
 
@@ -31,12 +32,12 @@ REGISTRY: dict[str, ServiceConfig] = {
         env={"PYTHONUNBUFFERED": "1"},
         mounts=[
             {
-                "source": "/mnt/data/services/silvasonic/recordings",
+                "source": f"{os.environ.get('HOST_SILVASONIC_DATA_DIR', '/mnt/data/services/silvasonic')}/recordings",
                 "target": "/data/recordings",
                 "mode": "rw",
             },
             {
-                "source": "/mnt/data/services/silvasonic/status",
+                "source": f"{os.environ.get('HOST_SILVASONIC_DATA_DIR', '/mnt/data/services/silvasonic')}/status",
                 "target": "/mnt/data/services/silvasonic/status",
                 "mode": "rw",
             },
@@ -48,11 +49,15 @@ REGISTRY: dict[str, ServiceConfig] = {
         env={"PYTHONUNBUFFERED": "1"},
         mounts=[
             {
-                "source": "/mnt/data/services/silvasonic/recordings",
+                "source": f"{os.environ.get('HOST_SILVASONIC_DATA_DIR', '/mnt/data/services/silvasonic')}/recordings",
                 "target": "/data/recordings",
                 "mode": "rw",
             },
-            {"source": "/mnt/data/services/silvasonic/config", "target": "/config", "mode": "ro"},
+            {
+                "source": f"{os.environ.get('HOST_SILVASONIC_DATA_DIR', '/mnt/data/services/silvasonic')}/config",
+                "target": "/config",
+                "mode": "ro",
+            },
         ],
     ),
     "weather": ServiceConfig(
@@ -68,7 +73,7 @@ REGISTRY: dict[str, ServiceConfig] = {
         ports=["8000:8000"],
         mounts=[
             {
-                "source": "/mnt/data/services/silvasonic/config/icecast.xml",
+                "source": f"{os.environ.get('HOST_SILVASONIC_DATA_DIR', '/mnt/data/services/silvasonic')}/config/icecast.xml",
                 "target": "/etc/icecast.xml",
                 "mode": "ro",
             },
@@ -124,14 +129,16 @@ class ServiceManager:
         if not config.enabled:
             return False
 
-        return await self.orchestrator.spawn_service(
-            service_name=service_name,
-            image=config.image,
-            env_vars=config.env,
-            mounts=config.mounts,
-            network=config.network,
-            restart_policy=config.restart_policy,
-            ports=config.ports,
+        return bool(
+            await self.orchestrator.spawn_service(
+                service_name=service_name,
+                image=config.image,
+                env_vars=config.env,
+                mounts=config.mounts,
+                network=config.network,
+                restart_policy=config.restart_policy,
+                ports=config.ports,
+            )
         )
 
     async def stop_service(self, service_name: str) -> bool:

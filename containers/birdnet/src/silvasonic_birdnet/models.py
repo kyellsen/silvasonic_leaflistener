@@ -3,6 +3,7 @@ from typing import Any
 
 from pydantic import field_validator
 from sqlalchemy import Text
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlmodel import Field, SQLModel
 
 
@@ -13,7 +14,7 @@ class BirdDetection(SQLModel, table=True):
     """
 
     __tablename__ = "detections"
-    __table_args__ = {"schema": "birdnet"}
+    __table_args__ = {"schema": "public"}
 
     # ID (Auto-increment)
     id: int | None = Field(default=None, primary_key=True)
@@ -41,6 +42,11 @@ class BirdDetection(SQLModel, table=True):
     longitude: float | None = Field(default=None, alias="lon")  # Alias for Pydantic compat
     model_version: str | None = Field(default=None, max_length=50)
     clip_path: str | None = Field(default=None, max_length=1024)
+
+    # Algorithm Flexibility
+    details: dict[str, Any] | None = Field(
+        default=None, sa_type=JSONB if "JSONB" in globals() else Any
+    )
 
     # Additional Pydantic Validation logic if needed (e.g. for API inputs)
     @field_validator("end_time")
@@ -71,7 +77,7 @@ class BirdDetection(SQLModel, table=True):
 
 class SpeciesInfo(SQLModel, table=True):
     __tablename__ = "species_info"
-    __table_args__ = {"schema": "birdnet"}
+    __table_args__ = {"schema": "public"}
 
     scientific_name: str = Field(primary_key=True, max_length=255)
     common_name: str | None = Field(default=None, max_length=255)
@@ -90,7 +96,7 @@ class SpeciesInfo(SQLModel, table=True):
 
 class Watchlist(SQLModel, table=True):
     __tablename__ = "watchlist"
-    __table_args__ = {"schema": "birdnet"}
+    __table_args__ = {"schema": "public"}
 
     id: int | None = Field(default=None, primary_key=True)
     scientific_name: str = Field(max_length=255, unique=True)
@@ -104,7 +110,7 @@ class Watchlist(SQLModel, table=True):
 
 class ProcessedFile(SQLModel, table=True):
     __tablename__ = "processed_files"
-    __table_args__ = {"schema": "birdnet"}
+    __table_args__ = {"schema": "public"}
 
     id: int | None = Field(default=None, primary_key=True)
     filename: str = Field(max_length=255)

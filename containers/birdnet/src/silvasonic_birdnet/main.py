@@ -2,6 +2,7 @@ import signal
 import sys
 import threading
 import time
+import types
 
 import structlog
 
@@ -30,7 +31,7 @@ logger = structlog.get_logger("Main")
 shutdown_event = threading.Event()
 
 
-def signal_handler(signum, frame):
+def signal_handler(signum: int, frame: types.FrameType | None) -> None:
     logger.info("Shutdown signal received")
     shutdown_event.set()
 

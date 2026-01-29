@@ -18,9 +18,5 @@ http://{$DOMAIN} {
 		reverse_proxy silvasonic_dashboard:8000
 	}
 
-	# Basic Auth
-	# Required for security as per V2 spec
-	basic_auth {
-		{$BASIC_AUTH_USER} {$BASIC_AUTH_PASS}
-	}
+
 }

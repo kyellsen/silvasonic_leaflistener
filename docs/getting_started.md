@@ -144,25 +144,17 @@ journalctl -fu silvasonic
 ```
 
 **Access Dashboard**:
-Open `http://silvasonic.local:8080` in your browser.
+Open `http://silvasonic.local` (Port 80) in your browser.
 
 ---
 
 ## 🎙️ Advanced: Multi-Microphone Setup
 
-Silvasonic supports recording from multiple microphones simultaneously (e.g., a parabolic mic and an ambient mic).
+In Silvasonic V2, the **Controller** automatically detects USB microphones via Udev events and spawns a `silvasonic_recorder` container for each one.
 
-1.  **Identify your devices**: Run `arecord -l` on the Pi to see card numbers (e.g., `card 1`, `card 2`).
-2.  **Configure `podman-compose.yml`**:
-    - Duplicate the `recorder` service for each microphone.
-    - Give each a unique `container_name` (e.g., `silvasonic_recorder_back`).
-    - Set a unique `AUDIO_PROFILE` (e.g., `back_mic`).
-    - Set a unique `LIVE_STREAM_PORT` (e.g., `8011`).
-    - Map the specific hardware device (e.g., `/dev/snd/pcmC2D0c:/dev/snd/pcmC2D0c`).
-3.  **Update LiveSound**:
-    - Add `LISTEN_PORTS=front:8010,back:8011` to the `livesound` service environment.
-    - Expose the new UDP ports in the `ports` section.
-4.  **Deploy**: Run `sudo ./setup/install.sh` again to apply changes.
+1.  **Plug in the microphones**.
+2.  **Check Status**: The Controller should detect the device match it against a profile in `/app/mic_profiles`, and start a recorder.
+3.  **Manual Override**: Only if you strictly need custom port mappings or non-USB devices, you might need to edit `podman-compose.yml`, but this is generally **deprecated** in favor of the dynamic Controller.
 
 ---
 

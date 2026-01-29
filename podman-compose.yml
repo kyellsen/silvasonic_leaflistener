@@ -48,6 +48,7 @@ services:
       - HOST_SILVASONIC_DATA_DIR=${SILVASONIC_DATA_DIR}
       # - HOST_RECORDER_SRC=./containers/recorder/src  # Optional: For dev hot-reload in siblings
       - CONTAINER_HOST=unix:///run/podman/podman.sock # Force usage of mounted host socket
+      - MOCK_HARDWARE=true
     volumes:
       # 1. Podman Socket (Orchestration)
       - ${PODMAN_SOCKET}:/run/podman/podman.sock:z
@@ -81,6 +82,7 @@ services:
       - DB_URL=postgresql://silvasonic:silvasonic@db:5432/silvasonic
       - REDIS_HOST=redis
       - LOG_LEVEL=INFO
+      - PYTHONUNBUFFERED=1
     volumes:
       - ${SILVASONIC_DATA_DIR}/recorder/recordings:/data/recordings:z
       - ${SILVASONIC_DATA_DIR}/config:/app/config:ro
@@ -98,16 +100,15 @@ services:
       - PUID=1000
       - PGID=1000
       - POSTGRES_HOST=db
+      - PYTHONUNBUFFERED=1
       - PYTHONPATH=/app/src
     volumes:
       - ./containers/uploader/src:/app/src:z
-      - ${SILVASONIC_DATA_DIR}/recorder/recordings:/data/recording:ro
+      - ${SILVASONIC_DATA_DIR}/recorder/recordings:/data/recordings:ro
       - ${SILVASONIC_DATA_DIR}/uploader/config:/config/rclone:z
       - ${SILVASONIC_DATA_DIR}/logs:/var/log/silvasonic:z
 
       - ${SILVASONIC_DATA_DIR}/errors:/mnt/data/services/silvasonic/errors:z
-    ports:
-      - "8001:8001"
     restart: always
 
   monitor:
@@ -157,21 +158,13 @@ services:
       - /sys:/sys:ro
 
   livesound:
-    build:
-      context: containers/livesound
-    image: silvasonic-livesound:latest
+    image: docker.io/library/icecast:2.4-alpine
     container_name: silvasonic_livesound
-    environment:
-      - PYTHONUNBUFFERED=1
-    ports:
-      - "8010:8010/udp"
-    cpu_shares: 512
-    volumes:
-      - ./containers/livesound/src:/app/src:z
-      - ${SILVASONIC_DATA_DIR}/recorder/recordings:/data/recording:ro
-      - ${SILVASONIC_DATA_DIR}/logs:/var/log/silvasonic:z
-
     restart: always
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./config/icecast.xml:/etc/icecast.xml:ro
 
   dashboard:
     build:

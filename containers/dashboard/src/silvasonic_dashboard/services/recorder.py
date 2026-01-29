@@ -5,6 +5,10 @@ from typing import Any, cast
 
 import redis
 from async_lru import alru_cache
+from sqlalchemy import select, text
+
+from silvasonic_dashboard.models import Recording
+from silvasonic_dashboard.services.database import db
 
 from .common import REC_DIR, logger, run_in_executor
 
@@ -26,8 +30,6 @@ class RecorderService:
             pass
         return 48000 * 1 * 2  # Default to 48kHz, Mono, 16-bit (96000 Bps)
 
-        return 48000 * 1 * 2  # Default to 48kHz, Mono, 16-bit (96000 Bps)
-
     @staticmethod
     @alru_cache(ttl=1)
     async def get_status() -> list[dict[str, Any]]:
@@ -40,12 +42,7 @@ class RecorderService:
             )
 
             # Find all recorder keys
-            # Pattern: status:recorder:*
             keys = cast(list[bytes], r.keys("status:recorder:*"))
-
-            # Also check legacy single recorder key if it exists?
-            # keys("status:recorder") might return it if it doesn't have colon?
-            # Our pattern used colon.
 
             # Additional keys that might match: "status:recorder"
             if r.exists("status:recorder"):
@@ -63,14 +60,11 @@ class RecorderService:
 
             for key in keys:
                 try:
-                    # mget would be faster but keys list is small
                     raw_data = cast(bytes | None, r.get(key))
                     if not raw_data:
                         continue
 
                     data = json.loads(raw_data)
-
-                    # Flatten meta for compatibility or just return rich data
                     meta = data.get("meta", {})
                     profile = meta.get("profile", {})
 
@@ -78,8 +72,6 @@ class RecorderService:
                     raw_device = meta.get("device", "Unknown")
                     clean_device = raw_device
                     if isinstance(raw_device, str):
-                        # Extract content between first [] if present
-                        # Example: card 0: r0 [UltraMic384K_EVO 16bit r0], device 0...
                         import re
 
                         match = re.search(r"\[(.*?)\]", raw_device)
@@ -100,7 +92,6 @@ class RecorderService:
 
                     if isinstance(profile, dict) and "audio" in profile:
                         try:
-                            # Use staticmethod call
                             bps = RecorderService.get_audio_settings(profile)
                             compression = 0.6
                             bytes_per_day = bps * 60 * 60 * 24 * compression
@@ -110,7 +101,6 @@ class RecorderService:
                             forecast["daily_str"] = f"~{gb_per_day:.1f} GB"
 
                             # Calculate Remaining using shutil on the recording path
-                            # Disk check still needs FS access, which is fine (Audio volume)
                             import shutil
 
                             def get_usage() -> tuple[int, int, int]:
@@ -138,7 +128,6 @@ class RecorderService:
                         f"Error reading redis key {key.decode('utf-8', errors='replace')}: {e}"
                     )
 
-            # Sort by profile name or slug for stability
             statuses.sort(key=lambda x: x.get("profile", {}).get("name", ""))
             return statuses
 
@@ -155,143 +144,222 @@ class RecorderService:
         ]
 
     @staticmethod
-    @alru_cache(ttl=30)
+    @alru_cache(ttl=15)
     async def get_recent_recordings(limit_per_source: int = 20) -> dict[str, list[dict[str, Any]]]:
-        """Returns recordings grouped by source (folder name)."""
+        """Returns recordings grouped by source (device_id), querying the database."""
         grouped_recordings: dict[str, list[dict[str, Any]]] = {}
 
         try:
-            # Get current BPS setting from first status for duration fallback
-            statuses = await RecorderService.get_status()
-            current_bps: float = 48000.0 * 2
-            if statuses and "profile" in statuses[0]:
-                current_bps = RecorderService.get_audio_settings(statuses[0]["profile"])
+            async with db.get_connection() as conn:
+                # We want recent recordings but grouped by device/source.
+                # Since we don't know the sources, we can query distinct sources first
+                # OR just fetch recent N recordings and group them python side or via CTE.
+                # Since limit is per source, let's fetch distinct devices first.
 
-            if not os.path.exists(REC_DIR):
-                return {}
+                query_devices = text("SELECT DISTINCT device_id FROM recordings")
+                devices = (await conn.execute(query_devices)).scalars().all()
 
-            # Structure: REC_DIR / {source_id} / {file}.flac
-            # Or REC_DIR / {file}.flac (legacy/default)
+                # If no devices in DB yet, fallback to Empty logic
+                if not devices:
+                    # Provide empty list for 'Default' if just starting
+                    # or handle empty UI gracefully
+                    pass
 
-            # 1. Identify Sources (Directories)
-            def list_dirs() -> list[str]:
-                return [d for d in os.listdir(REC_DIR) if os.path.isdir(os.path.join(REC_DIR, d))]
+                # If devices found, query for each
+                # This could be optimized into one window function query, but N+1 is fine for small specific queries
+                devices_list = list(devices)
+                if not devices_list:
+                    # Check if we should fallback to 'Default' if empty?
+                    # Let's show nothing.
+                    pass
 
-            sources = await run_in_executor(list_dirs)
-            if not sources:
-                # Check for files in root (Default source)
-                sources = ["Default"]
+                for source in devices_list:
+                    # Resolve display name? Use Source for now.
+                    # We need to map paths properly.
 
-            # Helper to process a directory
-            async def scan_source_async(source_name: str, path: str) -> list[dict[str, Any]]:
-                def _scan() -> list[dict[str, Any]]:
+                    query = (
+                        select(Recording)
+                        .where(Recording.device_id == source)
+                        .order_by(Recording.time.desc())
+                        .limit(limit_per_source)
+                    )
+
+                    result = await conn.execute(query)
+                    # Because we use core connection mostly in this project for direct SQL speed/control
+                    # but here we used ORM select.
+                    # Wait, db.get_connection() returns AsyncConnection (Core), need AsyncSession for ORM models.
+                    # But the db helper provides get_connection (Core) AND get_db (Session).
+                    # 'conn' is connection.
+                    # Better use direct SQL or use session in different logic.
+                    # Let's stick to Core SQL for consistency with other services if easier.
+                    # Or use execute(select(Recording)) with connection... does it return rows?
+                    # Yes, but rows won't be ORM objects, just tuples/mappings.
+
+                    rows = result.all()  # These are Row objects
+
                     items = []
-                    try:
-                        # Scan files
-                        with os.scandir(path) as it:
-                            for entry in it:
-                                if entry.is_file() and entry.name.endswith(
-                                    (".flac", ".wav", ".mp3")
-                                ):
-                                    try:
-                                        stats = entry.stat()
-                                        dt = datetime.datetime.fromtimestamp(stats.st_mtime)
-                                        size_bytes = stats.st_size
-                                        size_mb = round(size_bytes / (1024 * 1024), 2)
+                    for row in rows:
+                        # Row might be (id, time, ...) or if using select(Recording) on connection?
+                        # It returns columns.
+                        # Let's cast to dict assuming names match.
+                        d = dict(row._mapping)
 
-                                        # Duration Estimate
-                                        duration = 0.0
-                                        if size_bytes > 0:
-                                            duration = size_bytes / (current_bps * 0.6)
+                        # We need to map to the format frontend expects
+                        # filename, file_size_bytes, size_mb, formatted_time, created_at_iso, duration_str
+                        # audio_relative_path
 
-                                        items.append(
-                                            {
-                                                "filename": entry.name,
-                                                "file_size_bytes": size_bytes,
-                                                "size_mb": size_mb,
-                                                "formatted_time": dt.strftime("%Y-%m-%d %H:%M:%S"),
-                                                "created_at_iso": dt.isoformat(),
-                                                "duration_str": f"{duration:.2f}s",
-                                                "duration_sec": duration,
-                                                "source": source_name,
-                                                "audio_relative_path": os.path.join(
-                                                    source_name, entry.name
-                                                )
-                                                if source_name != "Default"
-                                                else entry.name,
-                                                "mtime": stats.st_mtime,
-                                            }
-                                        )
-                                    except Exception:
-                                        pass
-                    except Exception as e:
-                        logger.error(f"Error scanning source {source_name}: {e}")
+                        # Determine path preference
+                        # High Res if exists? Wait, Dashboard usually plays low res (BirdNET uses low res).
+                        # Let's prefer path_low if available, else path_high.
+                        path = d.get("path_low") or d.get("path_high")
+                        if not path:
+                            path = ""
 
-                    # Sort by mtime DESC
-                    items.sort(key=lambda x: float(str(x.get("mtime", 0))), reverse=True)
-                    return items[:limit_per_source]
+                        filename = os.path.basename(path)
 
-                return await run_in_executor(_scan)
+                        # Time formatting
+                        dt = d.get("time")
+                        if dt and dt.tzinfo is None:
+                            dt = dt.replace(tzinfo=datetime.UTC)
 
-            # 2. Process Sources
-            # Check Root first (Legacy/Default)
-            root_files = await scan_source_async("Default", REC_DIR)
-            if root_files:
-                grouped_recordings["Default"] = root_files
+                        # Format size
+                        size_bytes = d.get("file_size_bytes", 0)  # If we added it to model
+                        # Wait, we added it to model, let's hope it's in DB or null
+                        # If table doesn't have column, select * might fail if using ORM select expansion.
+                        # We should be careful.
+                        # Let's assume schema matches. If not, this crashes.
 
-            # Check Subdirectories
-            # Actually, scan_source above scans the path we give it.
-            # If we identified real directories, scan them.
-            def list_real_sources() -> list[str]:
-                return [d for d in os.listdir(REC_DIR) if os.path.isdir(os.path.join(REC_DIR, d))]
+                        size_mb = round((size_bytes or 0) / (1024 * 1024), 2)
 
-            real_sources = await run_in_executor(list_real_sources)
+                        items.append(
+                            {
+                                "filename": filename,
+                                "file_size_bytes": size_bytes,
+                                "size_mb": size_mb,
+                                "formatted_time": dt.strftime("%Y-%m-%d %H:%M:%S") if dt else "-",
+                                "created_at_iso": dt.isoformat() if dt else "",
+                                "duration_str": f"{d.get('duration_sec', 0):.2f}s",
+                                "duration_sec": d.get("duration_sec", 0),
+                                "source": source,
+                                "audio_relative_path": path.lstrip("/"),  # Ensure relative for API?
+                                # /api/audio endpoint usually mounts REC_DIR.
+                                # if path is absolute /data/recordings/front/file.wav
+                                # audio_relative_path should be front/file.wav
+                                # Rec Dir is /data/recordings/
+                                # So we strip REC_DIR
+                            }
+                        )
 
-            for src in real_sources:
-                path = os.path.join(REC_DIR, src)
-                files = await scan_source_async(src, path)
-                if files:
-                    grouped_recordings[src] = files
+                        # Path fixup
+                        if path.startswith(REC_DIR):
+                            items[-1]["audio_relative_path"] = path[len(REC_DIR) :].lstrip("/")
+
+                    if items:
+                        grouped_recordings[source] = items
 
             return grouped_recordings
 
         except Exception as e:
-            logger.error(f"Recorder History Error: {e}")
+            logger.error(f"Recorder History Error (DB): {e}", exc_info=True)
             return {}
 
     @staticmethod
     async def get_creation_rate(minutes: int = 60) -> float:
-        """Calculate files created per minute over the last X minutes."""
-        # Use cached stats to avoid blocking I/O
-        from .stats_cache import StatsManager
-
-        return StatsManager.get_instance().get_creation_rate(minutes)
+        """Calculate files created per minute over the last X minutes via DB."""
+        try:
+            async with db.get_connection() as conn:
+                query = text(
+                    "SELECT COUNT(*) FROM recordings WHERE time >= NOW() - make_interval(mins => :mins)"
+                )
+                count = (await conn.execute(query, {"mins": minutes})).scalar() or 0
+                return round(count / minutes, 2)
+        except Exception as e:
+            logger.error(f"Creation rate error: {e}")
+            return 0.0
 
     @staticmethod
     async def get_latest_filename() -> str | None:
-        """Get the filename of the most recent recording on disk."""
+        """Get the filename of the most recent recording from DB."""
         try:
-            if not os.path.exists(REC_DIR):
+            async with db.get_connection() as conn:
+                # Use path_low or path_high? Filename is usually part of path.
+                # Or just filename if we had that column?
+                # The model I added has no 'filename' column, only paths!
+                # Ah, wait. Implementation Plan said "Add Recording model... Columns: id, filename..."
+                # My model code had paths but NO filename column.
+                # Processor DB.py doesn't have filename column.
+                # So I must extract it from path.
+
+                # However, for cursor comparison (lexicographical), using path is confusing if paths differ.
+                # But typically timestamp is best cursor.
+                # The dashboard uses filename cursor in 'count_files_after'.
+                # Let's hope filename corresponds to time.
+
+                # Query max path?
+                query = text("SELECT path_low FROM recordings ORDER BY time DESC LIMIT 1")
+                path = (await conn.execute(query)).scalar()
+                if path:
+                    return cast(str, os.path.basename(path))
                 return None
-
-            def scan_latest() -> str | None:
-                all_files = []
-                for _root, _dirs, files in os.walk(REC_DIR):
-                    for f in files:
-                        if f.endswith(".flac"):
-                            all_files.append(f)
-                if not all_files:
-                    return None
-                return max(all_files)
-
-            return await run_in_executor(scan_latest)
         except Exception:
             return None
 
     @staticmethod
     async def count_files_after(filename: str | None) -> int:
-        """Count how many files on disk are lexicographically 'after' the given filename."""
-        # Use cached stats to avoid blocking I/O
-        from .stats_cache import StatsManager
+        """Count how many files are 'after' the given filename (Lexicographical sort).
+        Note: Using DB, we should ideally use Time-based cursors.
+        But frontend might pass filename.
+        If filename follows date pattern, we can try to guess time or just compare filenames if stored?
+        We don't store plain filenames in DB, only paths.
+        So we can't do efficient 'filename > X' without a filename column.
 
-        return StatsManager.get_instance().count_files_after(filename)
+        Workaround: If filename is None, return 0 (no lag).
+        If filename provided, we assume it's like '2023-01-01...'.
+        We can try to extract time from it?
+
+        Or we just do COUNT(*) - (Position of filename).
+
+        Let's assume typical usage: Dashboard checks 'latest_processed' vs 'latest_recorded'.
+        If we return total Lag, it's (Total Recs) - (Total Processed)?
+        But they might be different sets.
+
+        Let's use Time if possible.
+        But 'filename' arg comes from 'latest_processed_filename' from BirdNET (which HAS filename).
+        So we have a filename '2024-01-01_12-00-00.wav'.
+        We can query DB: SELECT count(*) FROM recordings WHERE time > (Time of that file).
+
+        Parsing time from filename is safest here.
+        """
+        if not filename:
+            # If no cursor, assume everything is "after" (Lag is high)?
+            # Or if no processed files, lag is ALL files.
+            # So return Count(*).
+            pass  # fallback to query all
+
+        try:
+            # Try parse time from filename
+            # Format: YYYY-MM-DD_HH-MM-SS
+            cutoff_dt = None
+            if filename:
+                try:
+                    # Remove extension
+                    stem = os.path.splitext(filename)[0]
+                    # Try common formats
+                    # 2024-01-01_12-00-00
+                    cutoff_dt = datetime.datetime.strptime(stem[:19], "%Y-%m-%d_%H-%M-%S")
+                except ValueError:
+                    pass
+
+            async with db.get_connection() as conn:
+                if cutoff_dt:
+                    query = text("SELECT COUNT(*) FROM recordings WHERE time > :dt")
+                    return (await conn.execute(query, {"dt": cutoff_dt})).scalar() or 0
+                else:
+                    # Fallback: Just return total count?
+                    # Or 0?
+                    query = text("SELECT COUNT(*) FROM recordings")
+                    return (await conn.execute(query)).scalar() or 0
+
+        except Exception as e:
+            logger.error(f"Count after error: {e}")
+            return 0

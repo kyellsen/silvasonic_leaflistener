@@ -1,0 +1,43 @@
+<icecast>
+    <location>Silvasonic</location>
+    <admin>silvasonic@localhost</admin>
+
+    <limits>
+        <clients>100</clients>
+        <sources>10</sources>
+        <threadpool>5</threadpool>
+        <queue-size>524288</queue-size>
+        <client-timeout>30</client-timeout>
+        <header-timeout>15</header-timeout>
+        <source-timeout>10</source-timeout>
+        <burst-on-connect>1</burst-on-connect>
+        <burst-size>65535</burst-size>
+    </limits>
+
+    <authentication>
+        <source-password>hackme</source-password>
+        <relay-password>hackme</relay-password>
+        <admin-user>admin</admin-user>
+        <admin-password>hackme</admin-password>
+    </authentication>
+
+    <hostname>localhost</hostname>
+    <listen-socket>
+        <port>8000</port>
+    </listen-socket>
+
+    <mount type="normal">
+        <mount-name>/live</mount-name>
+        <fallback-mount>/silences</fallback-mount>
+        <relay-url>/live</relay-url>
+    </mount>
+
+    <fileserve>1</fileserve>
+    <paths>
+        <basedir>/usr/share/icecast</basedir>
+        <logdir>/usr/share/icecast</logdir>
+        <webroot>/usr/share/icecast/web</webroot>
+        <adminroot>/usr/share/icecast/admin</adminroot> 
+        <alias source="/" destination="/status.xsl"/>
+    </paths>
+</icecast>

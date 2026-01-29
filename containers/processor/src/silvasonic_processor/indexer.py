@@ -9,23 +9,24 @@ import redis
 import soundfile as sf
 from sqlalchemy import select
 from sqlalchemy.orm import Session
-from src.db import Recording, get_session
-from src.thumbnailer import Thumbnailer
+
+from silvasonic_processor.db import Recording, get_session
+from silvasonic_processor.thumbnailer import Thumbnailer
 
 logger = logging.getLogger(__name__)
 
 
 class Indexer(threading.Thread):
-    def __init__(self, shutdown_event):
+    def __init__(self, shutdown_event: threading.Event) -> None:
         super().__init__(name="Indexer")
         self.shutdown_event = shutdown_event
         self.scan_interval = int(os.getenv("SCAN_INTERVAL", 10))
         self.root_dir = "/data/recordings"
         self.thumbnailer = Thumbnailer()
         self.redis_host = os.getenv("REDIS_HOST", "silvasonic_redis")
-        self.redis_client = None
+        self.redis_client: redis.Redis | None = None
 
-    def get_redis(self):
+    def get_redis(self) -> redis.Redis | None:
         if not self.redis_client:
             try:
                 self.redis_client = redis.Redis(host=self.redis_host, port=6379, db=0)
@@ -33,7 +34,7 @@ class Indexer(threading.Thread):
                 logger.error(f"Failed to connect to Redis: {e}")
         return self.redis_client
 
-    def run(self):
+    def run(self) -> None:
         logger.info("Indexer started.")
         while not self.shutdown_event.is_set():
             try:
@@ -47,7 +48,7 @@ class Indexer(threading.Thread):
                     break
                 time.sleep(1)
 
-    def scan(self):
+    def scan(self) -> None:
         session = get_session()
         try:
             # Walk through device directories
@@ -79,7 +80,9 @@ class Indexer(threading.Thread):
         finally:
             session.close()
 
-    def process_directory(self, session: Session, device_id: str, dir_path: str, is_high_res: bool):
+    def process_directory(
+        self, session: Session, device_id: str, dir_path: str, is_high_res: bool
+    ) -> None:
         for filename in os.listdir(dir_path):
             if not filename.endswith(".wav"):
                 continue

@@ -153,13 +153,13 @@ def fetch_weather() -> None:
         with get_db_connection() as conn:
             stmt = text(
                 """
-                INSERT INTO weather.measurements (
+                INSERT INTO measurements (
                     timestamp, station_id, temperature_c, humidity_percent,
                     precipitation_mm, wind_speed_ms, wind_gust_ms, sunshine_seconds, cloud_cover_percent
                 ) VALUES (
                     :timestamp, :station_id, :temperature_c, :humidity_percent,
                     :precipitation_mm, :wind_speed_ms, :wind_gust_ms, :sunshine_seconds, :cloud_cover_percent
-                ) ON CONFLICT (timestamp) DO NOTHING
+                ) ON CONFLICT (timestamp, station_id) DO NOTHING
             """
             )
             conn.execute(stmt, measurement.model_dump())

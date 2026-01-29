@@ -1,3 +1,4 @@
+import datetime
 import typing
 
 import structlog
@@ -15,6 +16,7 @@ from silvasonic_dashboard.services import (
     RecorderService,
     SystemService,
     UploaderService,
+    WeatherService,
 )
 from silvasonic_dashboard.settings import SettingsService
 
@@ -163,6 +165,142 @@ async def dashboard(request: Request, auth: typing.Any = Depends(require_auth)) 
             "status_value": "Online",
             "status_color": "text-green-600 dark:text-green-400",
             "auto_refresh_interval": 5,
+        },
+    )
+
+
+@router.get("/recorder", response_class=HTMLResponse)
+async def recorder_page(request: Request, auth: typing.Any = Depends(require_auth)) -> typing.Any:
+    if isinstance(auth, RedirectResponse):
+        return auth
+
+    stats = await RecorderService.get_status()
+    # Dummy system stats if SystemService doesn't provide them yet, but template calls sys_stats
+    sys_stats = await SystemService.get_stats()
+    recordings = await RecorderService.get_recent_recordings()
+
+    return render(
+        request,
+        "recorder.html",
+        {
+            "request": request,
+            "page": "recorder",
+            "stats": stats,  # List of recorder status
+            "sys_stats": sys_stats,
+            "recordings": recordings,
+            "status_label": "Recorders:",
+            "status_value": "Active" if stats else "No Recorders",
+            "status_color": "text-pink-600 dark:text-pink-400",
+            "auto_refresh_interval": 30,  # Slower refresh for recorders
+        },
+    )
+
+
+@router.get("/uploader", response_class=HTMLResponse)
+async def uploader_page(request: Request, auth: typing.Any = Depends(require_auth)) -> typing.Any:
+    if isinstance(auth, RedirectResponse):
+        return auth
+
+    stats = UploaderService.get_status()
+    recent_uploads = await UploaderService.get_recent_uploads()
+    failed_uploads = await UploaderService.get_failed_uploads()
+    upload_stats = await UploaderService.get_upload_stats()
+
+    return render(
+        request,
+        "uploader.html",
+        {
+            "request": request,
+            "page": "uploader",
+            "stats": stats,
+            "recent_uploads": recent_uploads,
+            "failed_uploads": failed_uploads,
+            "upload_stats": upload_stats,
+            "status_label": "Uploader:",
+            "status_value": stats.get("status", "Unknown"),
+            "status_color": "text-cyan-600 dark:text-cyan-400",
+            "auto_refresh_interval": 5,
+        },
+    )
+
+
+@router.get("/livesound", response_class=HTMLResponse)
+async def livesound_page(request: Request, auth: typing.Any = Depends(require_auth)) -> typing.Any:
+    if isinstance(auth, RedirectResponse):
+        return auth
+
+    recorder_stats = await RecorderService.get_status()
+
+    return render(
+        request,
+        "livesound.html",
+        {
+            "request": request,
+            "page": "livesound",
+            "recorder_stats": recorder_stats,
+            "status_label": "Livesound:",
+            "status_value": "Ready",
+            "status_color": "text-purple-600 dark:text-purple-400",
+        },
+    )
+
+
+@router.get("/stats", response_class=HTMLResponse)
+async def stats_page(
+    request: Request,
+    start: str | None = None,
+    end: str | None = None,
+    auth: typing.Any = Depends(require_auth),
+) -> typing.Any:
+    if isinstance(auth, RedirectResponse):
+        return auth
+
+    # Default period: Last 7 days
+    # Need to handle date parsing if params provided
+    # BirdNetStatsService likely accepts start/end strings or dates.
+
+    stats_data = await BirdNetStatsService.get_advanced_stats(
+        start_date=datetime.date.fromisoformat(start) if start else None,
+        end_date=datetime.date.fromisoformat(end) if end else None,
+    )
+
+    return render(
+        request,
+        "stats.html",
+        {
+            "request": request,
+            "page": "stats",
+            # stats.html expects `stats` object with daily, hourly, top_species, rarest
+            "stats": stats_data,
+            "status_label": "Analytics:",
+            "status_value": "Viewing",
+            "status_color": "text-indigo-600 dark:text-indigo-400",
+        },
+    )
+
+
+@router.get("/weather", response_class=HTMLResponse)
+async def weather_page(request: Request, auth: typing.Any = Depends(require_auth)) -> typing.Any:
+    if isinstance(auth, RedirectResponse):
+        return auth
+
+    current = await WeatherService.get_current_weather()
+    history = await WeatherService.get_history(hours=24)
+    correlations = await WeatherService.get_correlations(days=30)
+    status_info = WeatherService.get_status()
+
+    return render(
+        request,
+        "weather.html",
+        {
+            "request": request,
+            "page": "weather",
+            "current": current,
+            "history": history,
+            "correlations": correlations,
+            "status_value": status_info.get("status", "Unknown"),
+            "status_color": "text-sky-600 dark:text-sky-400",  # Fixed color for now
+            "auto_refresh_interval": 60,
         },
     )
 

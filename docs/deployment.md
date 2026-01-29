@@ -69,11 +69,11 @@ sudo podman logs -f silvasonic_recorder
 ls -la /mnt/data/dev_workspaces/silvasonic/recorder/recordings/
 ```
 
-You should see FLAC files with timestamps.
+You should see WAV files (recording first) or processed artifacts.
 
 ## Configuration Options
 
-The recorder auto-detects configuration from microphone profiles. For advanced use:
+The system uses a strict hierarchy: **Database > Environment Variables > Config Files**.
 
 | Environment Variable | Description                   | Default |
 | -------------------- | ----------------------------- | ------- |
@@ -97,4 +97,4 @@ sudo chown -R 1000:1000 /mnt/data/dev_workspaces/silvasonic
 
 ## Contributing Microphone Profiles
 
-To add support for a new microphone, create a YAML file in `containers/recorder/src/microphones/`.
+To add support for a new microphone, create a YAML file in `containers/recorder/src/microphones/`. These are mounted to `/app/mic_profiles` in the container.

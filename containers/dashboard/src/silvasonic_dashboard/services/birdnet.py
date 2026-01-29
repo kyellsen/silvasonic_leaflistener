@@ -33,8 +33,8 @@ class BirdNetService:
                         s.german_name,
                         s.image_url,
                         s.description
-                    FROM birdnet.detections d
-                    LEFT JOIN birdnet.species_info s ON d.scientific_name = s.scientific_name
+                    FROM detections d
+                    LEFT JOIN species_info s ON d.scientific_name = s.scientific_name
                     ORDER BY d.timestamp DESC 
                     LIMIT :limit
                 """
@@ -150,8 +150,8 @@ class BirdNetService:
                         s.description,
                         s.german_name,
                         s.wikipedia_url
-                    FROM birdnet.detections d
-                    LEFT JOIN birdnet.species_info s ON d.scientific_name = s.scientific_name
+                    FROM detections d
+                    LEFT JOIN species_info s ON d.scientific_name = s.scientific_name
                     WHERE d.filepath = :filepath OR d.filename = :filename
                 """
                 )
@@ -209,7 +209,7 @@ class BirdNetService:
                 query = text(
                     """
                     SELECT COUNT(*) 
-                    FROM birdnet.processed_files 
+                    FROM processed_files 
                     WHERE processed_at >= NOW() - INTERVAL ':min MINUTES'
                 """
                 )
@@ -218,7 +218,7 @@ class BirdNetService:
 
                 # Postgres logic:
                 query = text(
-                    "SELECT COUNT(*) FROM birdnet.processed_files WHERE processed_at >= NOW() - make_interval(mins => :mins)"
+                    "SELECT COUNT(*) FROM processed_files WHERE processed_at >= NOW() - make_interval(mins => :mins)"
                 )
 
                 count = (await conn.execute(query, {"mins": minutes})).scalar() or 0
@@ -239,7 +239,7 @@ class BirdNetService:
                 # But processed_at sort is safer if processing out of order.
                 # However, lag is defined by file order.
                 # So MAX(filename) is best cursor.
-                query = text("SELECT MAX(filename) FROM birdnet.processed_files")
+                query = text("SELECT MAX(filename) FROM processed_files")
                 return (await conn.execute(query)).scalar()  # type: ignore[no-any-return]
         except Exception:
             return None
@@ -261,8 +261,8 @@ class BirdNetService:
                         AVG(d.confidence) as avg_conf,
                         si.image_url,
                         si.german_name
-                    FROM birdnet.detections d
-                    LEFT JOIN birdnet.species_info si ON d.scientific_name = si.scientific_name
+                    FROM detections d
+                    LEFT JOIN species_info si ON d.scientific_name = si.scientific_name
                     GROUP BY d.common_name, d.scientific_name, si.image_url, si.german_name
                     ORDER BY count DESC
                 """
@@ -334,9 +334,7 @@ class BirdNetService:
         try:
             async with db.get_connection() as conn:
                 # 1. Check Cache
-                query_cache = text(
-                    "SELECT * FROM birdnet.species_info WHERE scientific_name = :sci_name"
-                )
+                query_cache = text("SELECT * FROM species_info WHERE scientific_name = :sci_name")
                 cache = (await conn.execute(query_cache, {"sci_name": sci_name})).fetchone()
 
                 wiki_data = None
@@ -362,7 +360,7 @@ class BirdNetService:
                         # We use UPSERT (INSERT ... ON CONFLICT)
                         query_upsert = text(
                             """
-                            INSERT INTO birdnet.species_info (
+                            INSERT INTO species_info (
                                 scientific_name, common_name, german_name, family, 
                                 image_url, description, wikipedia_url, last_updated
                             ) VALUES (
@@ -416,13 +414,13 @@ class BirdNetService:
             async with db.get_connection() as conn:
                 # Upsert logic (Postgres specific) or check/update
                 # Check if exists
-                check = text("SELECT id FROM birdnet.watchlist WHERE scientific_name = :sci")
+                check = text("SELECT id FROM watchlist WHERE scientific_name = :sci")
                 res = (await conn.execute(check, {"sci": sci_name})).fetchone()
 
                 if res:
                     # Update
                     upd = text(
-                        "UPDATE birdnet.watchlist SET enabled = :en, common_name = :com WHERE scientific_name = :sci"
+                        "UPDATE watchlist SET enabled = :en, common_name = :com WHERE scientific_name = :sci"
                     )
                     await conn.execute(
                         upd, {"en": 1 if enabled else 0, "com": com_name, "sci": sci_name}
@@ -430,7 +428,7 @@ class BirdNetService:
                 else:
                     # Insert
                     ins = text(
-                        "INSERT INTO birdnet.watchlist (scientific_name, common_name, enabled) VALUES (:sci, :com, :en)"
+                        "INSERT INTO watchlist (scientific_name, common_name, enabled) VALUES (:sci, :com, :en)"
                     )
                     await conn.execute(
                         ins, {"sci": sci_name, "com": com_name, "en": 1 if enabled else 0}
@@ -451,7 +449,7 @@ class BirdNetService:
             async with db.get_connection() as conn:
                 # For safety/simplicity let's fetch all enabled (watchlist is usually small).
 
-                query_all = text("SELECT scientific_name FROM birdnet.watchlist WHERE enabled = 1")
+                query_all = text("SELECT scientific_name FROM watchlist WHERE enabled = 1")
                 res = await conn.execute(query_all)
                 watched = {row.scientific_name for row in res}
 
@@ -472,7 +470,12 @@ class BirdNetService:
                         audio_duration_sec as duration_sec,
                         file_size_bytes,
                         processed_at as created_at
-                    FROM birdnet.processed_files
+                    SELECT 
+                        filename,
+                        audio_duration_sec as duration_sec,
+                        file_size_bytes,
+                        processed_at as created_at
+                    FROM processed_files
                     ORDER BY processed_at DESC
                     LIMIT :limit
                 """
@@ -518,7 +521,7 @@ class BirdNetService:
                         COALESCE(SUM(audio_duration_sec), 0) as total_duration,
                         AVG(audio_duration_sec) as avg_duration,
                         AVG(file_size_bytes) as avg_size
-                    FROM birdnet.processed_files
+                    FROM processed_files
                 """
                 )
                 res = (await conn.execute(query)).fetchone()

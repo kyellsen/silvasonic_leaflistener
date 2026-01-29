@@ -159,28 +159,27 @@
 
 <script>
   /*
-   * Livesound Lifecycle Management
-   * Handles initialization and cleanup for HTMX navigation
+   * Livesound Lifecycle Management (Client-Side Only)
+   * Uses Web Audio API to visualize Icecast stream
    */
   (function () {
     // --- State ---
     const state = {
       audioCtx: null,
+      analyser: null,
+      sourceNode: null,
       audioEl: new Audio(),
-      ws: null,
       currentSource: document.getElementById("sourceSelect")
         ? document.getElementById("sourceSelect").value
         : "default",
-      // Dynamic Protocol Selection
-      wsBaseUrl: `${window.location.protocol === "https:" ? "wss" : "ws"}://${window.location.hostname}:8000/ws/spectrogram`,
-      streamBaseUrl: `${window.location.protocol === "https:" ? "https" : "http"}://${window.location.hostname}:8000/stream`,
+      streamBaseUrl: `${window.location.protocol === "https:" ? "https" : "http"}://${window.location.hostname}:80/stream/live`, 
       canvas: document.getElementById("spectrogramCanvas"),
       ctx: null,
       tempCanvas: document.createElement("canvas"),
       tempCtx: null,
-      maxReconnects: 10,
-      reconnectCount: 0,
       isActive: true,
+      dataArray: null,
+      animationId: null,
     };
 
     // --- DOM Elements ---
@@ -199,8 +198,6 @@
     function setStatus(text, type) {
       if (!ui.status) return;
       ui.status.innerText = text;
-
-      // Reset classes
       ui.status.className = "text-xs font-mono";
 
       switch (type) {
@@ -213,32 +210,28 @@
         case "warning":
           ui.status.classList.add("text-yellow-600", "dark:text-yellow-400");
           break;
-        default: // info/neutral
+        default:
           ui.status.classList.add("text-gray-500", "dark:text-gray-400");
       }
     }
 
-    function getWsUrl() {
-      return `${state.wsBaseUrl}?source=${state.currentSource}`;
-    }
-
     function getStreamUrl() {
-      return `${state.streamBaseUrl}?source=${state.currentSource}&t=${Date.now()}`;
+        // Icecast Mountpoint (Assuming single mount /live for now, per prompt)
+        // If we want multiple mounts, we'd append _slug
+        // For simplicity: hardcode to /stream/live (proxied to /live)
+        return `${state.streamBaseUrl}`;
     }
 
     // --- Initialization ---
     function init() {
-      console.log("[Livesound] Initializing...");
+      console.log("[Livesound] Initializing Client-Side Spectrogram...");
 
-      // Update Host Label
       if (ui.hostLabel) {
-        ui.hostLabel.innerText = `${window.location.hostname}:8000`;
+        ui.hostLabel.innerText = "Icecast Stream";
       }
 
-      // Setup Audio Element
       state.audioEl.crossOrigin = "anonymous";
 
-      // Setup Canvas
       if (state.canvas) {
         state.ctx = state.canvas.getContext("2d");
         state.tempCtx = state.tempCanvas.getContext("2d");
@@ -246,102 +239,72 @@
         window.addEventListener("resize", resizeCanvas);
       }
 
-      // Setup Listeners
       setupAudioListeners();
       setupUIListeners();
 
-      // Auto-connect WS
-      connectWebSocket();
-
-      // Register Cleanup for HTMX
       document.body.addEventListener("htmx:beforeSwap", cleanup, {
         once: true,
       });
+      
+      setStatus("Ready", "neutral");
+    }
+
+    // --- Audio Context Setup ---
+    function initAudioContext() {
+        if (state.audioCtx) return;
+
+        const AudioContext = window.AudioContext || window.webkitAudioContext;
+        state.audioCtx = new AudioContext();
+        
+        state.analyser = state.audioCtx.createAnalyser();
+        state.analyser.fftSize = 1024; // Resolution
+        state.analyser.smoothingTimeConstant = 0.5;
+
+        state.sourceNode = state.audioCtx.createMediaElementSource(state.audioEl);
+        state.sourceNode.connect(state.analyser);
+        state.analyser.connect(state.audioCtx.destination);
+
+        const bufferLength = state.analyser.frequencyBinCount;
+        state.dataArray = new Uint8Array(bufferLength);
     }
 
     // --- Cleanup ---
     function cleanup(event) {
-      console.log("[Livesound] Cleaning up resources...");
+      console.log("[Livesound] Cleaning up...");
       state.isActive = false;
-
-      // 1. Stop Audio
-      if (state.audioEl) {
-        state.audioEl.pause();
-        state.audioEl.src = "";
-        state.audioEl.load(); // Release stream
-        state.audioEl = null;
+      stopStream();
+      if (state.audioCtx) {
+        state.audioCtx.close();
       }
-
-      // 2. Close WebSocket
-      if (state.ws) {
-        state.ws.onclose = null; // Prevent reconnect loops
-        state.ws.close();
-        state.ws = null;
+      if (state.animationId) {
+          cancelAnimationFrame(state.animationId);
       }
-
-      // 3. Remove Global Listeners
       window.removeEventListener("resize", resizeCanvas);
     }
 
-    // --- WebSocket Logic ---
-    function connectWebSocket() {
-      if (!state.isActive) return;
-
-      setStatus(`Connecting WS (${state.currentSource})...`, "neutral");
-
-      try {
-        if (state.ws) {
-          state.ws.close();
-        }
-        state.ws = new WebSocket(getWsUrl());
-
-        state.ws.onopen = () => {
-          setStatus("Connected", "success");
-          ui.connStatus.innerText = "Real-time";
-          state.reconnectCount = 0;
-        };
-        // ... rest of ws logic same as before ...
-        state.ws.onmessage = (event) => {
-          if (!state.isActive) return;
-          try {
-            const msg = JSON.parse(event.data);
-            if (msg.type === "spectrogram") {
-              drawSpectrogramColumn(msg.data);
-            }
-          } catch (e) {
-            console.error("Parse error", e);
-          }
-        };
-
-        state.ws.onclose = () => {
-          if (!state.isActive) return;
-          setStatus("WS Disconnected", "error");
-
-          if (state.reconnectCount < state.maxReconnects) {
-            state.reconnectCount++;
-            setTimeout(connectWebSocket, 2000);
-          }
-        };
-
-        state.ws.onerror = (err) => {
-          if (state.isActive) setStatus("WS Error", "error");
-        };
-      } catch (e) {
-        setStatus("WS Setup Failed", "error");
-      }
-    }
 
     // --- Audio Control ---
     function startStream() {
-      setStatus(`Connecting Audio (${state.currentSource})...`, "warning");
+      setStatus(`Connecting...`, "warning");
+
+      if (!state.audioCtx) {
+          initAudioContext();
+      }
+      if (state.audioCtx.state === 'suspended') {
+          state.audioCtx.resume();
+      }
 
       const streamUrl = getStreamUrl();
-      state.audioEl.src = streamUrl;
-
+      if (state.audioEl.src !== streamUrl) {
+           state.audioEl.src = streamUrl;
+      }
+      
       state.audioEl.play().catch((e) => {
         console.error("Play failed:", e);
-        setStatus("Autoplay Blocked / Error", "error");
+        setStatus("Autoplay Blocked", "error");
       });
+
+      drawLoop();
     }
 
     function stopStream() {
@@ -349,7 +312,21 @@
       state.audioEl.src = "";
       state.audioEl.load();
       setStatus("Stopped", "neutral");
-      updateUI(false); // Ensure button resets
+      updateUI(false);
+      if (state.animationId) {
+          cancelAnimationFrame(state.animationId);
+      }
+    }
+
+    // --- Visualizer Loop ---
+    function drawLoop() {
+        if (!state.isActive) return;
+        state.animationId = requestAnimationFrame(drawLoop);
+
+        if (!state.analyser) return;
+
+        state.analyser.getByteFrequencyData(state.dataArray);
+        drawSpectrogramColumn(state.dataArray);
     }
 
     // --- Spectrogram Drawing ---
@@ -358,23 +335,32 @@
       const w = state.canvas.width;
       const h = state.canvas.height;
 
-      // 1. Shift existing
+      // 1. Shift
       state.tempCanvas.width = w;
       state.tempCanvas.height = h;
       state.tempCtx.drawImage(state.canvas, 0, 0);
-
       state.ctx.clearRect(0, 0, w, h);
       state.ctx.drawImage(state.tempCanvas, -1, 0);
 
-      // 2. Draw new column
-      const barH = h / dataArray.length;
-      for (let i = 0; i < dataArray.length; i++) {
-        const val = dataArray[i];
-        const hue = 260 - (val / 255) * 200;
-        const light = (val / 255) * 50;
+      // 2. Draw Column (at right edge)
+      // Map FFT bins to Y axis (0 to h)
+      // Logarithmic scale often looks better for audio, but linear is simpler for now.
+      // We only care about up to ~20kHz.
+      // dataArray length = 512 (fftSize/2). 48kHz / 2 = 24kHz. Perfect.
 
+      const binHeight = h / dataArray.length;
+      
+      for (let i = 0; i < dataArray.length; i++) {
+        const value = dataArray[i]; // 0-255
+        if (value < 10) continue; // Noise gate
+
+        const hue = 260 - (value / 255) * 200; // Blue to Red
+        const light = (value / 255) * 50;
+        
         state.ctx.fillStyle = `hsl(${hue}, 100%, ${light}%)`;
-        state.ctx.fillRect(w - 1, h - i * barH - barH, 2, barH + 1);
+        // Invert Y: 0Hz at bottom
+        const y = h - (i * binHeight);
+        state.ctx.fillRect(w - 1, y, 1, binHeight + 1);
       }
     }
 
@@ -390,19 +376,17 @@
       state.audioEl.addEventListener("play", () => updateUI(true));
       state.audioEl.addEventListener("pause", () => updateUI(false));
 
-      state.audioEl.addEventListener("playing", () =>
-        setStatus("Live Audio", "success"),
-      );
+      state.audioEl.addEventListener("playing", () => {
+        setStatus("Live Audio", "success");
+        ui.connStatus.innerText = "Online";
+      });
       state.audioEl.addEventListener("waiting", () =>
         setStatus("Buffering...", "warning"),
       );
-
       state.audioEl.addEventListener("error", (e) => {
-        console.error("Audio Error", e);
         updateUI(false);
         setStatus("Stream Error", "error");
       });
-
       state.audioEl.addEventListener("ended", () => {
         updateUI(false);
         setStatus("Stream Ended", "neutral");
@@ -420,21 +404,12 @@
         if (!isNaN(v)) state.audioEl.volume = v;
       };
 
+      // Source select just restarts the stream (if multiple mounts supported later)
       ui.sourceSelect.onchange = (e) => {
-        const newSource = e.target.value;
-        if (newSource !== state.currentSource) {
-          state.currentSource = newSource;
-          console.log("Switching source to:", newSource);
-
-          // 1. Reconnect WS
-          connectWebSocket();
-
-          // 2. Restart Audio if playing
           if (!state.audioEl.paused) {
             stopStream();
-            setTimeout(startStream, 500); // Short delay to allow WS switch
+            setTimeout(startStream, 500);
           }
-        }
       };
     }
 
@@ -452,7 +427,6 @@
       }
     }
 
-    // Start
     init();
   })();
 </script>

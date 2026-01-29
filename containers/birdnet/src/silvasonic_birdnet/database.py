@@ -1,6 +1,7 @@
 import logging
 import os
 import time
+import typing
 from datetime import UTC, datetime
 
 from sqlalchemy import text
@@ -157,7 +158,7 @@ class DatabaseHandler:
             except Exception as e:
                 logger.error(f"Failed to log processed file: {e}")
 
-    def get_pending_analysis(self, limit: int = 1) -> list[dict]:
+    def get_pending_analysis(self, limit: int = 1) -> list[dict[str, typing.Any]]:
         """Fetch recordings pending analysis."""
         if not self.engine:
             return []

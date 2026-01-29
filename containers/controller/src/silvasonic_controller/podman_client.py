@@ -70,7 +70,14 @@ class PodmanOrchestrator:
             "-e",
             f"RECORDER_ID={rec_id}",
             "-e",
-            f"LIVE_STREAM_PORT={stream_port}",
+            f"LIVE_STREAM_PORT={stream_port}",  # Legacy: This variable name in config is generic, but value might just be 8000 for Icecast?
+            # Actually, Recorders connect OUT to Icecast. They don't bind a port for streaming IN anymore.
+            # The 'stream_port' calculation in lines 56-60 (based on card_id) was for UDP listening/sending specific ports.
+            # With Icecast, they all send to port 8000 but different mounts?
+            # Or same mount? If same mount, they clash.
+            # We need unique mounts: /live_{id}
+            "-e",
+            f"LIVE_STREAM_MOUNT=/live_{rec_id}",
             "-e",
             "LIVE_STREAM_TARGET=silvasonic_livesound",
             "-e",

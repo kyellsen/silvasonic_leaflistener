@@ -61,7 +61,6 @@ async def sse_system_status(
 
                     # Construct Containers List (Same logic as dashboard view)
                     container_config = [
-                        {"key": "livesound", "name": "Liveaudio"},
                         {"key": "controller", "name": "Controller"},
                         {"key": "recorder", "name": "Recorder"},
                         {"key": "uploader", "name": "Uploader"},

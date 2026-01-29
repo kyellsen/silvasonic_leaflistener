@@ -18,7 +18,7 @@ class WeatherService:
             async with db.get_connection() as conn:
                 query = text(
                     """
-                    SELECT * FROM weather.measurements 
+                    SELECT * FROM measurements 
                     ORDER BY timestamp DESC 
                     LIMIT 1
                 """
@@ -40,7 +40,7 @@ class WeatherService:
             async with db.get_connection() as conn:
                 # Bind param properly or safe f-string for int
                 query = text(
-                    f"SELECT * FROM weather.measurements WHERE timestamp >= NOW() - INTERVAL '{int(hours)} HOURS' ORDER BY timestamp ASC"
+                    f"SELECT * FROM measurements WHERE timestamp >= NOW() - INTERVAL '{int(hours)} HOURS' ORDER BY timestamp ASC"
                 )
 
                 result = await conn.execute(query)
@@ -80,10 +80,11 @@ class WeatherService:
             async with db.get_connection() as conn:
                 # Fetch aggregated stats from weather.bird_stats
                 # We order by timestamp ASC for the time series
+                # NOTE: bird_stats view needs to be recreated in public schema if it relied on weather schema
                 query = text(
                     f"""
                     SELECT * 
-                    FROM weather.bird_stats 
+                    FROM bird_stats 
                     WHERE timestamp >= NOW() - INTERVAL '{int(days)} DAYS'
                     ORDER BY timestamp ASC
                 """

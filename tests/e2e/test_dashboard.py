@@ -40,11 +40,11 @@ def test_livesound_page_elements(page: Page) -> None:
     expect(page).to_have_url(f"{BASE_URL}/livesound")
 
     # Check for Canvas (Spectrogram)
-    canvas = page.locator("canvas#spectrogram")
+    canvas = page.locator("canvas#spectrogramCanvas")
     expect(canvas).to_be_visible()
 
     # Check for Status Label
-    expect(page.locator("text=System:")).to_be_visible()
+    expect(page.locator("text=Live Stream")).to_be_visible()
 
 
 def test_settings_integrity(page: Page) -> None:

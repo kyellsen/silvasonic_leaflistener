@@ -7,7 +7,9 @@ CREATE TABLE IF NOT EXISTS recordings (
     device_id TEXT NOT NULL,
     uploaded BOOLEAN DEFAULT FALSE,
     analyzed_bird BOOLEAN DEFAULT FALSE,
-    analyzed_bat BOOLEAN DEFAULT FALSE
+    analyzed_bat BOOLEAN DEFAULT FALSE,
+    -- Add explicit updated_at for sync logic if needed, but not strictly required by v2 concept yet
+    created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
 -- Convert to Hypertable (Partition by time)
@@ -15,25 +17,51 @@ SELECT create_hypertable('recordings', 'time', if_not_exists => TRUE);
 
 
 -- 2. Detections (Analysis Results)
+-- Consolidated table for BirdNET, BatDetect, etc.
 CREATE TABLE IF NOT EXISTS detections (
+    id SERIAL PRIMARY KEY, -- Integer ID for simpler Python model compatibility (optional, but good for admin)
     time TIMESTAMPTZ NOT NULL,
-    recording_id UUID NOT NULL,
-    species TEXT NOT NULL,
+    
+    -- Link to recording (Nullable to support file-based workflows where DB ID isn't known yet)
+    recording_id UUID REFERENCES recordings(id) ON DELETE CASCADE,
+    
+    -- File Identify (Alternative to FK)
+    filename TEXT,
+    filepath TEXT,
+    
+    -- Classification Attributes
+    scientific_name TEXT,
+    common_name TEXT,
+    species TEXT, -- Simplified/Legacy code support
     confidence FLOAT NOT NULL,
-    algorithm TEXT NOT NULL, -- e.g. 'birdnet'
-    CONSTRAINT fk_recording FOREIGN KEY (recording_id) REFERENCES recordings(id) ON DELETE CASCADE
+    
+    -- Temporal within file
+    start_time FLOAT,
+    end_time FLOAT,
+    
+    -- Metadata
+    algorithm TEXT NOT NULL, -- 'birdnet', 'batdetect'
+    model_version TEXT,
+    
+    -- Media
+    clip_path TEXT,
+    
+    -- Flex-Field for Algorithm specifics (e.g. Bat frequency, calls count)
+    details JSONB
 );
 
 -- Convert to Hypertable
 SELECT create_hypertable('detections', 'time', if_not_exists => TRUE);
--- Create index for faster querying by species/confidence
-CREATE INDEX IF NOT EXISTS idx_detections_species ON detections (species, time DESC);
+
+-- Indexes for Dashboard Performance
+CREATE INDEX IF NOT EXISTS idx_detections_species ON detections (scientific_name, time DESC);
+CREATE INDEX IF NOT EXISTS idx_detections_confidence ON detections (confidence);
+CREATE INDEX IF NOT EXISTS idx_detections_filename ON detections (filename);
 
 
--- 3. Weather Measurements
-CREATE SCHEMA IF NOT EXISTS weather;
-
-CREATE TABLE IF NOT EXISTS weather.measurements (
+-- 3. Measurements (Weather)
+-- Moved to PUBLIC schema (was weather.measurements)
+CREATE TABLE IF NOT EXISTS measurements (
     timestamp TIMESTAMPTZ NOT NULL,
     station_id TEXT NOT NULL,
     temperature_c FLOAT,
@@ -44,11 +72,11 @@ CREATE TABLE IF NOT EXISTS weather.measurements (
     sunshine_seconds FLOAT,
     cloud_cover_percent FLOAT,
     condition_code TEXT,
-    CONSTRAINT pk_weather_measurements PRIMARY KEY (timestamp, station_id)
+    CONSTRAINT pk_measurements PRIMARY KEY (timestamp, station_id)
 );
 
 -- Convert to Hypertable
-SELECT create_hypertable('weather.measurements', 'timestamp', if_not_exists => TRUE);
+SELECT create_hypertable('measurements', 'timestamp', if_not_exists => TRUE);
 
 
 -- 4. Service State (Configuration)
@@ -67,4 +95,37 @@ CREATE TABLE IF NOT EXISTS devices (
     name TEXT,
     hardware_profile TEXT,
     last_seen TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- 6. BirdNET specific tables (moved to Public for simplicity)
+-- These are relational lookups, not time-series
+CREATE TABLE IF NOT EXISTS species_info (
+    scientific_name TEXT PRIMARY KEY,
+    common_name TEXT,
+    german_name TEXT,
+    family TEXT,
+    image_url TEXT,
+    image_author TEXT,
+    image_license TEXT,
+    description TEXT,
+    wikipedia_url TEXT,
+    last_updated TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS watchlist (
+    id SERIAL PRIMARY KEY,
+    scientific_name TEXT UNIQUE NOT NULL,
+    common_name TEXT,
+    enabled INTEGER DEFAULT 1,
+    min_confidence FLOAT DEFAULT 0.0,
+    last_notification TIMESTAMPTZ
+);
+
+CREATE TABLE IF NOT EXISTS processed_files (
+    id SERIAL PRIMARY KEY,
+    filename TEXT NOT NULL,
+    processed_at TIMESTAMPTZ DEFAULT NOW(),
+    processing_time_sec FLOAT,
+    audio_duration_sec FLOAT,
+    file_size_bytes BIGINT
 );

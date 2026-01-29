@@ -8,19 +8,18 @@ Reference: `2026-01-28-Port-Standardization`
 
 *   **Service APIs (TCP)**: `8000 - 8009` include internal REST APIs.
 *   **Stream Ports (UDP)**: `8010 - 8049` are used for high-bandwidth audio streams.
-*   **Public Interface (TCP)**: `8080` is the user-facing dashboard.
+*   **Public Interface (Gateway)**: `80` (HTTP) / `443` (HTTPS).
+*   **Service APIs (Internal)**: `8000+`.
 *   **Database**: `5432` (PostgreSQL Standard).
 
 ## Port Registry
 
 | Service | Port | Protocol | Description | Env Variable |
 | :--- | :--- | :--- | :--- | :--- |
-| **Livesound** | `8000` | TCP / HTTP | Internal REST API & WebSocket | `PORT` |
+| **Gateway** | `80/443` | TCP | **Public Entry Point**. | - |
+| **Livesound** | `8000` | TCP / HTTP | Icecast Streaming Server (Internal) | `PORT` |
+| **Dashboard** | `8000` | TCP / HTTP | Web Interface (Internal) | `DASHBOARD_PORT` |
 | **Uploader** | `8001` | TCP / HTTP | Internal REST API | `PORT` |
-| **(Reserved)** | `8002-8009` | TCP | *Reserved for future services* | - |
-| **Livesound** | `8010` | UDP | Default Audio Stream (e.g. Front Mic) | `LISTEN_PORTS` |
-| **Livesound** | `8011-8019` | UDP | Additional Audio Streams | `LISTEN_PORTS` |
-| **Dashboard** | `8080` | TCP / HTTP | Web Interface | `DASHBOARD_PORT` |
 | **Database** | `5432` | TCP | PostgreSQL Database | `POSTGRES_PORT` |
 
 ## Configuration Guidelines

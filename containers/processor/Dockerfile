@@ -35,6 +35,7 @@ RUN chown -R pi:pi /app
 USER pi
 
 # Environment variables
-ENV PYTHONUNBUFFERED=1
+# Set PYTHONPATH
+ENV PYTHONPATH=/app/src
 
-CMD ["python", "src/main.py"]
+CMD ["python", "-m", "silvasonic_processor.main"]

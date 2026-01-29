@@ -27,14 +27,6 @@ async def lifespan(app: FastAPI) -> typing.AsyncGenerator[None, None]:
     t = threading.Thread(target=write_status, daemon=True)
     t.start()
 
-    # Start Stats Cache Manager
-    try:
-        from silvasonic_dashboard.services.stats_cache import StatsManager
-
-        StatsManager.get_instance().start_background_task()
-    except ImportError:
-        logger.error("Failed to start StatsManager")
-
     # Seed Defaults
     try:
         async with db.async_session_maker() as session:

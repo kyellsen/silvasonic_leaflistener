@@ -11,10 +11,13 @@ class Settings(BaseSettings):
     )
 
     # Live Stream
+    # Live Stream via Icecast
     LIVE_STREAM_TARGET: str = Field(
-        default="silvasonic_livesound", description="Hostname for live stream target"
+        default="silvasonic_livesound", description="Hostname for Icecast server"
     )
-    LIVE_STREAM_PORT: int = Field(default=8010, description="Port for live stream target")
+    LIVE_STREAM_PORT: int = Field(default=8000, description="Port for Icecast server")
+    LIVE_STREAM_MOUNT: str = Field(default="/live", description="Mount point for Icecast stream")
+    LIVE_STREAM_PASSWORD: str = Field(default="hackme", description="Source password for Icecast")
 
     # Hardware Selection
     RECORDER_ID: str | None = Field(

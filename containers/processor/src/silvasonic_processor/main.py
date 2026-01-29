@@ -4,11 +4,13 @@ import signal
 import sys
 import threading
 import time
+import types
 
 import redis
-from src.db import init_db
-from src.indexer import Indexer
-from src.janitor import Janitor
+
+from silvasonic_processor.db import init_db
+from silvasonic_processor.indexer import Indexer
+from silvasonic_processor.janitor import Janitor
 
 # Configure logging
 logging.basicConfig(
@@ -19,18 +21,30 @@ logger = logging.getLogger("processor")
 shutdown_event = threading.Event()
 
 
-def signal_handler(signum, frame):
+def signal_handler(signum: int, frame: types.FrameType | None) -> None:
     logger.info("Shutdown signal received")
     shutdown_event.set()
 
 
-def heartbeat_loop():
+def heartbeat_loop() -> None:
     redis_host = os.getenv("REDIS_HOST", "silvasonic_redis")
     try:
         r = redis.Redis(host=redis_host, port=6379, db=0, socket_timeout=5)
+        import json
+
+        import psutil
+
         while not shutdown_event.is_set():
             try:
-                r.set("status:processor:heartbeat", int(time.time()), ex=30)
+                data = {
+                    "service": "processor",
+                    "timestamp": time.time(),
+                    "status": "Running",
+                    "cpu_percent": psutil.cpu_percent(),
+                    "memory_usage_mb": psutil.Process(os.getpid()).memory_info().rss / 1024 / 1024,
+                    "pid": os.getpid(),
+                }
+                r.set("status:processor", json.dumps(data), ex=30)
             except Exception as e:
                 logger.error(f"Redis heartbeat failed: {e}")
             time.sleep(10)
@@ -38,7 +52,7 @@ def heartbeat_loop():
         logger.error(f"Failed to connect to Redis: {e}")
 
 
-def main():
+def main() -> None:
     signal.signal(signal.SIGINT, signal_handler)
     signal.signal(signal.SIGTERM, signal_handler)
 

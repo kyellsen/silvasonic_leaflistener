@@ -48,15 +48,15 @@ shutdown_event = threading.Event()
 
 
 class Monitor:
-    def __init__(self):
+    def __init__(self) -> None:
         self.apobj = apprise.Apprise()
         if APPRISE_URLS:
             self.apobj.add(APPRISE_URLS)
 
         self.redis = redis.Redis(host=REDIS_HOST, port=6379, db=0, socket_connect_timeout=5)
-        self.service_states = {}  # {service_id: "Running" | "Down"}
+        self.service_states: dict[str, str] = {}  # {service_id: "Running" | "Down"}
 
-    def run(self):
+    def run(self) -> None:
         logger.info("Silvasonic Monitor V2 Starting...")
 
         # 1. Start Pub/Sub Listener
@@ -66,9 +66,9 @@ class Monitor:
         # 2. Start Watchdog Loop
         self.watchdog_loop()
 
-    def listen_alerts(self):
+    def listen_alerts(self) -> None:
         r = redis.Redis(host=REDIS_HOST, port=6379, db=0)
-        pubsub = r.pubsub()
+        pubsub = r.pubsub()  # type: ignore[no-untyped-call]
         pubsub.subscribe("alerts")
 
         logger.info("Subscribed to 'alerts' channel.")
@@ -100,18 +100,63 @@ class Monitor:
                 logger.error("pubsub_error", error=str(e))
                 time.sleep(5)
 
-    def watchdog_loop(self):
+    def watchdog_loop(self) -> None:
         logger.info("Watchdog loop started.")
         while not shutdown_event.is_set():
             try:
                 self.check_heartbeats()
                 self.send_self_heartbeat()
+                self.publish_system_status()
             except Exception:
                 logger.exception("watchdog_error")
 
             time.sleep(CHECK_INTERVAL)
 
-    def check_heartbeats(self):
+    def publish_system_status(self) -> None:
+        """Publishes the aggregated service state to Redis for the Dashboard."""
+        try:
+            # We construct a dict similar to what api.py expects:
+            # { "controller": {"status": "Running", ...}, "recorder_front": {...} }
+
+            # Since self.service_states only holds "Running"/"Down", we might want more detail.
+            # Ideally we'd cache the full payload from check_heartbeats, but for now strict status is fine.
+            # We can re-fetch raw keys or just use the state map.
+
+            # Let's rebuild it from keys to be accurate with timestamps/metadata
+            status_map = {}
+            keys = self.redis.keys("status:*")
+
+            for k in keys:
+                try:
+                    key_str = k.decode()
+                    parts = key_str.split(":")
+                    # status:controller -> key="controller"
+                    # status:recorder:front -> key="recorder_front"
+                    service_key = "_".join(parts[1:])
+
+                    content = self.redis.get(key_str)
+                    if not content:
+                        continue
+
+                    try:
+                        data = json.loads(content)
+                    except Exception:
+                        # Fallback for plain timestamp
+                        data = {"timestamp": float(content), "status": "Running"}
+
+                    # Add our computed status (overriding raw if we decided it's Down)
+                    computed = self.service_states.get(service_key, "Unknown")
+                    data["status"] = computed
+
+                    status_map[service_key] = data
+                except Exception:
+                    pass
+
+            self.redis.set("system:status", json.dumps(status_map), ex=30)
+        except Exception as e:
+            logger.error(f"Failed to publish system status: {e}")
+
+    def check_heartbeats(self) -> None:
         # Scan keys
         keys = self.redis.keys("status:*")
         now = time.time()
@@ -119,7 +164,7 @@ class Monitor:
         # Track seen to detect missing
         seen_services = set()
 
-        for k in keys:
+        for k in keys:  # type: ignore[union-attr]
             key_str = k.decode()
             try:
                 if key_str == "status:monitor":
@@ -137,11 +182,11 @@ class Monitor:
 
                 # Try to parse
                 try:
-                    data = json.loads(content)
+                    data = json.loads(content)  # type: ignore[arg-type]
                     last_ts = float(data.get("timestamp", 0))
                 except Exception:
                     # Maybe integer timestamp?
-                    last_ts = float(content)
+                    last_ts = float(content)  # type: ignore[arg-type]
 
                 seen_services.add(instance_id)
 
@@ -169,21 +214,21 @@ class Monitor:
             except Exception as e:
                 logger.error(f"Error checking key {key_str}: {e}")
 
-    def notify_state_change(self, service, state, valid):
+    def notify_state_change(self, service: str, state: str, valid: str) -> None:
         logger.info("state_change", service=service, state=state, msg=valid)
         self.apobj.notify(
             title=f"Service {state}: {service}",
             body=f"{service} is now {state}. {valid}",
         )
 
-    def send_self_heartbeat(self):
+    def send_self_heartbeat(self) -> None:
         try:
             self.redis.set("status:monitor", int(time.time()), ex=30)
         except Exception:
             pass
 
 
-def main():
+def main() -> None:
     signal.signal(signal.SIGINT, lambda s, f: shutdown_event.set())
     signal.signal(signal.SIGTERM, lambda s, f: shutdown_event.set())
 
