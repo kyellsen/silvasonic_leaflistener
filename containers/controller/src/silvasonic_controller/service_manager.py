@@ -32,7 +32,7 @@ REGISTRY: dict[str, ServiceConfig] = {
         env={"PYTHONUNBUFFERED": "1"},
         mounts=[
             {
-                "source": f"{os.environ.get('HOST_SILVASONIC_DATA_DIR', '/mnt/data/services/silvasonic')}/recordings",
+                "source": f"{os.environ.get('HOST_SILVASONIC_DATA_DIR', '/mnt/data/services/silvasonic')}/recorder/recordings",
                 "target": "/data/recordings",
                 "mode": "rw",
             },
@@ -46,11 +46,6 @@ REGISTRY: dict[str, ServiceConfig] = {
                 "target": "/var/log/silvasonic",
                 "mode": "rw",
             },
-            {
-                "source": f"{os.environ.get('HOST_SILVASONIC_DATA_DIR', '/mnt/data/services/silvasonic')}/config/birdnet.yml",
-                "target": "/etc/birdnet/config.yml",
-                "mode": "ro",
-            },
         ],
     ),
     "uploader": ServiceConfig(
@@ -59,7 +54,7 @@ REGISTRY: dict[str, ServiceConfig] = {
         env={"PYTHONUNBUFFERED": "1"},
         mounts=[
             {
-                "source": f"{os.environ.get('HOST_SILVASONIC_DATA_DIR', '/mnt/data/services/silvasonic')}/recordings",
+                "source": f"{os.environ.get('HOST_SILVASONIC_DATA_DIR', '/mnt/data/services/silvasonic')}/recorder/recordings",
                 "target": "/data/recordings",
                 "mode": "rw",
             },
@@ -74,7 +69,11 @@ REGISTRY: dict[str, ServiceConfig] = {
         image="silvasonic-weather:latest",
         enabled=True,
         mounts=[
-            {"source": "/mnt/data/services/silvasonic/config", "target": "/config", "mode": "ro"},
+            {
+                "source": f"{os.environ.get('HOST_SILVASONIC_DATA_DIR', '/mnt/data/services/silvasonic')}/config",
+                "target": "/config",
+                "mode": "ro",
+            },
             {
                 "source": f"{os.environ.get('HOST_SILVASONIC_DATA_DIR', '/mnt/data/services/silvasonic')}/logs",
                 "target": "/var/log/silvasonic",

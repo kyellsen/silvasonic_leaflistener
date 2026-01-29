@@ -162,7 +162,7 @@ class UploaderService:
                 )
                 path = (await conn.execute(query)).scalar()
                 if path and isinstance(path, str):
-                    return os.path.basename(path)
+                    return os.path.basename(typing.cast(str, path))
                 return None
         except Exception:
             return None
