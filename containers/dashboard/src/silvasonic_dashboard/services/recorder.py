@@ -49,14 +49,7 @@ class RecorderService:
                 keys.append(b"status:recorder")
 
             if not keys:
-                return [
-                    {
-                        "status": "Unknown",
-                        "profile": "No Recorders Found",
-                        "device": "Unknown",
-                        "storage_forecast": {"daily_str": "?", "remaining_str": "?"},
-                    }
-                ]
+                return []
 
             for key in keys:
                 try:

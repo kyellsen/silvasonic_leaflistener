@@ -129,3 +129,23 @@ CREATE TABLE IF NOT EXISTS processed_files (
     audio_duration_sec FLOAT,
     file_size_bytes BIGINT
 );
+
+-- 7. Uploads (History)
+CREATE TABLE IF NOT EXISTS uploads (
+    id SERIAL PRIMARY KEY,
+    filename TEXT NOT NULL,
+    remote_path TEXT,
+    size_bytes BIGINT,
+    status TEXT NOT NULL, -- 'success', 'failed'
+    error_message TEXT,
+    upload_time TIMESTAMPTZ DEFAULT NOW()
+);
+SELECT create_hypertable('uploads', 'upload_time', if_not_exists => TRUE);
+
+-- Add uploaded_at to recordings if not exists (alter table is idempotent-ish if checked)
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='recordings' AND column_name='uploaded_at') THEN
+        ALTER TABLE recordings ADD COLUMN uploaded_at TIMESTAMPTZ;
+    END IF;
+END $$;

@@ -60,6 +60,7 @@ services:
       # 4. Logs
       - ${SILVASONIC_DATA_DIR}/logs:/var/log/silvasonic:z
       # 5. Shared Status (Live Config)
+      - ./containers/controller/src:/app/src:z # For dev hot-reload
     devices:
       - /dev/snd:/dev/snd
       - /dev/bus/usb:/dev/bus/usb
@@ -238,14 +239,14 @@ services:
     #      - /proc/asound:/proc/asound:ro
     #      - /sys:/sys:ro
 
-    #livesound:
-    #  environment:
-    #    - LISTEN_PORTS=front:1234,back:1235  # Map sources to ports
-    #  ports:
-    #    - "1235:1235/udp"  # Expose extra ports
-
-    #  environment:
-    #    - SENSOR_ID=my_sensor_01  # Optional: Override hostname for cloud upload path
+  livesound:
+    image: icecast:alpine
+    container_name: silvasonic_livesound
+    restart: always
+    ports:
+      - "8000:8000"
+    volumes:
+      - ${SILVASONIC_DATA_DIR}/config/icecast.xml:/etc/icecast.xml:ro
 
 volumes:
   tailscale_state:

@@ -98,3 +98,55 @@ class DatabaseHandler:
             session.rollback()
         finally:
             session.close()
+
+    def log_upload(
+        self,
+        filename: str,
+        size_bytes: int,
+        status: str,
+        remote_path: str | None = None,
+        error_message: str | None = None,
+    ) -> None:
+        """Log an upload attempt to the history table."""
+        if not self.Session:
+            return
+
+        session = self.Session()
+        try:
+            query = text(
+                """
+                INSERT INTO uploads (filename, remote_path, size_bytes, status, error_message, upload_time)
+                VALUES (:filename, :remote_path, :size_bytes, :status, :error_message, NOW())
+                """
+            )
+            session.execute(
+                query,
+                {
+                    "filename": filename,
+                    "remote_path": remote_path,
+                    "size_bytes": size_bytes,
+                    "status": status,
+                    "error_message": error_message,
+                },
+            )
+            session.commit()
+        except Exception as e:
+            logger.error(f"Failed to log upload: {e}")
+            session.rollback()
+        finally:
+            session.close()
+
+    def count_pending_recordings(self) -> int:
+        """Count number of pending uploads."""
+        if not self.Session:
+            return 0
+        session = self.Session()
+        try:
+            query = text(
+                "SELECT COUNT(*) FROM recordings WHERE uploaded = false AND path_high IS NOT NULL"
+            )
+            return session.execute(query).scalar() or 0
+        except Exception:
+            return 0
+        finally:
+            session.close()

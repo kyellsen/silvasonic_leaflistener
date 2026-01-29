@@ -1,5 +1,7 @@
+import json
 import logging
 import os
+import shutil
 import signal
 import subprocess
 import sys
@@ -103,14 +105,39 @@ def main() -> None:
 
     # Main Loop
     last_heartbeat = 0.0
+    last_upload_ts = 0.0
+
     while not shutdown_event.is_set():
         # Heartbeat (Every 10s)
         now = time.time()
         if now - last_heartbeat > 10:
             try:
-                r.set("status:uploader", now, ex=30)
+                # 1. Get Queue Size
+                queue_size = db.count_pending_recordings()
+
+                # 2. Get Disk Usage (Check /recordings or fallback to current dir)
+                check_dir = "/recordings" if os.path.exists("/recordings") else "."
+                if os.path.exists(check_dir):
+                    total, used, free = shutil.disk_usage(check_dir)
+                    disk_usage_percent = (used / total) * 100
+                else:
+                    disk_usage_percent = 0.0
+
+                # 3. Construct Payload
+                payload = {
+                    "status": "online",
+                    "last_upload": last_upload_ts,
+                    "meta": {
+                        "queue_size": queue_size,
+                        "disk_usage_percent": disk_usage_percent,
+                        "last_upload": last_upload_ts,
+                    },
+                }
+
+                r.set("status:uploader", json.dumps(payload), ex=30)
                 last_heartbeat = now
-            except Exception:
+            except Exception as e:
+                logger.error(f"Heartbeat failed: {e}")
                 pass  # Ignore redis errors
 
         try:
@@ -145,9 +172,10 @@ def main() -> None:
                     continue
 
                 filename = os.path.basename(flac_path)
+                file_size = os.path.getsize(flac_path)
 
                 # Upload
-                _ = f"{remote}:recordings/{filename}"
+                remote_path = f"{remote}:recordings/{filename}"
                 logger.info(f"Uploading {filename}...")
 
                 # Use our sync method (which uses async, so we looprunner it or just use subprocess here?)
@@ -166,12 +194,26 @@ def main() -> None:
                 if res.returncode == 0:
                     logger.info(f"Uploaded {filename}")
                     db.mark_recording_uploaded(rec["id"])
+                    db.log_upload(
+                        filename=filename,
+                        size_bytes=file_size,
+                        status="success",
+                        remote_path=remote_path,
+                    )
+                    last_upload_ts = time.time()
 
                     # Delete temp flac if we created it
                     if flac_path != src_path:
                         os.remove(flac_path)
                 else:
-                    logger.error(f"Upload failed: {res.stderr.decode()}")
+                    error_msg = res.stderr.decode()
+                    logger.error(f"Upload failed: {error_msg}")
+                    db.log_upload(
+                        filename=filename,
+                        size_bytes=file_size,
+                        status="failed",
+                        error_message=error_msg,
+                    )
 
         except Exception:
             logger.exception("Uploader Loop Error")

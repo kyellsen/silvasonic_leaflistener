@@ -76,7 +76,7 @@ class UploaderService:
                 query = text(
                     """
                     SELECT filename, remote_path, size_bytes, upload_time 
-                    FROM uploader.uploads 
+                    FROM uploads 
                     WHERE status = 'success' 
                     ORDER BY upload_time DESC 
                     LIMIT :limit
@@ -118,7 +118,7 @@ class UploaderService:
                 query = text(
                     """
                     SELECT filename, error_message, upload_time 
-                    FROM uploader.uploads 
+                    FROM uploads 
                     WHERE status = 'failed' 
                     ORDER BY upload_time DESC 
                     LIMIT :limit
@@ -154,7 +154,7 @@ class UploaderService:
                         COUNT(*) FILTER (WHERE upload_time >= NOW() - INTERVAL '24 HOURS') as last_24h,
                         COUNT(*) FILTER (WHERE upload_time >= NOW() - INTERVAL '7 DAYS') as last_7d,
                         COUNT(*) FILTER (WHERE upload_time >= NOW() - INTERVAL '30 DAYS') as last_30d
-                    FROM uploader.uploads
+                    FROM uploads
                     WHERE status = 'success'
                 """
                 )
@@ -172,7 +172,7 @@ class UploaderService:
         try:
             async with db.get_connection() as conn:
                 query = text(
-                    "SELECT COUNT(*) FROM uploader.uploads WHERE status='success' AND upload_time >= NOW() - make_interval(mins => :mins)"
+                    "SELECT COUNT(*) FROM uploads WHERE status='success' AND upload_time >= NOW() - make_interval(mins => :mins)"
                 )
                 count = (await conn.execute(query, {"mins": minutes})).scalar() or 0
                 return round(count / minutes, 2)
@@ -185,7 +185,7 @@ class UploaderService:
         """Get the filename of the most recently uploaded file."""
         try:
             async with db.get_connection() as conn:
-                query = text("SELECT MAX(filename) FROM uploader.uploads WHERE status='success'")
+                query = text("SELECT MAX(filename) FROM uploads WHERE status='success'")
                 return (await conn.execute(query)).scalar()  # type: ignore[no-any-return]
         except Exception:
             return None
