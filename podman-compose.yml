@@ -67,7 +67,6 @@ services:
       - plugdev
       - video
       - dialout
-      - gpio
       - render
     restart: always
 
