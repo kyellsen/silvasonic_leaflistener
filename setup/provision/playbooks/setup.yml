@@ -73,10 +73,29 @@
         enabled: yes
         state: started
 
-    - name: Add User to 'audio' and 'docker'/'podman' related groups if needed
+    # --- 3b. ROOTLESS PRE-REQUISITES ---
+    - name: Allow unprivileged users to bind port 80 (for Caddy)
+      sysctl:
+        name: net.ipv4.ip_unprivileged_port_start
+        value: "80"
+        state: present
+        reload: yes
+
+    - name: Enable Linger for User (allows services to run without login)
+      command: "loginctl enable-linger {{ user }}"
+      args:
+        creates: "/var/lib/systemd/linger/{{ user }}"
+
+    - name: Add User to Hardware Groups
       user:
         name: "{{ user }}"
-        groups: audio
+        groups: 
+          - audio
+          - plugdev
+          - dialout
+          - video
+          - render
+          - gpio
         append: yes
 
     # --- 4. SSD STRUCTURE ---
@@ -117,6 +136,7 @@
       become: true
       shell: |
         systemctl stop silvasonic.service || true
+        systemctl --user stop silvasonic.service || true
         systemctl stop podman.socket || true
         systemctl stop podman.service || true
         rsync -aAXv /var/lib/containers/ /mnt/data/containers-system/
@@ -138,6 +158,14 @@
         ln -s /mnt/data/containers ~/.local/share/containers
       args:
         creates: "/home/{{ user }}/.local/share/containers/storage"
+
+    - name: Ensure User Systemd Directory Exists
+      file:
+        path: "/home/{{ user }}/.config/systemd/user"
+        state: directory
+        owner: "{{ user }}"
+        group: "{{ user }}"
+        mode: "0755"
 
     # --- 5. CLONE REPOSITORY FROM GITHUB ---
     # --- 5. SYNC REPOSITORY FROM LOCALHOST ---
@@ -189,15 +217,25 @@
       tags: [tools, audio]
 
     # --- 7. SERVICE INSTALLATION ---
-    - name: Install Silvasonic Service
+    - name: Install Silvasonic User Service
       copy:
         src: "{{ repo_dest }}/setup/config/silvasonic.service"
-        dest: "/etc/systemd/system/silvasonic.service"
-        owner: root
-        group: root
+        dest: "/home/{{ user }}/.config/systemd/user/silvasonic.service"
+        owner: "{{ user }}"
+        group: "{{ user }}"
         mode: "0644"
         remote_src: yes
-      notify: Reload Systemd
+      notify: Reload Systemd User
+
+    - name: Enable Silvasonic User Service
+      become: true
+      become_user: "{{ user }}"
+      systemd:
+        name: silvasonic.service
+        scope: user
+        enabled: yes
+        state: started
+        daemon_reload: yes
 
     # --- 8. WIFI BOOTSTRAP INSTALLATION ---
     - name: Create WiFi Bootstrap Directory
@@ -234,6 +272,13 @@
   handlers:
     - name: Reload Systemd
       systemd:
+        daemon_reload: yes
+
+    - name: Reload Systemd User
+      become: true
+      become_user: "{{ user }}"
+      systemd:
+        scope: user
         daemon_reload: yes
 
     - name: Reboot Required

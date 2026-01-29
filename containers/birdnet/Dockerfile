@@ -22,7 +22,10 @@ COPY pyproject.toml uv.lock ./
 ENV VIRTUAL_ENV=/app/.venv
 ENV PATH="/app/.venv/bin:$PATH"
 
-RUN uv venv && \
+RUN git config --global http.postBuffer 524288000 && \
+    git config --global http.lowSpeedLimit 0 && \
+    git config --global http.lowSpeedTime 999999 && \
+    uv venv && \
     uv lock && \
     uv export --frozen --no-emit-project --no-dev --format requirements-txt > requirements.txt && \
     uv pip install --no-cache -r requirements.txt

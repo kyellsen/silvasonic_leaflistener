@@ -8,9 +8,8 @@ After=network-online.target sound.target podman.socket
 Type=oneshot
 RemainAfterExit=yes
 WorkingDirectory=/mnt/data/dev/silvasonic
-# Using root to access hardware/ALSA as per requirement
-User=root
-Group=root
+# User=root removed for Rootless setup
+# Group=root removed for Rootless setup
 
 # Start up detached. We generally do NOT want --build on auto-restart
 # to ensure fast boot and offline reliability.

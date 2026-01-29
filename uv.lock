@@ -155,7 +155,7 @@ wheels = [
 [[package]]
 name = "birdnet-analyzer"
 version = "2.4.0"
-source = { git = "https://github.com/birdnet-team/BirdNET-Analyzer.git#a5a9e1dae52736c6811842ad23317004404d7870" }
+source = { url = "https://github.com/birdnet-team/BirdNET-Analyzer/archive/a5a9e1dae52736c6811842ad23317004404d7870.zip" }
 dependencies = [
     { name = "kagglehub" },
     { name = "librosa" },
@@ -166,6 +166,42 @@ dependencies = [
     { name = "tensorflow" },
     { name = "tqdm" },
 ]
+sdist = { hash = "sha256:eb7ec4245477b348c73045908370e9b0b0d297a5c536990a4eef0ddd253c889a" }
+
+[package.metadata]
+requires-dist = [
+    { name = "birdnet-analyzer", extras = ["docs"], marker = "extra == 'dev'" },
+    { name = "birdnet-analyzer", extras = ["server", "gui"], marker = "extra == 'all'" },
+    { name = "birdnet-analyzer", extras = ["tests"], marker = "extra == 'dev'" },
+    { name = "birdnet-analyzer", extras = ["train", "embeddings"], marker = "extra == 'gui'" },
+    { name = "bottle", marker = "extra == 'server'" },
+    { name = "gradio", marker = "extra == 'gui'", specifier = ">=5.46" },
+    { name = "kagglehub" },
+    { name = "keras-tuner", marker = "extra == 'train'" },
+    { name = "librosa", specifier = ">=0.11" },
+    { name = "matplotlib" },
+    { name = "pandas" },
+    { name = "perch-hoplite", marker = "extra == 'embeddings'", specifier = ">=0.1.1" },
+    { name = "plotly", extras = ["express"], marker = "extra == 'gui'" },
+    { name = "pyarrow", marker = "sys_platform == 'darwin'", specifier = ">=22.0.0" },
+    { name = "pygobject", marker = "sys_platform == 'linux' and extra == 'gui'" },
+    { name = "pyobjc-framework-uniformtypeidentifiers", marker = "sys_platform == 'darwin' and extra == 'gui'" },
+    { name = "pytest", marker = "extra == 'tests'" },
+    { name = "pytest-order", marker = "extra == 'tests'" },
+    { name = "pytest-timeout", marker = "extra == 'tests'" },
+    { name = "pywebview", marker = "extra == 'gui'", specifier = ">=6.0" },
+    { name = "pywin32", marker = "sys_platform == 'win32' and extra == 'gui'" },
+    { name = "qtpy", marker = "sys_platform == 'linux' and extra == 'gui'" },
+    { name = "requests", marker = "extra == 'server'" },
+    { name = "resampy" },
+    { name = "ruff", marker = "extra == 'dev'" },
+    { name = "sphinx", marker = "extra == 'docs'" },
+    { name = "sphinx-argparse", marker = "extra == 'docs'" },
+    { name = "sphinx-rtd-theme", marker = "extra == 'docs'" },
+    { name = "tensorflow", specifier = ">=2.20" },
+    { name = "tqdm" },
+]
+provides-extras = ["train", "server", "gui", "embeddings", "all", "docs", "tests", "dev"]
 
 [[package]]
 name = "birdnet-container"
@@ -199,7 +235,7 @@ test = [
 
 [package.metadata]
 requires-dist = [
-    { name = "birdnet-analyzer", git = "https://github.com/birdnet-team/BirdNET-Analyzer.git" },
+    { name = "birdnet-analyzer", url = "https://github.com/birdnet-team/BirdNET-Analyzer/archive/a5a9e1dae52736c6811842ad23317004404d7870.zip" },
     { name = "librosa", specifier = ">=0.10.0" },
     { name = "numba", specifier = ">=0.57.0" },
     { name = "numpy" },

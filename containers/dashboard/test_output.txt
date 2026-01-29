@@ -1,0 +1,220 @@
+============================= test session starts ==============================
+platform linux -- Python 3.11.14, pytest-9.0.2, pluggy-1.6.0
+rootdir: /mnt/data/dev/packages/silvasonic
+configfile: pyproject.toml
+plugins: cov-7.0.0, sugar-1.1.1, playwright-0.7.2, asyncio-1.3.0, anyio-4.12.1, base-url-2.1.0
+asyncio: mode=Mode.STRICT, debug=False, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function
+collected 2 items
+
+tests/test_auth_routes.py FF                                             [100%]
+
+=================================== FAILURES ===================================
+____________________________ test_dev_login_success ____________________________
+
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x7f281069b190>
+
+    def test_dev_login_success(monkeypatch):
+        """Test that dev login works in development mode."""
+        # Patch the constant in the auth module
+        monkeypatch.setattr(auth, "SILVASONIC_ENV", "development")
+    
+        response = client.post("/auth/dev-login")
+    
+>       assert response.status_code == 302
+E       assert 200 == 302
+E        +  where 200 = <Response [200 OK]>.status_code
+
+tests/test_auth_routes.py:14: AssertionError
+----------------------------- Captured stdout call -----------------------------
+{"event": "{\"event\": \"DEV MODE: Bypassing authentication via Dev Login button\", \"logger\": \"silvasonic_dashboard.routers.auth\", \"level\": \"warning\", \"timestamp\": \"2026-01-29T19:01:27.831261Z\"}", "level": "warning", "logger": "silvasonic_dashboard.routers.auth", "timestamp": "2026-01-29T19:01:27.831329Z"}
+{"event": "HTTP Request: POST http://testserver/auth/dev-login \"HTTP/1.1 302 Found\"", "level": "info", "logger": "httpx", "timestamp": "2026-01-29T19:01:27.832549Z"}
+{"event": "Error getting Disk stats: [Errno 2] No such file or directory: '/data/recording'", "level": "error", "logger": "Dashboard.Services", "timestamp": "2026-01-29T19:01:27.835397Z", "exception": "Traceback (most recent call last):\n  File \"/mnt/data/dev/packages/silvasonic/containers/dashboard/src/silvasonic_dashboard/services/system.py\", line 48, in get_stats\n    disk = await run_in_executor(shutil.disk_usage, \"/data/recording\")\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/mnt/data/dev/packages/silvasonic/containers/dashboard/src/silvasonic_dashboard/services/common.py\", line 20, in run_in_executor\n    return await loop.run_in_executor(None, functools.partial(func, *args))\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/home/kyellsen/.local/share/uv/python/cpython-3.11.14-linux-x86_64-gnu/lib/python3.11/concurrent/futures/thread.py\", line 58, in run\n    result = self.fn(*self.args, **self.kwargs)\n             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/home/kyellsen/.local/share/uv/python/cpython-3.11.14-linux-x86_64-gnu/lib/python3.11/shutil.py\", line 1372, in disk_usage\n    st = os.statvfs(path)\n         ^^^^^^^^^^^^^^^^\nFileNotFoundError: [Errno 2] No such file or directory: '/data/recording'"}
+{"event": "Error getting BirdNet Stats: '>' not supported between instances of 'coroutine' and 'int'", "level": "error", "logger": "Dashboard.Services", "timestamp": "2026-01-29T19:01:27.842700Z", "exception": "Traceback (most recent call last):\n  File \"/mnt/data/dev/packages/silvasonic/containers/dashboard/src/silvasonic_dashboard/services/birdnet_stats.py\", line 65, in get_stats\n    if total_count > 0:\n       ^^^^^^^^^^^^^^^\nTypeError: '>' not supported between instances of 'coroutine' and 'int'"}
+Uploader status error: Error -2 connecting to silvasonic_redis:6379. Name or service not known.
+{"event": "Recorder status error: Error -2 connecting to silvasonic_redis:6379. Name or service not known.", "level": "error", "logger": "Dashboard.Services", "timestamp": "2026-01-29T19:01:35.374539Z"}
+{"event": "System metrics error: Error -2 connecting to silvasonic_redis:6379. Name or service not known.", "level": "error", "logger": "Dashboard.Services", "timestamp": "2026-01-29T19:01:39.374418Z", "exception": "Traceback (most recent call last):\n  File \"/mnt/data/dev/packages/silvasonic/.venv/lib/python3.11/site-packages/redis/connection.py\", line 855, in connect_check_health\n    sock = self.retry.call_with_retry(\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/mnt/data/dev/packages/silvasonic/.venv/lib/python3.11/site-packages/redis/retry.py\", line 116, in call_with_retry\n    return do()\n           ^^^^\n  File \"/mnt/data/dev/packages/silvasonic/.venv/lib/python3.11/site-packages/redis/connection.py\", line 856, in <lambda>\n    lambda: self._connect(), lambda error: self.disconnect(error)\n            ^^^^^^^^^^^^^^^\n  File \"/mnt/data/dev/packages/silvasonic/.venv/lib/python3.11/site-packages/redis/connection.py\", line 1270, in _connect\n    for res in socket.getaddrinfo(\n               ^^^^^^^^^^^^^^^^^^^\n  File \"/home/kyellsen/.local/share/uv/python/cpython-3.11.14-linux-x86_64-gnu/lib/python3.11/socket.py\", line 974, in getaddrinfo\n    for res in _socket.getaddrinfo(host, port, family, type, proto, flags):\n               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nsocket.gaierror: [Errno -2] Name or service not known\n\nDuring handling of the above exception, another exception occurred:\n\nTraceback (most recent call last):\n  File \"/mnt/data/dev/packages/silvasonic/containers/dashboard/src/silvasonic_dashboard/services/health.py\", line 36, in get_system_metrics\n    content = typing.cast(bytes | None, r.get(\"system:status\"))\n                                        ^^^^^^^^^^^^^^^^^^^^^^\n  File \"/mnt/data/dev/packages/silvasonic/.venv/lib/python3.11/site-packages/redis/commands/core.py\", line 1923, in get\n    return self.execute_command(\"GET\", name, keys=[name])\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/mnt/data/dev/packages/silvasonic/.venv/lib/python3.11/site-packages/redis/client.py\", line 657, in execute_command\n    return self._execute_command(*args, **options)\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/mnt/data/dev/packages/silvasonic/.venv/lib/python3.11/site-packages/redis/client.py\", line 663, in _execute_command\n    conn = self.connection or pool.get_connection()\n                              ^^^^^^^^^^^^^^^^^^^^^\n  File \"/mnt/data/dev/packages/silvasonic/.venv/lib/python3.11/site-packages/redis/utils.py\", line 196, in wrapper\n    return func(*args, **kwargs)\n           ^^^^^^^^^^^^^^^^^^^^^\n  File \"/mnt/data/dev/packages/silvasonic/.venv/lib/python3.11/site-packages/redis/connection.py\", line 2603, in get_connection\n    connection.connect()\n  File \"/mnt/data/dev/packages/silvasonic/.venv/lib/python3.11/site-packages/redis/connection.py\", line 846, in connect\n    self.connect_check_health(check_health=True)\n  File \"/mnt/data/dev/packages/silvasonic/.venv/lib/python3.11/site-packages/redis/connection.py\", line 863, in connect_check_health\n    raise ConnectionError(self._error_message(e))\nredis.exceptions.ConnectionError: Error -2 connecting to silvasonic_redis:6379. Name or service not known."}
+{"event": "HTTP Request: GET http://testserver/dashboard \"HTTP/1.1 200 OK\"", "level": "info", "logger": "httpx", "timestamp": "2026-01-29T19:01:39.387767Z"}
+------------------------------ Captured log call -------------------------------
+WARNING  silvasonic_dashboard.routers.auth:auth.py:38 {"event": "DEV MODE: Bypassing authentication via Dev Login button", "logger": "silvasonic_dashboard.routers.auth", "level": "warning", "timestamp": "2026-01-29T19:01:27.831261Z"}
+INFO     httpx:_client.py:1025 HTTP Request: POST http://testserver/auth/dev-login "HTTP/1.1 302 Found"
+ERROR    Dashboard.Services:system.py:53 Error getting Disk stats: [Errno 2] No such file or directory: '/data/recording'
+Traceback (most recent call last):
+  File "/mnt/data/dev/packages/silvasonic/containers/dashboard/src/silvasonic_dashboard/services/system.py", line 48, in get_stats
+    disk = await run_in_executor(shutil.disk_usage, "/data/recording")
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/mnt/data/dev/packages/silvasonic/containers/dashboard/src/silvasonic_dashboard/services/common.py", line 20, in run_in_executor
+    return await loop.run_in_executor(None, functools.partial(func, *args))
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/kyellsen/.local/share/uv/python/cpython-3.11.14-linux-x86_64-gnu/lib/python3.11/concurrent/futures/thread.py", line 58, in run
+    result = self.fn(*self.args, **self.kwargs)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/kyellsen/.local/share/uv/python/cpython-3.11.14-linux-x86_64-gnu/lib/python3.11/shutil.py", line 1372, in disk_usage
+    st = os.statvfs(path)
+         ^^^^^^^^^^^^^^^^
+FileNotFoundError: [Errno 2] No such file or directory: '/data/recording'
+ERROR    Dashboard.Services:birdnet_stats.py:76 Error getting BirdNet Stats: '>' not supported between instances of 'coroutine' and 'int'
+Traceback (most recent call last):
+  File "/mnt/data/dev/packages/silvasonic/containers/dashboard/src/silvasonic_dashboard/services/birdnet_stats.py", line 65, in get_stats
+    if total_count > 0:
+       ^^^^^^^^^^^^^^^
+TypeError: '>' not supported between instances of 'coroutine' and 'int'
+ERROR    Dashboard.Services:recorder.py:146 Recorder status error: Error -2 connecting to silvasonic_redis:6379. Name or service not known.
+ERROR    Dashboard.Services:health.py:41 System metrics error: Error -2 connecting to silvasonic_redis:6379. Name or service not known.
+Traceback (most recent call last):
+  File "/mnt/data/dev/packages/silvasonic/.venv/lib/python3.11/site-packages/redis/connection.py", line 855, in connect_check_health
+    sock = self.retry.call_with_retry(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/mnt/data/dev/packages/silvasonic/.venv/lib/python3.11/site-packages/redis/retry.py", line 116, in call_with_retry
+    return do()
+           ^^^^
+  File "/mnt/data/dev/packages/silvasonic/.venv/lib/python3.11/site-packages/redis/connection.py", line 856, in <lambda>
+    lambda: self._connect(), lambda error: self.disconnect(error)
+            ^^^^^^^^^^^^^^^
+  File "/mnt/data/dev/packages/silvasonic/.venv/lib/python3.11/site-packages/redis/connection.py", line 1270, in _connect
+    for res in socket.getaddrinfo(
+               ^^^^^^^^^^^^^^^^^^^
+  File "/home/kyellsen/.local/share/uv/python/cpython-3.11.14-linux-x86_64-gnu/lib/python3.11/socket.py", line 974, in getaddrinfo
+    for res in _socket.getaddrinfo(host, port, family, type, proto, flags):
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+socket.gaierror: [Errno -2] Name or service not known
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/mnt/data/dev/packages/silvasonic/containers/dashboard/src/silvasonic_dashboard/services/health.py", line 36, in get_system_metrics
+    content = typing.cast(bytes | None, r.get("system:status"))
+                                        ^^^^^^^^^^^^^^^^^^^^^^
+  File "/mnt/data/dev/packages/silvasonic/.venv/lib/python3.11/site-packages/redis/commands/core.py", line 1923, in get
+    return self.execute_command("GET", name, keys=[name])
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/mnt/data/dev/packages/silvasonic/.venv/lib/python3.11/site-packages/redis/client.py", line 657, in execute_command
+    return self._execute_command(*args, **options)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/mnt/data/dev/packages/silvasonic/.venv/lib/python3.11/site-packages/redis/client.py", line 663, in _execute_command
+    conn = self.connection or pool.get_connection()
+                              ^^^^^^^^^^^^^^^^^^^^^
+  File "/mnt/data/dev/packages/silvasonic/.venv/lib/python3.11/site-packages/redis/utils.py", line 196, in wrapper
+    return func(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "/mnt/data/dev/packages/silvasonic/.venv/lib/python3.11/site-packages/redis/connection.py", line 2603, in get_connection
+    connection.connect()
+  File "/mnt/data/dev/packages/silvasonic/.venv/lib/python3.11/site-packages/redis/connection.py", line 846, in connect
+    self.connect_check_health(check_health=True)
+  File "/mnt/data/dev/packages/silvasonic/.venv/lib/python3.11/site-packages/redis/connection.py", line 863, in connect_check_health
+    raise ConnectionError(self._error_message(e))
+redis.exceptions.ConnectionError: Error -2 connecting to silvasonic_redis:6379. Name or service not known.
+INFO     httpx:_client.py:1025 HTTP Request: GET http://testserver/dashboard "HTTP/1.1 200 OK"
+_______________________ test_dev_login_forbidden_in_prod _______________________
+
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x7f2810718ed0>
+
+    def test_dev_login_forbidden_in_prod(monkeypatch):
+        """Test that dev login is forbidden in production mode."""
+        # Patch the constant in the auth module
+        monkeypatch.setattr(auth, "SILVASONIC_ENV", "production")
+    
+        response = client.post("/auth/dev-login")
+    
+>       assert response.status_code == 403
+E       assert 200 == 403
+E        +  where 200 = <Response [200 OK]>.status_code
+
+tests/test_auth_routes.py:25: AssertionError
+----------------------------- Captured stdout call -----------------------------
+{"event": "{\"event\": \"DEV MODE: Bypassing authentication via Dev Login button\", \"logger\": \"silvasonic_dashboard.routers.auth\", \"level\": \"warning\", \"timestamp\": \"2026-01-29T19:01:39.405925Z\"}", "level": "warning", "logger": "silvasonic_dashboard.routers.auth", "timestamp": "2026-01-29T19:01:39.405988Z"}
+{"event": "HTTP Request: POST http://testserver/auth/dev-login \"HTTP/1.1 302 Found\"", "level": "info", "logger": "httpx", "timestamp": "2026-01-29T19:01:39.406509Z"}
+{"event": "Error getting Disk stats: [Errno 2] No such file or directory: '/data/recording'", "level": "error", "logger": "Dashboard.Services", "timestamp": "2026-01-29T19:01:39.407815Z", "exception": "Traceback (most recent call last):\n  File \"/mnt/data/dev/packages/silvasonic/containers/dashboard/src/silvasonic_dashboard/services/system.py\", line 48, in get_stats\n    disk = await run_in_executor(shutil.disk_usage, \"/data/recording\")\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/mnt/data/dev/packages/silvasonic/containers/dashboard/src/silvasonic_dashboard/services/common.py\", line 20, in run_in_executor\n    return await loop.run_in_executor(None, functools.partial(func, *args))\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/home/kyellsen/.local/share/uv/python/cpython-3.11.14-linux-x86_64-gnu/lib/python3.11/concurrent/futures/thread.py\", line 58, in run\n    result = self.fn(*self.args, **self.kwargs)\n             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/home/kyellsen/.local/share/uv/python/cpython-3.11.14-linux-x86_64-gnu/lib/python3.11/shutil.py\", line 1372, in disk_usage\n    st = os.statvfs(path)\n         ^^^^^^^^^^^^^^^^\nFileNotFoundError: [Errno 2] No such file or directory: '/data/recording'"}
+{"event": "Error getting BirdNet Stats: '>' not supported between instances of 'coroutine' and 'int'", "level": "error", "logger": "Dashboard.Services", "timestamp": "2026-01-29T19:01:39.411829Z", "exception": "Traceback (most recent call last):\n  File \"/mnt/data/dev/packages/silvasonic/containers/dashboard/src/silvasonic_dashboard/services/birdnet_stats.py\", line 65, in get_stats\n    if total_count > 0:\n       ^^^^^^^^^^^^^^^\nTypeError: '>' not supported between instances of 'coroutine' and 'int'"}
+Uploader status error: Error -2 connecting to silvasonic_redis:6379. Name or service not known.
+{"event": "Recorder status error: Error -2 connecting to silvasonic_redis:6379. Name or service not known.", "level": "error", "logger": "Dashboard.Services", "timestamp": "2026-01-29T19:01:47.124474Z"}
+{"event": "System metrics error: Error -2 connecting to silvasonic_redis:6379. Name or service not known.", "level": "error", "logger": "Dashboard.Services", "timestamp": "2026-01-29T19:01:50.874467Z", "exception": "Traceback (most recent call last):\n  File \"/mnt/data/dev/packages/silvasonic/.venv/lib/python3.11/site-packages/redis/connection.py\", line 855, in connect_check_health\n    sock = self.retry.call_with_retry(\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/mnt/data/dev/packages/silvasonic/.venv/lib/python3.11/site-packages/redis/retry.py\", line 116, in call_with_retry\n    return do()\n           ^^^^\n  File \"/mnt/data/dev/packages/silvasonic/.venv/lib/python3.11/site-packages/redis/connection.py\", line 856, in <lambda>\n    lambda: self._connect(), lambda error: self.disconnect(error)\n            ^^^^^^^^^^^^^^^\n  File \"/mnt/data/dev/packages/silvasonic/.venv/lib/python3.11/site-packages/redis/connection.py\", line 1270, in _connect\n    for res in socket.getaddrinfo(\n               ^^^^^^^^^^^^^^^^^^^\n  File \"/home/kyellsen/.local/share/uv/python/cpython-3.11.14-linux-x86_64-gnu/lib/python3.11/socket.py\", line 974, in getaddrinfo\n    for res in _socket.getaddrinfo(host, port, family, type, proto, flags):\n               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nsocket.gaierror: [Errno -2] Name or service not known\n\nDuring handling of the above exception, another exception occurred:\n\nTraceback (most recent call last):\n  File \"/mnt/data/dev/packages/silvasonic/containers/dashboard/src/silvasonic_dashboard/services/health.py\", line 36, in get_system_metrics\n    content = typing.cast(bytes | None, r.get(\"system:status\"))\n                                        ^^^^^^^^^^^^^^^^^^^^^^\n  File \"/mnt/data/dev/packages/silvasonic/.venv/lib/python3.11/site-packages/redis/commands/core.py\", line 1923, in get\n    return self.execute_command(\"GET\", name, keys=[name])\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/mnt/data/dev/packages/silvasonic/.venv/lib/python3.11/site-packages/redis/client.py\", line 657, in execute_command\n    return self._execute_command(*args, **options)\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/mnt/data/dev/packages/silvasonic/.venv/lib/python3.11/site-packages/redis/client.py\", line 663, in _execute_command\n    conn = self.connection or pool.get_connection()\n                              ^^^^^^^^^^^^^^^^^^^^^\n  File \"/mnt/data/dev/packages/silvasonic/.venv/lib/python3.11/site-packages/redis/utils.py\", line 196, in wrapper\n    return func(*args, **kwargs)\n           ^^^^^^^^^^^^^^^^^^^^^\n  File \"/mnt/data/dev/packages/silvasonic/.venv/lib/python3.11/site-packages/redis/connection.py\", line 2603, in get_connection\n    connection.connect()\n  File \"/mnt/data/dev/packages/silvasonic/.venv/lib/python3.11/site-packages/redis/connection.py\", line 846, in connect\n    self.connect_check_health(check_health=True)\n  File \"/mnt/data/dev/packages/silvasonic/.venv/lib/python3.11/site-packages/redis/connection.py\", line 863, in connect_check_health\n    raise ConnectionError(self._error_message(e))\nredis.exceptions.ConnectionError: Error -2 connecting to silvasonic_redis:6379. Name or service not known."}
+{"event": "HTTP Request: GET http://testserver/dashboard \"HTTP/1.1 200 OK\"", "level": "info", "logger": "httpx", "timestamp": "2026-01-29T19:01:50.877619Z"}
+------------------------------ Captured log call -------------------------------
+WARNING  silvasonic_dashboard.routers.auth:auth.py:38 {"event": "DEV MODE: Bypassing authentication via Dev Login button", "logger": "silvasonic_dashboard.routers.auth", "level": "warning", "timestamp": "2026-01-29T19:01:39.405925Z"}
+INFO     httpx:_client.py:1025 HTTP Request: POST http://testserver/auth/dev-login "HTTP/1.1 302 Found"
+ERROR    Dashboard.Services:system.py:53 Error getting Disk stats: [Errno 2] No such file or directory: '/data/recording'
+Traceback (most recent call last):
+  File "/mnt/data/dev/packages/silvasonic/containers/dashboard/src/silvasonic_dashboard/services/system.py", line 48, in get_stats
+    disk = await run_in_executor(shutil.disk_usage, "/data/recording")
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/mnt/data/dev/packages/silvasonic/containers/dashboard/src/silvasonic_dashboard/services/common.py", line 20, in run_in_executor
+    return await loop.run_in_executor(None, functools.partial(func, *args))
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/kyellsen/.local/share/uv/python/cpython-3.11.14-linux-x86_64-gnu/lib/python3.11/concurrent/futures/thread.py", line 58, in run
+    result = self.fn(*self.args, **self.kwargs)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/kyellsen/.local/share/uv/python/cpython-3.11.14-linux-x86_64-gnu/lib/python3.11/shutil.py", line 1372, in disk_usage
+    st = os.statvfs(path)
+         ^^^^^^^^^^^^^^^^
+FileNotFoundError: [Errno 2] No such file or directory: '/data/recording'
+ERROR    Dashboard.Services:birdnet_stats.py:76 Error getting BirdNet Stats: '>' not supported between instances of 'coroutine' and 'int'
+Traceback (most recent call last):
+  File "/mnt/data/dev/packages/silvasonic/containers/dashboard/src/silvasonic_dashboard/services/birdnet_stats.py", line 65, in get_stats
+    if total_count > 0:
+       ^^^^^^^^^^^^^^^
+TypeError: '>' not supported between instances of 'coroutine' and 'int'
+ERROR    Dashboard.Services:recorder.py:146 Recorder status error: Error -2 connecting to silvasonic_redis:6379. Name or service not known.
+ERROR    Dashboard.Services:health.py:41 System metrics error: Error -2 connecting to silvasonic_redis:6379. Name or service not known.
+Traceback (most recent call last):
+  File "/mnt/data/dev/packages/silvasonic/.venv/lib/python3.11/site-packages/redis/connection.py", line 855, in connect_check_health
+    sock = self.retry.call_with_retry(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/mnt/data/dev/packages/silvasonic/.venv/lib/python3.11/site-packages/redis/retry.py", line 116, in call_with_retry
+    return do()
+           ^^^^
+  File "/mnt/data/dev/packages/silvasonic/.venv/lib/python3.11/site-packages/redis/connection.py", line 856, in <lambda>
+    lambda: self._connect(), lambda error: self.disconnect(error)
+            ^^^^^^^^^^^^^^^
+  File "/mnt/data/dev/packages/silvasonic/.venv/lib/python3.11/site-packages/redis/connection.py", line 1270, in _connect
+    for res in socket.getaddrinfo(
+               ^^^^^^^^^^^^^^^^^^^
+  File "/home/kyellsen/.local/share/uv/python/cpython-3.11.14-linux-x86_64-gnu/lib/python3.11/socket.py", line 974, in getaddrinfo
+    for res in _socket.getaddrinfo(host, port, family, type, proto, flags):
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+socket.gaierror: [Errno -2] Name or service not known
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/mnt/data/dev/packages/silvasonic/containers/dashboard/src/silvasonic_dashboard/services/health.py", line 36, in get_system_metrics
+    content = typing.cast(bytes | None, r.get("system:status"))
+                                        ^^^^^^^^^^^^^^^^^^^^^^
+  File "/mnt/data/dev/packages/silvasonic/.venv/lib/python3.11/site-packages/redis/commands/core.py", line 1923, in get
+    return self.execute_command("GET", name, keys=[name])
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/mnt/data/dev/packages/silvasonic/.venv/lib/python3.11/site-packages/redis/client.py", line 657, in execute_command
+    return self._execute_command(*args, **options)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/mnt/data/dev/packages/silvasonic/.venv/lib/python3.11/site-packages/redis/client.py", line 663, in _execute_command
+    conn = self.connection or pool.get_connection()
+                              ^^^^^^^^^^^^^^^^^^^^^
+  File "/mnt/data/dev/packages/silvasonic/.venv/lib/python3.11/site-packages/redis/utils.py", line 196, in wrapper
+    return func(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "/mnt/data/dev/packages/silvasonic/.venv/lib/python3.11/site-packages/redis/connection.py", line 2603, in get_connection
+    connection.connect()
+  File "/mnt/data/dev/packages/silvasonic/.venv/lib/python3.11/site-packages/redis/connection.py", line 846, in connect
+    self.connect_check_health(check_health=True)
+  File "/mnt/data/dev/packages/silvasonic/.venv/lib/python3.11/site-packages/redis/connection.py", line 863, in connect_check_health
+    raise ConnectionError(self._error_message(e))
+redis.exceptions.ConnectionError: Error -2 connecting to silvasonic_redis:6379. Name or service not known.
+INFO     httpx:_client.py:1025 HTTP Request: GET http://testserver/dashboard "HTTP/1.1 200 OK"
+=============================== warnings summary ===============================
+containers/dashboard/tests/test_auth_routes.py::test_dev_login_success
+containers/dashboard/tests/test_auth_routes.py::test_dev_login_forbidden_in_prod
+  /mnt/data/dev/packages/silvasonic/.venv/lib/python3.11/site-packages/starlette/templating.py:162: DeprecationWarning: The `name` is not the first parameter anymore. The first parameter should be the `Request` instance.
+  Replace `TemplateResponse(name, {"request": request})` by `TemplateResponse(request, name)`.
+    warnings.warn(
+
+containers/dashboard/tests/test_auth_routes.py::test_dev_login_success
+containers/dashboard/tests/test_auth_routes.py::test_dev_login_forbidden_in_prod
+  /mnt/data/dev/packages/silvasonic/.venv/lib/python3.11/site-packages/_pytest/stash.py:108: RuntimeWarning: coroutine 'AsyncMockMixin._execute_mock_call' was never awaited
+    del self._storage[key]
+  Enable tracemalloc to get traceback where the object was allocated.
+  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ============================
+FAILED tests/test_auth_routes.py::test_dev_login_success - assert 200 == 302
+FAILED tests/test_auth_routes.py::test_dev_login_forbidden_in_prod - assert 2...
+======================== 2 failed, 4 warnings in 23.37s ========================

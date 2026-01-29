@@ -69,96 +69,12 @@ class DetectedDevice(BaseModel):
     usb_id: str | None = None  # e.g. "1b3f:2008"
 
 
-def get_usb_ids_from_modalias(card_idx: str) -> str | None:
-    """Try to extract USB vendor:product from modalias file.
-
-    Format of modalias: usb:v1234p5678d...
-    """
-    try:
-        # Check /sys/class/sound/cardX/device/modalias
-        modalias_path = Path(f"/sys/class/sound/card{card_idx}/device/modalias")
-        if modalias_path.exists():
-            content = modalias_path.read_text().strip()
-            # Match usb:vXXXXpYYYY
-            match = re.search(r"usb:v([0-9A-Fa-f]{4})p([0-9A-Fa-f]{4})", content)
-            if match:
-                vid = match.group(1).lower()
-                pid = match.group(2).lower()
-                return f"{vid}:{pid}"
-    except Exception:
-        pass
-    return None
-
-
 def get_alsa_devices() -> list[DetectedDevice]:
-    """Get list of ALSA capture devices with USB IDs."""
+    """Get list of ALSA capture devices using arecord -l."""
     devices = []
-
-    # 1. Parse /proc/asound/cards to map Card ID -> USB ID
-    # Format:
-    #  1 [Mic            ]: USB-Audio - RODE NT-USB Mini Mic
-    #                       RODE Microphones RODE NT-USB Mini Mic at usb-0000:01:00.0-1.3, full speed
-    card_usb_ids: dict[str, str] = {}
-    try:
-        if os.path.exists("/proc/asound/cards"):
-            with open("/proc/asound/cards") as f:
-                content = f.read()
-                # Match logic to find "at usb-..." and previous card index
-                # This is tricky with regex across lines.
-                # Let's iterate lines.
-                # current_card = None
-                for line in content.splitlines():
-                    # Line 1:  1 [Mic            ]: USB-Audio - RODE NT-USB Mini Mic
-                    m_card = re.match(r"\s*(\d+)\s+\[", line)
-                    if m_card:
-                        _current_card = m_card.group(1)
-                        continue
-
-                    # Line 2: ... at usb-0000:01:00.0-1.3, full speed
-                    # We can't easily get the USB Vendor:Product from this text alone without looking up lsusb
-                    # BUT, we can read /sys/class/sound/cardX/id or similar.
-                    pass
-
-        # Better approach: Iterate /sys/class/sound/card*
-        # /sys/class/sound/card1/device/idVendor
-        # /sys/class/sound/card1/device/idProduct
-        sys_sound = Path("/sys/class/sound")
-        if sys_sound.exists():
-            for card_path in sys_sound.glob("card*"):
-                card_name = card_path.name  # card1
-                if not card_name.startswith("card"):
-                    continue
-
-                card_idx = card_name.replace("card", "")
-
-                # Check if it's a USB device
-                device_link = card_path / "device"
-                vendor_path = device_link / "idVendor"
-                product_path = device_link / "idProduct"
-
-                if vendor_path.exists() and product_path.exists():
-                    try:
-                        vid = vendor_path.read_text().strip()
-                        pid = product_path.read_text().strip()
-                        resolved_usb_id = f"{vid}:{pid}"
-                        card_usb_ids[card_idx] = resolved_usb_id
-                        logger.debug(f"Resolved Card {card_idx} -> USB {resolved_usb_id}")
-                    except Exception:
-                        pass
-                else:
-                    # Fallback: Try modalias (more robust on some distros)
-                    modalias_id = get_usb_ids_from_modalias(card_idx)
-                    if modalias_id:
-                        card_usb_ids[card_idx] = modalias_id
-                        logger.debug(
-                            f"Resolved Card {card_idx} -> USB {modalias_id} (via modalias)"
-                        )
-
-    except Exception as e:
-        logger.warning(f"Failed to resolve USB IDs: {e}")
-
     try:
         result = subprocess.run(["arecord", "-l"], capture_output=True, text=True)
+        # Capture stdout and stderr
         output = result.stdout + result.stderr
 
         for line in output.split("\n"):
@@ -169,20 +85,14 @@ def get_alsa_devices() -> list[DetectedDevice]:
                 if match:
                     card_id = match.group(1)
                     device_id = match.group(2)
-
-                    # Only interest in capture devices (arecord -l lists them)
-                    # Construct hw address
                     hw_addr = f"plughw:{card_id},{device_id}"
-
-                    # Get USB ID if available
-                    usb_id: str | None = card_usb_ids.get(card_id)
 
                     devices.append(
                         DetectedDevice(
                             card_id=card_id,
                             hw_address=hw_addr,
                             description=line.strip(),
-                            usb_id=usb_id,
+                            usb_id=None,  # USB ID resolution removed for simplicity
                         )
                     )
     except Exception as e:
@@ -263,27 +173,6 @@ def find_matching_profile(
             card_id="mock", hw_address="mock", description="Mock Virtual Device"
         )
         return mock_profile, mock_device
-
-    # Handle Desktop/PulseAudio Mode (Virtual)
-    if force_profile and force_profile.lower() in ("desktop", "system", "pulse", "pipewire"):
-        logger.info(f"Desktop/System Audio Mode requested: '{force_profile}'")
-        desktop_profile = MicrophoneProfile(
-            name="Desktop Audio",
-            slug="desktop",
-            is_mock=False,  # It's real audio, just not hardware direct
-            audio=AudioConfig(sample_rate=48000),
-            recording=RecordingConfig(chunk_duration_seconds=10),
-            manufacturer="System",
-            model="PulseAudio/PipeWire",
-        )
-        # Use a "virtual" device descriptor
-        desktop_device = DetectedDevice(
-            card_id="pulse",
-            hw_address="default",
-            description="PulseAudio System Default",
-            usb_id=None,
-        )
-        return desktop_profile, desktop_device
 
     # Get available devices
     devices = get_alsa_devices()
@@ -450,13 +339,7 @@ def create_strategy_for_profile(
     profile: MicrophoneProfile, device: DetectedDevice
 ) -> "AudioStrategy":
     """Factory to create the appropriate AudioStrategy."""
-    from .strategies import AlsaStrategy, FileMockStrategy, PulseAudioStrategy
-
-    if profile.slug == "desktop" or profile.name == "Desktop Audio":
-        logger.info("Creating PulseAudioStrategy (System Default)")
-        return PulseAudioStrategy(
-            source_name=device.hw_address, sample_rate=profile.audio.sample_rate
-        )
+    from .strategies import AlsaStrategy, FileMockStrategy
 
     if profile.is_mock:
         # Check if it's the "File Injection" mock

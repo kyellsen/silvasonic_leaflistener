@@ -4,9 +4,15 @@ from typing import cast
 import structlog
 from fastapi import APIRouter, Form, Request
 from fastapi.responses import HTMLResponse, RedirectResponse, Response
-from silvasonic_dashboard.auth import COOKIE_NAME, SESSION_SECRET, verify_credentials
+from starlette.status import HTTP_302_FOUND, HTTP_403_FORBIDDEN
+
+from silvasonic_dashboard import auth as auth_logic
+from silvasonic_dashboard.auth import (
+    COOKIE_NAME,
+    SESSION_SECRET,
+    verify_credentials,
+)
 from silvasonic_dashboard.core.templates import render
-from starlette.status import HTTP_302_FOUND
 
 logger = structlog.get_logger()
 router = APIRouter()
@@ -14,7 +20,31 @@ router = APIRouter()
 
 @router.get("/auth/login", response_class=HTMLResponse)
 async def login_page(request: Request) -> Response:
-    return cast(Response, render(request, "login.html", {"request": request}))
+    return cast(
+        Response,
+        render(
+            request,
+            "login.html",
+            {"request": request, "is_dev_mode": auth_logic.SILVASONIC_ENV == "development"},
+        ),
+    )
+
+
+@router.post("/auth/dev-login")
+async def dev_login(request: Request) -> Response:
+    if auth_logic.SILVASONIC_ENV != "development":
+        return Response(content="Forbidden", status_code=HTTP_403_FORBIDDEN)
+
+    logger.warning("DEV MODE: Bypassing authentication via Dev Login button")
+    response = RedirectResponse(url="/dashboard", status_code=HTTP_302_FOUND)
+    response.set_cookie(
+        key=COOKIE_NAME,
+        value=SESSION_SECRET,
+        httponly=True,
+        samesite="lax",
+        secure=False,
+    )
+    return response
 
 
 @router.post("/auth/login")

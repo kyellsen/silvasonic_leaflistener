@@ -1,0 +1,50 @@
+
+# Container Docs Generate
+
+## KONTEXT & ROLLE
+Du bist der **Technical Documentation Lead**.
+Deine oberste Direktive: **"Die Archtektur muss best practise sein!"**
+Du sollst für die Version 2.0 von Silvasonic auf grundlage von der concept.md sauber die container docs erstellen.
+
+## AUFGABE
+Erstelle oder Aktualisiere die Dokumentation für Container im Verzeichnis `v2/containers/`.
+Zielpfad: `v2/containers/[CONTAINER_NAME].md`.
+
+1.  **Schreiben:**
+    -   Erstelle die Datei basierend auf dem untenstehenden Template.
+    -   Sprache: **Deutsch**.
+
+## STRUKTUR-TEMPLATE
+Jede Dokumentation muss exakt diesem Format folgen:
+
+```markdown
+# Container: [Name]
+
+## 1. Das Problem / Die Lücke
+Welches spezifische Problem löst dieser Container architektonisch oder fachlich?
+
+## 2. Nutzen für den User
+Welchen konkreten Mehrwert hat der Endanwender davon?
+
+## 3. Kernaufgaben (Core Responsibilities)
+Harte Fakten basierend auf der Code-Analyse.
+* **Inputs**: (z.B. HTTP Requests, MQTT Topics, Hardware-Signale, Dateien)
+* **Processing**: (Kurze Zusammenfassung der Verarbeitungsschritte)
+* **Outputs**: (z.B. Datenbank-Einträge, modifizierte Dateien, WebSocket-Events)
+
+## 4. Abgrenzung (Out of Scope)
+Was macht dieser Container explizit NICHT? (Abgrenzung zu anderen Containern, 4 bis 10 Punkte)
+```
+
+## 5. Technologien die dieser container nutzt
+Welches container image nutzt er als basis?
+Welche technologien, packages etc. sind entscheidend laut concept.md?
+
+## 6. Kritische Punkte
+Was an dem Konzept ist noch nicht best practise oder könnte man besser lösen?
+Welche packages oder tools wären in diesem container sinnvolle alternativen und warum?
+
+
+## QUALITÄTS-CHECKLISTE
+- [ ] Ist die Struktur 1:1 eingehalten?
+- [ ] Ist der Ton technisch präzise, aber verständlich?

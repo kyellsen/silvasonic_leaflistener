@@ -11,7 +11,7 @@ dependencies = [
     "numba>=0.57.0",
     "soundfile",
     "resampy>=0.4.0",
-    "birdnet-analyzer @ git+https://github.com/birdnet-team/BirdNET-Analyzer.git",
+    "birdnet-analyzer @ https://github.com/birdnet-team/BirdNET-Analyzer/archive/a5a9e1dae52736c6811842ad23317004404d7870.zip",
     "PyYAML",
     "sqlalchemy",
     "psycopg2-binary",

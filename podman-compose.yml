@@ -2,7 +2,7 @@ version: "3.8"
 
 services:
   tailscale:
-    image: tailscale/tailscale:latest
+    image: docker.io/tailscale/tailscale:latest
     container_name: silvasonic_tailscale
     hostname: ${HOSTNAME:-silvasonic-unit}
     environment:
@@ -17,15 +17,18 @@ services:
       - NET_ADMIN
       - NET_RAW
     restart: always
+    security_opt:
+      - label=disable
+    privileged: true
 
   gateway:
-    image: caddy:alpine
+    image: docker.io/library/caddy:alpine
     container_name: silvasonic_gateway
     restart: always
     ports:
-      - "80:80"
+      - "0.0.0.0:80:80"
     volumes:
-      - ./containers/gateway/Caddyfile:/etc/caddy/Caddyfile:ro
+      - ./containers/gateway/Caddyfile:/etc/caddy/Caddyfile:ro,z
 
   controller:
     build:
@@ -49,6 +52,16 @@ services:
       # 4. Logs
       - ${SILVASONIC_DATA_DIR}/logs:/var/log/silvasonic:z
       # 5. Shared Status (Live Config)
+    devices:
+      - /dev/snd:/dev/snd
+      - /dev/bus/usb:/dev/bus/usb
+    group_add:
+      - audio
+      - plugdev
+      - video
+      - dialout
+      - gpio
+      - render
     restart: always
 
 
@@ -62,6 +75,7 @@ services:
       - PUID=1000
       - PGID=1000
       - POSTGRES_HOST=db
+      - PYTHONPATH=/app/src
     volumes:
       - ./containers/uploader/src:/app/src:z
       - ${SILVASONIC_DATA_DIR}/recorder/recordings:/data/recording:ro
@@ -80,6 +94,8 @@ services:
     container_name: silvasonic_healthchecker
     restart: always
     env_file: .env
+    environment:
+      - PYTHONPATH=/app/src
     volumes:
       - ./containers/healthchecker/src:/app/src:z
       - ${SILVASONIC_DATA_DIR}/config:/config:z
@@ -144,6 +160,7 @@ services:
     env_file: .env
     environment:
       - PYTHONUNBUFFERED=1
+      - PYTHONPATH=/app/src
     ports: []
     volumes:
       - ./containers/dashboard/src:/app/src:z
@@ -179,8 +196,8 @@ services:
       - ./containers/db/init:/docker-entrypoint-initdb.d:z
       - ./containers/db/postgresql.conf:/etc/postgresql/postgresql.conf:z
 
-      - ./containers/db/scripts:/scripts:z
-    command: ["/scripts/entrypoint_wrapper.sh", "postgres", "-c", "config_file=/etc/postgresql/postgresql.conf"]
+      - ./containers/db/postgresql.conf:/etc/postgresql/postgresql.conf:z
+    command: ["postgres", "-c", "config_file=/etc/postgresql/postgresql.conf"]
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U silvasonic"]
       interval: 10s
