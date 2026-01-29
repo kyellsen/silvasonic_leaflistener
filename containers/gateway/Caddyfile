@@ -1,10 +1,25 @@
-:80 {
-	# API routes forwarded to Dashboard (as requested)
-	reverse_proxy /api/* silvasonic_dashboard:8080
+{
+	# Global options
+	# email {$ACME_EMAIL} # Optional: For Let's Encrypt notifications
+}
 
-	# Live sound routes forwarded to Livesound
-	reverse_proxy /live/* silvasonic_livesound:8000
+{$DOMAIN} {
+	log
 
-	# Default route (Dashboard)
-	reverse_proxy /* silvasonic_dashboard:8080
+	# Livesound (Icecast)
+	# Mapped to /stream to keep root clean for Dashboard.
+	# We strip the prefix so Icecast receives requests at its root (or mountpoints).
+	handle_path /stream* {
+		reverse_proxy silvasonic_livesound:8000
+	}
+
+	# Dashboard (Default)
+	handle /* {
+		reverse_proxy silvasonic_dashboard:8000
+	}
+
+	# Basic Auth (Optional - Uncomment and set env vars if needed)
+	# basic_auth {
+	# 	{$BASIC_AUTH_USER} {$BASIC_AUTH_PASS}
+	# }
 }

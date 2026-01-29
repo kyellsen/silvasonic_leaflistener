@@ -1,0 +1,281 @@
+cp: cannot create regular file '/app/src/silvasonic_dashboard/static/css/styles.css': Permission denied
+cp: cannot create regular file '/app/src/silvasonic_dashboard/static/css/styles.css': Permission denied
+cp: cannot create regular file '/app/src/silvasonic_dashboard/static/css/styles.css': Permission denied
+cp: cannot create regular file '/app/src/silvasonic_dashboard/static/css/styles.css': Permission denied
+cp: cannot create regular file '/app/src/silvasonic_dashboard/static/css/styles.css': Permission denied
+cp: cannot create regular file '/app/src/silvasonic_dashboard/static/css/styles.css': Permission denied
+cp: cannot create regular file '/app/src/silvasonic_dashboard/static/css/styles.css': Permission denied
+cp: cannot create regular file '/app/src/silvasonic_dashboard/static/css/styles.css': Permission denied
+cp: cannot create regular file '/app/src/silvasonic_dashboard/static/css/styles.css': Permission denied
+cp: cannot create regular file '/app/src/silvasonic_dashboard/static/css/styles.css': Permission denied
+cp: cannot create regular file '/app/src/silvasonic_dashboard/static/css/styles.css': Permission denied
+cp: cannot create regular file '/app/src/silvasonic_dashboard/static/css/styles.css': Permission denied
+cp: cannot create regular file '/app/src/silvasonic_dashboard/static/css/styles.css': Permission denied
+cp: cannot create regular file '/app/src/silvasonic_dashboard/static/css/styles.css': Permission denied
+cp: cannot create regular file '/app/src/silvasonic_dashboard/static/css/styles.css': Permission denied
+cp: cannot create regular file '/app/src/silvasonic_dashboard/static/css/styles.css': Permission denied
+cp: cannot create regular file '/app/src/silvasonic_dashboard/static/css/styles.css': Permission denied
+cp: cannot create regular file '/app/src/silvasonic_dashboard/static/css/styles.css': Permission denied
+cp: cannot create regular file '/app/src/silvasonic_dashboard/static/css/styles.css': Permission denied
+cp: cannot create regular file '/app/src/silvasonic_dashboard/static/css/styles.css': Permission denied
+cp: cannot create regular file '/app/src/silvasonic_dashboard/static/css/styles.css': Permission denied
+cp: cannot create regular file '/app/src/silvasonic_dashboard/static/css/styles.css': Permission denied
+cp: cannot create regular file '/app/src/silvasonic_dashboard/static/css/styles.css': Permission denied
+cp: cannot create regular file '/app/src/silvasonic_dashboard/static/css/styles.css': Permission denied
+cp: cannot create regular file '/app/src/silvasonic_dashboard/static/css/styles.css': Permission denied
+cp: cannot create regular file '/app/src/silvasonic_dashboard/static/css/styles.css': Permission denied
+cp: cannot create regular file '/app/src/silvasonic_dashboard/static/css/styles.css': Permission denied
+cp: cannot create regular file '/app/src/silvasonic_dashboard/static/css/styles.css': Permission denied
+cp: cannot create regular file '/app/src/silvasonic_dashboard/static/css/styles.css': Permission denied
+cp: cannot create regular file '/app/src/silvasonic_dashboard/static/css/styles.css': Permission denied
+cp: cannot create regular file '/app/src/silvasonic_dashboard/static/css/styles.css': Permission denied
+cp: cannot create regular file '/app/src/silvasonic_dashboard/static/css/styles.css': Permission denied
+cp: cannot create regular file '/app/src/silvasonic_dashboard/static/css/styles.css': Permission denied
+cp: cannot create regular file '/app/src/silvasonic_dashboard/static/css/styles.css': Permission denied
+cp: cannot create regular file '/app/src/silvasonic_dashboard/static/css/styles.css': Permission denied
+cp: cannot create regular file '/app/src/silvasonic_dashboard/static/css/styles.css': Permission denied
+cp: cannot create regular file '/app/src/silvasonic_dashboard/static/css/styles.css': Permission denied
+cp: cannot create regular file '/app/src/silvasonic_dashboard/static/css/styles.css': Permission denied
+cp: cannot create regular file '/app/src/silvasonic_dashboard/static/css/styles.css': Permission denied
+cp: cannot create regular file '/app/src/silvasonic_dashboard/static/css/styles.css': Permission denied
+cp: cannot create regular file '/app/src/silvasonic_dashboard/static/css/styles.css': Permission denied
+cp: cannot create regular file '/app/src/silvasonic_dashboard/static/css/styles.css': Permission denied
+cp: cannot create regular file '/app/src/silvasonic_dashboard/static/css/styles.css': Permission denied
+cp: cannot create regular file '/app/src/silvasonic_dashboard/static/css/styles.css': Permission denied
+cp: cannot create regular file '/app/src/silvasonic_dashboard/static/css/styles.css': Permission denied
+cp: cannot create regular file '/app/src/silvasonic_dashboard/static/css/styles.css': Permission denied
+cp: cannot create regular file '/app/src/silvasonic_dashboard/static/css/styles.css': Permission denied
+cp: cannot create regular file '/app/src/silvasonic_dashboard/static/css/styles.css': Permission denied
+cp: cannot create regular file '/app/src/silvasonic_dashboard/static/css/styles.css': Permission denied
+cp: cannot create regular file '/app/src/silvasonic_dashboard/static/css/styles.css': Permission denied
+cp: cannot create regular file '/app/src/silvasonic_dashboard/static/css/styles.css': Permission denied
+cp: cannot create regular file '/app/src/silvasonic_dashboard/static/css/styles.css': Permission denied
+cp: cannot create regular file '/app/src/silvasonic_dashboard/static/css/styles.css': Permission denied
+cp: cannot create regular file '/app/src/silvasonic_dashboard/static/css/styles.css': Permission denied
+cp: cannot create regular file '/app/src/silvasonic_dashboard/static/css/styles.css': Permission denied
+cp: cannot create regular file '/app/src/silvasonic_dashboard/static/css/styles.css': Permission denied
+cp: cannot create regular file '/app/src/silvasonic_dashboard/static/css/styles.css': Permission denied
+cp: cannot create regular file '/app/src/silvasonic_dashboard/static/css/styles.css': Permission denied
+cp: cannot create regular file '/app/src/silvasonic_dashboard/static/css/styles.css': Permission denied
+cp: cannot create regular file '/app/src/silvasonic_dashboard/static/css/styles.css': Permission denied
+cp: cannot create regular file '/app/src/silvasonic_dashboard/static/css/styles.css': Permission denied
+cp: cannot create regular file '/app/src/silvasonic_dashboard/static/css/styles.css': Permission denied
+cp: cannot create regular file '/app/src/silvasonic_dashboard/static/css/styles.css': Permission denied
+cp: cannot create regular file '/app/src/silvasonic_dashboard/static/css/styles.css': Permission denied
+cp: cannot create regular file '/app/src/silvasonic_dashboard/static/css/styles.css': Permission denied
+cp: cannot create regular file '/app/src/silvasonic_dashboard/static/css/styles.css': Permission denied
+cp: cannot create regular file '/app/src/silvasonic_dashboard/static/css/styles.css': Permission denied
+cp: cannot create regular file '/app/src/silvasonic_dashboard/static/css/styles.css': Permission denied
+cp: cannot create regular file '/app/src/silvasonic_dashboard/static/css/styles.css': Permission denied
+cp: cannot create regular file '/app/src/silvasonic_dashboard/static/css/styles.css': Permission denied
+cp: cannot create regular file '/app/src/silvasonic_dashboard/static/css/styles.css': Permission denied
+cp: cannot create regular file '/app/src/silvasonic_dashboard/static/css/styles.css': Permission denied
+cp: cannot create regular file '/app/src/silvasonic_dashboard/static/css/styles.css': Permission denied
+cp: cannot create regular file '/app/src/silvasonic_dashboard/static/css/styles.css': Permission denied
+cp: cannot create regular file '/app/src/silvasonic_dashboard/static/css/styles.css': Permission denied
+cp: cannot create regular file '/app/src/silvasonic_dashboard/static/css/styles.css': Permission denied
+cp: cannot create regular file '/app/src/silvasonic_dashboard/static/css/styles.css': Permission denied
+cp: cannot create regular file '/app/src/silvasonic_dashboard/static/css/styles.css': Permission denied
+cp: cannot create regular file '/app/src/silvasonic_dashboard/static/css/styles.css': Permission denied
+Restoring built assets...
+Copying styles.css to /app/src/silvasonic_dashboard/static/css/
+cp: cannot create regular file '/app/src/silvasonic_dashboard/static/css/styles.css': Permission denied
+Restoring built assets...
+Copying styles.css to /app/src/silvasonic_dashboard/static/css/
+cp: cannot create regular file '/app/src/silvasonic_dashboard/static/css/styles.css': Permission denied
+Restoring built assets...
+Copying styles.css to /app/src/silvasonic_dashboard/static/css/
+cp: cannot create regular file '/app/src/silvasonic_dashboard/static/css/styles.css': Permission denied
+Restoring built assets...
+Copying styles.css to /app/src/silvasonic_dashboard/static/css/
+cp: cannot create regular file '/app/src/silvasonic_dashboard/static/css/styles.css': Permission denied
+Restoring built assets...
+Copying styles.css to /app/src/silvasonic_dashboard/static/css/
+cp: cannot create regular file '/app/src/silvasonic_dashboard/static/css/styles.css': Permission denied
+Restoring built assets...
+Copying styles.css to /app/src/silvasonic_dashboard/static/css/
+cp: cannot create regular file '/app/src/silvasonic_dashboard/static/css/styles.css': Permission denied
+Restoring built assets...
+Copying styles.css to /app/src/silvasonic_dashboard/static/css/
+cp: cannot create regular file '/app/src/silvasonic_dashboard/static/css/styles.css': Permission denied
+Restoring built assets...
+Copying styles.css to /app/src/silvasonic_dashboard/static/css/
+cp: cannot create regular file '/app/src/silvasonic_dashboard/static/css/styles.css': Permission denied
+Restoring built assets...
+Copying styles.css to /app/src/silvasonic_dashboard/static/css/
+cp: cannot create regular file '/app/src/silvasonic_dashboard/static/css/styles.css': Permission denied
+Restoring built assets...
+Copying styles.css to /app/src/silvasonic_dashboard/static/css/
+cp: cannot create regular file '/app/src/silvasonic_dashboard/static/css/styles.css': Permission denied
+Restoring built assets...
+Copying styles.css to /app/src/silvasonic_dashboard/static/css/
+cp: cannot create regular file '/app/src/silvasonic_dashboard/static/css/styles.css': Permission denied
+Restoring built assets...
+Copying styles.css to /app/src/silvasonic_dashboard/static/css/
+cp: cannot create regular file '/app/src/silvasonic_dashboard/static/css/styles.css': Permission denied
+Restoring built assets...
+Copying styles.css to /app/src/silvasonic_dashboard/static/css/
+cp: cannot create regular file '/app/src/silvasonic_dashboard/static/css/styles.css': Permission denied
+Restoring built assets...
+Copying styles.css to /app/src/silvasonic_dashboard/static/css/
+cp: cannot create regular file '/app/src/silvasonic_dashboard/static/css/styles.css': Permission denied
+Restoring built assets...
+Copying styles.css to /app/src/silvasonic_dashboard/static/css/
+cp: cannot create regular file '/app/src/silvasonic_dashboard/static/css/styles.css': Permission denied
+Restoring built assets...
+Copying styles.css to /app/src/silvasonic_dashboard/static/css/
+cp: cannot create regular file '/app/src/silvasonic_dashboard/static/css/styles.css': Permission denied
+Restoring built assets...
+Copying styles.css to /app/src/silvasonic_dashboard/static/css/
+cp: cannot create regular file '/app/src/silvasonic_dashboard/static/css/styles.css': Permission denied
+Restoring built assets...
+Copying styles.css to /app/src/silvasonic_dashboard/static/css/
+cp: cannot create regular file '/app/src/silvasonic_dashboard/static/css/styles.css': Permission denied
+Restoring built assets...
+Copying styles.css to /app/src/silvasonic_dashboard/static/css/
+cp: cannot create regular file '/app/src/silvasonic_dashboard/static/css/styles.css': Permission denied
+Restoring built assets...
+Copying styles.css to /app/src/silvasonic_dashboard/static/css/
+cp: cannot create regular file '/app/src/silvasonic_dashboard/static/css/styles.css': Permission denied
+Restoring built assets...
+Copying styles.css to /app/src/silvasonic_dashboard/static/css/
+cp: cannot create regular file '/app/src/silvasonic_dashboard/static/css/styles.css': Permission denied
+Restoring built assets...
+Copying styles.css to /app/src/silvasonic_dashboard/static/css/
+cp: cannot create regular file '/app/src/silvasonic_dashboard/static/css/styles.css': Permission denied
+Restoring built assets...
+Copying styles.css to /app/src/silvasonic_dashboard/static/css/
+cp: cannot create regular file '/app/src/silvasonic_dashboard/static/css/styles.css': Permission denied
+Restoring built assets...
+Copying styles.css to /app/src/silvasonic_dashboard/static/css/
+cp: cannot create regular file '/app/src/silvasonic_dashboard/static/css/styles.css': Permission denied
+Restoring built assets...
+Copying styles.css to /app/src/silvasonic_dashboard/static/css/
+cp: cannot create regular file '/app/src/silvasonic_dashboard/static/css/styles.css': Permission denied
+Restoring built assets...
+Copying styles.css to /app/src/silvasonic_dashboard/static/css/
+cp: cannot create regular file '/app/src/silvasonic_dashboard/static/css/styles.css': Permission denied
+Restoring built assets...
+Copying styles.css to /app/src/silvasonic_dashboard/static/css/
+cp: cannot create regular file '/app/src/silvasonic_dashboard/static/css/styles.css': Permission denied
+Restoring built assets...
+Copying styles.css to /app/src/silvasonic_dashboard/static/css/
+cp: cannot create regular file '/app/src/silvasonic_dashboard/static/css/styles.css': Permission denied
+Restoring built assets...
+Copying styles.css to /app/src/silvasonic_dashboard/static/css/
+cp: cannot create regular file '/app/src/silvasonic_dashboard/static/css/styles.css': Permission denied
+Restoring built assets...
+Copying styles.css to /app/src/silvasonic_dashboard/static/css/
+cp: cannot create regular file '/app/src/silvasonic_dashboard/static/css/styles.css': Permission denied
+Restoring built assets...
+Copying styles.css to /app/src/silvasonic_dashboard/static/css/
+cp: cannot create regular file '/app/src/silvasonic_dashboard/static/css/styles.css': Permission denied
+Restoring built assets...
+Copying styles.css to /app/src/silvasonic_dashboard/static/css/
+cp: cannot create regular file '/app/src/silvasonic_dashboard/static/css/styles.css': Permission denied
+Restoring built assets...
+Copying styles.css to /app/src/silvasonic_dashboard/static/css/
+cp: cannot create regular file '/app/src/silvasonic_dashboard/static/css/styles.css': Permission denied
+Restoring built assets...
+Copying styles.css to /app/src/silvasonic_dashboard/static/css/
+cp: cannot create regular file '/app/src/silvasonic_dashboard/static/css/styles.css': Permission denied
+Restoring built assets...
+Copying styles.css to /app/src/silvasonic_dashboard/static/css/
+cp: cannot create regular file '/app/src/silvasonic_dashboard/static/css/styles.css': Permission denied
+Restoring built assets...
+Copying styles.css to /app/src/silvasonic_dashboard/static/css/
+cp: cannot create regular file '/app/src/silvasonic_dashboard/static/css/styles.css': Permission denied
+Restoring built assets...
+Copying styles.css to /app/src/silvasonic_dashboard/static/css/
+cp: cannot create regular file '/app/src/silvasonic_dashboard/static/css/styles.css': Permission denied
+Restoring built assets...
+Copying styles.css to /app/src/silvasonic_dashboard/static/css/
+cp: cannot create regular file '/app/src/silvasonic_dashboard/static/css/styles.css': Permission denied
+Restoring built assets...
+Copying styles.css to /app/src/silvasonic_dashboard/static/css/
+cp: cannot create regular file '/app/src/silvasonic_dashboard/static/css/styles.css': Permission denied
+Restoring built assets...
+Copying styles.css to /app/src/silvasonic_dashboard/static/css/
+cp: cannot create regular file '/app/src/silvasonic_dashboard/static/css/styles.css': Permission denied
+Restoring built assets...
+Copying styles.css to /app/src/silvasonic_dashboard/static/css/
+cp: cannot create regular file '/app/src/silvasonic_dashboard/static/css/styles.css': Permission denied
+Restoring built assets...
+Copying styles.css to /app/src/silvasonic_dashboard/static/css/
+cp: cannot create regular file '/app/src/silvasonic_dashboard/static/css/styles.css': Permission denied
+Restoring built assets...
+Copying styles.css to /app/src/silvasonic_dashboard/static/css/
+cp: cannot create regular file '/app/src/silvasonic_dashboard/static/css/styles.css': Permission denied
+Restoring built assets...
+Copying styles.css to /app/src/silvasonic_dashboard/static/css/
+cp: cannot create regular file '/app/src/silvasonic_dashboard/static/css/styles.css': Permission denied
+Restoring built assets...
+Copying styles.css to /app/src/silvasonic_dashboard/static/css/
+cp: cannot create regular file '/app/src/silvasonic_dashboard/static/css/styles.css': Permission denied
+cp: cannot create regular file '/app/src/silvasonic_dashboard/static/css/styles.css': Permission denied
+cp: cannot create regular file '/app/src/silvasonic_dashboard/static/css/styles.css': Permission denied
+cp: cannot create regular file '/app/src/silvasonic_dashboard/static/css/styles.css': Permission denied
+cp: cannot create regular file '/app/src/silvasonic_dashboard/static/css/styles.css': Permission denied
+cp: cannot create regular file '/app/src/silvasonic_dashboard/static/css/styles.css': Permission denied
+cp: cannot create regular file '/app/src/silvasonic_dashboard/static/css/styles.css': Permission denied
+cp: cannot create regular file '/app/src/silvasonic_dashboard/static/css/styles.css': Permission denied
+cp: cannot create regular file '/app/src/silvasonic_dashboard/static/css/styles.css': Permission denied
+cp: cannot create regular file '/app/src/silvasonic_dashboard/static/css/styles.css': Permission denied
+cp: cannot create regular file '/app/src/silvasonic_dashboard/static/css/styles.css': Permission denied
+cp: cannot create regular file '/app/src/silvasonic_dashboard/static/css/styles.css': Permission denied
+cp: cannot create regular file '/app/src/silvasonic_dashboard/static/css/styles.css': Permission denied
+cp: cannot create regular file '/app/src/silvasonic_dashboard/static/css/styles.css': Permission denied
+cp: cannot create regular file '/app/src/silvasonic_dashboard/static/css/styles.css': Permission denied
+cp: cannot create regular file '/app/src/silvasonic_dashboard/static/css/styles.css': Permission denied
+cp: cannot create regular file '/app/src/silvasonic_dashboard/static/css/styles.css': Permission denied
+cp: cannot create regular file '/app/src/silvasonic_dashboard/static/css/styles.css': Permission denied
+cp: cannot create regular file '/app/src/silvasonic_dashboard/static/css/styles.css': Permission denied
+cp: cannot create regular file '/app/src/silvasonic_dashboard/static/css/styles.css': Permission denied
+cp: cannot create regular file '/app/src/silvasonic_dashboard/static/css/styles.css': Permission denied
+cp: cannot create regular file '/app/src/silvasonic_dashboard/static/css/styles.css': Permission denied
+cp: cannot create regular file '/app/src/silvasonic_dashboard/static/css/styles.css': Permission denied
+cp: cannot create regular file '/app/src/silvasonic_dashboard/static/css/styles.css': Permission denied
+cp: cannot create regular file '/app/src/silvasonic_dashboard/static/css/styles.css': Permission denied
+cp: cannot create regular file '/app/src/silvasonic_dashboard/static/css/styles.css': Permission denied
+cp: cannot create regular file '/app/src/silvasonic_dashboard/static/css/styles.css': Permission denied
+cp: cannot create regular file '/app/src/silvasonic_dashboard/static/css/styles.css': Permission denied
+cp: cannot create regular file '/app/src/silvasonic_dashboard/static/css/styles.css': Permission denied
+cp: cannot create regular file '/app/src/silvasonic_dashboard/static/css/styles.css': Permission denied
+cp: cannot create regular file '/app/src/silvasonic_dashboard/static/css/styles.css': Permission denied
+cp: cannot create regular file '/app/src/silvasonic_dashboard/static/css/styles.css': Permission denied
+cp: cannot create regular file '/app/src/silvasonic_dashboard/static/css/styles.css': Permission denied
+cp: cannot create regular file '/app/src/silvasonic_dashboard/static/css/styles.css': Permission denied
+cp: cannot create regular file '/app/src/silvasonic_dashboard/static/css/styles.css': Permission denied
+cp: cannot create regular file '/app/src/silvasonic_dashboard/static/css/styles.css': Permission denied
+cp: cannot create regular file '/app/src/silvasonic_dashboard/static/css/styles.css': Permission denied
+cp: cannot create regular file '/app/src/silvasonic_dashboard/static/css/styles.css': Permission denied
+cp: cannot create regular file '/app/src/silvasonic_dashboard/static/css/styles.css': Permission denied
+cp: cannot create regular file '/app/src/silvasonic_dashboard/static/css/styles.css': Permission denied
+cp: cannot create regular file '/app/src/silvasonic_dashboard/static/css/styles.css': Permission denied
+cp: cannot create regular file '/app/src/silvasonic_dashboard/static/css/styles.css': Permission denied
+cp: cannot create regular file '/app/src/silvasonic_dashboard/static/css/styles.css': Permission denied
+cp: cannot create regular file '/app/src/silvasonic_dashboard/static/css/styles.css': Permission denied
+cp: cannot create regular file '/app/src/silvasonic_dashboard/static/css/styles.css': Permission denied
+cp: cannot create regular file '/app/src/silvasonic_dashboard/static/css/styles.css': Permission denied
+cp: cannot create regular file '/app/src/silvasonic_dashboard/static/css/styles.css': Permission denied
+cp: cannot create regular file '/app/src/silvasonic_dashboard/static/css/styles.css': Permission denied
+cp: cannot create regular file '/app/src/silvasonic_dashboard/static/css/styles.css': Permission denied
+cp: cannot create regular file '/app/src/silvasonic_dashboard/static/css/styles.css': Permission denied
+cp: cannot create regular file '/app/src/silvasonic_dashboard/static/css/styles.css': Permission denied
+cp: cannot create regular file '/app/src/silvasonic_dashboard/static/css/styles.css': Permission denied
+cp: cannot create regular file '/app/src/silvasonic_dashboard/static/css/styles.css': Permission denied
+cp: cannot create regular file '/app/src/silvasonic_dashboard/static/css/styles.css': Permission denied
+cp: cannot create regular file '/app/src/silvasonic_dashboard/static/css/styles.css': Permission denied
+cp: cannot create regular file '/app/src/silvasonic_dashboard/static/css/styles.css': Permission denied
+cp: cannot create regular file '/app/src/silvasonic_dashboard/static/css/styles.css': Permission denied
+cp: cannot create regular file '/app/src/silvasonic_dashboard/static/css/styles.css': Permission denied
+cp: cannot create regular file '/app/src/silvasonic_dashboard/static/css/styles.css': Permission denied
+cp: cannot create regular file '/app/src/silvasonic_dashboard/static/css/styles.css': Permission denied
+cp: cannot create regular file '/app/src/silvasonic_dashboard/static/css/styles.css': Permission denied
+cp: cannot create regular file '/app/src/silvasonic_dashboard/static/css/styles.css': Permission denied
+cp: cannot create regular file '/app/src/silvasonic_dashboard/static/css/styles.css': Permission denied
+cp: cannot create regular file '/app/src/silvasonic_dashboard/static/css/styles.css': Permission denied
+cp: cannot create regular file '/app/src/silvasonic_dashboard/static/css/styles.css': Permission denied
+cp: cannot create regular file '/app/src/silvasonic_dashboard/static/css/styles.css': Permission denied
+cp: cannot create regular file '/app/src/silvasonic_dashboard/static/css/styles.css': Permission denied
+cp: cannot create regular file '/app/src/silvasonic_dashboard/static/css/styles.css': Permission denied

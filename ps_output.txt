@@ -1,0 +1,13 @@
+CONTAINER ID  IMAGE                                      COMMAND               CREATED         STATUS                              PORTS                                                        NAMES
+8bca207409a1  docker.io/tailscale/tailscale:latest       /usr/local/bin/co...  8 minutes ago   Up 3 seconds                                                                                     silvasonic_tailscale
+315c1dd24568  localhost/silvasonic-controller:latest     python -m silvaso...  8 minutes ago   Created                                                                                          silvasonic_controller
+9350db9edd0b  localhost/silvasonic-uploader:latest       python3 -m silvas...  8 minutes ago   Up 1 second                         0.0.0.0:8001->8001/tcp                                       silvasonic_uploader
+5ba983f1e09f  localhost/silvasonic-healthchecker:latest  python -m silvaso...  8 minutes ago   Up 8 minutes                                                                                     silvasonic_healthchecker
+55b36ce20ba4  localhost/silvasonic-birdnet:latest                              8 minutes ago   Exited (0) 8 minutes ago                                                                         silvasonic_birdnet_template
+6520d9ba0d48  localhost/silvasonic-recorder:latest                             8 minutes ago   Exited (0) 8 minutes ago                                                                         silvasonic_recorder_template
+65fa8ed0df26  localhost/silvasonic-livesound:latest      python -m silvaso...  8 minutes ago   Up 8 minutes                        0.0.0.0:8010->8010/udp                                       silvasonic_livesound
+ee931179eeb8  localhost/silvasonic-weather:latest                              8 minutes ago   Exited (0) 8 minutes ago                                                                         silvasonic_weather_template
+b3a5dfc1b8e2  docker.io/library/postgres:15-alpine       postgres -c confi...  8 minutes ago   Created                             127.0.0.1:5432->5432/tcp                                     silvasonic_db
+9f7c77ac0a5c  docker.io/library/redis:7-alpine           redis-server          8 minutes ago   Exited (1) 1 second ago (starting)  0.0.0.0:6379->6379/tcp                                       silvasonic_redis
+4df9046b343c  docker.io/library/caddy:alpine             caddy run --confi...  38 seconds ago  Up 39 seconds                       0.0.0.0:80->80/tcp, 0.0.0.0:443->443/tcp, 2019/tcp, 443/udp  silvasonic_gateway
+15f497ff224a  localhost/silvasonic-dashboard:latest      uvicorn silvasoni...  38 seconds ago  Exited (1) 1 second ago                                                                          silvasonic_dashboard
