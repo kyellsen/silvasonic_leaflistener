@@ -119,7 +119,7 @@ From your workstation:
 ```bash
 cd /mnt/data/dev/packages/silvasonic
 # Note: Use sudo if you are accessing system-level podman sockets or config
-sudo ./setup/install.sh
+./setup/install.sh
 ```
 
 **What happens:**

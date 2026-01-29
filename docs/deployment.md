@@ -50,17 +50,17 @@ Set your Cloud credentials (Nextcloud/Rclone) and generic settings.
 
 ## 4. Build & Run
 
-> ⚠️ **Important**: Use `sudo` with Podman for audio device access!
+> ⚠️ **Important**: Ensure the user `pi` is in the `audio` group (handled by installer).
 
 ```bash
 # Build and start
-sudo podman-compose -f podman-compose.yml up --build -d
+podman-compose -f podman-compose.yml up --build -d
 
 # Check status
-sudo podman ps
+podman ps
 
 # View logs
-sudo podman logs -f silvasonic_recorder
+podman logs -f silvasonic_recorder
 ```
 
 ## 5. Verify Recordings
@@ -84,15 +84,15 @@ The system uses a strict hierarchy: **Database > Environment Variables > Config 
 ### "No audio device found"
 
 1. Check if microphone is connected: `arecord -l`
-2. Ensure you're using `sudo` with Podman.
+2. Ensure usage of the `audio` group.
 
 ### Permission Denied
 
 Ensure directories in `/mnt/data/dev_workspaces/silvasonic` utilize the correct SELinux labels if on Fedora/CentOS, or have correct ownership.
 
 ```bash
-# Force ownership
-sudo chown -R 1000:1000 /mnt/data/dev_workspaces/silvasonic
+# Ensure ownership by current user
+sudo chown -R $USER:$USER /mnt/data/dev_workspaces/silvasonic
 ```
 
 ## Contributing Microphone Profiles

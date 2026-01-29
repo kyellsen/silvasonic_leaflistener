@@ -40,7 +40,7 @@ echo -e "${BLUE}🛡️  Starting E2E Tests against ${TARGET_URL}...${NC}"
 echo -e "${BLUE}▶ Checking connectivity...${NC}"
 if ! curl -s --head --request GET "${TARGET_URL}" > /dev/null; then
     echo -e "${RED}❌ Error: Cannot reach ${TARGET_URL}${NC}"
-    echo -e "${RED}Please ensure your stack is running (e.g., sudo podman compose up)${NC}"
+    echo -e "${RED}Please ensure your stack is running (e.g., podman compose up)${NC}"
     exit 1
 fi
 echo -e "${GREEN}✅ Target is reachable${NC}"

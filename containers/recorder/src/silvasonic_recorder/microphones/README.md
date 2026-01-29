@@ -55,8 +55,8 @@ When the recorder starts, it:
 4. Test locally:
 
    ```bash
-   sudo podman-compose -f podman-compose.yml up --build -d
-   sudo podman logs silvasonic_recorder
+   podman-compose -f podman-compose.yml up --build -d
+   podman logs silvasonic_recorder
    ```
 
 5. Submit a Pull Request!

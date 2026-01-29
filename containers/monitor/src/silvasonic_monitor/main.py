@@ -126,7 +126,7 @@ class Monitor:
             status_map = {}
             keys = self.redis.keys("status:*")
 
-            for k in keys:
+            for k in keys:  # type: ignore[union-attr]
                 try:
                     key_str = k.decode()
                     parts = key_str.split(":")
@@ -139,10 +139,10 @@ class Monitor:
                         continue
 
                     try:
-                        data = json.loads(content)
+                        data = json.loads(content)  # type: ignore[arg-type]
                     except Exception:
                         # Fallback for plain timestamp
-                        data = {"timestamp": float(content), "status": "Running"}
+                        data = {"timestamp": float(content), "status": "Running"}  # type: ignore[arg-type]
 
                     # Add our computed status (overriding raw if we decided it's Down)
                     computed = self.service_states.get(service_key, "Unknown")

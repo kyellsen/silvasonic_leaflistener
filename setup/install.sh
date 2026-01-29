@@ -88,14 +88,14 @@ echo "=========================================="
 REPO_DEST="/mnt/data/dev/silvasonic"
 
 # Explicitly build images (streaming output)
-ssh -t $CONN_ARGS_SSH "cd $REPO_DEST && sudo podman-compose build"
+ssh -t $CONN_ARGS_SSH "cd $REPO_DEST && podman-compose build"
 
 echo "=========================================="
 echo "Phase 3: Starting Service"
 echo "=========================================="
 
 # Restart service (picks up new images)
-ssh -t $CONN_ARGS_SSH "sudo systemctl enable --now silvasonic && sudo systemctl restart silvasonic"
+ssh -t $CONN_ARGS_SSH "systemctl --user enable --now silvasonic && systemctl --user restart silvasonic"
 
 
 echo "=========================================="

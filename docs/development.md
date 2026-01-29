@@ -112,8 +112,8 @@ If you prefer to run Python natively on your host (e.g., for direct PyCharm/VSCo
 
 # More Commands:
 git pull
-sudo podman-compose down --volumes
-sudo podman-compose -f podman-compose.yml up -d --build
+podman-compose down --volumes
+podman-compose -f podman-compose.yml up -d --build
 
 # Cleanup: 
 
