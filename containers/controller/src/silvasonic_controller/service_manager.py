@@ -1,10 +1,9 @@
+import asyncio
 import logging
-import os
 import typing
-from pathlib import Path
+from dataclasses import dataclass, field
 
-import yaml
-from pydantic import BaseModel, Field
+from silvasonic_controller.persistence import DatabaseClient
 
 if typing.TYPE_CHECKING:
     from silvasonic_controller.podman_client import PodmanOrchestrator
@@ -12,115 +11,130 @@ if typing.TYPE_CHECKING:
 logger = logging.getLogger("ServiceManager")
 
 
-class ServiceMount(BaseModel):
-    source: str
-    target: str
-    mode: str = "z"
-
-
-class ServiceDefinition(BaseModel):
+@dataclass
+class ServiceConfig:
     image: str
-    enabled: bool = True
+    enabled: bool = False
     restart_policy: str = "always"
     network: str = "silvasonic_default"
-    env: dict[str, str] = Field(default_factory=dict)
-    mounts: list[ServiceMount] = Field(default_factory=list)
-    ports: list[str] = Field(default_factory=list)
-    dependencies: list[str] = Field(default_factory=list)
+    env: dict[str, str] = field(default_factory=dict)
+    mounts: list[dict[str, str]] = field(default_factory=list)
+    ports: list[str] = field(default_factory=list)
 
 
-class ServiceConfigRoot(BaseModel):
-    services: dict[str, ServiceDefinition]
+# Hardcoded Registry of Managed Services
+# These are the "Apps" the user can toggle.
+REGISTRY: dict[str, ServiceConfig] = {
+    "birdnet": ServiceConfig(
+        image="silvasonic-birdnet:latest",
+        enabled=True,  # Default
+        env={"PYTHONUNBUFFERED": "1"},
+        mounts=[
+            {
+                "source": "/mnt/data/services/silvasonic/recordings",
+                "target": "/data/recordings",
+                "mode": "rw",
+            },
+            {
+                "source": "/mnt/data/services/silvasonic/status",
+                "target": "/mnt/data/services/silvasonic/status",
+                "mode": "rw",
+            },
+        ],
+    ),
+    "uploader": ServiceConfig(
+        image="silvasonic-uploader:latest",
+        enabled=False,
+        env={"PYTHONUNBUFFERED": "1"},
+        mounts=[
+            {
+                "source": "/mnt/data/services/silvasonic/recordings",
+                "target": "/data/recordings",
+                "mode": "rw",
+            },
+            {"source": "/mnt/data/services/silvasonic/config", "target": "/config", "mode": "ro"},
+        ],
+    ),
+    "weather": ServiceConfig(
+        image="silvasonic-weather:latest",
+        enabled=True,
+        mounts=[
+            {"source": "/mnt/data/services/silvasonic/config", "target": "/config", "mode": "ro"},
+        ],
+    ),
+    "livesound": ServiceConfig(
+        image="icecast:2.4-alpine",
+        enabled=True,
+        ports=["8000:8000"],
+        mounts=[
+            {
+                "source": "/mnt/data/services/silvasonic/config/icecast.xml",
+                "target": "/etc/icecast.xml",
+                "mode": "ro",
+            },
+        ],
+    ),
+}
 
 
 class ServiceManager:
-    def __init__(
-        self, orchestrator: "PodmanOrchestrator", config_path: str | Path | None = None
-    ) -> None:
+    def __init__(self, orchestrator: "PodmanOrchestrator", db_client: DatabaseClient) -> None:
         self.orchestrator = orchestrator
-        self._services: dict[str, ServiceDefinition] = {}
+        self.db = db_client
+        self._services: dict[str, ServiceConfig] = REGISTRY.copy()
 
-        # Default config path logic
-        if config_path:
-            self.config_path = Path(config_path)
-        else:
-            # Fallback to standard location
-            data_dir = os.environ.get("SILVASONIC_DATA_DIR", "/mnt/data/services/silvasonic")
-            self.config_path = Path(data_dir) / "config" / "dynamic_services.yaml"
+    async def sync_loop(self) -> None:
+        """Background loop to sync enabled/disabled state from DB."""
+        logger.info("ServiceManager Sync Loop started.")
+        while True:
+            try:
+                # 1. Fetch Config from DB
+                db_config = await self.db.get_service_config()
 
-        self._load_initial_registry()
+                # 2. Apply updates
+                for name, config in self._services.items():
+                    # If DB has an opinion, use it. Otherwise keep default `enabled` from Registry.
+                    if name in db_config:
+                        should_be_enabled = db_config[name]
 
-    def _load_initial_registry(self) -> None:
-        """
-        Load services from the YAML configuration file.
-        """
-        if not self.config_path.exists():
-            logger.warning(
-                f"Config file not found at {self.config_path}. No dynamic services loaded."
-            )
-            return
+                        if should_be_enabled != config.enabled:
+                            logger.info(
+                                f"Service {name} state changed: {config.enabled} -> {should_be_enabled}"
+                            )
+                            config.enabled = should_be_enabled
 
-        try:
-            with open(self.config_path) as f:
-                raw_config = yaml.safe_load(f)
+                            if should_be_enabled:
+                                await self.start_service(name)
+                            else:
+                                await self.stop_service(name)
 
-            if not raw_config:
-                logger.warning(f"Config file at {self.config_path} is empty.")
-                return
+                # 3. Wait
+                await asyncio.sleep(10)
 
-            # Validate and parse using Pydantic
-            config_root = ServiceConfigRoot(**raw_config)
-            self._services = config_root.services
-            logger.info(f"Loaded {len(self._services)} services from {self.config_path}")
-
-        except Exception as e:
-            logger.error(f"Failed to load service registry from {self.config_path}: {e}")
-
-    def _resolve_env_vars(self, env_vars: dict[str, str]) -> dict[str, str]:
-        """
-        Optional: Resolve simple env var placeholders if needed.
-        Currently relying on Podman/Compose to handle env expansion or pre-processing.
-        But for now, just return as is.
-        """
-        return env_vars
-
-    async def sync_services(self) -> None:
-        """
-        Reconcile expected services with running containers.
-        """
-        # TODO: Implement full reconciliation loop
-        pass
+            except Exception as e:
+                logger.error(f"ServiceManager Sync Error: {e}")
+                await asyncio.sleep(10)
 
     async def start_service(self, service_name: str) -> bool:
         if service_name not in self._services:
-            logger.error(f"Service {service_name} not found in registry.")
             return False
 
         config = self._services[service_name]
+        # Verify it is enabled before starting (double check)
         if not config.enabled:
-            logger.info(f"Service {service_name} is disabled. Skipping.")
             return False
 
-        logger.info(f"Starting service: {service_name}")
-
-        # Convert Pydantic models to dicts for the orchestrator
-        mounts_list = [m.model_dump() for m in config.mounts]
-
-        return bool(
-            await self.orchestrator.spawn_service(
-                service_name=service_name,
-                image=config.image,
-                env_vars=config.env,
-                mounts=mounts_list,
-                network=config.network,
-                restart_policy=config.restart_policy,
-                ports=config.ports,
-            )
+        return await self.orchestrator.spawn_service(
+            service_name=service_name,
+            image=config.image,
+            env_vars=config.env,
+            mounts=config.mounts,
+            network=config.network,
+            restart_policy=config.restart_policy,
+            ports=config.ports,
         )
 
     async def stop_service(self, service_name: str) -> bool:
-        logger.info(f"Stopping service: {service_name}")
-        # Assuming container name convention silvasonic_{service_name}
         container_name = f"silvasonic_{service_name}"
         await self.orchestrator.stop_container(container_name)
         return True

@@ -12,16 +12,19 @@ WORKDIR /app
 # Install uv
 COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
 
-# Copy pyproject.toml
-COPY pyproject.toml ./
+# Copy pyproject.toml and README.md
+COPY pyproject.toml README.md ./
 
 ENV VIRTUAL_ENV=/app/.venv
 ENV PATH="/app/.venv/bin:$PATH"
 
-# Create venv and install dependencies directly from pyproject.toml
-# We use --no-cache to avoid saving cache in the image
+# Create venv and install dependencies
 RUN uv venv && \
     uv pip install --no-cache -r pyproject.toml
+
+# Copy source code and install package
+COPY src ./src
+RUN uv pip install --no-cache .
 
 
 # --- Stage 2: Runtime ---
@@ -31,7 +34,6 @@ FROM python:3.11-slim-bookworm
 # - podman: For CLI orchestration
 # - alsa-utils: For 'arecord -l' device discovery
 # - udev: For device events
-# REMOVED: build-essential, gcc, libasound2-dev (not needed for runtime)
 RUN apt-get update && apt-get install -y --no-install-recommends \
     podman \
     alsa-utils \
@@ -47,8 +49,11 @@ ENV PATH="/app/.venv/bin:$PATH"
 # Copy source code
 COPY src /app/src
 
-
 ENV PYTHONUNBUFFERED=1
 ENV PYTHONPATH=/app/src
 
+# Create default directories
+RUN mkdir -p /app/mic_profiles
+
 CMD ["python", "-m", "silvasonic_controller.main"]
+

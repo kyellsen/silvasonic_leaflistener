@@ -133,3 +133,51 @@ def test_connection_failure(mock_create, mock_sleep):
     # We allow it to loop 10 times
     assert handler.connect() is False
     assert mock_sleep.call_count == 10
+
+
+def test_pending_analysis_logic(test_db):
+    """Test getting pending analysis and marking as done."""
+    # We need to manually insert a recording into the table
+    # Since we don't have the Recording model definition in this test file's imports typically,
+    # we can use raw SQL or define a dummy model if needed.
+    # But wait, BirdNET container doesn't OWN the Recordings table model completely?
+    # It queries it. The models.py in birdnet might not have it.
+    # Let's check imports.
+    # We need to ensure the 'recordings' table exists in our in-memory DB.
+    # The 'init' SQL script usually creates it. Our test_db setup runs create_all for SQLModel.
+    # Does BirdNET's SQLModel metadata include 'recordings'?
+    # If not, we can't test it easily without defining it here.
+
+    # Assuming we might need to mock the query execution if the table doesn't exist in metadata.
+    # But let's try defining a partial model for the test or raw execute.
+
+    with Session(test_db.engine) as session:
+        from sqlalchemy import text
+
+        session.exec(
+            text(
+                "CREATE TABLE IF NOT EXISTS recordings (id INTEGER PRIMARY KEY, path_low TEXT, path_high TEXT, analyzed_bird BOOLEAN, time TIMESTAMP)"
+            )
+        )
+        session.exec(
+            text(
+                "INSERT INTO recordings (id, path_low, path_high, analyzed_bird) VALUES (1, 'low.wav', 'high.wav', 0)"
+            )
+        )
+        session.commit()
+
+    # Test Get
+    pending = test_db.get_pending_analysis(limit=1)
+    assert len(pending) == 1
+    assert pending[0]["id"] == 1
+    assert pending[0]["path_low"] == "low.wav"
+
+    # Test Mark
+    test_db.mark_analyzed(1)
+
+    with Session(test_db.engine) as session:
+        from sqlalchemy import text
+
+        res = session.exec(text("SELECT analyzed_bird FROM recordings WHERE id=1")).first()
+        assert res[0] is not None  # In sqlite boolean might be 1/0
+        assert res[0] != 0  # True

@@ -1,4 +1,0 @@
-uid=1000(kyellsen) gid=1000(kyellsen) groups=1000(kyellsen),10(wheel),18(dialout),39(video),63(audio) context=unconfined_u:unconfined_r:unconfined_t:s0-s0:c0.c1023
-ls: cannot access '/run/podman/podman.sock': Permission denied
-srw-------. 1 kyellsen kyellsen 0 Jan 29 19:30 /run/user/1000/podman/podman.sock
-drwx------. 1 avahi kyellsen 484 Jan 29 20:06 /mnt/data/dev_workspaces/silvasonic/db/data

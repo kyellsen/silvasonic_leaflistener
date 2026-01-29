@@ -1,14 +1,12 @@
-import logging
-
-# Setup logging to stdout
-import logging.handlers
-import os
+import signal
 import sys
-import typing
+import threading
+import time
 
 import structlog
 
-from silvasonic_birdnet.watcher import WatcherService
+from silvasonic_birdnet.analyzer import BirdNETAnalyzer
+from silvasonic_birdnet.database import db
 
 # --- Structlog Configuration ---
 structlog.configure(
@@ -29,66 +27,60 @@ structlog.configure(
 )
 
 logger = structlog.get_logger("Main")
+shutdown_event = threading.Event()
 
 
-def setup_logging() -> None:
-    log_dir = os.environ.get("LOG_DIR", "/var/log/silvasonic")
-    # Only create directory if we are likely allowed to (e.g. not in a test env that prohibits it)
-    # However, for tests, we simply won't call setup_logging or we set LOG_DIR to a temp dir.
-    # But wait, main() is not called on import. So this is safe.
-    try:
-        os.makedirs(log_dir, exist_ok=True)
-    except OSError as e:
-        print(f"Warning: Could not create log directory {log_dir}: {e}", file=sys.stderr)
-        # Fallback to just stdout logging if file logging fails?
-        # For now, let's proceed with just basicConfig using StreamHandler if file fails or just standard behavior.
-        # But for the specific error reported, moving it to main()/setup_logging() solves the import time crash.
-
-    handlers: list[logging.Handler] = []
-
-    # Standard Logger Bridge setup
-    pre_chain: list[typing.Any] = [
-        structlog.stdlib.add_log_level,
-        structlog.stdlib.add_logger_name,
-        structlog.processors.TimeStamper(fmt="iso"),
-        structlog.processors.format_exc_info,
-    ]
-    formatter = structlog.stdlib.ProcessorFormatter(
-        processor=structlog.processors.JSONRenderer(),
-        foreign_pre_chain=pre_chain,
-    )
-
-    # 1. Stdout
-    s_handler = logging.StreamHandler(sys.stdout)
-    s_handler.setFormatter(formatter)
-    handlers.append(s_handler)
-
-    # 2. File
-    log_file = os.path.join(log_dir, "birdnet.log")
-    try:
-        file_handler = logging.handlers.TimedRotatingFileHandler(
-            log_file, when="midnight", interval=1, backupCount=30, encoding="utf-8"
-        )
-        file_handler.setFormatter(formatter)
-        handlers.append(file_handler)
-    except (OSError, PermissionError) as e:
-        print(f"Warning: Could not setup file logging to {log_file}: {e}", file=sys.stderr)
-
-    logging.basicConfig(
-        level=logging.INFO,
-        handlers=handlers,
-        force=True,
-    )
+def signal_handler(signum, frame):
+    logger.info("Shutdown signal received")
+    shutdown_event.set()
 
 
 def main() -> None:
-    setup_logging()
-    logger.info("Starting Silvasonic BirdNET (Ornithologist)...")
+    signal.signal(signal.SIGINT, signal_handler)
+    signal.signal(signal.SIGTERM, signal_handler)
 
-    # Start Watcher (Blocking)
-    logger.info("Starting Watcher Service...")
-    service = WatcherService()
-    service.run()
+    logger.info("Starting Silvasonic BirdNET (V2 DB Polling)...")
+
+    # Connect DB
+    if not db.connect():
+        logger.error("Failed to connect to DB. Exiting.")
+        sys.exit(1)
+
+    analyzer = BirdNETAnalyzer()
+
+    logger.info("Entering Analysis Loop...")
+
+    while not shutdown_event.is_set():
+        try:
+            pending = db.get_pending_analysis(limit=1)
+
+            if not pending:
+                time.sleep(5)
+                continue
+
+            rec = pending[0]
+            rec_id = rec["id"]
+            # Prefer Low Res (48k)
+            path = rec.get("path_low") or rec.get("path_high")
+
+            if not path:
+                logger.warning(f"Recording {rec_id} has no valid paths. Skipping.", id=rec_id)
+                db.mark_analyzed(rec_id)
+                continue
+
+            logger.info(f"Analyzing Recording {rec_id}: {path}")
+
+            # Analyze
+            analyzer.process_file(path)
+
+            # Mark Done
+            db.mark_analyzed(rec_id)
+
+        except Exception:
+            logger.exception("Analysis Loop Error")
+            time.sleep(5)
+
+    logger.info("BirdNET Service Shutdown.")
 
 
 if __name__ == "__main__":

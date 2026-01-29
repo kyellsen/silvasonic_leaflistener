@@ -1,5 +1,5 @@
 import asyncio
-from unittest.mock import AsyncMock, MagicMock, mock_open, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 from silvasonic_controller.device_manager import AudioDevice
@@ -46,41 +46,6 @@ def test_setup_logging() -> None:
         patch("logging.handlers.TimedRotatingFileHandler"),
     ):
         setup_logging()
-
-
-@pytest.mark.asyncio
-async def test_write_live_config(mock_deps) -> None:
-    dm, po, lp = mock_deps
-    ctrl = Controller(dm.return_value, po.return_value)
-    ctrl.active_sessions["1"] = SessionInfo("c", "id", 8010, "slug")
-
-    with patch("builtins.open", mock_open()) as m_open:
-        with patch("os.rename"):
-            with patch("os.makedirs"):
-                await ctrl.write_live_config()
-                # Since it runs in to_thread, verifying open call might be racey if not awaited properly.
-                # await write_live_config waits for the thread to finish, so it's safe.
-                m_open.assert_called()
-                handle = m_open()
-                handle.write.assert_called()
-
-
-@pytest.mark.asyncio
-async def test_write_live_config_exception(mock_deps) -> None:
-    dm, po, lp = mock_deps
-    ctrl = Controller(dm.return_value, po.return_value)
-    with patch("builtins.open", side_effect=OSError):
-        with patch("os.makedirs"):
-            await ctrl.write_live_config()  # Should log error but not crash
-
-
-@pytest.mark.asyncio
-async def test_write_status_exception(mock_deps) -> None:
-    dm, po, lp = mock_deps
-    ctrl = Controller(dm.return_value, po.return_value)
-    with patch("builtins.open", side_effect=OSError):
-        with patch("os.makedirs"):
-            await ctrl.write_status()
 
 
 def test_controller_init(mock_deps) -> None:
@@ -236,14 +201,3 @@ async def test_run_loop_monitor_event(mock_deps) -> None:
 
             # Reconcile called initially + once for event
             assert mock_rec.call_count >= 2
-
-
-@pytest.mark.asyncio
-async def test_write_status(mock_deps) -> None:
-    dm, po, lp = mock_deps
-    ctrl = Controller(dm.return_value, po.return_value)
-    with patch("builtins.open", mock_open()) as m_open:
-        with patch("os.rename"):
-            with patch("os.makedirs"):
-                await ctrl.write_status()
-                m_open.assert_called()

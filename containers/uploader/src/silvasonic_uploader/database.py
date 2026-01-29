@@ -205,10 +205,46 @@ class DatabaseHandler:
             # Consume result directly into set
             # result.scalars() yields the first column
             uploaded_set = set(result.scalars().all())
+            return uploaded_set
 
         except Exception as e:
             logger.error(f"Failed to fetch all uploaded filenames: {e}")
         finally:
             session.close()
 
-        return uploaded_set
+    def get_pending_recordings(self, limit: int = 10) -> list[dict]:
+        """Fetch recordings that have not been uploaded."""
+        if not self.Session and not self.connect():
+            return []
+
+        session = self.Session()
+        try:
+            # Query recordings where uploaded IS FALSE
+            query = text(
+                "SELECT id, path_high, path_low FROM recordings WHERE uploaded = false AND path_high IS NOT NULL ORDER BY time ASC LIMIT :limit"
+            )
+            result = session.execute(query, {"limit": limit})
+            return [{"id": row[0], "path_high": row[1], "path_low": row[2]} for row in result]
+        except Exception as e:
+            logger.error(f"Failed to fetch pending recordings: {e}")
+            return []
+        finally:
+            session.close()
+
+    def mark_recording_uploaded(self, rec_id: int) -> None:
+        """Mark a recording as uploaded in the DB."""
+        if not self.Session:
+            return
+
+        session = self.Session()
+        try:
+            query = text(
+                "UPDATE recordings SET uploaded = true, uploaded_at = NOW() WHERE id = :id"
+            )
+            session.execute(query, {"id": rec_id})
+            session.commit()
+        except Exception as e:
+            logger.error(f"Failed to mark recording {rec_id} as uploaded: {e}")
+            session.rollback()
+        finally:
+            session.close()

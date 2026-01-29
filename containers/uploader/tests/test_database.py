@@ -131,3 +131,40 @@ class TestDatabaseHandler:
         # Should return without crashing
         db.log_upload("file.txt", "remote", "success")
         assert db.Session is None
+
+    @patch("uploader_database.create_engine")
+    @patch("uploader_database.sessionmaker")
+    def test_get_pending_recordings(
+        self, mock_sessionmaker: MagicMock, mock_engine: MagicMock, db: typing.Any
+    ) -> None:
+        """Test retrieval of pending recordings."""
+        mock_session_inst = MagicMock()
+        mock_sessionmaker.return_value = MagicMock(return_value=mock_session_inst)
+
+        # Mock valid result with path_high
+        mock_session_inst.execute.return_value = [
+            ("req_id_1", "path/to/high.wav"),
+            ("req_id_2", "path/to/another.wav"),
+        ]
+
+        results = db.get_pending_recordings(limit=10)
+        assert len(results) == 2
+        assert results[0]["id"] == "req_id_1"
+        assert results[0]["path"] == "path/to/high.wav"
+
+    @patch("uploader_database.create_engine")
+    @patch("uploader_database.sessionmaker")
+    def test_mark_recording_uploaded(
+        self, mock_sessionmaker: MagicMock, mock_engine: MagicMock, db: typing.Any
+    ) -> None:
+        """Test marking a recording as uploaded."""
+        mock_session_inst = MagicMock()
+        mock_sessionmaker.return_value = MagicMock(return_value=mock_session_inst)
+
+        db.mark_recording_uploaded("req_id_1")
+
+        # Verify execute called with UPDATE
+        mock_session_inst.execute.assert_called_once()
+        args = mock_session_inst.execute.call_args[0][0]
+        assert "UPDATE recordings" in str(args)
+        assert "uploaded = true" in str(args)

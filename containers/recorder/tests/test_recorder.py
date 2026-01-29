@@ -89,8 +89,10 @@ class TestRecorder(unittest.TestCase):
 
         # validations
         self.assertIn("ffmpeg", cmd)
-        self.assertIn("-test_arg", cmd)  # Strategy arg
-        self.assertIn("flac", cmd)
+        self.assertIn("-test_arg", cmd)
+        self.assertIn("-filter_complex", cmd)
+        self.assertIn("[high]", cmd)
+        self.assertIn("pcm_s16le", cmd)
 
         # Verify strategy tasks started
         self.strategy.start_background_tasks.assert_called_once_with(process_mock)

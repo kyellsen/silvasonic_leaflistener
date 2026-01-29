@@ -1,0 +1,18 @@
+[project]
+name = "silvasonic-processor"
+version = "0.1.0"
+description = "Processor service for Silvasonic"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "pydantic>=2.0.0",
+    "sqlalchemy>=2.0.0",
+    "psycopg2-binary>=2.9.0",
+    "redis>=5.0.0",
+    "librosa>=0.10.0",
+    "matplotlib>=3.8.0",
+    "watchdog>=3.0.0",
+    "tenacity>=8.0.0",
+    "numpy>=1.26.0",
+    "soundfile>=0.12.0",
+]

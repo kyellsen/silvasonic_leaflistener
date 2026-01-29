@@ -71,6 +71,23 @@ services:
     restart: always
 
 
+  processor:
+    build:
+      context: containers/processor
+    image: silvasonic-processor:latest
+    container_name: silvasonic_processor
+    restart: always
+    environment:
+      - DB_URL=postgresql://silvasonic:silvasonic@db:5432/silvasonic
+      - REDIS_HOST=redis
+      - LOG_LEVEL=INFO
+    volumes:
+      - ${SILVASONIC_DATA_DIR}/recorder/recordings:/data/recordings:z
+      - ${SILVASONIC_DATA_DIR}/config:/app/config:ro
+      - ./containers/processor/src:/app/src:z # For dev hot-reload
+
+
+
   uploader:
     build:
       context: containers/uploader
@@ -93,17 +110,17 @@ services:
       - "8001:8001"
     restart: always
 
-  healthchecker:
+  monitor:
     build:
-      context: containers/healthchecker
-    image: silvasonic-healthchecker:latest
-    container_name: silvasonic_healthchecker
+      context: containers/monitor
+    image: silvasonic-monitor:latest
+    container_name: silvasonic_monitor
     restart: always
     env_file: .env
     environment:
       - PYTHONPATH=/app/src
     volumes:
-      - ./containers/healthchecker/src:/app/src:z
+      - ./containers/monitor/src:/app/src:z
       - ${SILVASONIC_DATA_DIR}/config:/config:z
 
       - ${SILVASONIC_DATA_DIR}/errors:/mnt/data/services/silvasonic/errors:z
@@ -189,7 +206,7 @@ services:
       - ./containers/weather/src:/app/src:z
 
   db:
-    image: docker.io/library/postgres:15-alpine
+    image: docker.io/timescale/timescaledb:latest-pg16
     container_name: silvasonic_db
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-silvasonic}
@@ -200,8 +217,6 @@ services:
     volumes:
       - ${SILVASONIC_DATA_DIR}/db/data:/var/lib/postgresql/data:z
       - ./containers/db/init:/docker-entrypoint-initdb.d:z
-      - ./containers/db/postgresql.conf:/etc/postgresql/postgresql.conf:z
-
       - ./containers/db/postgresql.conf:/etc/postgresql/postgresql.conf:z
     command: ["postgres", "-c", "config_file=/etc/postgresql/postgresql.conf"]
     healthcheck:
@@ -218,7 +233,8 @@ services:
     ports:
       - "6379:6379"
     volumes:
-      - ${SILVASONIC_DATA_DIR}/redis/data:/data:z
+      - redis_data:/data
+    command: ["redis-server", "--maxmemory", "128mb", "--maxmemory-policy", "allkeys-lru", "--save", "60", "1"]
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 5s
@@ -251,4 +267,5 @@ volumes:
   tailscale_state:
   caddy_data:
   caddy_config:
+  redis_data:
 

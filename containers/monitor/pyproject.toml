@@ -1,7 +1,7 @@
 [project]
-name = "silvasonic-healthchecker"
+name = "silvasonic-monitor"
 version = "0.1.0"
-description = "Healthchecker for Silvasonic"
+description = "Monitor service for Silvasonic"
 requires-python = ">=3.11, <3.13"
 dependencies = [
     "apprise",

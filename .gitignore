@@ -62,3 +62,4 @@ config.env
 # Agent temporary directory
 .agent_tmp/
 .logs/*.log
+screenshots_frontend/*

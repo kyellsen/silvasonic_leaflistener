@@ -206,12 +206,31 @@ class Recorder:
         output_dir: Path,
         strategy: typing.Any,
     ) -> None:
-        """Start the FFmpeg process."""
+        """Start the FFmpeg process with V2 Dual-Stream logic."""
         udp_url = f"udp://{settings.LIVE_STREAM_TARGET}:{settings.LIVE_STREAM_PORT}"
-        file_pattern = output_dir / "%Y-%m-%d_%H-%M-%S.flac"
+
+        # Paths
+        high_res_dir = output_dir / "high_res"
+        low_res_dir = output_dir / "low_res"
+        os.makedirs(high_res_dir, exist_ok=True)
+        os.makedirs(low_res_dir, exist_ok=True)
+
+        pattern_high = high_res_dir / "%Y-%m-%d_%H-%M-%S.wav"
+        pattern_low = low_res_dir / "%Y-%m-%d_%H-%M-%S.wav"
 
         input_args = strategy.get_ffmpeg_input_args()
         input_source = strategy.get_input_source()
+
+        # Filter Complex:
+        # [0:a] split=3 [high][low_src][stream_src];
+        # [low_src] aresample=48000 [low];
+        # [stream_src] aresample=48000 [stream]
+
+        filter_complex = (
+            "[0:a]split=3[high][low_src][stream_src];"
+            "[low_src]aresample=48000[low];"
+            "[stream_src]aresample=48000[stream]"
+        )
 
         cmd = [
             "ffmpeg",
@@ -219,7 +238,11 @@ class Recorder:
             *input_args,
             "-i",
             input_source,
-            # Output 1: Files
+            "-filter_complex",
+            filter_complex,
+            # Output 1: High Res (Source Rate) - WAV
+            "-map",
+            "[high]",
             "-f",
             "segment",
             "-segment_time",
@@ -227,21 +250,33 @@ class Recorder:
             "-strftime",
             "1",
             "-c:a",
-            "flac",
-            "-compression_level",
-            str(profile.recording.compression_level),
-            str(file_pattern),
-            # Output 2: Live Stream
+            "pcm_s16le",  # Or s24le/s32le depending on source? Keeping simple s16le for compatibility unless specified. s32le for 384k? Spec says "WAV".
+            str(pattern_high),
+            # Output 2: Low Res (48k) - WAV
+            "-map",
+            "[low]",
+            "-f",
+            "segment",
+            "-segment_time",
+            str(profile.recording.chunk_duration_seconds),
+            "-strftime",
+            "1",
+            "-c:a",
+            "pcm_s16le",
+            str(pattern_low),
+            # Output 3: Live Stream (48k) - UDP
+            "-map",
+            "[stream]",
             "-f",
             "s16le",
             "-ac",
             "1",
             "-ar",
-            str(profile.audio.sample_rate),
+            "48000",
             udp_url,
         ]
 
-        logger.info(f"Starting FFmpeg: {' '.join(cmd)}")
+        logger.info(f"Starting FFmpeg V2: {' '.join(cmd)}")
 
         self.process = subprocess.Popen(
             cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, stdin=subprocess.PIPE
@@ -251,6 +286,9 @@ class Recorder:
         strategy.start_background_tasks(self.process)
 
         if self.process.poll() is not None:
+            # Consume stderr to see why
+            err = self.process.stderr.read() if self.process.stderr else b""
+            logger.error(f"FFmpeg died: {err.decode('utf-8', errors='ignore')}")
             raise RuntimeError("FFmpeg died immediately.")
 
     def _consume_stderr(self, proc: subprocess.Popen[bytes]) -> None:

@@ -3,7 +3,7 @@
 	# email {$ACME_EMAIL} # Optional: For Let's Encrypt notifications
 }
 
-{$DOMAIN} {
+http://{$DOMAIN} {
 	log
 
 	# Livesound (Icecast)
@@ -18,8 +18,9 @@
 		reverse_proxy silvasonic_dashboard:8000
 	}
 
-	# Basic Auth (Optional - Uncomment and set env vars if needed)
-	# basic_auth {
-	# 	{$BASIC_AUTH_USER} {$BASIC_AUTH_PASS}
-	# }
+	# Basic Auth
+	# Required for security as per V2 spec
+	basic_auth {
+		{$BASIC_AUTH_USER} {$BASIC_AUTH_PASS}
+	}
 }

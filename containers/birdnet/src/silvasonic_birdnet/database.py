@@ -3,6 +3,7 @@ import os
 import time
 from datetime import UTC, datetime
 
+from sqlalchemy import text
 from sqlalchemy.engine import Engine
 from sqlalchemy.exc import OperationalError
 from sqlmodel import Session, SQLModel, create_engine, select
@@ -156,6 +157,37 @@ class DatabaseHandler:
             except Exception as e:
                 logger.error(f"Failed to log processed file: {e}")
 
+    def get_pending_analysis(self, limit: int = 1) -> list[dict]:
+        """Fetch recordings pending analysis."""
+        if not self.engine:
+            return []
 
-# Singleton
-db = DatabaseHandler()
+        with Session(self.engine) as session:
+            try:
+                # Prefer low_res (path_low) as it's 48k (native for BirdNET usually)
+                query = text("""
+                    SELECT id, path_low, path_high 
+                    FROM recordings 
+                    WHERE analyzed_bird = false 
+                    AND (path_low IS NOT NULL OR path_high IS NOT NULL)
+                    ORDER BY time ASC 
+                    LIMIT :limit
+                """)
+                result = session.exec(query, params={"limit": limit}).all()
+                return [{"id": row[0], "path_low": row[1], "path_high": row[2]} for row in result]
+            except Exception as e:
+                logger.error(f"Failed to fetch pending analysis: {e}")
+                return []
+
+    def mark_analyzed(self, rec_id: int) -> None:
+        """Mark recording as analyzed."""
+        if not self.engine:
+            return
+
+        with Session(self.engine) as session:
+            try:
+                query = text("UPDATE recordings SET analyzed_bird = true WHERE id = :id")
+                session.exec(query, params={"id": rec_id})
+                session.commit()
+            except Exception as e:
+                logger.error(f"Failed to mark analyzed {rec_id}: {e}")
