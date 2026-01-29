@@ -188,6 +188,23 @@ def find_matching_profile(
 
     # Handle forced profile selection
     if force_profile:
+        # Special Case: Desktop Mode (PulseAudio)
+        if force_profile.lower() == "desktop":
+            logger.info("Configuration forces Desktop Mode (PulseAudio)")
+            desktop_profile = MicrophoneProfile(
+                name="Desktop Audio",
+                slug="desktop",
+                is_mock=False,
+                audio=AudioConfig(sample_rate=48000, channels=2),  # Usually stereo
+                recording=RecordingConfig(),
+            )
+            pulse_device = DetectedDevice(
+                card_id="pulse",
+                hw_address="default",
+                description="PulseAudio Default Source",
+            )
+            return desktop_profile, pulse_device
+
         logger.info(f"Configuration forces profile: '{force_profile}'")
         target_profile = None
         for profile in profiles:
@@ -339,7 +356,16 @@ def create_strategy_for_profile(
     profile: MicrophoneProfile, device: DetectedDevice
 ) -> "AudioStrategy":
     """Factory to create the appropriate AudioStrategy."""
-    from .strategies import AlsaStrategy, FileMockStrategy
+    from .strategies import AlsaStrategy, FileMockStrategy, PulseAudioStrategy
+
+    # Desktop / PulseAudio Mode
+    if device.card_id == "pulse" or profile.slug == "desktop":
+        logger.info("Creating PulseAudioStrategy")
+        return PulseAudioStrategy(
+            source_name=device.hw_address,  # e.g. "default"
+            channels=profile.audio.channels,
+            sample_rate=profile.audio.sample_rate,
+        )
 
     if profile.is_mock:
         # Check if it's the "File Injection" mock
