@@ -3,7 +3,7 @@ from typing import Any
 
 from pydantic import field_validator
 from sqlalchemy import Text
-from sqlalchemy.dialects.postgresql import JSONB
+from sqlalchemy.types import JSON
 from sqlmodel import Field, SQLModel
 
 
@@ -44,9 +44,8 @@ class BirdDetection(SQLModel, table=True):
     clip_path: str | None = Field(default=None, max_length=1024)
 
     # Algorithm Flexibility
-    details: dict[str, Any] | None = Field(
-        default=None, sa_type=JSONB if "JSONB" in globals() else Any
-    )
+    # Algorithm Flexibility
+    details: dict[str, Any] | None = Field(default=None, sa_type=JSON)
 
     # Additional Pydantic Validation logic if needed (e.g. for API inputs)
     @field_validator("end_time")

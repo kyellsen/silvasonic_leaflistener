@@ -1,4 +1,5 @@
 import csv
+import json
 import logging
 import os
 import shutil
@@ -7,6 +8,7 @@ import time
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
+import redis
 import soundfile as sf
 
 from silvasonic_birdnet.config import config
@@ -296,25 +298,25 @@ class BirdNETAnalyzer:
     def _trigger_alert(self, detection: BirdDetection) -> None:
         """Creates a notification event in the shared queue."""
         try:
-            # Shared notification queue path
-            # Using /data/notifications (mapped volume)
-            queue_dir = Path("/data/notifications")
-            queue_dir.mkdir(parents=True, exist_ok=True)
-
-            import json
-
-            event_id = f"{int(time.time() * 1000)}_{detection.scientific_name.replace(' ', '_')}"
-            event_path = queue_dir / f"{event_id}.json"
+            # Redis Notification
+            r = redis.Redis(host="silvasonic_redis", port=6379, db=0)
 
             # Use model_dump for clean dict, preserving aliases (lat/lon) and serializing datetimes
             data_dict = detection.model_dump(mode="json", by_alias=True)
 
-            payload = {"type": "bird_detection", "timestamp": time.time(), "data": data_dict}
+            # Construct Alert Payload matching V2 spec
+            # Title/Body for Apprise, plus raw data
+            alert_payload = {
+                "title": f"Bird Detected: {detection.common_name}",
+                "body": f"Found {detection.common_name} ({detection.scientific_name}) with {detection.confidence:.2f} confidence.",
+                "tag": "bird_detection",
+                "timestamp": time.time(),
+                "data": data_dict,
+            }
 
-            with open(event_path, "w") as f:
-                json.dump(payload, f)
+            r.publish("alerts", json.dumps(alert_payload))
 
-            logger.info(f"Triggered notification alert for {detection.common_name}")
+            logger.info(f"Triggered notification alert for {detection.common_name} via Redis")
 
         except Exception as e:
             logger.error(f"Failed to trigger alert: {e}")

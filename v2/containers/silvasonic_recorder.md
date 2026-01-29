@@ -1,47 +1,41 @@
+# Container: silvasonic_recorder
 
-# Container Spec: silvasonic_recorder
+## 1. Das Problem / Die Lücke
+Wir benötigen eine extrem stabile Audio-Aufnahme, die auch bei hoher Systemlast nicht abbricht ("Glitch-Free"). Gleichzeitig brauchen wir verschiedene Formate (High-Res für Fledermäuse, Low-Res für Vögel/Web), wollen aber nicht mehrfach vom selben USB-Gerät lesen (was oft technisch unmöglich ist).
 
-> **Rolle:** Audio-Akquise und Splitter (High-Res/Low-Res).
-> **Tier:** Tier 1 (Core) – Datenintegrität.
+## 2. Nutzen für den User
+*   **Zuverlässigkeit**: Dedizierter Prozess nur für Audio.
+*   **Dual-Stream**: Gleichzeitige Aufnahme von Ultraschall (Bat-Detektor) und hörbarem Audio (Vogelstimmen/Live-Stream) aus einer Quelle.
+*   **Effizienz**: Nutzt `ffmpeg`, um Sample-Rates on-the-fly zu konvertieren, ohne viel CPU für unnötige Encodierung (Archivierung in WAV) zu verschwenden.
 
-## 1. Executive Summary
-* **Problem:** Aufnahme von hochfrequentem Audio (384kHz) muss stabil sein ("Record First"). Gleichzeitig werden kleine Files für Web (48kHz) und Live-Streams benötigt.
-* **Lösung:** FFMPEG-basierter Container, der direkt vom ALSA-Device liest und den Stream splittet (Tee-Muxer): Stream A (File High), Stream B (File Low), Stream C (Live).
+## 3. Kernaufgaben (Core Responsibilities)
+*   **Inputs**:
+    *   **ALSA Audio Stream**: Rohdaten vom USB-Mikrofon.
+    *   **Environment Config**: Audio-Profil (Rate, Gain) vom Controller injiziert.
+*   **Processing**:
+    *   **FFmpeg Complex Filter**: Splittet das Signal.
+        *   Stream 1: Pass-Through (z.B. 384kHz) -> Segmentierung.
+        *   Stream 2: Resample (48kHz) -> Segmentierung.
+        *   Stream 3: Resample (48kHz) -> MP3 Encoding -> Icecast Stream.
+*   **Outputs**:
+    *   **Dateien**: `.wav` Chunks (z.B. alle 10s) in `/data/recordings/{id}/high_res` und `low_res`.
+    *   **Stream**: TCP-Stream an den `silvasonic_livesound` Container.
+    *   **Redis Heartbeat**: Status-Updates.
 
-## 2. Technische Spezifikation (Docker/Podman)
-Diese Werte sind verbindlich für die Implementierung.
+## 4. Abgrenzung (Out of Scope)
+*   **Kein Upload**: Lädt nichts in die Cloud.
+*   **Keine Analyse**: Führt keine Fledermaus- oder Vogelerkennung durch.
+*   **Kein Indexing**: Schreibt nur Dateien, trägt sie nicht in die Datenbank ein.
 
-| Parameter | Wert | Begründung/Details |
-| :--- | :--- | :--- |
-| **Base Image** | `linuxserver/ffmpeg` oder custom Debian mit `ffmpeg` | Braucht aktuelles FFmpeg. |
-| **Security Context** | `Rootless` (managed by Controller) | Wird vom Controller mit Device-Passthrough (`--device /dev/snd/...`) gestartet. Läuft als User `1000:1000`. |
-| **Restart Policy** | `on-failure` | Managed by Controller. |
-| **Ports** | `None` | Streamt outbound zu Icecast. |
-| **Volumes** | - `/data/recordings:/data/recordings` | Ziel für WAV Dateien. |
-| **Dependencies** | `None` (Standalone Worker). | |
+## 5. Technologien die dieser Container nutzt
+*   **Basis-Image**: Python 3.11+ (mit installiertem `ffmpeg`).
+*   **Wichtige Komponenten**:
+    *   `ffmpeg` (Das Herzstück)
+    *   `alsa-utils`
+    *   Python Subprocess Wrapper (zur Steuerung)
+    *   `redis` (Status)
 
-## 3. Interfaces & Datenfluss
-* **Inputs (Trigger):**
-    *   *Start:* Durch Controller bei USB-Plug.
-    *   *Audio:* ALSA Device (`hw:X,Y`).
-* **Outputs (Actions):**
-    *   *File Write:* 384kHz WAV (Archiv), 48kHz WAV (Analyse).
-    *   *Network:* Stream zu `silvasonic_livesound` (Icecast).
-    *   *Redis:* Regelmäßige VUmeter Updates (via FFmpeg plugin oder wrapper script).
-
-## 4. Konfiguration (Environment Variables)
-*   `AUDIO_DEVICE`: ALSA Device Pfad.
-*   `SAMPLE_RATE`: 384000 (oder Profile-Wert).
-*   `GAIN`: Lautstärke.
-*   `ICECAST_URL`: Optional für Live-Stream.
-
-## 5. Abgrenzung (Out of Scope)
-*   Keine Analyse (BirdNET).
-*   Keine Metadaten-Verwaltung (Processor).
-
-## 6. Architecture & Code Best Practices
-*   **Logic:** Bash Wrapper oder Python Script um `ffmpeg` Process, das Signale (SIGTERM) sauber weiterleitet.
-*   **Resilience:** Wenn Icecast weg ist, darf Recording NICHT abbrechen. -> FFmpeg resilient konfigurieren (TCP timeout, non-blocking output für Stream).
-
-## 7. Kritische Analyse
-*   **Hardware Access:** Container braucht Zugriff auf `/dev/snd` und `audio` Gruppe.
+## 6. Kritische Punkte
+*   **Template-Natur**: Dieser Container wird selten "direkt" via Compose gestartet, sondern meist als Template benutzt, von dem der Controller Instanzen ableitet (`silvasonic_recorder_[id]`).
+*   **SD-Karten Verschleiß**: Schreibt permanent WAV-Dateien. Ein NVMe-Drive oder gute "Industrial" SD-Karte ist Pflicht.
+*   **CPU Priority**: Sollte im Konzept eine hohe Priorität haben. Wenn ffmpeg stockt, ist die Aufnahme ruiniert.

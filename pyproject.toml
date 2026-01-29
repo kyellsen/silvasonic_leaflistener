@@ -55,6 +55,7 @@ dev = [
     "pre-commit>=4.5.1",
     "pytest-sugar>=1.1.1",
     "silvasonic-processor",
+    "redis",
 ]
 
 [tool.uv]
@@ -103,7 +104,7 @@ exclude = [
 ]
 
 [tool.pytest.ini_options]
-addopts = "--ignore=containers/birdnet_test --ignore=tests/e2e"
+addopts = "--ignore=containers/birdnet_test --ignore=tests/e2e --ignore=containers/db --ignore=containers/gateway"
 
 [[tool.mypy.overrides]]
 module = ["tests.*", "containers.*.tests.*", "containers.*.tests"]

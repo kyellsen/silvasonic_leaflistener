@@ -1,43 +1,35 @@
+# Container: silvasonic_birdnet
 
-# Container Spec: silvasonic_birdnet
+## 1. Das Problem / Die Lücke
+Wir zeichnen tausende Stunden Audio auf. Kein Mensch kann das alles anhören. Wir benötigen eine automatisierte Klassifizierung, um zu wissen, *welche* Vögel wann und wo singen.
 
-> **Rolle:** Audio-Analyse Worker (Species Classification).
-> **Tier:** Tier 4 (Extras) – Darf jederzeit sterben oder throttled werden.
+## 2. Nutzen für den User
+*   **Biodiversitäts-Monitoring**: Erstellt automatisch Listen erkannter Arten.
+*   **Filterung**: Ermöglicht dem User, gezielt nach "Amsel" oder "Rotkehlchen" zu suchen, statt stundenlang Rauschen zu hören.
 
-## 1. Executive Summary
-* **Problem:** Wir wollen wissen, welche Vögel/Tiere zu hören sind.
-* **Lösung:** Führt BirdNET-Analyzer auf den 48kHz Files aus (Low Res), die der Recorder erstellt hat.
+## 3. Kernaufgaben (Core Responsibilities)
+*   **Inputs**:
+    *   **Datenbank**: Polling auf Tabelle `recordings` (WHERE `analyzed_bird=false`).
+    *   **Dateisystem**: Liest Audio-Dateien (bevorzugt 48kHz "Low Res" für Performance).
+*   **Processing**:
+    *   **Inference**: Lässt das BirdNET-Modell (TFLite) über die Audio-Daten laufen.
+    *   **Filterung**: Wendet Confidence-Thresholds an.
+*   **Outputs**:
+    *   **Datenbank**: Schreibt Ergebnisse in Tabelle `detections` und setzt Flag `analyzed_bird=true`.
+    *   **Redis**: Publiziert interessante Funde auf `alerts` (optional, z.B. bei seltenen Arten).
 
-## 2. Technische Spezifikation (Docker/Podman)
-Diese Werte sind verbindlich für die Implementierung.
+## 4. Abgrenzung (Out of Scope)
+*   **Kein Recording**: Nimmt kein Audio auf.
+*   **Kein Fledermaus-Detektor**: BirdNET ist nur für Vögel (und einige andere hörbare Tiere) trainiert, nicht für Ultraschall.
+*   **Kein Training**: Nutzt das vortrainierte Modell, lernt nicht selbst dazu.
 
-| Parameter | Wert | Begründung/Details |
-| :--- | :--- | :--- |
-| **Base Image** | `birdnet-analyzer` (Official/Custom) | Tensorflow Lite Runtime. |
-| **Security Context** | `Rootless` | Standard. |
-| **Restart Policy** | `on-failure` | Tier 4. |
-| **Ports** | `None` | Worker. |
-| **Volumes** | - `/data/recordings:/data/recordings:ro` | Read-Access. |
-| **Dependencies** | `silvasonic_database` | Holt Jobs aus DB. |
+## 5. Technologien die dieser Container nutzt
+*   **Basis-Image**: Python 3.11+
+*   **Wichtige Komponenten**:
+    *   `birdnet-analyzer` (Python Library / TFLite Runtime)
+    *   `librosa` (Audio Loading)
+    *   `psycopg2` (DB)
 
-## 3. Interfaces & Datenfluss
-*   **Trigger:** Polling DB `SELECT * FROM recordings WHERE analyzed_bird=FALSE`.
-*   **Action:**
-    *   Analysiert Audio.
-    *   Schreibt Detections in DB (`measurements` / `detections`).
-    *   Updates Recording Status `analyzed_bird=TRUE`.
-    *   Publiziert "Bird Detected" Event via Redis.
-
-## 4. Konfiguration (Environment Variables)
-*   `CONFIDENCE_THRESHOLD`: 0.7.
-*   `LAT/LON`: Für Location Filter.
-
-## 5. Abgrenzung (Out of Scope)
-*   Analysiert KEINE Bats (dafür ist BirdNET nicht trainiert - oder nur eingeschränkt).
-
-## 6. Architecture & Code Best Practices
-*   **Resource Cap:** Muss via Docker `--cpus` und `--memory` begrenzt werden, um Recorder nicht zu stören.
-*   **Batching:** File für File.
-
-## 7. Kritische Analyse
-*   **CPU Hog:** ML Inferenz ist teuer. Prio Management ist essenziell (Tier 4).
+## 6. Kritische Punkte
+*   **CPU-Last**: Analyse ist teuer. Der Container muss im `podman-compose.yml` ggf. limitiert werden (CPU Quota), damit er nicht das Recording ("Tier 0") beeinträchtigt.
+*   **Modell-Version**: BirdNET aktualisiert Modelle regelmäßig. Diese sind oft fest im Image verbacken. Updates erfordern Container-Neubau.

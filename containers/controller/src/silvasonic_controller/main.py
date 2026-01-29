@@ -197,7 +197,10 @@ class Controller:
                 logger.info(f"Matched Profile: {matched_profile.name}")
                 rec_id = f"{matched_profile.slug}_{device.card_id}"
                 container_name = f"silvasonic_recorder_{rec_id}"
-                port = 12000 + int(device.card_id)  # Simple int parse for local cards
+                try:
+                    port = 12000 + int(device.card_id)
+                except (ValueError, TypeError):
+                    port = 12000 + (hash(rec_id) % 100)
 
                 success = await self.orchestrator.spawn_recorder(
                     name=rec_id,

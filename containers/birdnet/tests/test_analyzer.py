@@ -139,29 +139,25 @@ def test_save_clip(mock_write, mock_read, mock_clips_dir, analyzer):
     mock_write.assert_called_once()
 
 
-@patch("json.dump")
-@patch("silvasonic_birdnet.analyzer.open")
-def test_trigger_alert(mock_open, mock_json, analyzer):
-    """Test alert generation."""
+@patch("silvasonic_birdnet.analyzer.redis.Redis")
+def test_trigger_alert(mock_redis_cls, analyzer):
+    """Test alert generation via Redis."""
     detection = BirdDetection(
         filename="test.wav", scientific_name="Turdus", common_name="Blackbird", confidence=0.9
     )
 
-    # We need to mock Path inside analyzer module to effectively redirect /data/notifications
-    with patch("silvasonic_birdnet.analyzer.Path") as MockPath:
-        # Configure MockPath to return a MagicMock when instantiated
-        mock_path_instance = MagicMock()
-        MockPath.return_value = mock_path_instance
+    mock_r = mock_redis_cls.return_value
 
-        # The code does: queue_dir / "filename.json"
-        # So the mock instance needs to implement __truediv__
-        mock_file_path = MagicMock()
-        mock_path_instance.__truediv__.return_value = mock_file_path
+    analyzer._trigger_alert(detection)
 
-        analyzer._trigger_alert(detection)
+    mock_redis_cls.assert_called_once()
+    mock_r.publish.assert_called_once()
 
-    mock_open.assert_called_once()
-    mock_json.assert_called_once()
-    data = mock_json.call_args[0][0]
-    assert data["type"] == "bird_detection"
-    assert data["data"]["common_name"] == "Blackbird"
+    # Verify payload
+    args = mock_r.publish.call_args[0]
+    channel = args[0]
+    payload = args[1]
+
+    assert channel == "alerts"
+    assert "Blackbird" in payload
+    assert "bird_detection" in payload

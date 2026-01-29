@@ -1,44 +1,35 @@
+# Container: silvasonic_uploader
 
+## 1. Das Problem / Die Lücke
+Der lokale Speicher (NVMe/SD) ist endlich. Für ein Langzeit-Projekt müssen Daten "offsite" bewegt werden, sowohl als Backup als auch zur dauerhaften Archivierung. WAV-Dateien sind zudem groß und verschwenden Bandbreite.
 
-# Container Spec: silvasonic_uploader
+## 2. Nutzen für den User
+*   **Unendlicher Speicher**: Durch automatischen Upload in die Cloud (S3, Dropbox, Nextcloud) läuft das lokale System nie voll (in Kombination mit dem Janitor).
+*   **Effizienz**: Komprimiert verlustfrei zu FLAC (ca. 50% Ersparnis) *vor* dem Upload.
+*   **Datensicherheit**: Schutz vor Diebstahl oder Defekt des Geräts.
 
-> **Rolle:** Cloud-Synchronisation und Archivierung.
-> **Tier:** Tier 2 (Mission) – Datensicherung.
+## 3. Kernaufgaben (Core Responsibilities)
+*   **Inputs**:
+    *   **Datenbank**: Polling `recordings WHERE uploaded=false`.
+    *   **Dateisystem**: Liest WAV-Dateien.
+*   **Processing**:
+    *   **Compression**: Konvertiert WAV -> FLAC (ffmpeg).
+    *   **Transport**: Lädt Dateien via Rclone hoch (`rclone copy`).
+*   **Outputs**:
+    *   **Cloud Storage**: Dateien im Ziel-Bucket.
+    *   **Datenbank**: Setzt `uploaded=true`.
 
-## 1. Executive Summary
-* **Problem:** Lokaler NVMe Speicher ist begrenzt. Wichtige Daten (Tier-Stimmen, Bats) sollen langfristig gesichert werden.
-* **Lösung:** Rclone-basierter Uploader, der High-Res Files komprimiert (FLAC) und in die Cloud schiebt.
+## 4. Abgrenzung (Out of Scope)
+*   **Kein Löschen**: Löscht KEINE lokalen Original-Dateien aus `/data/recordings` (außer temporäre FLACs). Das Löschen ist Hoheit des `silvasonic_processor` (Janitor).
+*   **Kein Sync**: Einweg-Upload ("Push"), kein bidirektionaler Sync.
 
-## 2. Technische Spezifikation (Docker/Podman)
-Diese Werte sind verbindlich für die Implementierung.
+## 5. Technologien die dieser Container nutzt
+*   **Basis-Image**: Python 3.11+ (mit `ffmpeg` und `rclone`).
+*   **Wichtige Komponenten**:
+    *   `rclone` (Das "Schweizer Taschenmesser" für Cloud Storage)
+    *   `ffmpeg` (Flac Encoder)
+    *   `python` (Logik & DB-Anbindung)
 
-| Parameter | Wert | Begründung/Details |
-| :--- | :--- | :--- |
-| **Base Image** | `python:3.11` + `rclone` installiert | Python Wrapper um Rclone CLI. |
-| **Security Context** | `Rootless` | Standard. |
-| **Restart Policy** | `on-failure` | Background Job. |
-| **Ports** | `None` | Outbound only. |
-| **Volumes** | - `/data/recordings:/data/recordings` | Read (WAV) / Write (Temp FLAC).<br>- `./config/rclone.conf:/root/.config/rclone/rclone.conf:ro` | Rclone Config. |
-| **Dependencies** | `silvasonic_database` | Job Queue. |
-
-## 3. Interfaces & Datenfluss
-*   **Trigger:** DB Query `WHERE uploaded=FALSE`.
-*   **Action:**
-    *   WAV -> FLAC (Compression).
-    *   Rclone copy -> Target Remote.
-    *   Update DB `uploaded=TRUE`.
-    *   Delete local FLAC.
-
-## 4. Konfiguration (Environment Variables)
-*   `RCLONE_REMOTE`: Name des Remotes (z.B. `s3-archive`).
-*   `UPLOAD_STRATEGY`: `ALL` oder `TAGGED_ONLY` (z.B. nur Bats).
-
-## 5. Abgrenzung (Out of Scope)
-*   Löscht KEINE Source-Dateien (das macht der Processor/Janitor basierend auf `uploaded`-Flag).
-
-## 6. Architecture & Code Best Practices
-*   **Subprocess:** Aufruf von `rclone` via `subprocess.run`.
-*   **Nice:** Prozess mit niedriger Priorität (`nice -n 19`) starten.
-
-## 7. Kritische Analyse
-*   **Bandbreite:** Kann Internet verstopfen. Ggf. Bandwidth Limit in Rclone setzen.
+## 6. Kritische Punkte
+*   **Bandbreite**: Kann die Internetverbindung "verstopfen". Sollte idealerweise Bandbreiten-Limits (Rclone flag `--bwlimit`) oder Zeitfenster (z.B. "Nur Nachts") unterstützen (via Settings).
+*   **Datenbank-Konsistenz**: Muss sicherstellen, dass `uploaded=true` erst gesetzt wird, wenn Rclone Erfolg meldet (Exit Code 0).

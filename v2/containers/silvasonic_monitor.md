@@ -1,43 +1,34 @@
+# Container: silvasonic_monitor
 
-# Container Spec: silvasonic_monitor
+## 1. Das Problem / Die Lücke
+In einem verteilten System aus vielen Containern können einzelne Dienste "heimlich" sterben (z.B. Recorder hängt), ohne dass der User, der nicht ständig aufs Dashboard schaut, es merkt. Ein "Silent Failure" ist bei Langzeit-Monitoring katastrophal.
 
-> **Rolle:** System-Watchdog und Notification-Dispatcher.
-> **Tier:** Tier 0 (Vital) – Überwachung.
+## 2. Nutzen für den User
+*   **Seelenfrieden**: Der User wird aktiv benachrichtigt (Telegram, Email, Gotify), wenn etwas schief läuft.
+*   **System-Übersicht**: Aggregiert den Gesundheitszustand aller Container für das Dashboard.
 
-## 1. Executive Summary
-* **Problem:** Wenn Services ausfallen oder Events passieren (Fledermaus erkannt), muss der User benachrichtigt werden. Zentrales Alerting verhindert Konfigurations-Chaos.
-* **Lösung:** Ein Service überwacht Redis Heartbeats und Channels und leitet Nachrichten via Apprise an externe Dienste (Telegram, Mail, etc.) weiter.
+## 3. Kernaufgaben (Core Responsibilities)
+*   **Inputs**:
+    *   **Redis Heartbeats**: Liest Schlüssel `status:*` (Polling).
+    *   **Redis PubSub**: Abonniert Kanal `alerts` (Echtzeit-Events).
+*   **Processing**:
+    *   **Watchdog**: Vergleicht Zeitstempel der Heartbeats mit definierten Timeouts (z.B. Recorder > 120s = DOWN).
+    *   **Aggregation**: Fasst den Status aller Dienste unter `system:status` zusammen.
+    *   **Dispatch**: Leitet Benachrichtigungen via Apprise weiter.
+*   **Outputs**:
+    *   **Notifications**: Externe API-Calls (Telegram, SMTP, etc.).
+    *   **Redis**: Aktualisiert `system:status` für das Dashboard.
 
-## 2. Technische Spezifikation (Docker/Podman)
-Diese Werte sind verbindlich für die Implementierung.
+## 4. Abgrenzung (Out of Scope)
+*   **Kein Restart**: Startet keine Container neu (Aufgabe des Controllers oder Systemd).
+*   **Keine Log-Analyse**: Liest (derzeit) keine Text-Logs, verlässt sich nur auf Heartbeats.
 
-| Parameter | Wert | Begründung/Details |
-| :--- | :--- | :--- |
-| **Base Image** | `python:3.11-slim-bookworm` | Python Scripting. |
-| **Security Context** | `Rootless` | Standard. |
-| **Restart Policy** | `always` | Muss Ausfälle anderer melden. |
-| **Ports** | `None` | (Evtl. optional interne API, primär aber Redis-Consumer). |
-| **Volumes** | - `./config:/app/config:ro` | Secrets (Apprise URLs). |
-| **Dependencies** | `silvasonic_redis` | Queue Source. |
+## 5. Technologien die dieser Container nutzt
+*   **Basis-Image**: Python 3.11+
+*   **Wichtige Komponenten**:
+    *   `apprise` (Unified Notification Library)
+    *   `redis`
 
-## 3. Interfaces & Datenfluss
-*   **Input:**
-    *   Redis Pub/Sub `alerts`.
-    *   Redis Keys `status:*` (Heartbeat Monitoring).
-*   **Output:**
-    *   Notifications (HTTP Calls zu Telegram/Discord etc.).
-    *   Redis `status:system_health`.
-
-## 4. Konfiguration (Environment Variables)
-*   `APPRISE_URLS`: Komma-separierte Liste von Services.
-*   `CHECK_INTERVAL`: Frequenz für Heartbeat-Checks.
-
-## 5. Abgrenzung (Out of Scope)
-*   Generiert KEINE Events (Aggregiert nur).
-
-## 6. Architecture & Code Best Practices
-*   **Apprise:** Standard-Library nutzen.
-*   **Dead Man's Switch:** Wenn Monitor selbst stirbt -> Kann er nicht melden. (Externe Überwachung nötig, z.B. Healthcheck via Docker).
-
-## 7. Kritische Analyse
-*   Single Point of Notification (Gut für Config, Schlecht bei Ausfall).
+## 6. Kritische Punkte
+*   **Config Secrets**: Benötigt Zugriff auf `APPRISE_URLS` (mit Tokens/Passwörtern). Diese müssen sicher via Environment Variables injiziert werden.
+*   **False Positives**: Zu aggressive Timeouts können zu Alarm-Spam führen, wenn das System unter Last nur kurzzeitig langsam ist.

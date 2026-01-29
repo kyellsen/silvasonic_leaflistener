@@ -1,40 +1,34 @@
+# Container: silvasonic_redis
 
-# Container Spec: silvasonic_redis
+## 1. Das Problem / Die Lücke
+Die Container müssen in Echtzeit kommunizieren (z.B. "Neues Audio-Level für VU-Meter", "Heartbeat von Container X"), ohne die persistente Datenbank mit hochfrequenten Schreibzugriffen zu belasten.
 
-> **Rolle:** Echtzeit-Kommunikation, Caching und Message Broker.
-> **Tier:** Tier 0 (Vital) – Notwendig für Live-Status und Inter-Container-Kommunikation.
+## 2. Nutzen für den User
+*   **Responsiveness**: Das Dashboard zeigt den Live-Status (Online/Offline) und Audio-Pegel sofort an.
+*   **Robustheit**: Dient als Puffer/Queue, falls die Hauptdatenbank kurzzeitig überlastet oder nicht erreichbar ist.
 
-## 1. Executive Summary
-* **Problem:** Services müssen lose gekoppelt Nachrichten austauschen (Pub/Sub) und flüchtigen Status (Heartbeats, VU-Meter) teilen, ohne die DB zu hämmern.
-* **Lösung:** Redis als in-memory Data Structure Store für High-Speed Operations.
+## 3. Kernaufgaben (Core Responsibilities)
+*   **Inputs**:
+    *   `SET` / `HSET`: Status-Updates (Heartbeats) und Live-Metriken (VU-Meter).
+    *   `PUBLISH`: Events auf dem Kanal `alerts`.
+*   **Processing**:
+    *   In-Memory Key-Value Storage.
+    *   Pub/Sub Message Brokerage.
+    *   Eviction alter Keys (LRU Policy).
+*   **Outputs**:
+    *   `GET`: Status-Abfragen durch `monitor` und `dashboard`.
+    *   `SUBSCRIBE`: Echtzeit-Events an `monitor` (für Notifications).
 
-## 2. Technische Spezifikation (Docker/Podman)
-Diese Werte sind verbindlich für die Implementierung.
+## 4. Abgrenzung (Out of Scope)
+*   **Keine Persistenz**: Daten in Redis sind flüchtig. Nach einem Neustart sind Queues/Status leer (by design).
+*   **Keine Komplexen Queries**: Kein Ersatz für SQL-Abfragen.
+*   **Kein File-Cache**: Speichert keine großen Blobs wie Bilder oder Audio.
 
-| Parameter | Wert | Begründung/Details |
-| :--- | :--- | :--- |
-| **Base Image** | `redis:alpine` | Minimales, stabiles Image. |
-| **Security Context** | `Rootless (User: pi)` | Standard. |
-| **Restart Policy** | `always` | Infrastruktur. |
-| **Ports** | `6379:6379` | Intern wichtig. |
-| **Volumes** | - `redis_data:/data` | Persistenz (RDB/AOF) optional, aber empfohlen für Restart-Safety. |
-| **Dependencies** | `None` | Basis-Service. |
+## 5. Technologien die dieser Container nutzt
+*   **Basis-Image**: `redis:7-alpine`
+*   **Wichtige Komponenten**:
+    *   Redis Server
 
-## 3. Interfaces & Datenfluss
-* **Inputs (Trigger):**
-    *   *SET/PUBLISH:* Heartbeats (alle Container), VU-Meter (Recorder), Alerts (Processor/Birdnet).
-* **Outputs (Actions):**
-    *   *GET/SUBSCRIBE:* Dashboard (Live-View), Monitor (Alerting).
-
-## 4. Konfiguration (Environment Variables)
-*   Standard Redis Config. Ggf. Passwortschutz `REDIS_PASSWORD`.
-
-## 5. Abgrenzung (Out of Scope)
-*   KEIN Langzeit-Speicher (Dafür ist TimescaleDB da).
-
-## 6. Architecture & Code Best Practices
-*   **Keyspace Notification:** Aktivieren für reactive Patterns (optional).
-*   **Healthcheck:** `redis-cli ping`
-
-## 7. Kritische Analyse
-*   **Risiko:** Wenn Redis vollläuft (Memory), crasht das System. -> Eviction Policy setzen (`allkeys-lru` oder `volatile-lru`).
+## 6. Kritische Punkte
+*   **Memory Management**: Muss limitiert sein (`--maxmemory 128mb`), um nicht den Host-RAM zu fressen (OOM Killer).
+*   **Security**: Standardmäßig hat Redis kein Passwort im internen Netz. Sollte isoliert bleiben.

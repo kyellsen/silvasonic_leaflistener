@@ -1,49 +1,36 @@
+# Container: silvasonic_database
 
-# Container Spec: silvasonic_database
+## 1. Das Problem / Die Lücke
+Silvasonic generiert massive Mengen an Metadaten (Recordings, Detections, Logs). Ein einfaches Dateisystem oder SQLite skaliert hierbei nicht für komplexe Zeitreihenabfragen (z.B. "Zeige alle Fledermäuse der letzten 30 Nächte mit >90% Confidence").
 
-> **Rolle:** Zentrale Persistenz-Schicht für Metadaten und Status.
-> **Tier:** Tier 0 (Vital) – "System Death" bei Ausfall.
+## 2. Nutzen für den User
+*   **Performance**: Schnelle Suche und Filterung auch bei Millionen von Einträgen.
+*   **Datenintegrität**: Sicherstellung, dass Metadaten strukturiert und persistent gespeichert bleiben.
+*   **Analyse**: Ermöglicht komplexe Auswertungen (Aktivitätstrends, Artenverteilung).
 
-## 1. Executive Summary
-* **Problem:** Das System benötigt einen performanten Index für Millionen von Audio-Events und Status-Informationen, optimiert für Zeitreihen.
-* **Lösung:** TimescaleDB (Postgres-Erweiterung) speichert effizient Zeitreihen (Recordings, Measurements) und dient als State-Backend.
+## 3. Kernaufgaben (Core Responsibilities)
+*   **Inputs**:
+    *   SQL `INSERT/UPDATE` Befehle von `processor`, `birdnet`, `weather`, `uploader`.
+    *   SQL `SELECT` Abfragen vom `dashboard`.
+*   **Processing**:
+    *   Speicherung relationaler Daten (PostgreSQL 16).
+    *   Verwaltung von Time-Series Hypertables (TimescaleDB).
+    *   Ausführung von Retention Policies (automatisches Löschen alter Messwerte).
+*   **Outputs**:
+    *   Strukturierte tabellarische Daten (Result Sets).
 
-## 2. Technische Spezifikation (Docker/Podman)
-Diese Werte sind verbindlich für die Implementierung.
+## 4. Abgrenzung (Out of Scope)
+*   **Kein Blob-Storage**: Speichert KEINE Audio-Dateien (WAV/FLAC) oder Bilder (PNG). Nur Pfad-Referenzen.
+*   **Keine Business-Logik**: Führt keine Python-Skripte aus; Validierung erfolgt in den Containern.
+*   **Kein Public Access**: Wird nicht nach außen (außerhalb des Docker-Netzwerks) exponiert.
 
-| Parameter | Wert | Begründung/Details |
-| :--- | :--- | :--- |
-| **Base Image** | `timescale/timescaledb:latest-pg16` | Offizielles Image mit Timescale-Extension. |
-| **Security Context** | `Rootless (User: pi)` | Standard Postgres User Mapping. Benötigt Volume-Permissions Fix. |
-| **Restart Policy** | `always` | Kern-Infrastruktur. |
-| **Ports** | `5432:5432` | Nur intern im Container-Netzwerk nötig (Host-Port optional für Debugging). |
-| **Volumes** | - `pg_data:/var/lib/postgresql/data`<br>- `./config/db/init:/docker-entrypoint-initdb.d` | Persistente Daten und Init-Scripte. |
-| **Dependencies** | `None` | Basis-Service. |
+## 5. Technologien die dieser Container nutzt
+*   **Basis-Image**: `timescale/timescaledb:latest-pg16`
+*   **Wichtige Komponenten**:
+    *   PostgreSQL 16
+    *   TimescaleDB Extension
+    *   PostGIS (optional, laut Konzept erwähnt)
 
-## 3. Interfaces & Datenfluss
-* **Inputs (Trigger):**
-    *   *SQL INSERT/UPDATE:* Von `processor` (Recordings), `weather` (Meteo), `birdnet` (Detections).
-* **Outputs (Actions):**
-    *   *Persistence:* Speichert Daten auf NVMe.
-    *   *Query Results:* Liefert Daten an `dashboard` und `processor`.
-
-## 4. Konfiguration (Environment Variables)
-*   `POSTGRES_USER`: `silvasonic`
-*   `POSTGRES_PASSWORD`: (Secret)
-*   `POSTGRES_DB`: `silvasonic`
-*   **Tuning (via cmdline oder conf):**
-    *   `synchronous_commit = off`
-    *   `shared_buffers = 512MB`
-    *   `random_page_cost = 1.1`
-
-## 5. Abgrenzung (Out of Scope)
-*   Speichert KEINE BLOBs/Binärdaten (Keine WAVs/Bilder in der DB!).
-*   Macht KEINE Business-Logik (Keine Stored Procedures für komplexe Abläufe).
-
-## 6. Architecture & Code Best Practices
-*   **Hypertables:** Nutze `create_hypertable()` für `recordings` und `measurements`.
-*   **Healthcheck:** `pg_isready -U silvasonic`
-
-## 7. Kritische Analyse
-*   **Engpässe:** Disk I/O bei hoher Schreiblast (Vermeiden durch Batch-Inserts im Processor).
-*   **Alternativen:** SQLite (Legacy, verworfen wegen Concurrency-Problemen und fehlender Timeseries-Optimierung).
+## 6. Kritische Punkte
+*   **SD-Karte / NVMe**: Bei vielen Schreibzugriffen (Wal-Logs) kann eine SD-Karte schnell verschleißen. Das Konzept empfiehlt NVMe und Tuning (`synchronous_commit = off`).
+*   **Schema-Migrationen**: Da wir kein Alembic nutzen (laut `concept.md` "Single Source of Truth is `init.sql`"), sind Schema-Updates bei laufendem Betrieb manuell durchzuführen.

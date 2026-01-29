@@ -1,46 +1,36 @@
+# Container: silvasonic_gateway
 
-# Container Spec: silvasonic_gateway
+## 1. Das Problem / Die Lücke
+Ohne ein zentrales Gateway müssten Benutzer verschiedene IP-Adressen und Ports (z.B. Dashboard auf 8000, Livesound auf 8001) kennen und Firewall-Regeln für jeden Dienst einzeln konfigurieren. HTTPS-Zertifikate müssten in jedem Dienst separat verwaltet werden.
 
-> **Rolle:** Zentraler Einstiegspunkt (Reverse Proxy) und TLS-Terminierung.
-> **Tier:** Tier 0 (Vital) – Ohne Gateway keine Erreichbarkeit.
+## 2. Nutzen für den User
+*   **Convenience**: Der Nutzer muss nur eine Adresse (z.B. `http://silvasonic.local`) aufrufen.
+*   **Sicherheit**: Automatische HTTPS-Verschlüsselung (optional) und zentrale Authentifizierungsmöglichkeiten.
+*   **Einheitlichkeit**: Alle Dienste (Dashboard, Audio-Streams) erscheinen als eine kohärente Anwendung.
 
-## 1. Executive Summary
-* **Problem:** Mehrere Services (Dashboard, Livesound) müssen über Standardports (80/443) erreichbar sein, ohne Port-Kollisionen.
-* **Lösung:** Ein Caddy Server routet Anfragen basierend auf Pfaden an die internen Container und managed automatisch HTTPS (falls konfiguriert).
+## 3. Kernaufgaben (Core Responsibilities)
+*   **Inputs**:
+    *   Eingehender HTTP/HTTPS Traffic auf Port 80 und 443.
+    *   `Caddyfile` Konfiguration (Volume Mount).
+*   **Processing**:
+    *   Reverse Proxy Routing basierend auf Pfaden.
+    *   TLS Termination (HTTPS Management).
+    *   Weiterleitung von Requests an interne Container-Hostnames.
+*   **Outputs**:
+    *   Weitergeleitete HTTP-Requests an `silvasonic_dashboard` und `silvasonic_livesound`.
 
-## 2. Technische Spezifikation (Docker/Podman)
-Diese Werte sind verbindlich für die Implementierung.
+## 4. Abgrenzung (Out of Scope)
+*   **Keine Anwendungslogik**: Führt keinen Python-Code aus.
+*   **Kein File-Hosting**: Dient primär als Proxy, nicht als Webserver für statische Dateien (außer evtl. globale Assets).
+*   **Keine Datenbank-Kommunikation**: Spricht nicht mit Postgres oder Redis.
+*   **Kein Audio-Encoding**: Leitet Audio-Streams nur durch ("blind pipe").
 
-| Parameter | Wert | Begründung/Details |
-| :--- | :--- | :--- |
-| **Base Image** | `caddy:alpine` | Offizielles, leichtes Image. Automatische TLS-Verwaltung. |
-| **Security Context** | `Rootless (User: pi)` | Möglich durch Host-Sysctl `net.ipv4.ip_unprivileged_port_start=80`. |
-| **Restart Policy** | `always` | Infrastruktur-Komponente. Muss immer laufen. |
-| **Ports** | `80:80`, `443:443` | HTTP/HTTPS Einstiegspunkte. |
-| **Volumes** | - `./config/caddy/Caddyfile:/etc/caddy/Caddyfile`<br>- `caddy_data:/data`<br>- `caddy_config:/config` | Persistenz für Zertifikate und Konfiguration. |
-| **Dependencies** | `None` | Startet als erster Service im Network Mesh. |
+## 5. Technologien die dieser Container nutzt
+*   **Basis-Image**: `caddy:alpine`
+*   **Wichtige Komponenten**:
+    *   Caddy Webserver
+    *   Caddyfile (Konfiguration)
 
-## 3. Interfaces & Datenfluss
-* **Inputs (Trigger):**
-    *   *HTTP Request:* Eingehender Traffic von Usern (Browser/API).
-* **Outputs (Actions):**
-    *   *Reverse Proxy:* Leitet Traffic weiter an:
-        *   `silvasonic_dashboard:8000` (Default `/`)
-        *   `silvasonic_livesound:8000` (`/stream`)
-        *   `silvasonic_docs` (Optional, static files)
-
-## 4. Konfiguration (Environment Variables)
-*   `DOMAIN`: Domain für Auto-HTTPS (Optional, Default: `localhost`).
-*   `BASIC_AUTH_USER`: Username für Caddy Basic Auth (Falls Dashboard keine Auth hat).
-*   `BASIC_AUTH_PASS`: Hash für Caddy Basic Auth.
-
-## 5. Abgrenzung (Out of Scope)
-*   Macht KEINE Anwendungslogik.
-*   Speichert KEINE Daten (außer SSL Certs).
-
-## 6. Architecture & Code Best Practices
-*   **Caddyfile:** Deklarative Config. Keep it simple.
-*   **Healthcheck:** `wget --no-verbose --tries=1 --spider http://localhost:80/ || exit 1`
-
-## 7. Kritische Analyse
-*   **Engpässe:** CPU bei SSL Termination auf Pi Zero (für Pi 5 vernachlässigbar).
+## 6. Kritische Punkte
+*   **Auth-Verantwortung**: Aktuell unklar, ob das Gateway Basic Auth erzwingen soll oder ob das Dashboard die Authentifizierung übernimmt. Laut Concept V2 wird Basic Auth unterstützt, aber eine doppelte Auth (Gateway + App) kann zu UX-Problemen führen.
+*   **WebSocket Support**: Muss korrekt konfiguriert sein, damit Livereviews im Dashboard funktionieren.

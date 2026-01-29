@@ -1,40 +1,32 @@
+# Container: silvasonic_weather
 
+## 1. Das Problem / Die Lücke
+Bioakustische Daten sind alleinstehend oft schwer zu interpretieren. "Keine Fledermäuse in dieser Nacht" kann an fehlender Population oder einfach an starkem Regen liegen. Wir brauchen Umwelt-Kontext. Lokale Sensoren sind oft teuer oder wartungsintensiv.
 
-# Container Spec: silvasonic_weather
+## 2. Nutzen für den User
+*   **Kontext**: Korreliert Tieraktivität automatisch mit Wetterdaten (Temperatur, Wind, Regen).
+*   **Wartungsfrei**: Nutzt virtuelle Sensoren (Open-Data APIs) statt Hardware.
 
-> **Rolle:** Umwelt-Daten Logger.
-> **Tier:** Tier 4 (Extras).
+## 3. Kernaufgaben (Core Responsibilities)
+*   **Inputs**:
+    *   **OpenMeteo API**: Ruft Wetterdaten für die konfigurierte GPS-Position ab.
+*   **Processing**:
+    *   Standardisierung der Daten.
+    *   Zeitplan-Management (z.B. alle 20 Minuten).
+*   **Outputs**:
+    *   **Datenbank**: Speichert Werte in Tabelle `measurements`.
 
-## 1. Executive Summary
-* **Problem:** Bioakustik ist wetterabhängig. Analysen brauchen Kontext (Temperatur, Wind, Regen).
-* **Lösung:** Regelmäßiger Fetch von OpenMeteo API (lokale Wetterstation) und Speicherung in DB.
+## 4. Abgrenzung (Out of Scope)
+*   **Keine Hardware**: Liest keine physischen Sensoren (DHT22 etc.) aus.
+*   **Keine Vorhersage**: Speichert "Current Weather" (Ist-Zustand), keine Forecasts für die Zukunft.
 
-## 2. Technische Spezifikation (Docker/Podman)
-Diese Werte sind verbindlich für die Implementierung.
+## 5. Technologien die dieser Container nutzt
+*   **Basis-Image**: Python 3.11+
+*   **Wichtige Komponenten**:
+    *   `httpx` (HTTP Client)
+    *   `schedule` (Loop)
+    *   `sqlalchemy` (DB Write)
 
-| Parameter | Wert | Begründung/Details |
-| :--- | :--- | :--- |
-| **Base Image** | `python:3.11-slim-bookworm` | Simple Script. |
-| **Security Context** | `Rootless` | Standard. |
-| **Restart Policy** | `on-failure` | Low Prio. |
-| **Ports** | `None` | Outbound HTTP. |
-| **Volumes** | `None` | Stateless. |
-| **Dependencies** | `silvasonic_database` | Storage. |
-
-## 3. Interfaces & Datenfluss
-*   **Trigger:** Timer (alle 15-20 min).
-*   **Source:** HTTP GET OpenMeteo.
-*   **Target:** DB Tabelle `weather`.
-
-## 4. Konfiguration (Environment Variables)
-*   `LATITUDE`, `LONGITUDE`: Standort.
-
-## 5. Abgrenzung (Out of Scope)
-*   Keine eigene Sensor-Hardware-Anbindung (nutzt Web-API).
-
-## 6. Architecture & Code Best Practices
-*   **API-Limits:** Beachte Rate Limits von Free APIs.
-*   **Resilience:** Wenn Internet weg -> Log & Skip.
-
-## 7. Kritische Analyse
-*   Sehr simpler Service, könnte theoretisch Teil des Monitors sein, aber Separation of Concerns (SRP) rechtfertigt eigenen Container.
+## 6. Kritische Punkte
+*   **API Limits**: OpenMeteo ist free, aber hat Rate Limits. Der Intervall darf nicht zu kurz sein (z.B. < 1 Minute). 20 Minuten ist ein guter Kompromiss.
+*   **Internetpflicht**: Ohne Internetverbindung keine Wetterdaten.

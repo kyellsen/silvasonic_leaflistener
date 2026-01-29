@@ -1,40 +1,33 @@
+# Container: silvasonic_tailscale
 
+## 1. Das Problem / Die Lücke
+Der Zugriff auf das System von außerhalb des lokalen Netzwerks erfordert normalerweise Port-Forwarding am Router, was Sicherheitsrisiken birgt und bei CGNAT (Mobilfunk/Starlink) oft unmöglich ist.
 
-# Container Spec: silvasonic_tailscale
+## 2. Nutzen für den User
+*   **Remote Access**: Zugriff auf das Dashboard von überall auf der Welt, sicher und verschlüsselt.
+*   **Zero Config**: Keine Router-Konfiguration notwendig.
+*   **Sicherheit**: Das Device ist nicht im öffentlichen Internet exponiert.
 
-> **Rolle:** Secure Overlay Network für Remote Access.
-> **Tier:** Tier 0 (Vital) – Zugangssicherung.
+## 3. Kernaufgaben (Core Responsibilities)
+*   **Inputs**:
+    *   Auth-Key (initial) zur Registrierung im Tailnet.
+    *   Verschlüsselter WireGuard-Traffix via UDP.
+*   **Processing**:
+    *   Aufbau eines Mesh-VPN Tunnels.
+    *   Routing von Traffic aus dem Tailnet an lokale Services.
+*   **Outputs**:
+    *   Netzwerk-Verbindung zu `silvasonic_gateway` oder `silvasonic_dashboard`.
 
-## 1. Executive Summary
-* **Problem:** Sicherer Zugriff auf das Dashboard und SSH von außen, ohne offene Ports am Router.
-* **Lösung:** Tailscale VPN Client bindet das Gerät in ein privates Mesh-Netzwerk ein.
+## 4. Abgrenzung (Out of Scope)
+*   **Kein öffentlicher Server**: Macht den Dienst nicht "public" für jedermann, nur für authentifizierte Tailnet-User.
+*   **User Management**: Verwaltet keine User (passiert bei Tailscale.com).
 
-## 2. Technische Spezifikation (Docker/Podman)
-Diese Werte sind verbindlich für die Implementierung.
+## 5. Technologien die dieser Container nutzt
+*   **Basis-Image**: `tailscale/tailscale:latest`
+*   **Wichtige Komponenten**:
+    *   Tailscale Daemon (tailscaled)
+    *   Userspace Networking (tun/tap)
 
-| Parameter | Wert | Begründung/Details |
-| :--- | :--- | :--- |
-| **Base Image** | `tailscale/tailscale:latest` | Offizielles Image. |
-| **Security Context** | `Rootless` vs `Privileged` | Benötigt oft `CAP_NET_ADMIN` und `/dev/net/tun`. Auf Pi evtl. einfacher via Host-Install, aber als Container möglich. Wir versuchen Rootless mit Device-Passthrough oder `privileged` (Ausnahme für Networking). **Entscheidung:** `Privileged` für Networking meist nötig, oder Host-Mode. Check `operational/tailscale.md`. Wir nehmen `network_mode: host` + `privileged` (Infrastructure Ausnahme). |
-| **Restart Policy** | `always` | Zugriff muss garantiert sein. |
-| **Ports** | `None` | (Network Host Mode). |
-| **Volumes** | - `tailscale_state:/var/lib/tailscale` | State Storage (Node Identity). |
-| **Dependencies** | `None`. | |
-
-## 3. Interfaces & Datenfluss
-* **Input/Output:** VPN Tunnel Traffic.
-
-## 4. Konfiguration (Environment Variables)
-*   `TS_AUTHKEY`: Auth Key (Ephemeral oder Persistent).
-*   `TS_HOSTNAME`: `silvasonic-v2`.
-*   `TS_STATE_DIR`: `/var/lib/tailscale`.
-
-## 5. Abgrenzung (Out of Scope)
-*   Kein lokaler Router.
-
-## 6. Architecture & Code Best Practices
-*   **Userspace Networking:** Wenn möglich nutzen.
-*   **Healthcheck:** `tailscale status`.
-
-## 7. Kritische Analyse
-*   **Alternativen:** Cloudflare Tunnel, Wireguard native. Tailscale ist am einfachsten ("It just works").
+## 6. Kritische Punkte
+*   **Auth Key Expiry**: Keys laufen ab. Um persistenten Zugang zu sichern, muss das Device im Admin-Panel als "No Expiry" markiert werden oder OAuth Flow genutzt werden (im Container schwieriger).
+*   **State Persistence**: Der Ordner `/var/lib/tailscale` MUSS persistiert sein (Volume), sonst generiert der Container bei jedem Neustart eine neue IP/Identität.

@@ -192,3 +192,7 @@ class DatabaseHandler:
                 session.commit()
             except Exception as e:
                 logger.error(f"Failed to mark analyzed {rec_id}: {e}")
+
+
+# Singleton Instance
+db = DatabaseHandler()

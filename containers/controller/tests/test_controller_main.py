@@ -13,7 +13,7 @@ def mock_deps():
         patch("silvasonic_controller.main.DeviceManager") as dm,
         patch("silvasonic_controller.main.PodmanOrchestrator") as po,
         patch("silvasonic_controller.main.load_profiles") as lp,
-        patch("silvasonic_controller.main.PersistenceManager") as pm,
+        patch("silvasonic_controller.main.DatabaseClient") as pm,
     ):
         # Setup mock behavior for ASYNC methods
         dm_instance = dm.return_value
@@ -201,3 +201,82 @@ async def test_run_loop_monitor_event(mock_deps) -> None:
 
             # Reconcile called initially + once for event
             assert mock_rec.call_count >= 2
+
+
+@pytest.mark.asyncio
+async def test_adopt_orphans(mock_deps) -> None:
+    dm, po, lp = mock_deps
+    ctrl = Controller(dm.return_value, po.return_value)
+
+    # Mock active recorders
+    po.return_value.list_active_recorders.return_value = [
+        {
+            "Names": ["silvasonic_recorder_old"],
+            "Labels": {
+                "silvasonic.profile": "test",
+                "silvasonic.port": "12001",
+                "silvasonic.rec_id": "test_1",
+                "card_id": "1",
+            },
+        },
+        {
+            "Names": ["random_container"],
+            "Labels": {},  # Should be ignored
+        },
+    ]
+
+    await ctrl.adopt_orphans()
+
+    assert "1" in ctrl.active_sessions
+    assert ctrl.active_sessions["1"].container_name == "silvasonic_recorder_old"
+
+
+@pytest.mark.asyncio
+async def test_write_status(mock_deps) -> None:
+    dm, po, lp = mock_deps
+    ctrl = Controller(dm.return_value, po.return_value)
+
+    # Mock Redis
+    ctrl.redis = MagicMock()
+
+    await ctrl.write_status()
+
+    ctrl.redis.set.assert_called_once()
+    args = ctrl.redis.set.call_args
+    assert args[0][0] == "status:controller"
+
+
+@pytest.mark.asyncio
+async def test_reconcile_spawn_failure(mock_deps) -> None:
+    dm, po, lp = mock_deps
+    ctrl = Controller(dm.return_value, po.return_value)
+
+    device = AudioDevice(name="Test", card_id="1", dev_path="...")
+    dm.return_value.scan_devices.return_value = [device]
+
+    po.return_value.spawn_recorder.return_value = False
+
+    await ctrl.reconcile()
+
+    po.return_value.spawn_recorder.assert_called_once()
+    assert "1" not in ctrl.active_sessions
+
+
+@pytest.mark.asyncio
+async def test_monitor_hardware_exception(mock_deps) -> None:
+    dm, po, lp = mock_deps
+    ctrl = Controller(dm.return_value, po.return_value)
+
+    monitor = MagicMock()
+    dm.return_value.start_monitoring.return_value = monitor
+    monitor.poll.side_effect = Exception("Error")
+
+    # To break the loop after exception
+    async def side_effect_sleep(dur):
+        ctrl.running = False
+
+    with patch("asyncio.sleep", side_effect=side_effect_sleep):
+        await ctrl.monitor_hardware()
+
+    # Ensure it didn't crash
+    assert ctrl.running is False
