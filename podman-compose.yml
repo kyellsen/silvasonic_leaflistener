@@ -246,7 +246,7 @@ services:
     ports:
       - "8000:8000"
     volumes:
-      - ${SILVASONIC_DATA_DIR}/config/icecast.xml:/etc/icecast.xml:ro
+      - ./config/icecast.xml:/etc/icecast.xml:ro
 
 volumes:
   tailscale_state:

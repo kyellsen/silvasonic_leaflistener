@@ -172,10 +172,9 @@ def main() -> None:
                     continue
 
                 filename = os.path.basename(flac_path)
-                file_size = os.path.getsize(flac_path)
 
                 # Upload
-                remote_path = f"{remote}:recordings/{filename}"
+
                 logger.info(f"Uploading {filename}...")
 
                 # Use our sync method (which uses async, so we looprunner it or just use subprocess here?)
@@ -194,12 +193,7 @@ def main() -> None:
                 if res.returncode == 0:
                     logger.info(f"Uploaded {filename}")
                     db.mark_recording_uploaded(rec["id"])
-                    db.log_upload(
-                        filename=filename,
-                        size_bytes=file_size,
-                        status="success",
-                        remote_path=remote_path,
-                    )
+
                     last_upload_ts = time.time()
 
                     # Delete temp flac if we created it
@@ -208,12 +202,6 @@ def main() -> None:
                 else:
                     error_msg = res.stderr.decode()
                     logger.error(f"Upload failed: {error_msg}")
-                    db.log_upload(
-                        filename=filename,
-                        size_bytes=file_size,
-                        status="failed",
-                        error_message=error_msg,
-                    )
 
         except Exception:
             logger.exception("Uploader Loop Error")

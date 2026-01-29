@@ -75,10 +75,10 @@ class UploaderService:
             async with db.get_connection() as conn:
                 query = text(
                     """
-                    SELECT filename, remote_path, size_bytes, upload_time 
-                    FROM uploads 
-                    WHERE status = 'success' 
-                    ORDER BY upload_time DESC 
+                    SELECT path_high, uploaded_at, device_id
+                    FROM recordings 
+                    WHERE uploaded = true 
+                    ORDER BY uploaded_at DESC 
                     LIMIT :limit
                 """
                 )
@@ -86,23 +86,20 @@ class UploaderService:
                 items = []
                 for row in result:
                     d = dict(row._mapping)
-                    if d.get("upload_time"):
-                        if d["upload_time"].tzinfo is None:
-                            d["upload_time"] = d["upload_time"].replace(tzinfo=datetime.UTC)
-                        d["upload_time_str"] = d["upload_time"].strftime("%Y-%m-%d %H:%M:%S")
+                    d["filename"] = os.path.basename(d.get("path_high") or "")
+                    d["remote_path"] = ""  # Not stored anymore
+                    d["size_bytes"] = 0  # Not stored anymore
+
+                    if d.get("uploaded_at"):
+                        if d["uploaded_at"].tzinfo is None:
+                            d["uploaded_at"] = d["uploaded_at"].replace(tzinfo=datetime.UTC)
+                        d["upload_time_str"] = d["uploaded_at"].strftime("%Y-%m-%d %H:%M:%S")
                         # Convert to string for JSON serialization
-                        d["upload_time"] = d["upload_time"].isoformat()
+                        d["upload_time"] = d["uploaded_at"].isoformat()
 
-                    d["size_mb"] = round((d.get("size_bytes") or 0) / (1024 * 1024), 2)
-
-                    # Derive Source from filename (e.g. "front/2023..." -> "front")
-                    fname = d.get("filename", "")
-                    if "/" in fname:
-                        d["source"] = fname.split("/")[0]
-                        d["filename_only"] = os.path.basename(fname)
-                    else:
-                        d["source"] = "Default"
-                        d["filename_only"] = fname
+                    d["size_mb"] = 0.0
+                    d["source"] = d.get("device_id", "Default")
+                    d["filename_only"] = d["filename"]
 
                     items.append(d)
                 return items
@@ -113,49 +110,24 @@ class UploaderService:
     @staticmethod
     async def get_failed_uploads(limit: int = 50) -> list[dict[str, typing.Any]]:
         """Fetch recent failed uploads."""
-        try:
-            async with db.get_connection() as conn:
-                query = text(
-                    """
-                    SELECT filename, error_message, upload_time 
-                    FROM uploads 
-                    WHERE status = 'failed' 
-                    ORDER BY upload_time DESC 
-                    LIMIT :limit
-                """
-                )
-                result = await conn.execute(query, {"limit": limit})
-                items = []
-                for row in result:
-                    d = dict(row._mapping)
-                    if d.get("upload_time"):
-                        if d["upload_time"].tzinfo is None:
-                            d["upload_time"] = d["upload_time"].replace(tzinfo=datetime.UTC)
-                        d["upload_time_str"] = d["upload_time"].strftime("%Y-%m-%d %H:%M:%S")
-                        # Convert to string for JSON serialization
-                        d["upload_time"] = d["upload_time"].isoformat()
-                    items.append(d)
-                return items
-        except Exception as e:
-            print(f"Uploader failed uploads error: {e}")
-            return []
+        # V2: We do not log failed uploads to a table anymore.
+        # They remain as 'uploaded=false' in recordings table.
+        return []
 
     @staticmethod
     async def get_upload_stats() -> dict[str, int]:
         """Fetch upload counts for different time ranges."""
         try:
             async with db.get_connection() as conn:
-                # We can do this in one query with FILTER or multiple.
-                # Postgres FILTER is elegant.
                 query = text(
                     """
                     SELECT 
-                        COUNT(*) FILTER (WHERE upload_time >= NOW() - INTERVAL '1 HOUR') as last_1h,
-                        COUNT(*) FILTER (WHERE upload_time >= NOW() - INTERVAL '24 HOURS') as last_24h,
-                        COUNT(*) FILTER (WHERE upload_time >= NOW() - INTERVAL '7 DAYS') as last_7d,
-                        COUNT(*) FILTER (WHERE upload_time >= NOW() - INTERVAL '30 DAYS') as last_30d
-                    FROM uploads
-                    WHERE status = 'success'
+                        COUNT(*) FILTER (WHERE uploaded_at >= NOW() - INTERVAL '1 HOUR') as last_1h,
+                        COUNT(*) FILTER (WHERE uploaded_at >= NOW() - INTERVAL '24 HOURS') as last_24h,
+                        COUNT(*) FILTER (WHERE uploaded_at >= NOW() - INTERVAL '7 DAYS') as last_7d,
+                        COUNT(*) FILTER (WHERE uploaded_at >= NOW() - INTERVAL '30 DAYS') as last_30d
+                    FROM recordings
+                    WHERE uploaded = true
                 """
                 )
                 row = (await conn.execute(query)).fetchone()
@@ -172,7 +144,7 @@ class UploaderService:
         try:
             async with db.get_connection() as conn:
                 query = text(
-                    "SELECT COUNT(*) FROM uploads WHERE status='success' AND upload_time >= NOW() - make_interval(mins => :mins)"
+                    "SELECT COUNT(*) FROM recordings WHERE uploaded=true AND uploaded_at >= NOW() - make_interval(mins => :mins)"
                 )
                 count = (await conn.execute(query, {"mins": minutes})).scalar() or 0
                 return round(count / minutes, 2)
@@ -185,7 +157,12 @@ class UploaderService:
         """Get the filename of the most recently uploaded file."""
         try:
             async with db.get_connection() as conn:
-                query = text("SELECT MAX(filename) FROM uploads WHERE status='success'")
-                return (await conn.execute(query)).scalar()  # type: ignore[no-any-return]
+                query = text(
+                    "SELECT path_high FROM recordings WHERE uploaded=true ORDER BY uploaded_at DESC LIMIT 1"
+                )
+                path = (await conn.execute(query)).scalar()
+                if path and isinstance(path, str):
+                    return os.path.basename(path)
+                return None
         except Exception:
             return None

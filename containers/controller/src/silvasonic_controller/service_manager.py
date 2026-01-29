@@ -41,6 +41,16 @@ REGISTRY: dict[str, ServiceConfig] = {
                 "target": "/mnt/data/services/silvasonic/status",
                 "mode": "rw",
             },
+            {
+                "source": f"{os.environ.get('HOST_SILVASONIC_DATA_DIR', '/mnt/data/services/silvasonic')}/logs",
+                "target": "/var/log/silvasonic",
+                "mode": "rw",
+            },
+            {
+                "source": f"{os.environ.get('HOST_SILVASONIC_DATA_DIR', '/mnt/data/services/silvasonic')}/config/birdnet.yml",
+                "target": "/etc/birdnet/config.yml",
+                "mode": "ro",
+            },
         ],
     ),
     "uploader": ServiceConfig(
@@ -65,6 +75,11 @@ REGISTRY: dict[str, ServiceConfig] = {
         enabled=True,
         mounts=[
             {"source": "/mnt/data/services/silvasonic/config", "target": "/config", "mode": "ro"},
+            {
+                "source": f"{os.environ.get('HOST_SILVASONIC_DATA_DIR', '/mnt/data/services/silvasonic')}/logs",
+                "target": "/var/log/silvasonic",
+                "mode": "rw",
+            },
         ],
     ),
     "livesound": ServiceConfig(
