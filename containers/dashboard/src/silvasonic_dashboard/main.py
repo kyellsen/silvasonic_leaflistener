@@ -6,6 +6,8 @@ from contextlib import asynccontextmanager
 import structlog
 from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
+from sqlalchemy import select
+
 from silvasonic_dashboard.core.constants import BASE_DIR
 from silvasonic_dashboard.core.health import write_status
 from silvasonic_dashboard.core.logging import setup_logging
@@ -13,7 +15,6 @@ from silvasonic_dashboard.core.middleware import add_security_headers
 from silvasonic_dashboard.models import SystemConfig, SystemService
 from silvasonic_dashboard.routers import api, auth, control, profiles, views
 from silvasonic_dashboard.services.database import db
-from sqlalchemy import select
 
 # Setup Logging
 setup_logging()

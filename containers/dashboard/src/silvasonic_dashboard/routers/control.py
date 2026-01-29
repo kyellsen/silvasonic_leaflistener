@@ -2,10 +2,11 @@ from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
-from silvasonic_dashboard.models import SystemConfig, SystemService
-from silvasonic_dashboard.services.database import db
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
+
+from silvasonic_dashboard.models import SystemConfig, SystemService
+from silvasonic_dashboard.services.database import db
 
 router = APIRouter(prefix="/api/control", tags=["Control"])
 

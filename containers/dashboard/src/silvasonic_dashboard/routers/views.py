@@ -4,6 +4,8 @@ import structlog
 from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
 from pydantic import ValidationError
+from starlette.status import HTTP_302_FOUND
+
 from silvasonic_dashboard.auth import check_auth, require_auth
 from silvasonic_dashboard.core.templates import render
 from silvasonic_dashboard.services import (
@@ -15,7 +17,6 @@ from silvasonic_dashboard.services import (
     UploaderService,
 )
 from silvasonic_dashboard.settings import SettingsService
-from starlette.status import HTTP_302_FOUND
 
 logger = structlog.get_logger()
 router = APIRouter()

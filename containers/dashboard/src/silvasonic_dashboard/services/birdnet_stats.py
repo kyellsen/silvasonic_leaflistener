@@ -1,8 +1,9 @@
 import datetime
 import typing
 
-from silvasonic_dashboard.settings import SettingsService
 from sqlalchemy import text
+
+from silvasonic_dashboard.settings import SettingsService
 
 from .common import REC_DIR, logger
 from .database import db

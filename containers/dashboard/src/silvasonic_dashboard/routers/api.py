@@ -8,6 +8,7 @@ import redis
 import structlog
 from fastapi import APIRouter, Depends, Request
 from fastapi.responses import RedirectResponse, StreamingResponse
+
 from silvasonic_dashboard.auth import require_auth
 from silvasonic_dashboard.core.templates import templates
 from silvasonic_dashboard.services import SystemService
