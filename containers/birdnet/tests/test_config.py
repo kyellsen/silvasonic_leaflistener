@@ -50,6 +50,9 @@ def test_yaml_override(clean_env, tmp_path):
     # test basic loading (no patch.multiple)
     s = Settings(CONFIG_FILE=config_file, SETTINGS_JSON=Path("/non/existent"))
 
+    # Force reload just in case post_init didn't catch it or something (it should though)
+    # s.reload_birdnet_config()
+
     assert s.birdnet.min_conf == 0.9
     # Intentionally ignoring the 'pass' and comment block which was confusing
 

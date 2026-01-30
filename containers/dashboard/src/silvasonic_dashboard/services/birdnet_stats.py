@@ -17,15 +17,13 @@ class BirdNetStatsService:
             async with db.get_connection() as conn:
                 # Today
                 today_start = datetime.datetime.utcnow().date()
-                query_today = text(
-                    "SELECT COUNT(*) FROM birdnet.detections WHERE timestamp >= :today"
-                )
+                query_today = text("SELECT COUNT(*) FROM detections WHERE timestamp >= :today")
                 today_count = (
                     await conn.execute(query_today, {"today": today_start})
                 ).scalar() or 0
 
                 # Total
-                query_total = text("SELECT COUNT(*) FROM birdnet.detections")
+                query_total = text("SELECT COUNT(*) FROM detections")
                 total_count = (await conn.execute(query_total)).scalar() or 0
 
                 # Top Species
@@ -35,8 +33,8 @@ class BirdNetStatsService:
                         d.common_name as com_name, 
                         MAX(s.german_name) as german_name, 
                         COUNT(*) as count 
-                    FROM birdnet.detections d
-                    LEFT JOIN birdnet.species_info s ON d.scientific_name = s.scientific_name
+                    FROM detections d
+                    LEFT JOIN species_info s ON d.scientific_name = s.scientific_name
                     GROUP BY d.common_name 
                     ORDER BY count DESC 
                     LIMIT 10
@@ -56,9 +54,7 @@ class BirdNetStatsService:
                     top_species.append(r)
 
                 # Species Count
-                query_species = text(
-                    "SELECT COUNT(DISTINCT scientific_name) FROM birdnet.detections"
-                )
+                query_species = text("SELECT COUNT(DISTINCT scientific_name) FROM detections")
                 species_count = (await conn.execute(query_species)).scalar() or 0
 
                 # Biodiversity (Menhinick's Index: D = S / sqrt(N))
@@ -96,7 +92,7 @@ class BirdNetStatsService:
                 query_daily = text(
                     """
                     SELECT DATE(timestamp) as date, COUNT(*) as count
-                    FROM birdnet.detections
+                    FROM detections
                     WHERE DATE(timestamp) >= :start_date 
                       AND DATE(timestamp) <= :end_date
                     GROUP BY date
@@ -117,7 +113,7 @@ class BirdNetStatsService:
                 query_hourly = text(
                     """
                     SELECT EXTRACT(HOUR FROM timestamp) as hour, COUNT(*) as count
-                    FROM birdnet.detections
+                    FROM detections
                     WHERE DATE(timestamp) >= :start_date 
                       AND DATE(timestamp) <= :end_date
                     GROUP BY hour
@@ -136,7 +132,7 @@ class BirdNetStatsService:
                 query_top = text(
                     """
                     SELECT common_name, COUNT(*) as count 
-                    FROM birdnet.detections 
+                    FROM detections 
                     WHERE DATE(timestamp) >= :start_date 
                       AND DATE(timestamp) <= :end_date
                       AND common_name IS NOT NULL
@@ -161,7 +157,7 @@ class BirdNetStatsService:
                 query_rarest = text(
                     """
                     SELECT common_name, COUNT(*) as count
-                    FROM birdnet.detections
+                    FROM detections
                     WHERE DATE(timestamp) >= :start_date 
                       AND DATE(timestamp) <= :end_date
                       AND common_name IS NOT NULL
@@ -209,7 +205,7 @@ class BirdNetStatsService:
                         MIN(timestamp) as first_seen,
                         AVG(confidence) as avg_conf,
                         MAX(confidence) as max_conf
-                    FROM birdnet.detections
+                    FROM detections
                     WHERE common_name = :name
                     GROUP BY common_name, scientific_name
                 """
@@ -231,7 +227,7 @@ class BirdNetStatsService:
                 # Recent Detections
                 query_recent = text(
                     """
-                    SELECT * FROM birdnet.detections 
+                    SELECT * FROM detections 
                     WHERE common_name = :name 
                     ORDER BY timestamp DESC 
                     LIMIT 20
@@ -267,7 +263,7 @@ class BirdNetStatsService:
                 query_hourly = text(
                     """
                     SELECT EXTRACT(HOUR FROM timestamp) as hour, COUNT(*) as count
-                    FROM birdnet.detections
+                    FROM detections
                     WHERE common_name = :name
                     GROUP BY hour
                     ORDER BY hour
@@ -296,7 +292,7 @@ class BirdNetStatsService:
                     start_time,
                     end_time,
                     filename
-                FROM birdnet.detections
+                FROM detections
                 ORDER BY timestamp DESC
             """
             )

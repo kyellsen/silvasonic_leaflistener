@@ -15,6 +15,7 @@ def test_bird_detection_defaults():
     assert bd.confidence == 0.8
 
 
+# @pytest.mark.skip(reason="Pydantic validation not triggering on init for SQLModel currently")
 def test_validation():
     """Test validators."""
     # Negative end time
@@ -36,6 +37,17 @@ def test_validation():
             end_time=1.0,
             confidence=1.5,  # Invalid
         )
+
+    # Test assignment validation (enabled by config now)
+    bd = BirdDetection(
+        filename="test.wav",
+        filepath="/tmp/test.wav",
+        start_time=0.0,
+        end_time=1.0,
+        confidence=0.8,
+    )
+    with pytest.raises(ValidationError):
+        bd.confidence = 1.5
 
 
 def test_aliases():

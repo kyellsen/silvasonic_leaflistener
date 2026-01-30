@@ -10,41 +10,58 @@ from sqlmodel import Session, SQLModel, create_engine, select
 @pytest.fixture
 def test_db():
     """Fixture for an in-memory database."""
-    with patch("silvasonic_birdnet.database.time.sleep"):
-        handler = DatabaseHandler()
-        handler.db_url = "sqlite:///:memory:"
+    # We need StaticPool so the in-memory DB persists across connections
+    # We also need to attach the 'public' and 'birdnet' schemas on every connection
+    from sqlalchemy import event
+    from sqlalchemy.pool import StaticPool
 
-        # We need to interfere with the connection context manager to suppress the CREATE SCHEMA call
-        # but allow SQLModel.metadata.create_all to work.
-        # It's tricky because they use the same engine.
+    handler = DatabaseHandler()
+    handler.db_url = "sqlite://"  # In-memory
 
-        # Let's mock create_engine to return a real engine,
-        # but we wrap it to suppress specific execute calls?
-        # Maybe easier: Just let it fail the first execute ("CREATE SCHEMA"), catch it, and proceed?
-        # But the code catches Exception and returns False.
-        # So connect() returns False.
+    # Create engine with StaticPool
+    engine = create_engine(
+        handler.db_url, connect_args={"check_same_thread": False}, poolclass=StaticPool
+    )
 
-        # So we must prevent it from failing.
-        # We can mock `sqlalchemy.text` to return something benign?
-        # Or patch handler.connect to skip schema creation? (Best approach for unit test)
+    # Event listener to ATTACH databases as schemas on every connect
+    @event.listens_for(engine, "connect")
+    def do_connect(dbapi_connection, connection_record):
+        # Create a cursor and execute
+        cursor = dbapi_connection.cursor()
+        cursor.execute("ATTACH DATABASE ':memory:' AS public")
+        # Ensure birdnet schema exists too if needed, mapping to same memory DB or another
+        # We can map both to same memory db implies sharing tables?
+        # Or Just same alias.
+        # Actually sqlite only allows attaching a file/stream. ':memory:' creates NEW one.
+        # But since we use StaticPool, the *MAIN* db is preserved.
+        # The attached ones... might be separate?
+        # If we want 'public.recordings' to be valid, we need 'public' schema.
+        # If we attach ':memory:' as public, it is a separate empty DB.
+        # This is fine as long as we create tables IN IT.
+        pass
 
-        def testing_connect():
-            handler.engine = create_engine(handler.db_url)
+    # However, SQLModel.metadata.create_all(engine) creates tables.
+    # If the model has __table_args__ = {"schema": "public"}, it tries to create in public.
+    # So we MUST attach 'public'.
 
-            # ATTACH DATABASE for SQLite schema support
-            with handler.engine.connect() as connection:
-                from sqlalchemy import text
+    # Redefine the listener purely
+    @event.listens_for(engine, "connect")
+    def attach_schemas(dbapi_con, con_record):
+        try:
+            dbapi_con.execute("attach database ':memory:' as public")
+        except Exception:
+            pass
+        # dbapi_con.execute("attach database ':memory:' as birdnet") # If needed
 
-                connection.execute(text("ATTACH DATABASE ':memory:' AS birdnet"))
-                connection.commit()
+    handler.engine = engine
 
-            # SKIPPING SCHEMA CREATION for SQLite
-            SQLModel.metadata.create_all(handler.engine)
-            return True
+    # Now create tables
+    SQLModel.metadata.create_all(handler.engine)
 
-        handler.connect = testing_connect
-        handler.connect()
-        return handler
+    # Patch connect() to do nothing (since we already have a valid engine)
+    handler.connect = lambda: True
+
+    return handler
 
 
 def test_connect_creates_tables(test_db):
@@ -156,12 +173,12 @@ def test_pending_analysis_logic(test_db):
 
         session.exec(
             text(
-                "CREATE TABLE IF NOT EXISTS recordings (id INTEGER PRIMARY KEY, path_low TEXT, path_high TEXT, analyzed_bird BOOLEAN, time TIMESTAMP)"
+                "CREATE TABLE IF NOT EXISTS public.recordings (id INTEGER PRIMARY KEY, path_low TEXT, path_high TEXT, analyzed_bird BOOLEAN, time TIMESTAMP)"
             )
         )
         session.exec(
             text(
-                "INSERT INTO recordings (id, path_low, path_high, analyzed_bird) VALUES (1, 'low.wav', 'high.wav', 0)"
+                "INSERT INTO public.recordings (id, path_low, path_high, analyzed_bird) VALUES (1, 'low.wav', 'high.wav', 0)"
             )
         )
         session.commit()
@@ -178,6 +195,6 @@ def test_pending_analysis_logic(test_db):
     with Session(test_db.engine) as session:
         from sqlalchemy import text
 
-        res = session.exec(text("SELECT analyzed_bird FROM recordings WHERE id=1")).first()
+        res = session.exec(text("SELECT analyzed_bird FROM public.recordings WHERE id=1")).first()
         assert res[0] is not None  # In sqlite boolean might be 1/0
         assert res[0] != 0  # True

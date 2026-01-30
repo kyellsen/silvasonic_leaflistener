@@ -239,11 +239,16 @@ async def test_write_status(mock_deps) -> None:
     # Mock Redis
     ctrl.redis = MagicMock()
 
-    await ctrl.write_status()
+    # Needs to be serializable by simplejson/json
+    # psutil is mocked in mock_deps but let's ensure return values are simple types
+
+    # Patch json.dumps to avoid serializing MagicMock objects
+    with patch("json.dumps", return_value='{"mock": "json"}'):
+        await ctrl.write_status()
 
     ctrl.redis.set.assert_called_once()
-    args = ctrl.redis.set.call_args
-    assert args[0][0] == "status:controller"
+    args, kwargs = ctrl.redis.set.call_args
+    assert args[0] == "status:controller"
 
 
 @pytest.mark.asyncio

@@ -13,8 +13,8 @@ def test_main_loop(mock_shutdown, mock_sleep, mock_analyzer_cls, mock_db):
     mock_db.connect.return_value = True
 
     # Mock shutdown to run loop once then exit
-    # is_set side effect: False (start), True (end)
-    mock_shutdown.is_set.side_effect = [False, True]
+    # is_set side effect: False (start), True (end), True (security buffer)
+    mock_shutdown.is_set.side_effect = [False, True, True, True]
 
     # Mock pending analysis to return one item
     mock_db.get_pending_analysis.return_value = [
@@ -40,8 +40,12 @@ def test_main_loop(mock_shutdown, mock_sleep, mock_analyzer_cls, mock_db):
 def test_main_db_fail(mock_exit, mock_analyzer, mock_db):
     """Test main exits if DB fails."""
     mock_db.connect.return_value = False
+    mock_exit.side_effect = SystemExit(1)
 
-    main()
+    try:
+        main()
+    except SystemExit:
+        pass
 
     # mock_exit.assert_called_with(1) # sys.exit usually raises SystemExit
     # If we mocked it, it captured the call.

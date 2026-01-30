@@ -16,6 +16,9 @@ class BirdDetection(SQLModel, table=True):
     __tablename__ = "detections"
     __table_args__ = {"schema": "public"}
 
+    # Enforce validation
+    model_config = {"validate_assignment": True}
+
     # ID (Auto-increment)
     id: int | None = Field(default=None, primary_key=True)
     timestamp: datetime = Field(default_factory=lambda: datetime.now(UTC))

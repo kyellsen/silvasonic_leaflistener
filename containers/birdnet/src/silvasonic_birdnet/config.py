@@ -104,6 +104,8 @@ class Settings(BaseSettings):
                         # YAML keys assumed same as model for simplicity, or map here.
                         # Original code: `yaml_conf.get(key)` where key is model field name.
                         yaml_values = yaml_section
+                        if "min_confidence" in yaml_values:
+                            yaml_values["min_conf"] = yaml_values.pop("min_confidence")
                 except Exception as e:
                     logger.error(f"Failed to load config.yml: {e}")
 

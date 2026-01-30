@@ -1,9 +1,9 @@
 import json
-from unittest.mock import AsyncMock, mock_open, patch
+from unittest.mock import AsyncMock, patch
 
 import pytest
 from silvasonic_controller.device_manager import AudioDevice
-from silvasonic_controller.main import Controller, SessionInfo
+from silvasonic_controller.main import Controller
 from silvasonic_controller.profiles_loader import MicrophoneProfile
 
 
@@ -47,8 +47,7 @@ async def test_reconcile_unconfigured_device(mock_deps) -> None:
 
     # Patch write methods to avoid side effects
     with (
-        patch.object(ctrl, "write_live_config", new_callable=AsyncMock),
-        patch.object(ctrl, "write_recorder_inventory", new_callable=AsyncMock),
+        patch.object(ctrl, "write_status", new_callable=AsyncMock),
     ):
         await ctrl.reconcile()
 
@@ -73,8 +72,7 @@ async def test_reconcile_clears_unconfigured(mock_deps) -> None:
     dm.return_value.scan_devices.return_value = []
 
     with (
-        patch.object(ctrl, "write_live_config", new_callable=AsyncMock),
-        patch.object(ctrl, "write_recorder_inventory", new_callable=AsyncMock),
+        patch.object(ctrl, "write_status", new_callable=AsyncMock),
     ):
         await ctrl.reconcile()
 
@@ -91,51 +89,18 @@ async def test_write_status_includes_unconfigured(mock_deps) -> None:
     device = AudioDevice(name="Mystery Mic", card_id="7", dev_path="p", usb_id="USER:PROBLEM")
     ctrl.unconfigured_devices = [device]
 
-    with patch("builtins.open", mock_open()) as m_open:
-        with patch("os.rename"), patch("os.makedirs"):
-            await ctrl.write_status()
+    # Mock Redis instead of open
+    ctrl.redis = AsyncMock()
 
-            # Verify content written
-            # Combine all write calls to find the JSON dump
-            writes = [call.args[0] for call in m_open().write.call_args_list]
-            full_content = "".join(writes)
-            data = json.loads(full_content)
+    await ctrl.write_status()
 
-            assert "unconfigured_devices" in data
-            assert len(data["unconfigured_devices"]) == 1
-            assert data["unconfigured_devices"][0]["name"] == "Mystery Mic"
-            assert data["unconfigured_devices"][0]["usb_id"] == "USER:PROBLEM"
+    # Verify Redis set call
+    ctrl.redis.set.assert_called_once()
+    args, kwargs = ctrl.redis.set.call_args
+    assert args[0] == "status:controller"
+    data = json.loads(args[1])
 
-
-@pytest.mark.asyncio
-async def test_write_recorder_inventory(mock_deps) -> None:
-    """Test generation of active_recorders.json (Option C)."""
-    dm, po, lp = mock_deps
-    ctrl = Controller(dm.return_value, po.return_value)
-
-    # Setup active session
-    session = SessionInfo(
-        container_name="container_x",
-        rec_id="test_profile_1",
-        port=12001,
-        profile_slug="test_profile",
-    )
-    ctrl.active_sessions["1"] = session
-
-    with patch("builtins.open", mock_open()) as m_open:
-        with patch("os.rename"), patch("os.makedirs"):
-            await ctrl.write_recorder_inventory()
-
-            # Verify JSON content
-            writes = [call.args[0] for call in m_open().write.call_args_list]
-            full_content = "".join(writes)
-            data = json.loads(full_content)
-
-            assert isinstance(data, list)
-            assert len(data) == 1
-            item = data[0]
-
-            assert item["rec_id"] == "test_profile_1"
-            assert item["profile_slug"] == "test_profile"
-            assert item["profile_name"] == "Test Profile"  # From mock profiles loader
-            assert item["card_id"] == "1"
+    assert "unconfigured_devices" in data
+    assert len(data["unconfigured_devices"]) == 1
+    assert data["unconfigured_devices"][0]["name"] == "Mystery Mic"
+    assert data["unconfigured_devices"][0]["usb_id"] == "USER:PROBLEM"

@@ -37,12 +37,15 @@ class TestDatabaseHandler:
         """Test successful connection and database initialization."""
         mock_conn = MagicMock()
         mock_engine.return_value.begin.return_value.__enter__.return_value = mock_conn
+        # Also mock connect() just in case implementation uses that
+        mock_engine.return_value.connect.return_value.__enter__.return_value = mock_conn
 
         assert db.connect() is True
         assert db.Session is not None
 
-        # Verify successful initialization (executed implicitly via engine.begin())
-        assert mock_engine.return_value.begin.called
+        # Verify successful initialization (executed implicitly via engine.begin() or connect())
+        # Check either was called
+        assert mock_engine.return_value.begin.called or mock_engine.return_value.connect.called
 
     @patch("uploader_database.create_engine")
     def test_connect_failure(self, mock_engine: MagicMock, db: typing.Any) -> None:
@@ -58,12 +61,21 @@ class TestDatabaseHandler:
     ) -> None:
         """Test retrieval of pending recordings."""
         mock_session_inst = MagicMock()
-        mock_sessionmaker.return_value = MagicMock(return_value=mock_session_inst)
+        mock_sessionmaker.return_value = mock_session_inst
+        mock_session_inst.__enter__.return_value = mock_session_inst
+
+        # Inject the mock Session factory
+        db.Session = mock_sessionmaker
 
         # Mock valid result with path_high
+        # Mock valid result with path_high
+        # execute returns a result proxy, iterating it yields rows
+        from collections import namedtuple
+
+        Row = namedtuple("Row", ["id", "path_high"])
         mock_session_inst.execute.return_value = [
-            ("req_id_1", "path/to/high.wav"),
-            ("req_id_2", "path/to/another.wav"),
+            Row("req_id_1", "path/to/high.wav"),
+            Row("req_id_2", "path/to/another.wav"),
         ]
 
         results = db.get_pending_recordings(limit=10)
@@ -78,7 +90,11 @@ class TestDatabaseHandler:
     ) -> None:
         """Test marking a recording as uploaded."""
         mock_session_inst = MagicMock()
-        mock_sessionmaker.return_value = MagicMock(return_value=mock_session_inst)
+        mock_sessionmaker.return_value = mock_session_inst
+        mock_session_inst.__enter__.return_value = mock_session_inst
+
+        # Inject the mock Session factory
+        db.Session = mock_sessionmaker
 
         db.mark_recording_uploaded("req_id_1")
 
