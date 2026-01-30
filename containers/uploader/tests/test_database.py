@@ -68,20 +68,16 @@ class TestDatabaseHandler:
         db.Session = mock_sessionmaker
 
         # Mock valid result with path_high
-        # Mock valid result with path_high
         # execute returns a result proxy, iterating it yields rows
-        from collections import namedtuple
-
-        Row = namedtuple("Row", ["id", "path_high"])
         mock_session_inst.execute.return_value = [
-            Row("req_id_1", "path/to/high.wav"),
-            Row("req_id_2", "path/to/another.wav"),
+            ("req_id_1", "path/to/high.wav", None),
+            ("req_id_2", "path/to/another.wav", "path/to/low.wav"),
         ]
 
         results = db.get_pending_recordings(limit=10)
         assert len(results) == 2
         assert results[0]["id"] == "req_id_1"
-        assert results[0]["path"] == "path/to/high.wav"
+        assert results[0]["path_high"] == "path/to/high.wav"
 
     @patch("uploader_database.create_engine")
     @patch("uploader_database.sessionmaker")

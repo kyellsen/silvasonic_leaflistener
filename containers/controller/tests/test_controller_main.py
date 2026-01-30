@@ -242,8 +242,10 @@ async def test_write_status(mock_deps) -> None:
     # Needs to be serializable by simplejson/json
     # psutil is mocked in mock_deps but let's ensure return values are simple types
 
-    # Patch json.dumps to avoid serializing MagicMock objects
-    with patch("json.dumps", return_value='{"mock": "json"}'):
+    # Patch    # Needs to be serializable by simplejson/json
+    # psutil is mocked in mock_deps but let's ensure return values are simple types
+
+    with patch("json.dumps", return_value='{"mock": "status"}'):
         await ctrl.write_status()
 
     ctrl.redis.set.assert_called_once()
