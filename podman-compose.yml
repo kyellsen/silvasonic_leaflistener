@@ -240,11 +240,15 @@ services:
     #      - /sys:/sys:ro
 
   livesound:
-    image: icecast:alpine
+    build:
+      context: containers/livesound
+    image: silvasonic-livesound:latest
     container_name: silvasonic_livesound
     restart: always
     ports:
       - "8000:8000"
+    security_opt:
+      - label=disable
     volumes:
       - ./config/icecast.xml:/etc/icecast.xml:ro
 

@@ -113,7 +113,20 @@ target_data_dir=${SILVASONIC_DATA_DIR:-/mnt/data/dev_workspaces/silvasonic}
 
 echo_task "Verifying data directories at $target_data_dir"
 
-# Define critical paths based on containers.md
+# 1. Ensure BASE Directory exists and is owned by user
+if [ ! -d "$target_data_dir" ]; then
+    echo_task "Creating base directory: $target_data_dir"
+    if mkdir -p "$target_data_dir" 2>/dev/null; then
+         :
+    else
+         echo_warn "Using sudo to create base directory"
+         sudo mkdir -p "$target_data_dir"
+         # CRITICAL: Fix ownership of the entire base immediately
+         sudo chown -R $USER:$USER "$target_data_dir"
+    fi
+fi
+
+# 2. Define critical sub-paths
 REQUIRED_DIRS=(
     "$target_data_dir/recorder/recordings"
     "$target_data_dir/logs"
@@ -126,15 +139,17 @@ REQUIRED_DIRS=(
     "$target_data_dir/db/data"
 )
 
+# 3. Create subdirectories (should now work without sudo if base is correct)
 for DIR in "${REQUIRED_DIRS[@]}"; do
     if [ ! -d "$DIR" ]; then
-        # On local workstation, we might need sudo for /mnt/data
         if mkdir -p "$DIR" 2>/dev/null; then
              :
         else
-             echo_warn "Using sudo to create $DIR"
-             sudo mkdir -p "$DIR"
-             sudo chown -R $USER:$USER "$DIR"
+             # Fail if we still can't write, to avoid partial root ownership mess
+             echo_warn "Cannot create $DIR as current user."
+             echo_warn "Fixing permissions on $target_data_dir and retrying..."
+             sudo chown -R $USER:$USER "$target_data_dir"
+             mkdir -p "$DIR"
         fi
     fi
 done
